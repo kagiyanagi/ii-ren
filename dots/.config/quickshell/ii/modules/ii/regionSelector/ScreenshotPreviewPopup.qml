@@ -4,6 +4,7 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -116,6 +117,18 @@ Scope {
                             // full-size decode per snip is pure waste.
                             cache: false
                             source: previewPopup.path === "" ? "" : `file://${previewPopup.path}`
+
+                            // Square corners inside a rounded frame read as a
+                            // mistake as soon as the shot is light. Stepping the
+                            // radius in by the padding keeps the two concentric.
+                            layer.enabled: true
+                            layer.effect: OpacityMask {
+                                maskSource: Rectangle {
+                                    width: thumb.width
+                                    height: thumb.height
+                                    radius: Appearance.rounding.large - card.framePadding
+                                }
+                            }
                         }
                     }
                 }
