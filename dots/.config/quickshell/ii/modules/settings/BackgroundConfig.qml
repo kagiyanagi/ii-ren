@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.settings
 
 ContentPage {
     id: page
@@ -285,121 +286,22 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "widgets"
+        title: Translation.tr("Desktop widgets")
+
+        DesktopWidgetManager {}
+    }
+
+    ContentSection {
         id: settingsClock
         icon: "clock_loader_40"
-        title: Translation.tr("Widget: Clock")
+        title: Translation.tr("Clock widget styling")
 
-        function stylePresent(styleName) {
-            if (!Config.options.background.widgets.clock.showOnlyWhenLocked && Config.options.background.widgets.clock.style === styleName) {
-                return true;
-            }
-            if (Config.options.background.widgets.clock.styleLocked === styleName) {
-                return true;
-            }
-            return false;
-        }
+        // Which clock is on the desktop is decided by which widget you add,
+        // so these only need to know whether that widget is placed.
+        readonly property bool digitalPresent: Config.isWidgetActive("clock_digital")
+        readonly property bool cookiePresent: Config.isWidgetActive("clock_cookie")
 
-        readonly property bool digitalPresent: stylePresent("digital")
-        readonly property bool cookiePresent: stylePresent("cookie")
-
-        ConfigRow {
-            Layout.fillWidth: true
-
-            ConfigSwitch {
-                Layout.fillWidth: false
-                buttonIcon: "check"
-                text: Translation.tr("Enable")
-                checked: Config.options.background.widgets.clock.enable
-                onCheckedChanged: {
-                    Config.options.background.widgets.clock.enable = checked;
-                }
-            }
-            Item {
-                Layout.fillWidth: true
-            }
-            ConfigSelectionArray {
-                Layout.fillWidth: false
-                currentValue: Config.options.background.widgets.clock.placementStrategy
-                onSelected: newValue => {
-                    Config.options.background.widgets.clock.placementStrategy = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Draggable"),
-                        icon: "drag_pan",
-                        value: "free"
-                    },
-                    {
-                        displayName: Translation.tr("Least busy"),
-                        icon: "category",
-                        value: "leastBusy"
-                    },
-                    {
-                        displayName: Translation.tr("Most busy"),
-                        icon: "shapes",
-                        value: "mostBusy"
-                    },
-                ]
-            }
-        }
-
-        ConfigSwitch {
-            buttonIcon: "lock_clock"
-            text: Translation.tr("Show only when locked")
-            checked: Config.options.background.widgets.clock.showOnlyWhenLocked
-            onCheckedChanged: {
-                Config.options.background.widgets.clock.showOnlyWhenLocked = checked;
-            }
-        }
-
-        ConfigRow {
-            ContentSubsection {
-                visible: !Config.options.background.widgets.clock.showOnlyWhenLocked
-                title: Translation.tr("Clock style")
-                Layout.fillWidth: true
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock.style
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock.style = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Digital"),
-                            icon: "timer_10",
-                            value: "digital"
-                        },
-                        {
-                            displayName: Translation.tr("Cookie"),
-                            icon: "cookie",
-                            value: "cookie"
-                        }
-                    ]
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Clock style (locked)")
-                Layout.fillWidth: false
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock.styleLocked
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock.styleLocked = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Digital"),
-                            icon: "timer_10",
-                            value: "digital"
-                        },
-                        {
-                            displayName: Translation.tr("Cookie"),
-                            icon: "cookie",
-                            value: "cookie"
-                        }
-                    ]
-                }
-            }
-        }
 
         ContentSubsection {
             visible: settingsClock.digitalPresent
@@ -411,17 +313,17 @@ ContentPage {
                 ConfigSwitch {
                     buttonIcon: "vertical_distribute"
                     text: Translation.tr("Vertical")
-                    checked: Config.options.background.widgets.clock.digital.vertical
+                    checked: Config.options.background.widgets.clock_digital.vertical
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.vertical = checked;
+                        Config.options.background.widgets.clock_digital.vertical = checked;
                     }
                 }
                 ConfigSwitch {
                     buttonIcon: "animation"
                     text: Translation.tr("Animate time change")
-                    checked: Config.options.background.widgets.clock.digital.animateChange
+                    checked: Config.options.background.widgets.clock_digital.animateChange
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.animateChange = checked;
+                        Config.options.background.widgets.clock_digital.animateChange = checked;
                     }
                 }
             }
@@ -432,17 +334,17 @@ ContentPage {
                 ConfigSwitch {
                     buttonIcon: "date_range"
                     text: Translation.tr("Show date")
-                    checked: Config.options.background.widgets.clock.digital.showDate
+                    checked: Config.options.background.widgets.clock_digital.showDate
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.showDate = checked;
+                        Config.options.background.widgets.clock_digital.showDate = checked;
                     }
                 }
                 ConfigSwitch {
                     buttonIcon: "activity_zone"
                     text: Translation.tr("Use adaptive alignment")
-                    checked: Config.options.background.widgets.clock.digital.adaptiveAlignment
+                    checked: Config.options.background.widgets.clock_digital.adaptiveAlignment
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.adaptiveAlignment = checked;
+                        Config.options.background.widgets.clock_digital.adaptiveAlignment = checked;
                     }
                     StyledToolTip {
                         text: Translation.tr("Aligns the date and quote to left, center or right depending on its position on the screen.")
@@ -456,80 +358,70 @@ ContentPage {
                 ConfigSwitch {
                     buttonIcon: "colors"
                     text: Translation.tr("Colorful digits")
-                    checked: Config.options.background.widgets.clock.digital.colorful
+                    checked: Config.options.background.widgets.clock_digital.colorful
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.colorful = checked;
+                        Config.options.background.widgets.clock_digital.colorful = checked;
                     }
                 }
                 ConfigSwitch {
-                    enabled: !Config.options.background.widgets.clock.digital.vertical
+                    enabled: !Config.options.background.widgets.clock_digital.vertical
                     buttonIcon: "go_to_line"
                     text: Translation.tr("Show colon")
-                    checked: Config.options.background.widgets.clock.digital.showColon
+                    checked: Config.options.background.widgets.clock_digital.showColon
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.digital.showColon = checked;
+                        Config.options.background.widgets.clock_digital.showColon = checked;
                     }
                 }
             }
             
 
-            MaterialTextArea {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("Font family")
-                text: Config.options.background.widgets.clock.digital.font.family
-                wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.background.widgets.clock.digital.font.family = text;
-                }
-            }
-
             ConfigSlider {
                 text: Translation.tr("Font weight")
-                value: Config.options.background.widgets.clock.digital.font.weight
+                value: Config.options.background.widgets.clock_digital.font.weight
                 usePercentTooltip: false
                 buttonIcon: "format_bold"
                 from: 1
                 to: 1000
                 stopIndicatorValues: [350]
                 onValueChanged: {
-                    Config.options.background.widgets.clock.digital.font.weight = value;
+                    Config.options.background.widgets.clock_digital.font.weight = value;
                 }
             }
 
             ConfigSlider {
                 text: Translation.tr("Font size")
-                value: Config.options.background.widgets.clock.digital.font.size
+                value: Config.options.background.widgets.clock_digital.font.size
                 usePercentTooltip: false
                 buttonIcon: "format_size"
                 from: 50
                 to: 700
                 stopIndicatorValues: [90]
                 onValueChanged: {
-                    Config.options.background.widgets.clock.digital.font.size = value;
+                    Config.options.background.widgets.clock_digital.font.size = value;
                 }
             }
 
             ConfigSlider {
                 text: Translation.tr("Font width")
-                value: Config.options.background.widgets.clock.digital.font.width
+                value: Config.options.background.widgets.clock_digital.font.width
                 usePercentTooltip: false
                 buttonIcon: "fit_width"
                 from: 25
                 to: 125
                 stopIndicatorValues: [100]
                 onValueChanged: {
-                    Config.options.background.widgets.clock.digital.font.width = value;
+                    Config.options.background.widgets.clock_digital.font.width = value;
                 }
             }
             ConfigSlider {
                 text: Translation.tr("Font roundness")
-                value: Config.options.background.widgets.clock.digital.font.roundness
+                value: Config.options.background.widgets.clock_digital.font.roundness
                 usePercentTooltip: false
                 buttonIcon: "line_curve"
                 from: 0
                 to: 100
                 onValueChanged: {
-                    Config.options.background.widgets.clock.digital.font.roundness = value;
+                    Config.options.background.widgets.clock_digital.font.roundness = value;
                 }
             }
         }
@@ -539,58 +431,42 @@ ContentPage {
             title: Translation.tr("Cookie clock settings")
 
             ConfigSpinBox {
-                enabled: Config.options.background.widgets.clock.cookie.backgroundStyle !== "shape"
+                enabled: Config.options.background.widgets.clock_cookie.backgroundStyle !== "shape"
                 icon: "add_triangle"
                 text: Translation.tr("Sides")
-                value: Config.options.background.widgets.clock.cookie.sides
+                value: Config.options.background.widgets.clock_cookie.sides
                 from: 0
                 to: 40
                 stepSize: 1
                 onValueChanged: {
-                    Config.options.background.widgets.clock.cookie.sides = value;
+                    Config.options.background.widgets.clock_cookie.sides = value;
                 }
             }
 
             ConfigSwitch {
                 buttonIcon: "autoplay"
                 text: Translation.tr("Constantly rotate")
-                checked: Config.options.background.widgets.clock.cookie.constantlyRotate
+                checked: Config.options.background.widgets.clock_cookie.constantlyRotate
                 onCheckedChanged: {
-                    Config.options.background.widgets.clock.cookie.constantlyRotate = checked;
+                    Config.options.background.widgets.clock_cookie.constantlyRotate = checked;
                 }
                 StyledToolTip {
                     text: Translation.tr("Makes the clock always rotate. This is extremely expensive\n(expect 50% usage on Intel UHD Graphics) and thus impractical.")
                 }
             }
 
-            ConfigSwitch {
-                enabled: Config.options.background.widgets.clock.cookie.constantlyRotate
-                buttonIcon: "pause_circle"
-                text: Translation.tr("No rotation on tiled apps")
-                checked: Config.options.background.widgets.clock.cookie.turnOffRotationOnTiledApps
-                onEnabledChanged: {
-                    checked = Config.options.background.widgets.clock.cookie.turnOffRotationOnTiledApps;
-                }
-                onCheckedChanged: {
-                    Config.options.background.widgets.clock.cookie.turnOffRotationOnTiledApps = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Pauses clock rotation when there is a tiled window on the workspace to save GPU resources.")
-                }
-            }
-
             ConfigRow {
 
                 ConfigSwitch {
-                    enabled: Config.options.background.widgets.clock.cookie.dialNumberStyle === "dots" || Config.options.background.widgets.clock.cookie.dialNumberStyle === "full"
+                    enabled: Config.options.background.widgets.clock_cookie.dialNumberStyle === "dots" || Config.options.background.widgets.clock_cookie.dialNumberStyle === "full"
                     buttonIcon: "brightness_7"
                     text: Translation.tr("Hour marks")
-                    checked: Config.options.background.widgets.clock.cookie.hourMarks
+                    checked: Config.options.background.widgets.clock_cookie.hourMarks
                     onEnabledChanged: {
-                        checked = Config.options.background.widgets.clock.cookie.hourMarks;
+                        checked = Config.options.background.widgets.clock_cookie.hourMarks;
                     }
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.cookie.hourMarks = checked;
+                        Config.options.background.widgets.clock_cookie.hourMarks = checked;
                     }
                     StyledToolTip {
                         text: Translation.tr("Can only be turned on using the 'Dots' or 'Full' dial style for aesthetic reasons")
@@ -598,15 +474,15 @@ ContentPage {
                 }
 
                 ConfigSwitch {
-                    enabled: Config.options.background.widgets.clock.cookie.dialNumberStyle !== "numbers"
+                    enabled: Config.options.background.widgets.clock_cookie.dialNumberStyle !== "numbers"
                     buttonIcon: "timer_10"
                     text: Translation.tr("Digits in the middle")
-                    checked: Config.options.background.widgets.clock.cookie.timeIndicators
+                    checked: Config.options.background.widgets.clock_cookie.timeIndicators
                     onEnabledChanged: {
-                        checked = Config.options.background.widgets.clock.cookie.timeIndicators;
+                        checked = Config.options.background.widgets.clock_cookie.timeIndicators;
                     }
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.cookie.timeIndicators = checked;
+                        Config.options.background.widgets.clock_cookie.timeIndicators = checked;
                     }
                     StyledToolTip {
                         text: Translation.tr("Can't be turned on when using 'Numbers' dial style for aesthetic reasons")
@@ -620,9 +496,9 @@ ContentPage {
                 ConfigSwitch {
                     buttonIcon: "wand_stars"
                     text: Translation.tr("Auto style the cookie clock preset")
-                    checked: Config.options.background.widgets.clock.cookie.aiStyling
+                    checked: Config.options.background.widgets.clock_cookie.aiStyling
                     onCheckedChanged: {
-                        Config.options.background.widgets.clock.cookie.aiStyling = checked;
+                        Config.options.background.widgets.clock_cookie.aiStyling = checked;
                     }
                     StyledToolTip {
                         text: Translation.tr("Uses the preferred AI to categorize the wallpaper then picks a preset based on it.\nYou'll need to set API key on the left sidebar first.\nImages are downscaled for performance, but just to be safe,\ndo not select wallpapers with sensitive information.\nBoth AI models does the same thing, but Gemini has strict quotas.")
@@ -632,14 +508,14 @@ ContentPage {
                 StyledText {
                     Layout.rightMargin: 6
                     text: Translation.tr("with")
-                    opacity: Config.options.background.widgets.clock.cookie.aiStyling ? 1 : 0.4
+                    opacity: Config.options.background.widgets.clock_cookie.aiStyling ? 1 : 0.4
                 }
 
                 ConfigSelectionArray {
-                    enabled: Config.options.background.widgets.clock.cookie.aiStyling
-                    currentValue: Config.options.background.widgets.clock.cookie.aiStylingModel
+                    enabled: Config.options.background.widgets.clock_cookie.aiStyling
+                    currentValue: Config.options.background.widgets.clock_cookie.aiStylingModel
                     onSelected: newValue => {
-                        Config.options.background.widgets.clock.cookie.aiStylingModel = newValue;
+                        Config.options.background.widgets.clock_cookie.aiStylingModel = newValue;
                     }
                     options: [
                         {
@@ -663,14 +539,14 @@ ContentPage {
             visible: settingsClock.cookiePresent
             title: Translation.tr("Dial style")
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.clock.cookie.dialNumberStyle
+                currentValue: Config.options.background.widgets.clock_cookie.dialNumberStyle
                 onSelected: newValue => {
-                    Config.options.background.widgets.clock.cookie.dialNumberStyle = newValue;
+                    Config.options.background.widgets.clock_cookie.dialNumberStyle = newValue;
                     if (newValue !== "dots" && newValue !== "full") {
-                        Config.options.background.widgets.clock.cookie.hourMarks = false;
+                        Config.options.background.widgets.clock_cookie.hourMarks = false;
                     }
                     if (newValue === "numbers") {
-                        Config.options.background.widgets.clock.cookie.timeIndicators = false;
+                        Config.options.background.widgets.clock_cookie.timeIndicators = false;
                     }
                 }
                 options: [
@@ -702,9 +578,9 @@ ContentPage {
             visible: settingsClock.cookiePresent
             title: Translation.tr("Hour hand")
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.clock.cookie.hourHandStyle
+                currentValue: Config.options.background.widgets.clock_cookie.hourHandStyle
                 onSelected: newValue => {
-                    Config.options.background.widgets.clock.cookie.hourHandStyle = newValue;
+                    Config.options.background.widgets.clock_cookie.hourHandStyle = newValue;
                 }
                 options: [
                     {
@@ -736,9 +612,9 @@ ContentPage {
             title: Translation.tr("Minute hand")
 
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.clock.cookie.minuteHandStyle
+                currentValue: Config.options.background.widgets.clock_cookie.minuteHandStyle
                 onSelected: newValue => {
-                    Config.options.background.widgets.clock.cookie.minuteHandStyle = newValue;
+                    Config.options.background.widgets.clock_cookie.minuteHandStyle = newValue;
                 }
                 options: [
                     {
@@ -775,9 +651,9 @@ ContentPage {
             title: Translation.tr("Second hand")
 
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.clock.cookie.secondHandStyle
+                currentValue: Config.options.background.widgets.clock_cookie.secondHandStyle
                 onSelected: newValue => {
-                    Config.options.background.widgets.clock.cookie.secondHandStyle = newValue;
+                    Config.options.background.widgets.clock_cookie.secondHandStyle = newValue;
                 }
                 options: [
                     {
@@ -809,9 +685,9 @@ ContentPage {
             title: Translation.tr("Date style")
 
             ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.clock.cookie.dateStyle
+                currentValue: Config.options.background.widgets.clock_cookie.dateStyle
                 onSelected: newValue => {
-                    Config.options.background.widgets.clock.cookie.dateStyle = newValue;
+                    Config.options.background.widgets.clock_cookie.dateStyle = newValue;
                 }
                 options: [
                     {
@@ -847,9 +723,9 @@ ContentPage {
                 spacing: 10
                 ConfigSelectionArray {
                     Layout.fillWidth: false
-                    currentValue: Config.options.background.widgets.clock.cookie.backgroundStyle
+                    currentValue: Config.options.background.widgets.clock_cookie.backgroundStyle
                     onSelected: newValue => {
-                        Config.options.background.widgets.clock.cookie.backgroundStyle = newValue;
+                        Config.options.background.widgets.clock_cookie.backgroundStyle = newValue;
                     }
                     options: [
                         {
@@ -876,10 +752,10 @@ ContentPage {
                 }
 
                 RippleButtonWithShape {
-                    visible: Config.options.background.widgets.clock.cookie.backgroundStyle == "shape"
+                    visible: Config.options.background.widgets.clock_cookie.backgroundStyle == "shape"
                     Layout.fillWidth: false
 
-                    shapeString: Config.options.background.widgets.clock.cookie.backgroundShape
+                    shapeString: Config.options.background.widgets.clock_cookie.backgroundShape
                     implicitWidth: 60
                     extraIcon: "edit"
 
@@ -906,9 +782,9 @@ ContentPage {
                 title: Translation.tr("Background shape")
                 
                 ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock.cookie.backgroundShape
+                    currentValue: Config.options.background.widgets.clock_cookie.backgroundShape
                     onSelected: newValue => {
-                        Config.options.background.widgets.clock.cookie.backgroundShape = newValue;
+                        Config.options.background.widgets.clock_cookie.backgroundShape = newValue;
                     }
                     options: ([ 
                         "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle",
@@ -933,18 +809,18 @@ ContentPage {
             ConfigSwitch {
                 buttonIcon: "check"
                 text: Translation.tr("Enable")
-                checked: Config.options.background.widgets.clock.quote.enable
+                checked: Config.options.background.widgets.clock_cookie.quoteEnable
                 onCheckedChanged: {
-                    Config.options.background.widgets.clock.quote.enable = checked;
+                    Config.options.background.widgets.clock_cookie.quoteEnable = checked;
                 }
             }
             MaterialTextArea {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Quote")
-                text: Config.options.background.widgets.clock.quote.text
+                text: Config.options.background.widgets.clock_cookie.quoteText
                 wrapMode: TextEdit.Wrap
                 onTextChanged: {
-                    Config.options.background.widgets.clock.quote.text = text;
+                    Config.options.background.widgets.clock_cookie.quoteText = text;
                 }
             }
         }
@@ -954,46 +830,6 @@ ContentPage {
         icon: "weather_mix"
         title: Translation.tr("Widget: Weather")
 
-        ConfigRow {
-            Layout.fillWidth: true
-
-            ConfigSwitch {
-                Layout.fillWidth: false
-                buttonIcon: "check"
-                text: Translation.tr("Enable")
-                checked: Config.options.background.widgets.weather.enable
-                onCheckedChanged: {
-                    Config.options.background.widgets.weather.enable = checked;
-                }
-            }
-            Item {
-                Layout.fillWidth: true
-            }
-            ConfigSelectionArray {
-                Layout.fillWidth: false
-                currentValue: Config.options.background.widgets.weather.placementStrategy
-                onSelected: newValue => {
-                    Config.options.background.widgets.weather.placementStrategy = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Draggable"),
-                        icon: "drag_pan",
-                        value: "free"
-                    },
-                    {
-                        displayName: Translation.tr("Least busy"),
-                        icon: "category",
-                        value: "leastBusy"
-                    },
-                    {
-                        displayName: Translation.tr("Most busy"),
-                        icon: "shapes",
-                        value: "mostBusy"
-                    },
-                ]
-            }
-        }
     }
 
     ContentSection {
@@ -1001,61 +837,6 @@ ContentPage {
         title: Translation.tr("Widget: Media")
         tooltip: Translation.tr("You can reset the media player by middle-clicking on the widget in case of media source errors")
 
-        ConfigRow {
-            Layout.fillWidth: true
-
-            ConfigSwitch {
-                Layout.fillWidth: false
-                buttonIcon: "check"
-                text: Translation.tr("Enable")
-                checked: Config.options.background.widgets.media.enable
-                onCheckedChanged: {
-                    Config.options.background.widgets.media.enable = checked;
-                }
-            }
-            
-            RippleButtonWithShape {
-                shapeString: Config.options.background.widgets.media.backgroundShape
-                implicitWidth: 60
-                extraIcon: "edit"
-
-                onClicked: {
-                    mediaBackgroundShapeLoader.active = !mediaBackgroundShapeLoader.active;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Edit the material shape")
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            ConfigSelectionArray {
-                Layout.fillWidth: false
-                currentValue: Config.options.background.widgets.media.placementStrategy
-                onSelected: newValue => {
-                    Config.options.background.widgets.media.placementStrategy = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Draggable"),
-                        icon: "drag_pan",
-                        value: "free"
-                    },
-                    {
-                        displayName: Translation.tr("Least busy"),
-                        icon: "category",
-                        value: "leastBusy"
-                    },
-                    {
-                        displayName: Translation.tr("Most busy"),
-                        icon: "shapes",
-                        value: "mostBusy"
-                    }
-                ]
-            }
-        }
 
 
         Loader { 

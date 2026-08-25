@@ -1753,6 +1753,21 @@ Singleton {
         }
     }
 
+    function updateWidgetPlacementStrategy(instanceId, newStrategy) {
+        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
+        let found = false;
+        for (let i = 0; i < cloned.length; i++) {
+            if (cloned[i].id === instanceId) {
+                cloned[i].placementStrategy = newStrategy;
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            root.options.background.activeWidgets = cloned;
+        }
+    }
+
     function updateWidgetLockBehavior(instanceId, newLockBehavior) {
         let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
         let found = false;
