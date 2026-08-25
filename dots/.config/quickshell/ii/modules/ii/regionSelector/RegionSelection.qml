@@ -35,6 +35,10 @@ PanelWindow {
     property var selectionMode: RegionSelection.SelectionMode.RectCorners
     property var phase: RegionSelection.Phase.Select
     signal dismiss()
+    // Emitted instead of running the command here when the result should get an
+    // Android-style preview popup. This window is destroyed on dismiss, so the
+    // process has to be owned by RegionSelector, which outlives it.
+    signal previewSnip(var command, string previewPath)
 
     // Styles
     property string screenshotDir: Directories.screenshotTemp
@@ -283,6 +287,11 @@ PanelWindow {
         const screenshotDir = Config.options.screenSnip.savePath !== "" ? //
             Config.options.screenSnip.savePath : "";
         var screenshotAction = root.getScreenshotAction();
+        // Preview only in clipboard-only mode: with a save path set the crop is
+        // already on disk under a name of the user's choosing, and a popup
+        // offering to save it again would just make a second copy.
+        const previewPath = (screenshotAction === ScreenshotAction.Action.Copy && screenshotDir === "")
+            ? `${root.screenshotDir}/snip-${Date.now()}.png` : "";
         const command = ScreenshotAction.getCommand(
             root.regionX * root.monitorScale, //
             root.regionY * root.monitorScale, //
@@ -290,9 +299,11 @@ PanelWindow {
             root.regionHeight * root.monitorScale, //
             root.screenshotPath, //
             screenshotAction, //
-            screenshotDir
+            screenshotDir, //
+            previewPath
         )
-        Quickshell.execDetached(command);
+        if (previewPath !== "") root.previewSnip(command, previewPath);
+        else Quickshell.execDetached(command);
         if (root.action === RegionSelection.SnipAction.AskAI) {
             Ai.handleClipboardAndAttach();
             GlobalStates.policiesPanelOpen = true

@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
+import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -31,10 +32,70 @@ Scope {
             sourceComponent: RegionSelection {
                 screen: regionSelectorLoader.modelData
                 onDismiss: root.dismiss()
+                onPreviewSnip: (command, previewPath) => root.runPreviewSnip(command, previewPath)
                 action: root.action
                 selectionMode: root.selectionMode
             }
         }
+    }
+
+    // Android-style preview of the shot that was just copied. The RegionSelection
+    // window is destroyed the moment the region is picked, so the crop runs here
+    // instead - this Scope lives for the whole session.
+    property string previewPath: ""
+    property bool previewShown: false
+
+    function runPreviewSnip(command, path) {
+        root.previewShown = false;
+        root.previewPath = path;
+        snipProc.running = false;
+        snipProc.command = command;
+        snipProc.running = true;
+    }
+
+    // previewPath is deliberately left alone: the card is still sliding out and
+    // would go blank if its image source were cleared underneath it. The next
+    // screenshot overwrites it.
+    function dismissPreview(deleteFile) {
+        if (deleteFile && root.previewPath !== "")
+            Quickshell.execDetached(["rm", "-f", root.previewPath]);
+        root.previewShown = false;
+    }
+
+    function savePreview() {
+        const dir = Config.options.screenSnip.savePath !== "" ? Config.options.screenSnip.savePath
+            : `${FileUtils.trimFileProtocol(Directories.pictures)}/Screenshots`;
+        Quickshell.execDetached(["bash", "-c",
+            `mkdir -p '${StringUtils.shellSingleQuoteEscape(dir)}' && `
+            + `mv '${StringUtils.shellSingleQuoteEscape(root.previewPath)}' `
+            + `'${StringUtils.shellSingleQuoteEscape(dir)}'/screenshot-"$(date '+%Y-%m-%d_%H.%M.%S')".png`]);
+        root.dismissPreview(false);
+    }
+
+    function editPreview() {
+        const annotator = Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy";
+        Quickshell.execDetached([annotator, "-f", root.previewPath]);
+        // The annotator owns the file now, including whether it gets saved.
+        root.dismissPreview(false);
+    }
+
+    Process {
+        id: snipProc
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                console.warn("[Region Selector] Snip failed with exit code", exitCode);
+                return;
+            }
+            root.previewShown = true;
+        }
+    }
+
+    ScreenshotPreviewPopup {
+        path: root.previewPath
+        shown: root.previewShown
+        onSave: root.savePreview()
+        onEdit: root.editPreview()
+        onDiscard: root.dismissPreview(true)
     }
 
     function screenshot() {

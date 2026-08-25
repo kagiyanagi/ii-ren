@@ -27,7 +27,7 @@ Singleton {
     property string imageSearchEngineBaseUrl: Config.options.search.imageSearch.imageSearchEngineBaseUrl
     property string fileUploadApiEndpoint: "https://uguu.se/upload"
 
-    function getCommand(x, y, width, height, screenshotPath, action, saveDir = "") {
+    function getCommand(x, y, width, height, screenshotPath, action, saveDir = "", previewPath = "") {
         // Set command for action
         const rx = Math.round(x);
         const ry = Math.round(y);
@@ -46,6 +46,14 @@ Singleton {
         switch (action) {
             case ScreenshotAction.Action.Copy:
                 if (saveDir === "") {
+                    if (previewPath !== "") {
+                        // Keep the crop on disk so the preview popup has
+                        // something to show, save or edit afterwards. The popup
+                        // owns that file from here on - it deletes it if the
+                        // user discards or ignores it.
+                        const preview = `'${StringUtils.shellSingleQuoteEscape(previewPath)}'`
+                        return ["bash", "-c", `${cropBase} ${preview} && wl-copy < ${preview} && ${cleanup}`]
+                    }
                     // not saving the screenshot, just copy to clipboard
                     return ["bash", "-c", `${cropToStdout} | wl-copy && ${cleanup}`]
                     break;
