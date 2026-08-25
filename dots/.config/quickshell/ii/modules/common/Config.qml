@@ -148,6 +148,7 @@ Singleton {
                     property string expressive: "Space Grotesk"
                 }
                 property JsonObject transparency: JsonObject {
+                    property bool popups: false
                     property bool enable: false
                     property bool automatic: true
                     property real backgroundTransparency: 0.11
@@ -1189,6 +1190,8 @@ Singleton {
                     ]
                 }
                 property JsonObject tooltips: JsonObject {
+                    property bool enablePopups: true
+                    property int closeDelay: 50
                     property bool clickToShow: false
                     property bool compactPopups: false
                     property bool showSwap: false
