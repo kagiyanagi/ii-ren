@@ -287,6 +287,100 @@ Variants {
             function onRefreshExtensions() { refreshExtensionBgWidgets() }
         }
 
+        // Drop an image (or video) anywhere on the desktop to set it as the
+        // wallpaper. Declared before wallpaperItem so it sits underneath the
+        // widget canvas - a widget that takes its own drops (AtAGlanceWidget)
+        // still wins wherever it sits.
+        DropArea {
+            id: wallpaperDrop
+            anchors.fill: parent
+            keys: ["text/uri-list"]
+
+            // Non-empty only while the drag is carrying something apply() can use.
+            property string pendingPath: ""
+
+            function firstUsablePath(urls) {
+                for (const url of urls) {
+                    const asString = url.toString();
+                    const path = CF.FileUtils.trimFileProtocol(asString);
+                    // A remote drag - an image straight off a web page - comes
+                    // back unchanged here and would have to be downloaded first,
+                    // so it is left for the drag source to handle.
+                    if (path === asString)
+                        continue;
+                    if (Wallpapers.extensions.some(ext => path.toLowerCase().endsWith(`.${ext}`)))
+                        return path;
+                }
+                return "";
+            }
+
+            onEntered: drag => {
+                wallpaperDrop.pendingPath = drag.hasUrls ? wallpaperDrop.firstUsablePath(drag.urls) : "";
+                // Refusing here means no onDropped, so a dragged .txt falls
+                // through to whatever is underneath instead of being swallowed.
+                if (wallpaperDrop.pendingPath.length === 0)
+                    drag.accepted = false;
+            }
+
+            onExited: wallpaperDrop.pendingPath = ""
+
+            onDropped: drop => {
+                if (wallpaperDrop.pendingPath.length > 0) {
+                    // Same call the wallpaper selector makes, so the colour
+                    // scheme is regenerated too.
+                    Wallpapers.apply(wallpaperDrop.pendingPath);
+                    drop.acceptProposedAction();
+                }
+                wallpaperDrop.pendingPath = "";
+            }
+
+            Rectangle {
+                anchors.centerIn: parent
+                implicitWidth: dropHintRow.implicitWidth + 40
+                implicitHeight: dropHintRow.implicitHeight + 28
+                radius: Appearance.rounding.large
+                color: Appearance.colors.colLayer1
+                border.width: 2
+                border.color: Appearance.colors.colPrimary
+                visible: opacity > 0
+                opacity: (wallpaperDrop.containsDrag && wallpaperDrop.pendingPath.length > 0) ? 1 : 0
+
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
+
+                RowLayout {
+                    id: dropHintRow
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    MaterialSymbol {
+                        text: "wallpaper"
+                        iconSize: Appearance.font.pixelSize.huge
+                        color: Appearance.colors.colPrimary
+                    }
+
+                    ColumnLayout {
+                        spacing: 0
+
+                        StyledText {
+                            text: Translation.tr("Set as wallpaper")
+                            color: Appearance.colors.colOnLayer1
+                            font.weight: Font.DemiBold
+                        }
+
+                        StyledText {
+                            Layout.maximumWidth: 320
+                            text: wallpaperDrop.pendingPath.split("/").pop()
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            elide: Text.ElideMiddle
+                        }
+                    }
+                }
+            }
+        }
+
         Item {
             id: wallpaperItem
             anchors.fill: parent
