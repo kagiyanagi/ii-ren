@@ -73,7 +73,17 @@ LazyLoader {
     property bool _isClosing: false
     property bool _reopenPending: false
 
-    readonly property bool _computedActive: Config.options.bar.tooltips.enablePopups && ((Config.options.bar.tooltips.clickToShow || forceClick) ? _clickActive : (stickyHover ? _stickyActive : (_targetHovered && _openDebounced)))
+    // Set this and the caller owns whether the popup is open; hover and
+    // tooltips.enablePopups are ignored entirely. For popups that are a menu
+    // rather than a tooltip - the tray overflow is clicked open and clicked
+    // shut, and must not close just because the pointer moved off the button,
+    // nor stay open because it is still on it. Leave undefined for the normal
+    // hover/click behaviour.
+    property var externalOpen: undefined
+
+    readonly property bool _computedActive: root.externalOpen !== undefined
+        ? root.externalOpen
+        : Config.options.bar.tooltips.enablePopups && ((Config.options.bar.tooltips.clickToShow || forceClick) ? _clickActive : (stickyHover ? _stickyActive : (_targetHovered && _openDebounced)))
 
     property bool _openDebounced: false
 

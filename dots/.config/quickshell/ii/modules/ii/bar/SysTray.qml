@@ -112,7 +112,13 @@ Item {
             StyledPopup {
                 id: overflowPopup
                 hoverTarget: trayOverflowButton
-                active: root.trayOverflowOpen && root.unpinnedItems.length > 0
+                // Not `active`: StyledPopup binds that itself (to its own
+                // open/closing state), so overriding it left the window loaded
+                // but hidden until the pointer happened to be on the button.
+                externalOpen: root.trayOverflowOpen && root.unpinnedItems.length > 0
+                // This widget runs its own HyprlandFocusGrab below, and
+                // Hyprland honours only one grab per client.
+                selfDismiss: false
 
                 GridLayout {
                     id: trayOverflowLayout
