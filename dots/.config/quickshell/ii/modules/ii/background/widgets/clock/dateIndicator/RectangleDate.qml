@@ -6,11 +6,11 @@ import QtQuick
 
 Rectangle {
     id: rect
-    readonly property string dialStyle: Config.options.background.widgets.clock.cookie.dialNumberStyle
+    readonly property string dialStyle: Config.options.background.widgets.clock_cookie.dialNumberStyle
 
     StyledText {
         anchors.centerIn: parent
-        color: Appearance.colors.colSecondaryHover
+        color: WidgetColorScheme.accentColor
         text: Qt.locale().toString(DateTime.clock.date, "dd")
         font {
             family: Appearance.font.family.expressive

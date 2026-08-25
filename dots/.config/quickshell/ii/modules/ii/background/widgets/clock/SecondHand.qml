@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 import QtQuick
 
 Item {
@@ -13,14 +14,12 @@ Item {
     property real handLength: 95
     property real dotSize: 20
     property string style: "hide"
-    property color color: Appearance.colors.colSecondary
+    property color color: WidgetColorScheme.onAccentColor
     
-    property bool isCovered: false
-
     rotation: (360 / 60 * clockSecond) + 90
 
     Behavior on rotation {
-        enabled: Config.options.background.widgets.clock.cookie.constantlyRotate && !(Config.options.background.widgets.clock.cookie.turnOffRotationOnTiledApps && root.isCovered)
+        enabled: Config.options.background.widgets.clock_cookie.constantlyRotate // Animating every second is expensive...
         animation: RotationAnimation {
             direction: RotationAnimation.Clockwise
             duration: 1000 // 1 second

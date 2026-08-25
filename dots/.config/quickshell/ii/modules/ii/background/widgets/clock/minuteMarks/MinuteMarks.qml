@@ -1,5 +1,3 @@
-pragma ComponentBehavior: Bound
-
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
@@ -7,9 +5,9 @@ import QtQuick
 Item {
     id: root
 
-    property color color: Appearance.colors.colOnSecondaryContainer
-    property string style: Config.options.background.widgets.clock.cookie.dialNumberStyle // "dots", "numbers", "full", "hide"
-    property string dateStyle : Config.options.background.widgets.clock.cookie.dateStyle
+    property color color: WidgetColorScheme.textColorOnBg
+    property string style: Config.options.background.widgets.clock_cookie.dialNumberStyle // "dots", "numbers", "full", "hide"
+    property string dateStyle : Config.options.background.widgets.clock_cookie.dateStyle
 
     // 12 Dots
     FadeLoader {
@@ -48,6 +46,20 @@ Item {
         sourceComponent: Lines {
             color: root.color
             margins: 46 - linesLoader.opacity * 34
+        }
+    }
+
+    // Material Shapes
+    FadeLoader {
+        id: shapesLoader
+        anchors {
+            fill: parent
+            margins: 10
+        }
+        shown: root.style === "shapes"
+        sourceComponent: Shapes {
+            color: root.color
+            margins: 46 - shapesLoader.opacity * 34
         }
     }
     
