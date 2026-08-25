@@ -21,7 +21,7 @@ SectionCard {
     
     ColumnLayout {
         Layout.fillWidth: true
-        spacing: 6
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true

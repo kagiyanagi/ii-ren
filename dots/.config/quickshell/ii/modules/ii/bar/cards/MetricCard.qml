@@ -18,7 +18,27 @@ Rectangle {
     property string symbol: ""
     property string shapeString: "Slanted"
     property color accentColor: Appearance.colors.colPrimaryContainer
-    property color symbolColor: Appearance.colors.colOnPrimaryContainer    
+    property color symbolColor: Appearance.colors.colOnPrimaryContainer
+    
+    // Internal animation control
+    property bool startAnim: false
+    property int animDelay: 0
+    
+    onStartAnimChanged: {
+        if (startAnim) {
+            // Reset internal elements
+            iconShape.scale = 0.8;
+            iconShape.rotation = -10;
+            title.opacity = 0.0;
+            value.opacity = 0.0;
+            
+            Qt.callLater(function() {
+                iconAnim.start();
+                titleAnim.start();
+                valueAnim.start();
+            });
+        }
+    }
 
     RowLayout {
         id: rowLayout
@@ -30,6 +50,7 @@ Rectangle {
         }
 
         MaterialShape {
+            id: iconShape
             shapeString: root.shapeString
             implicitSize: 36
             color: root.accentColor
@@ -42,6 +63,15 @@ Rectangle {
                 iconSize: Appearance.font.pixelSize.normal
                 color: root.symbolColor
             }
+            
+            SequentialAnimation {
+                id: iconAnim
+                PauseAnimation { duration: root.animDelay + 60 }
+                ParallelAnimation {
+                    NumberAnimation { target: iconShape; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
+                    NumberAnimation { target: iconShape; property: "rotation"; from: -10; to: 0; duration: 350; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         ColumnLayout {
@@ -52,6 +82,12 @@ Rectangle {
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colOnSurfaceVariant
                 font.weight: Font.DemiBold
+                
+                SequentialAnimation {
+                    id: titleAnim
+                    PauseAnimation { duration: root.animDelay + 120 }
+                    NumberAnimation { target: title; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
+                }
             }
 
             StyledText {
@@ -59,6 +95,12 @@ Rectangle {
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnSurface
                 font.weight: Font.Bold
+                
+                SequentialAnimation {
+                    id: valueAnim
+                    PauseAnimation { duration: root.animDelay + 180 }
+                    NumberAnimation { target: value; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
+                }
             }
             
             Item {

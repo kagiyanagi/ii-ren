@@ -1098,6 +1098,8 @@ Singleton {
 
                 property JsonObject resources: JsonObject {
                     property int memoryWarningThreshold: 95
+                    property bool alwaysShowSwap: false
+                    property bool showDocker: true
                     property int swapWarningThreshold: 85
                     property int cpuWarningThreshold: 90
                 }
@@ -1436,6 +1438,11 @@ Singleton {
             }
 
             property JsonObject resources: JsonObject {
+                property bool enableDocker: true
+                property string gpuPreference: "auto"
+                property int gpuInterval: 3000
+                property int diskInterval: 30000
+                property string diskMount: "/"
                 property int updateInterval: 3000
                 property int historyLength: 60
             }
@@ -1570,12 +1577,28 @@ Singleton {
             }
 
             property JsonObject sounds: JsonObject {
+                property bool enable: true
+                property int volume: 100
+                property bool alarm: true
+                property bool alarmFadeIn: false
+                property int alarmFadeInSeconds: 30
+                property JsonObject custom: JsonObject {
+                    property string alarm: ""
+                    property string battery: ""
+                }
                 property bool battery: false
                 property bool pomodoro: false
                 property string theme: "freedesktop"
             }
 
             property JsonObject time: JsonObject {
+                property list<var> worldClocks: []
+                property JsonObject alarms: JsonObject {
+                    property bool useFullscreenPopup: false
+                    property bool showAnalogClock: true
+                    property bool showWorldClocks: true
+                    property bool showAlarmsSection: true
+                }
                 // https://doc.qt.io/qt-6/qtime.html#toString
                 property string format: "hh:mm"
                 property string shortDateFormat: "dd/MM"

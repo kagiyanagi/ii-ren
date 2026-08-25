@@ -1,3 +1,4 @@
+import qs.modules.ii.bar
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -6,20 +7,20 @@ import "../cards"
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
-import qs.modules.ii.bar
 
 StyledPopup {
     id: root
     popupRadius: Appearance.rounding.large
+    stickyHover: true
 
     required property bool compact
     property bool compactMode: Config.options.bar.tooltips.compactPopups
     property int cardMargins: 14
 
-    // Forecast data model
-    property var forecastData: []
-    property var hourlyData: []
-    property bool forecastLoading: true
+    // Forecast data model bound to central Weather singleton
+    property var forecastData: Weather.forecastData
+    property var hourlyData: Weather.hourlyData
+    property bool forecastLoading: Weather.forecastLoading
     property int maxHourlyBars: 5
 
     property var filteredHourlyData: {
@@ -48,16 +49,11 @@ StyledPopup {
     readonly property string city: Config.options.bar.weather.city
     onCityChanged: {
         if (Config.options.bar.weather.city)
-            root.fetchForecast();
+            Weather.getData();
     }
 
     function fetchForecast() {
-        forecastLoading = true;
-        let city = Config.options.bar.weather.city || "auto";
-        //console.log(`[WeatherPopup] Fetching forecast for city: ${city}`);
-        city = city.trim().split(/\s+/).join('+');
-        forecastFetcher.command[2] = `curl -s "wttr.in/${city}?format=j1" | jq '{daily: [.weather[] | {date: .date, maxC: .maxtempC, minC: .mintempC, maxF: .maxtempF, minF: .mintempF, code: .hourly[4].weatherCode}], hourly: [.weather[0].hourly[], .weather[1].hourly[] | {time: .time, tempC: .tempC, tempF: .tempF, code: .weatherCode}]}'`;
-        forecastFetcher.running = true;
+        Weather.getData();
     }
 
     function getDayName(dateStr, index) {
@@ -67,7 +63,7 @@ StyledPopup {
             return Translation.tr("Tomorrow");
         const date = new Date(dateStr);
         const days = [Translation.tr("Sun"), Translation.tr("Mon"), Translation.tr("Tue"), Translation.tr("Wed"), Translation.tr("Thu"), Translation.tr("Fri"), Translation.tr("Sat")];
-        return days[date.getDay()];
+        return days[date.getUTCDay()];
     }
 
     function formatHour(timeStr) {
@@ -100,23 +96,76 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 12
 
-        Process {
-            id: forecastFetcher
-            command: ["bash", "-c", ""]
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    if (text.length === 0) {
-                        root.forecastLoading = false;
-                        return;
-                    }
-                    try {
-                        const data = JSON.parse(text);
-                        root.forecastData = data.daily || [];
-                        root.hourlyData = data.hourly || [];
-                    } catch (e) {
-                        console.error(`[WeatherPopup] Forecast parse error: ${e.message}`);
-                    }
-                    root.forecastLoading = false;
+        // Dynamic vis index delays
+        readonly property var _visList: [
+            weatherHero.visible,
+            hourlyForecast.visible,
+            metricsGrid.visible,
+            inDayForecast.visible
+        ]
+
+        function getDelay(index) {
+            let visIndex = 0;
+            for (let i = 0; i < index; i++) {
+                if (_visList[i]) visIndex++;
+            }
+            const delays = [40, 100, 160, 220];
+            return delays[Math.min(visIndex, delays.length - 1)];
+        }
+
+        readonly property bool startAnim: root.opened && root.popupOpenProgress > 0.6
+        
+        onStartAnimChanged: {
+            if (startAnim) {
+                weatherHero.opacity = 0.0;
+                weatherHero.scale = 0.85;
+                weatherHeroTransform.y = 25;
+                
+                hourlyForecast.opacity = 0.0;
+                hourlyForecast.scale = 0.85;
+                hourlyForecastTransform.y = 25;
+                
+                metricsGrid.opacity = 0.0;
+                metricsGrid.scale = 0.85;
+                metricsGridTransform.y = 25;
+                
+                inDayForecast.opacity = 0.0;
+                inDayForecast.scale = 0.85;
+                inDayForecastTransform.y = 25;
+                
+                Qt.callLater(function() {
+                    weatherHeroAnim.start();
+                    hourlyForecastAnim.start();
+                    metricsGridAnim.start();
+                    inDayForecastAnim.start();
+                });
+            }
+        }
+
+        Connections {
+            target: root
+            function onPopupOpenProgressChanged() {
+                if (root && root.popupOpenProgress === 0.0) {
+                    weatherHeroAnim.stop();
+                    hourlyForecastAnim.stop();
+                    metricsGridAnim.stop();
+                    inDayForecastAnim.stop();
+
+                    weatherHero.opacity = 0.0;
+                    weatherHero.scale = 0.85;
+                    weatherHeroTransform.y = 25;
+                    
+                    hourlyForecast.opacity = 0.0;
+                    hourlyForecast.scale = 0.85;
+                    hourlyForecastTransform.y = 25;
+                    
+                    metricsGrid.opacity = 0.0;
+                    metricsGrid.scale = 0.85;
+                    metricsGridTransform.y = 25;
+                    
+                    inDayForecast.opacity = 0.0;
+                    inDayForecast.scale = 0.85;
+                    inDayForecastTransform.y = 25;
                 }
             }
         }
@@ -126,14 +175,33 @@ StyledPopup {
             Layout.minimumWidth: 320
             margins: 20
             iconSize: 100
-            icon: Icons.getWeatherIcon(Weather.data.wCode)
+            iconUrl: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, false)
             pillText: Weather.data.city || "--"
             pillIcon: Weather.data.city ? "location_on" : ""
             title: Weather.data.temp
             subtitle: Weather.data.wDesc
+            startAnim: contentLayout.startAnim
+
+            opacity: 0.0
+            scale: 0.85
+            transform: Translate {
+                id: weatherHeroTransform
+                y: 25
+            }
+            
+            SequentialAnimation {
+                id: weatherHeroAnim
+                PauseAnimation { duration: contentLayout.getDelay(0) }
+                ParallelAnimation {
+                    NumberAnimation { target: weatherHero; property: "opacity"; to: 1.0; duration: 300 }
+                    NumberAnimation { target: weatherHero; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
+                    NumberAnimation { target: weatherHeroTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
+                }
+            }
         }
         
         HourlyForecast {
+            id: hourlyForecast
             visible: !root.compact
             showDivider: false
             spacing: 6
@@ -148,9 +216,28 @@ StyledPopup {
             
             Layout.minimumWidth: 360
             margins: root.cardMargins
+            startAnim: contentLayout.startAnim
+
+            opacity: 0.0
+            scale: 0.85
+            transform: Translate {
+                id: hourlyForecastTransform
+                y: 25
+            }
+            
+            SequentialAnimation {
+                id: hourlyForecastAnim
+                PauseAnimation { duration: contentLayout.getDelay(1) }
+                ParallelAnimation {
+                    NumberAnimation { target: hourlyForecast; property: "opacity"; to: 1.0; duration: 300 }
+                    NumberAnimation { target: hourlyForecast; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
+                    NumberAnimation { target: hourlyForecastTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         MetricsGrid {
+            id: metricsGrid
             visible: !root.compact
 
             Layout.fillWidth: true
@@ -158,9 +245,28 @@ StyledPopup {
             rowSpacing: 8
             columnSpacing: 8
             uniformCellWidths: true
+            startAnim: contentLayout.startAnim
+
+            opacity: 0.0
+            scale: 0.85
+            transform: Translate {
+                id: metricsGridTransform
+                y: 25
+            }
+            
+            SequentialAnimation {
+                id: metricsGridAnim
+                PauseAnimation { duration: contentLayout.getDelay(2) }
+                ParallelAnimation {
+                    NumberAnimation { target: metricsGrid; property: "opacity"; to: 1.0; duration: 300 }
+                    NumberAnimation { target: metricsGrid; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
+                    NumberAnimation { target: metricsGridTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         InDayForecast {
+            id: inDayForecast
             visible: !root.compact
 
             Layout.minimumWidth: 360
@@ -172,6 +278,24 @@ StyledPopup {
             showDivider: false
             title: Translation.tr("Forecast")
             icon: "calendar_month"
+            startAnim: contentLayout.startAnim
+
+            opacity: 0.0
+            scale: 0.85
+            transform: Translate {
+                id: inDayForecastTransform
+                y: 25
+            }
+            
+            SequentialAnimation {
+                id: inDayForecastAnim
+                PauseAnimation { duration: contentLayout.getDelay(3) }
+                ParallelAnimation {
+                    NumberAnimation { target: inDayForecast; property: "opacity"; to: 1.0; duration: 300 }
+                    NumberAnimation { target: inDayForecast; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
+                    NumberAnimation { target: inDayForecastTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
+                }
+            }
         }
     }
 }

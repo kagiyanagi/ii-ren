@@ -29,6 +29,7 @@ Singleton {
     property bool notesOpen: false
     property bool requestVolumeDialog: false
 
+    property bool alarmRinging: false
     property bool barOpen: true
     property bool crosshairOpen: false
     property bool mediaControlsOpen: false
