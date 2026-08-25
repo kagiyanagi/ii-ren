@@ -64,7 +64,7 @@ AbstractBackgroundWidget {
     Rectangle {
         id: outerCardBg
         anchors.fill: parent
-        color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerLow
+        color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.m3colors.m3surfaceContainerLow
         radius: Appearance.rounding.windowRounding
 
         layer.enabled: true
@@ -107,7 +107,7 @@ AbstractBackgroundWidget {
                         return Appearance.colors.colSecondary
                     }
                     readonly property color cardContainerColor: {
-                        if (root.expressive) return Appearance.colors.colSurfaceContainerHigh
+                        if (root.expressive) return Appearance.m3colors.m3surfaceContainerHigh
                         if (deviceType === "phone") return Appearance.colors.colTertiaryContainer
                         if (deviceType === "headset" || deviceType === "headphones" || deviceType === "media" || deviceType === "audio-card") return Appearance.colors.colPrimaryContainer
                         return Appearance.colors.colSecondaryContainer
@@ -153,7 +153,7 @@ AbstractBackgroundWidget {
                                 Layout.preferredWidth: 54
                                 Layout.preferredHeight: 54
                                 radius: width / 2
-                                color: Appearance.colors.colSurfaceContainerHighest
+                                color: Appearance.m3colors.m3surfaceContainerHighest
                                 opacity: 0.95
 
                                 StyledDropShadow {

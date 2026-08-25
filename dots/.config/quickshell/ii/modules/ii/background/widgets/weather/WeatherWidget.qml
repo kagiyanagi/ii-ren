@@ -18,7 +18,7 @@ AbstractBackgroundWidget {
     implicitWidth: 240
     implicitHeight: 240
 
-    readonly property color cardBgColor: expressive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHigh
+    readonly property color cardBgColor: expressive ? Appearance.colors.colPrimaryContainer : Appearance.m3colors.m3surfaceContainerHigh
     readonly property color iconColor: expressive ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurfaceVariant
 
     StyledDropShadow {

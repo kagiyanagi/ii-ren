@@ -16,18 +16,18 @@ Singleton {
     readonly property var schemes: ({
         "default": {
             "name": Translation.tr("Default Surface"),
-            "cardBgColor": Appearance.colors.colSurfaceContainerHigh,
+            "cardBgColor": Appearance.m3colors.m3surfaceContainerHigh,
             "textColorOnBg": Appearance.colors.colOnSurfaceVariant,
             "accentColor": Appearance.colors.colPrimary,
             "onAccentColor": Appearance.colors.colOnPrimary,
-            "pillBgColor": Appearance.colors.colSurfaceContainerHighest,
+            "pillBgColor": Appearance.m3colors.m3surfaceContainerHighest,
             "pillFillColor": Appearance.colors.colSecondaryContainer,
             "textColorOnPillFill": Appearance.colors.colOnSecondaryContainer,
             "textColorOnPillTrack": Appearance.colors.colOnSurface,
             "subtextColorOnBg": Qt.rgba(Appearance.colors.colOnSurfaceVariant.r, Appearance.colors.colOnSurfaceVariant.g, Appearance.colors.colOnSurfaceVariant.b, 0.6),
-            "innerShapeColor": Appearance.colors.colSurfaceContainerHighest,
+            "innerShapeColor": Appearance.m3colors.m3surfaceContainerHighest,
             "highlightCircleColor": Appearance.colors.colOnSurfaceVariant,
-            "highlightTextColor": Appearance.colors.colSurfaceContainerHigh,
+            "highlightTextColor": Appearance.m3colors.m3surfaceContainerHigh,
             "successColor": Appearance.m3colors.m3success,
             "warningColor": Appearance.colors.colError,
             "outlineColor": Appearance.colors.colOutline,
@@ -50,7 +50,7 @@ Singleton {
             "successColor": Appearance.colors.colTertiary,
             "warningColor": ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colPrimary, 0.3),
             "outlineColor": Appearance.colors.colPrimaryContainer,
-            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5)
+            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "expressive_secondary": {
             "name": Translation.tr("Expressive Secondary"),
@@ -69,7 +69,7 @@ Singleton {
             "successColor": Appearance.colors.colPrimary,
             "warningColor": ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colSecondary, 0.3),
             "outlineColor": Appearance.colors.colSecondaryContainer,
-            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5)
+            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "expressive_tertiary": {
             "name": Translation.tr("Expressive Tertiary"),
@@ -88,7 +88,7 @@ Singleton {
             "successColor": Appearance.m3colors.m3successContainer,
             "warningColor": ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colTertiary, 0.3),
             "outlineColor": Appearance.colors.colTertiaryContainer,
-            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5)
+            "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "hero_primary": {
             "name": Translation.tr("Hero Primary"),
@@ -130,16 +130,16 @@ Singleton {
         },
         "muted_surface": {
             "name": Translation.tr("Muted Low Surface"),
-            "cardBgColor": Appearance.colors.colSurfaceContainerLow,
+            "cardBgColor": Appearance.m3colors.m3surfaceContainerLow,
             "textColorOnBg": Appearance.colors.colOnSurface,
             "accentColor": Appearance.colors.colSecondary,
             "onAccentColor": Appearance.colors.colOnSecondary,
-            "pillBgColor": Appearance.colors.colSurfaceContainerHigh,
+            "pillBgColor": Appearance.m3colors.m3surfaceContainerHigh,
             "pillFillColor": Appearance.colors.colSecondaryContainer,
             "textColorOnPillFill": Appearance.colors.colOnSecondaryContainer,
             "textColorOnPillTrack": Appearance.colors.colOnSurface,
             "subtextColorOnBg": Qt.rgba(Appearance.colors.colOnSurface.r, Appearance.colors.colOnSurface.g, Appearance.colors.colOnSurface.b, 0.6),
-            "innerShapeColor": Appearance.colors.colSurfaceContainer,
+            "innerShapeColor": Appearance.m3colors.m3surfaceContainer,
             "highlightCircleColor": Appearance.colors.colSecondary,
             "highlightTextColor": Appearance.colors.colOnSecondary,
             "successColor": Appearance.colors.colTertiary,
@@ -225,7 +225,7 @@ Singleton {
         },
         "tri_blend": {
             "name": Translation.tr("Tri-Color Blend"),
-            "cardBgColor": Appearance.colors.colSurfaceContainerHigh,
+            "cardBgColor": Appearance.m3colors.m3surfaceContainerHigh,
             "textColorOnBg": Appearance.colors.colOnPrimaryContainer,
             "accentColor": Appearance.colors.colSecondary,
             "onAccentColor": Appearance.colors.colOnSecondary,
@@ -251,13 +251,13 @@ Singleton {
         if (scheme === "expressive_tertiary") return Appearance.colors.colTertiaryContainer;
         if (scheme === "hero_primary") return Appearance.colors.colPrimary;
         if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.4);
-        if (scheme === "muted_surface") return Appearance.colors.colSurfaceContainerLow;
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainerLow;
         if (scheme === "secondary_fixed") return Appearance.m3colors.m3secondaryFixed;
         if (scheme === "tertiary_showcase") return Appearance.colors.colTertiaryContainer;
         if (scheme === "error_alert") return Appearance.colors.colErrorContainer;
         if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseSurface;
-        if (scheme === "tri_blend") return Appearance.colors.colSurfaceContainerHigh;
-        return Appearance.colors.colSurfaceContainerHigh;
+        if (scheme === "tri_blend") return Appearance.m3colors.m3surfaceContainerHigh;
+        return Appearance.m3colors.m3surfaceContainerHigh;
     }
 
     function getTextColorOnBg(scheme) {
@@ -311,13 +311,13 @@ Singleton {
         if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.25);
         if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colOnPrimary, Appearance.colors.colPrimary, 0.2);
         if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.3);
-        if (scheme === "muted_surface") return Appearance.colors.colSurfaceContainerHigh;
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainerHigh;
         if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.colors.colSecondary, 0.25);
         if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.2);
         if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.25);
         if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inversePrimary, 0.3);
         if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colSecondary, Appearance.colors.colTertiaryContainer, 0.35);
-        return Appearance.colors.colSurfaceContainerHighest;
+        return Appearance.m3colors.m3surfaceContainerHighest;
     }
 
     function getPillFillColor(scheme) {
@@ -346,13 +346,13 @@ Singleton {
         if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.35);
         if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colOnPrimary, Appearance.colors.colPrimary, 0.25);
         if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.6);
-        if (scheme === "muted_surface") return Appearance.colors.colSurfaceContainer;
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainer;
         if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.colors.colSecondary, 0.3);
         if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.3);
         if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.35);
         if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inverseOnSurface, 0.2);
         if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.25);
-        return Appearance.colors.colSurfaceContainerHighest;
+        return Appearance.m3colors.m3surfaceContainerHighest;
     }
 
     function getHighlightCircleColor(scheme) {
@@ -382,7 +382,7 @@ Singleton {
         if (scheme === "error_alert") return Appearance.colors.colOnError;
         if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseOnSurface;
         if (scheme === "tri_blend") return Appearance.colors.colOnTertiary;
-        return Appearance.colors.colSurfaceContainerHigh;
+        return Appearance.m3colors.m3surfaceContainerHigh;
     }
 
     function getSuccessColor(scheme) {
@@ -431,9 +431,9 @@ Singleton {
     }
 
     function getSurfaceVariantColor(scheme) {
-        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5);
-        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5);
-        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.colors.colSurfaceContainerHigh, 0.5);
+        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
+        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
+        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
         if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colOnPrimary, 0.2);
         if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.2);
         if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceVariant;

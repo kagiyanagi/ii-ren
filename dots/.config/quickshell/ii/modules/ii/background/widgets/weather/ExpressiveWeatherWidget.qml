@@ -17,7 +17,7 @@ AbstractBackgroundWidget {
     readonly property color expressiveTempRect: WidgetColorScheme.innerShapeColor
 
     readonly property color solidSurfaceHighest: {
-        const c = Qt.color(Appearance.colors.colSurfaceContainerHighest);
+        const c = Qt.color(Appearance.m3colors.m3surfaceContainerHighest);
         return Qt.rgba(c.r, c.g, c.b, 1.0);
     }
 
@@ -50,7 +50,7 @@ AbstractBackgroundWidget {
                     id: bgShape
                     anchors.fill: parent
                     shapeString: parent.shapeString
-                    color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHigh
+                    color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.m3colors.m3surfaceContainerHigh
                     visible: !(Config.options.background.widgets.enableInnerShadow ?? true)
                 }
 

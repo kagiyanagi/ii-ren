@@ -339,7 +339,7 @@ AbstractBackgroundWidget {
                     anchors.centerIn: parent
                     width: Math.min(680, parent.width * 0.9)
                     height: Math.min(560, parent.height * 0.85)
-                    color: Appearance.colors.colSurfaceContainerHigh
+                    color: Appearance.m3colors.m3surfaceContainerHigh
                     radius: Appearance.rounding.windowRounding
 
                     // Stop click propagation to backdrop
@@ -382,7 +382,7 @@ AbstractBackgroundWidget {
                                 implicitHeight: 32
                                 buttonRadius: Appearance.rounding.full
                                 colBackground: "transparent"
-                                colBackgroundHover: Appearance.colors.colSurfaceContainerHighest
+                                colBackgroundHover: Appearance.m3colors.m3surfaceContainerHighest
 
                                 MaterialSymbol {
                                     anchors.centerIn: parent

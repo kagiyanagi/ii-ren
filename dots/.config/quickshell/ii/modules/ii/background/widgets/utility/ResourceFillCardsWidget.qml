@@ -183,7 +183,7 @@ AbstractBackgroundWidget {
                                 Layout.preferredWidth: 54 * root.contentScale
                                 Layout.preferredHeight: 54 * root.contentScale
                                 radius: width / 2
-                                color: Appearance.colors.colSurfaceContainerHighest
+                                color: Appearance.m3colors.m3surfaceContainerHighest
                                 opacity: 0.95
 
                                 MaterialSymbol {

@@ -242,7 +242,7 @@ AbstractBackgroundWidget {
                         radius: Appearance.rounding.normal
                         color: root.expressive 
                             ? (dayColumn.isTodayItem ? Appearance.colors.colPrimary : Appearance.colors.colSecondary)
-                            : Appearance.colors.colSurfaceContainerLow
+                            : Appearance.m3colors.m3surfaceContainerLow
 
                         StyledText {
                             anchors.centerIn: parent

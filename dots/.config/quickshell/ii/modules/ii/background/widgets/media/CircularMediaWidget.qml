@@ -462,7 +462,7 @@ AbstractBackgroundWidget {
                         implicitHeight: root.width * 0.09
                         leftPadding: root.width * 0.04
                         rightPadding: root.width * 0.04
-                        colBackground: ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHigh, 0.75)
+                        colBackground: ColorUtils.transparentize(Appearance.m3colors.m3surfaceContainerHigh, 0.75)
                         colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHighestHover, 0.65)
                         colRipple: ColorUtils.transparentize(Appearance.colors.colSurfaceContainerHighestActive, 0.55)
                         buttonRadius: Appearance.rounding.full
