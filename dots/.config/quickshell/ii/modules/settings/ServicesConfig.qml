@@ -248,6 +248,19 @@ ContentPage {
                 Config.options.screenSnip.savePath = text;
             }
         }
+
+        // Sits under the path field because the two decide the same thing
+        // between them: whether a snip survives being copied. Hidden once a
+        // path is set, since the shot is saved outright then.
+        ConfigSwitch {
+            visible: Config.options.screenSnip.savePath === ""
+            buttonIcon: "screenshot_region"
+            text: Translation.tr("Offer to save screenshots after taking them")
+            checked: Config.options.screenSnip.showPreview
+            onCheckedChanged: {
+                Config.options.screenSnip.showPreview = checked;
+            }
+        }
     }
 
     ContentSection {

@@ -295,6 +295,9 @@ Variants {
             id: wallpaperDrop
             anchors.fill: parent
             keys: ["text/uri-list"]
+            // Disabled rather than unloaded so the drop falls through to
+            // whatever is underneath instead of being swallowed.
+            enabled: Config.options.background.dropToSetWallpaper
 
             // Non-empty only while the drag is carrying something apply() can use.
             property string pendingPath: ""

@@ -290,7 +290,8 @@ PanelWindow {
         // Preview only in clipboard-only mode: with a save path set the crop is
         // already on disk under a name of the user's choosing, and a popup
         // offering to save it again would just make a second copy.
-        const previewPath = (screenshotAction === ScreenshotAction.Action.Copy && screenshotDir === "")
+        const previewPath = (screenshotAction === ScreenshotAction.Action.Copy && screenshotDir === ""
+            && Config.options.screenSnip.showPreview)
             ? `${root.screenshotDir}/snip-${Date.now()}.png` : "";
         const command = ScreenshotAction.getCommand(
             root.regionX * root.monitorScale, //

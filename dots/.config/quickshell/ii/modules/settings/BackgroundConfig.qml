@@ -138,6 +138,20 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "wallpaper"
+        title: Translation.tr("Wallpaper")
+
+        ConfigSwitch {
+            buttonIcon: "add_photo_alternate"
+            text: Translation.tr("Drop an image on the desktop to set it as wallpaper")
+            checked: Config.options.background.dropToSetWallpaper
+            onCheckedChanged: {
+                Config.options.background.dropToSetWallpaper = checked;
+            }
+        }
+    }
+
+    ContentSection {
         icon: "music_note"
         title: Translation.tr("Media mode")
         tooltip: Translation.tr("Toggle the mode with a keybind that executes 'quickshell:mediaModeToggle'\nExample: bindd = Super, Z, Toggle media mode, global, quickshell:mediaModeToggle")

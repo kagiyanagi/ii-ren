@@ -196,6 +196,9 @@ Singleton {
 
             property JsonObject background: JsonObject {
                 property bool enable: true // if someone wants to use an external wallpaper manager, note that its not fully tested but it should just disable background.qml from being loaded
+                // Drop an image anywhere on the empty desktop to set it as the
+                // wallpaper. Off leaves the drop to whatever is underneath.
+                property bool dropToSetWallpaper: true
                 property JsonObject widgets: JsonObject {
                     // Legacy pre-registry clock entry. Kept only so
                     // WidgetStateManager can migrate it into an instance.
@@ -1580,6 +1583,11 @@ Singleton {
 
             property JsonObject screenSnip: JsonObject {
                 property string savePath: "" // only copy to clipboard when empty
+                // Android-style card after a snip, offering to save, edit or
+                // delete the shot that was just copied. Only ever shown when
+                // savePath is empty - with a save path set the crop is already
+                // on disk under a name of the user's choosing.
+                property bool showPreview: true
             }
 
             property JsonObject sounds: JsonObject {
