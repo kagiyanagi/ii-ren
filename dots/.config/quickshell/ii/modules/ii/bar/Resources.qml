@@ -18,26 +18,30 @@ MouseArea {
         anchors.rightMargin: 4
 
         Resource {
+            iconName: "planner_review"
+            percentage: ResourceUsage.cpuUsage
+            shown: true
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
+        }
+
+        Resource {
             iconName: "memory"
             percentage: ResourceUsage.memoryUsedPercentage
             shown: true
+            Layout.leftMargin: shown ? 6 : 0
             warningThreshold: Config.options.bar.resources.memoryWarningThreshold
         }
 
         Resource {
-            iconName: "swap_horiz"
-            percentage: ResourceUsage.swapUsedPercentage
+            iconName: "thermostat"
+            // The ring is a 0-100 scale and Resource renders the label as
+            // percentage * 100, so dividing by 100 puts degrees C straight on
+            // both. Celsius only - Fahrenheit does not fit a 0-100 ring.
+            percentage: ResourceUsage.cpuTemp / 100
             shown: true
             Layout.leftMargin: shown ? 6 : 0
-            warningThreshold: Config.options.bar.resources.swapWarningThreshold
-        }
-
-        Resource {
-            iconName: "planner_review"
-            percentage: ResourceUsage.cpuUsage
-            shown: true
-            Layout.leftMargin: shown ? 6 : 0
-            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
+            // Degrees, not percent, for the same reason.
+            warningThreshold: 85
         }
 
     }
