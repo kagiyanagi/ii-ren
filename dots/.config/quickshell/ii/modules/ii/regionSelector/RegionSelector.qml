@@ -47,7 +47,10 @@ Scope {
 
     function runPreviewSnip(command, path) {
         root.previewShown = false;
-        root.previewPath = path;
+        // previewPath is deliberately not set yet. The crop does not exist until
+        // the command finishes, and an Image pointed at a missing file fails once
+        // and never retries - which is an empty card with no error anywhere.
+        snipProc.targetPath = path;
         snipProc.running = false;
         snipProc.command = command;
         snipProc.running = true;
@@ -81,11 +84,13 @@ Scope {
 
     Process {
         id: snipProc
+        property string targetPath: ""
         onExited: exitCode => {
             if (exitCode !== 0) {
                 console.warn("[Region Selector] Snip failed with exit code", exitCode);
                 return;
             }
+            root.previewPath = snipProc.targetPath;
             root.previewShown = true;
         }
     }
