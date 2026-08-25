@@ -20,6 +20,18 @@ import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.weather
 import qs.modules.ii.background.widgets.media
 
+Scope {
+    id: backgroundScope
+
+    // Shared desktop-widget state: one instance model for every screen.
+    WidgetStateManager {
+        id: widgetState
+    }
+    readonly property alias widgetStateManager: widgetState
+    readonly property alias widgetSyncVersion: widgetState.syncVersion
+
+// Left at its original indentation on purpose: re-indenting the whole file would
+// turn every future upstream merge of Background.qml into a conflict.
 Variants {
     id: root
     model: Quickshell.screens
@@ -384,6 +396,7 @@ Variants {
 
             WidgetCanvas {
                 id: widgetCanvas
+                gridOverlayEnabled: Config.options.background.widgets.enableGrid ?? false
                 scale: 1 - (defaultRatio - 1)
                 Behavior on scale {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
@@ -450,54 +463,19 @@ Variants {
                     }
                 }
 
-                FadeLoader {
-                    shown: Config.options.background.widgets.weather.enable
-                    sourceComponent: WeatherWidget {
+                // Desktop widgets, placed from the registry.
+                // Instances live in Config.options.background.activeWidgets.
+                Repeater {
+                    model: backgroundScope.widgetStateManager.model
+                    delegate: WidgetDelegate {
+                        widgetListModel: backgroundScope.widgetStateManager.model
+                        widgetSizes: backgroundScope.widgetStateManager.widgetSizes
+                        widgetSizesVersion: backgroundScope.widgetStateManager.widgetSizesVersion
                         screenWidth: bgRoot.screen.width
                         screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
-                        wallpaperScale: bgRoot.effectiveWallpaperScale
-                    }
-                }
-
-                FadeLoader {
-                    shown: Config.options.background.widgets.clock.enable
-                    sourceComponent: ClockWidget {
-                        screenWidth: bgRoot.screen.width
-                        screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
                         wallpaperScale: bgRoot.effectiveWallpaperScale
                         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
-                        isCovered: bgRoot.isCovered
-                    }
-                }
-
-                Timer {
-                    id: mediaTimer
-                    interval: 200
-                    onTriggered: mediaLoader.enableLoading = true
-                }
-
-                FadeLoader {
-                    id: mediaLoader
-                    property bool enableLoading: true
-                    shown: Config.options.background.widgets.media.enable && enableLoading
-                    sourceComponent: MediaWidget {
-                        screenWidth: bgRoot.screen.width
-                        screenHeight: bgRoot.screen.height
-                        scaledScreenWidth: bgRoot.screen.width / bgRoot.effectiveWallpaperScale
-                        scaledScreenHeight: bgRoot.screen.height / bgRoot.effectiveWallpaperScale
-                        wallpaperScale: bgRoot.effectiveWallpaperScale
-                    }
-                    onLoaded: {
-                        if (item && item.requestReset) {
-                            item.requestReset.connect(() => { // hard reset
-                                mediaLoader.enableLoading = false
-                                mediaTimer.running = true
-                            })
-                        }
+                        lockAnimationActive: GlobalStates.lockAnimationActive
                     }
                 }
             }
@@ -526,4 +504,5 @@ Variants {
             }
         }
     }
+}
 }

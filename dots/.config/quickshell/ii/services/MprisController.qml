@@ -27,6 +27,11 @@ Singleton {
 	property bool __reverse: false;
 
 	property var activeTrack;
+	property string _artUrlFallback: "";
+	readonly property string artUrl: {
+		const url = activePlayer?.trackArtUrl;
+		return (url && url !== "") ? url : _artUrlFallback;
+	}
 
 	onAllPlayersChanged: {
 		const nextPlayer = allPlayers.find(player => player.desktopEntry === root.priorityPlayer);

@@ -13,6 +13,22 @@ Singleton {
     property alias sidebarLeftOpen: root.policiesPanelOpen // Until all sidebars naming is fixed
     property alias sidebarRightOpen: root.dashboardPanelOpen // Until all sidebars naming is fixed
 
+    // ── Desktop widget library (ported from ii-p3drovfx) ─────────────────────
+    // Its widgets read these. Two map onto state this shell already has.
+    property alias lockScreenCentered: root.screenLocked
+    function openRightSidebar(): void { root.dashboardPanelOpen = true; }
+
+    // The rest are surfaces p3 has and this shell does not, or holds elsewhere:
+    // the cheatsheet and notes live in their own Loaders, not in GlobalStates.
+    // ponytail: stubs, so the widgets bind and render; the handful of buttons
+    // that write them are inert. Bind Cheatsheet/Notes loaders to these if the
+    // buttons turn out to matter.
+    property bool lockAnimationActive: false
+    property bool workspaceRestoreInProgress: false
+    property bool cheatsheetOpen: false
+    property bool notesOpen: false
+    property bool requestVolumeDialog: false
+
     property bool barOpen: true
     property bool crosshairOpen: false
     property bool mediaControlsOpen: false

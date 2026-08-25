@@ -23,6 +23,10 @@ Singleton {
         root.getData();
     }
 
+    // Ported forecast widgets read these; this shell fetches current conditions only.
+    property var forecastData: []
+    property var hourlyData: []
+
     property var location: ({
         valid: false,
         lat: 0,

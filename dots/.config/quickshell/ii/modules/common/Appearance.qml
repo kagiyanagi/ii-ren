@@ -11,6 +11,8 @@ Singleton {
     property QtObject animationCurves
     property QtObject colors
     property QtObject rounding
+    // Ported desktop widgets scale their animations by this.
+    readonly property real animMultiplier: Config.options?.appearance?.animationMultiplier ?? 1.0
     property QtObject font
     property QtObject sizes
     property string syntaxHighlightingTheme
@@ -199,6 +201,7 @@ Singleton {
     }
 
     rounding: QtObject {
+        property real scale: Config.options.appearance.sharpMode ? 0 : 1
         property int unsharpen: Config.options.appearance.sharpMode ? 0 : 2
         property int unsharpenmore: Config.options.appearance.sharpMode ? 0 : 6
         property int verysmall: Config.options.appearance.sharpMode ? 0 : 8

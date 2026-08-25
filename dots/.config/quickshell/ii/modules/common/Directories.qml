@@ -78,6 +78,11 @@ Singleton {
     property string extensionsInstalledPath: `${Directories.extensionsPath}/installed`
     property string pluginsJsonPath: `${Directories.extensionsPath}/plugins.json`
 
+    // Third-party desktop widget packs (WidgetExtensionManager)
+    property string userWidgetsPath: FileUtils.trimFileProtocol(`${Directories.config}/quickshell/ii/user_widgets`)
+    property string widgetExtensionsPath: `${Directories.shellConfig}/widget_extensions.json`
+    property string widgetBackupsPath: FileUtils.trimFileProtocol(`${Directories.config}/quickshell/ii/user_widgets/.backups`)
+
     // Cleanup on init
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
@@ -90,6 +95,7 @@ Singleton {
         Quickshell.execDetached(["mkdir", "-p", `${userActions}`])
         Quickshell.execDetached(["mkdir", "-p", `${Directories.extensionsCachePath}`])
         Quickshell.execDetached(["mkdir", "-p", `${Directories.extensionsInstalledPath}`])
+        Quickshell.execDetached(["mkdir", "-p", `${Directories.userWidgetsPath}`])
         Quickshell.execDetached(["rm", "-rf", `${tempImages}`])
     }
 }

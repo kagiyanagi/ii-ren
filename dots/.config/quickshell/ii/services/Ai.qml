@@ -27,6 +27,8 @@ Singleton {
     readonly property string apiKeyEnvVarName: "API_KEY"
 
     signal responseFinished()
+    // Read by the ported AI widgets to decide whether to offer AI entry points.
+    readonly property bool enabled: true
 
     property string systemPrompt: {
         let prompt = Config.options?.ai?.systemPrompt ?? "";

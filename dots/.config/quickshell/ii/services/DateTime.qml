@@ -18,6 +18,7 @@ Singleton {
             return SystemClock.Minutes;
         }
     }
+    property string seconds: Qt.locale().toString(clock.date, Config.options?.time.secondsFormat ?? "ss")
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")

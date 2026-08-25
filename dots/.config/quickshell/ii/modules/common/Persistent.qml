@@ -64,7 +64,14 @@ Singleton {
                 property real temperature: 0.5
             }
 
+            property JsonObject water: JsonObject {
+                property int glassesDrunk: 0
+                property string lastDate: ""
+                property real lastNotify: 0
+            }
             property JsonObject background: JsonObject {
+                property bool widgetsMigrated: false
+                property bool lockBehaviorMigrated: false
                 property JsonObject mediaMode: JsonObject {
                     property real userScrollOffset: 0
                 }
