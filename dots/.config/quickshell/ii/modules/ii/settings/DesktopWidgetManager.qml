@@ -150,6 +150,62 @@ ColumnLayout {
     }
 
     ContentSubsection {
+        title: Translation.tr("Colour scheme")
+        tooltip: Translation.tr("Every desktop widget draws from one scheme. The default maps everything onto surface greys; the rest pull from the wallpaper's primary, secondary and tertiary colours.")
+        Layout.fillWidth: true
+
+        Flow {
+            Layout.fillWidth: true
+            spacing: 6
+
+            Repeater {
+                model: WidgetColorScheme.availableSchemes
+
+                delegate: RippleButtonWithShape {
+                    id: schemeButton
+
+                    required property string modelData
+                    readonly property var scheme: WidgetColorScheme.schemes[schemeButton.modelData] ?? null
+
+                    toggled: Config.options.background.widgets.colorScheme === schemeButton.modelData
+                    onClicked: Config.options.background.widgets.colorScheme = schemeButton.modelData
+
+                    mainContentComponent: Component {
+                        RowLayout {
+                            spacing: 6
+
+                            // The scheme's own accent over its own card colour, so
+                            // the button previews what the widgets will look like.
+                            Rectangle {
+                                implicitWidth: 16
+                                implicitHeight: 16
+                                radius: height / 2
+                                color: schemeButton.scheme?.cardBgColor ?? "transparent"
+                                border.width: 1
+                                border.color: schemeButton.scheme?.outlineColor ?? "transparent"
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 8
+                                    height: 8
+                                    radius: height / 2
+                                    color: schemeButton.scheme?.accentColor ?? "transparent"
+                                }
+                            }
+
+                            StyledText {
+                                text: schemeButton.scheme?.name ?? schemeButton.modelData
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ContentSubsection {
         title: Translation.tr("Add a widget")
         tooltip: Translation.tr("Drag a widget on the desktop to move it. Widget-specific settings are not exposed here yet.")
         Layout.fillWidth: true
