@@ -1099,7 +1099,10 @@ Singleton {
                 property JsonObject resources: JsonObject {
                     property int memoryWarningThreshold: 95
                     property bool alwaysShowSwap: false
-                    property bool showDocker: true
+                    // Off: the Containers block is not wanted in the resources
+                    // hover popup. Set both this and resources.enableDocker to
+                    // true to bring it back - there is no settings toggle.
+                    property bool showDocker: false
                     property int swapWarningThreshold: 85
                     property int cpuWarningThreshold: 90
                 }
@@ -1438,7 +1441,10 @@ Singleton {
             }
 
             property JsonObject resources: JsonObject {
-                property bool enableDocker: true
+                // Off with bar.resources.showDocker: with nothing rendering the
+                // containers there is no reason to keep a `docker events` watcher
+                // and a 60s `docker ps` poll running.
+                property bool enableDocker: false
                 property string gpuPreference: "auto"
                 property int gpuInterval: 3000
                 property int diskInterval: 30000
