@@ -15,3 +15,7 @@ __pycache__/
 
 # Emacs auto backup file
 *~
+
+# Third-party widget packs installed by WidgetExtensionManager. The shell writes
+# these into its config dir, which is a symlink into this repo.
+dots/.config/quickshell/ii/user_widgets/
