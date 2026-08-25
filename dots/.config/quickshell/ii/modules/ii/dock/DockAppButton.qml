@@ -19,6 +19,7 @@ DockButton {
     property int dotMargin: Math.round(dockHeight * 0.2)
 
     readonly property var desktopEntry: appToplevel ? TaskbarApps.getCachedDesktopEntry(appToplevel.appId) : null
+    readonly property string appName: desktopEntry?.name || appToplevel?.appId || ""
     property bool isVertical: dockContent?.isVertical ?? false
 
 
@@ -203,6 +204,18 @@ DockButton {
             if (dockContent)
                 dockContent.anyContextMenuOpen = dockContextMenu.active
         }
+    }
+
+    // A running app gets its name from the preview popup's header instead, and
+    // the popup lands in the same place - two labels would sit on top of each
+    // other.
+    DockTooltip {
+        parentItem: root
+        text: root.appName
+        showTooltip: mainMouseArea.containsMouse
+            && !root.appIsRunning
+            && !(dockContent?.dragActive ?? false)
+            && !(dockContent?.suppressHover ?? false)
     }
 
     DockAppIcon {}

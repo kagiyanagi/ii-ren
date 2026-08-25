@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
@@ -30,6 +31,14 @@ PopupWindow {
         const availableSpace = isVertical ? (dockWindow.height ?? 1080) - popupBackground.margins * 2 - popupBackground.padding * 2 : (dockWindow.width ?? 1920) - popupBackground.margins * 2 - popupBackground.padding * 2
         return Math.max(1, Math.floor((availableSpace + spacing) / (previewSize + spacing)))
     }
+
+    readonly property string appName: {
+        if (!appTopLevel?.appId) return "";
+        return TaskbarApps.getCachedDesktopEntry(appTopLevel.appId)?.name || appTopLevel.appId;
+    }
+    // Folded into the window size below, otherwise the card grows past the
+    // popup and gets clipped at the top.
+    readonly property real headerHeight: Appearance.font.pixelSize.normal + 10
 
     property bool show: false
     readonly property bool shouldShow:
@@ -78,7 +87,7 @@ PopupWindow {
     readonly property int _extra: popupBackground.padding * 2 + popupBackground.margins * 2
 
     implicitWidth: isVertical ? dockRoot.maxWindowPreviewWidth + dockRoot.windowControlsHeight + _extra - 25 : dockWindow?.width ?? 0
-    implicitHeight: isVertical ? dockWindow?.height ?? 0 : dockRoot.maxWindowPreviewHeight + dockRoot.windowControlsHeight + _extra + 5
+    implicitHeight: isVertical ? dockWindow?.height ?? 0 : dockRoot.maxWindowPreviewHeight + dockRoot.windowControlsHeight + _extra + 5 + previewPopup.headerHeight + previewColumn.spacing
 
     StyledRectangularShadow {
         target: popupBackground
@@ -111,8 +120,8 @@ PopupWindow {
         clip: true
         color: Appearance.m3colors.m3surfaceContainer
         radius: Appearance.rounding.normal
-        implicitHeight: previewRowLayout.implicitHeight + padding * 2
-        implicitWidth: previewRowLayout.implicitWidth + padding * 2
+        implicitHeight: previewColumn.implicitHeight + padding * 2
+        implicitWidth: previewColumn.implicitWidth + padding * 2
 
         Behavior on implicitWidth {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -128,14 +137,46 @@ PopupWindow {
             id: backgroundHover
         }
 
-        GridLayout {
-            id: previewRowLayout
+        ColumnLayout {
+            id: previewColumn
             anchors {
                 top: parent.top
                 left: parent.left
                 topMargin: popupBackground.padding
                 leftMargin: popupBackground.padding
             }
+            spacing: 4
+
+            // The only place the app itself is named once it is running - the
+            // cards below carry window titles, not the app's.
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 4
+                Layout.preferredHeight: previewPopup.headerHeight
+                spacing: 6
+
+                StyledText {
+                    text: previewPopup.appName
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.DemiBold
+                    color: Appearance.m3colors.m3onSurface
+                    elide: Text.ElideRight
+                }
+
+                StyledText {
+                    // One window is obvious from the single card; only say it
+                    // when the count is the useful part.
+                    visible: (appTopLevel?.toplevels?.length ?? 0) > 1
+                    text: `\u00b7 ${Translation.tr("%1 windows").arg(appTopLevel?.toplevels?.length ?? 0)}`
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+        GridLayout {
+            id: previewRowLayout
             flow: isVertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
             columnSpacing: 6
             rowSpacing: 6
@@ -155,44 +196,9 @@ PopupWindow {
                     }
                     middleClickAction: () => modelData?.close()
 
-                    contentItem: ColumnLayout {
+                    contentItem: Item {
                         implicitWidth: screencopyView.implicitWidth
                         implicitHeight: screencopyView.implicitHeight
-
-                        ButtonGroup {
-                            contentWidth: parent.width - anchors.margins * 2
-
-                            WrapperRectangle {
-                                Layout.fillWidth: true
-                                color: ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-                                radius: Appearance.rounding.small
-                                margin: 5
-
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    font.pixelSize: Appearance.font.pixelSize.small
-                                    text: windowButton.modelData?.title ?? ""
-                                    elide: Text.ElideRight
-                                    color: Appearance.m3colors.m3onSurface
-                                }
-                            }
-
-                            RippleButton {
-                                id: closeButton
-                                colBackground: ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-                                implicitWidth: dockRoot.windowControlsHeight
-                                implicitHeight: dockRoot.windowControlsHeight
-                                buttonRadius: Appearance.rounding.full
-
-                                contentItem: MaterialSymbol {
-                                    anchors.centerIn: parent
-                                    text: "close"
-                                    iconSize: Appearance.font.pixelSize.normal
-                                    color: Appearance.m3colors.m3onSurface
-                                }
-                                onClicked: windowButton.modelData?.close()
-                            }
-                        }
 
                         ScreencopyView {
                             id: screencopyView
@@ -208,13 +214,81 @@ PopupWindow {
                                 maskSource: Rectangle {
                                     width: screencopyView.width
                                     height: screencopyView.height
-                                    radius: Appearance.rounding.small
+                                    radius: Appearance.rounding.normal
                                 }
                             }
+                        }
+
+                        // Title rides on the shot instead of taking a bar of its
+                        // own. Per-corner radii follow the thumbnail's mask, so
+                        // no second layer is needed just to round two corners.
+                        Rectangle {
+                            id: titleScrim
+                            anchors {
+                                left: screencopyView.left
+                                right: screencopyView.right
+                                bottom: screencopyView.bottom
+                            }
+                            height: windowTitle.implicitHeight + 18
+                            bottomLeftRadius: Appearance.rounding.normal
+                            bottomRightRadius: Appearance.rounding.normal
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: "transparent" }
+                                GradientStop { position: 0.45; color: Qt.rgba(0, 0, 0, 0.45) }
+                                GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.82) }
+                            }
+
+                            StyledText {
+                                id: windowTitle
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    bottom: parent.bottom
+                                    leftMargin: 10
+                                    rightMargin: 10
+                                    bottomMargin: 6
+                                }
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                text: windowButton.modelData?.title ?? ""
+                                elide: Text.ElideRight
+                                // Fixed white: it sits on the shot's own pixels,
+                                // not on a themed surface.
+                                color: "#ffffff"
+                            }
+                        }
+
+                        RippleButton {
+                            id: closeButton
+                            anchors {
+                                right: screencopyView.right
+                                top: screencopyView.top
+                                margins: 6
+                            }
+                            implicitWidth: dockRoot.windowControlsHeight
+                            implicitHeight: dockRoot.windowControlsHeight
+                            buttonRadius: Appearance.rounding.full
+                            colBackground: Qt.rgba(0, 0, 0, 0.55)
+                            colBackgroundHover: Appearance.colors.colError
+                            // Out of the way until the card is under the pointer.
+                            opacity: windowButton.hovered ? 1 : 0
+                            visible: opacity > 0
+
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            }
+
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: "close"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: "#ffffff"
+                            }
+                            onClicked: windowButton.modelData?.close()
                         }
                     }
                 }
             }
+        }
         }
     }
 }

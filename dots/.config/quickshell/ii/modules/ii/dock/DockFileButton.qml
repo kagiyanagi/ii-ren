@@ -218,7 +218,6 @@ DockButton {
         parentItem: root
         text: root.fileName
         showTooltip: fileMouseArea.containsMouse && !(dockContent?.fileDragActive ?? false)
-        tooltipOffset: -root.dotMargin
     }
 
     contentItem: Item {

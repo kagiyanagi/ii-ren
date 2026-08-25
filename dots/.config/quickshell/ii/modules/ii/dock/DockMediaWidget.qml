@@ -183,6 +183,5 @@ Item {
         parentItem: root
         text: root.finalTitle + " - " + root.finalArtist
         showTooltip: root.mediaHovered
-        tooltipOffset: -root.dotMargin * 0.5
     }
 }
