@@ -38,6 +38,9 @@ Scope {
                 readonly property int monitorIndex: realOverviewLoader.monitorIndex
 
                 readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
+                // Matches the scrolling overview's default dim rather than
+                // inventing a second number for the same job.
+                readonly property real launcherDim: 0.5
                 property string searchingText: ""
 
                 WlrLayershell.namespace: "quickshell:overview"
@@ -155,6 +158,20 @@ Scope {
                 Item {
                     id: contentItem
                     anchors.fill: parent
+
+                    Rectangle { // Pushes everything behind the launcher back
+                        anchors.fill: parent
+                        // The scrolling overview paints its own backdrop; this
+                        // would stack a second one on top of it.
+                        visible: !root.isScrollingLayout
+                        // Fades with the window rather than snapping, and the
+                        // window stays mapped through the close animation.
+                        color: Qt.rgba(0, 0, 0, GlobalStates.overviewOpen ? root.launcherDim : 0)
+
+                        Behavior on color {
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                        }
+                    }
 
                     MouseArea { // We could have used PanelWindow.mask to detect this, but this is more stable
                         anchors.fill: parent

@@ -106,6 +106,11 @@ Variants {
 
         property bool overviewOpen: GlobalStates.overviewOpen
 
+        // How far the desktop plane pushes in behind the launcher. The scrolling
+        // overview's own zoom is gated behind that layout, so every other layout
+        // had no reaction to the launcher at all.
+        readonly property real launcherZoom: 1.06
+
         property real scaleAnimated: GlobalStates.overviewOpen && showOpeningAnimation ? zoomedRatio : defaultRatio
         Behavior on scaleAnimated {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -388,7 +393,16 @@ Variants {
             id: wallpaperItem
             anchors.fill: parent
             clip: true
-            scale: showOpeningAnimation && overviewOpen && bgRoot.isScrollingLayout ? zoomedRatio : defaultRatio
+            scale: {
+                if (!showOpeningAnimation)
+                    return defaultRatio;
+                if (bgRoot.isScrollingLayout)
+                    return overviewOpen ? zoomedRatio : defaultRatio;
+                // Scales the whole plane, widgets included, rather than the
+                // wallpaper alone - widgets holding still while the image moved
+                // under them reads as a glitch, not an effect.
+                return overviewOpen ? defaultRatio * bgRoot.launcherZoom : defaultRatio;
+            }
             opacity: mediaModeOpen ? 0 : 1
             
             Behavior on opacity {
