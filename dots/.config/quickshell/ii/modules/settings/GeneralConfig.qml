@@ -264,6 +264,34 @@ ContentPage {
             Layout.fillHeight: false
 
             ContentSubsection {
+                title: Translation.tr("Continuity")
+                Layout.fillWidth: false
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.policies.continuity
+                    onSelected: newValue => {
+                        Config.options.policies.continuity = newValue;
+                    }
+                    options: [
+                        {
+                            displayName: Translation.tr("No"),
+                            icon: "close",
+                            value: 0
+                        },
+                        {
+                            displayName: Translation.tr("Yes"),
+                            icon: "check",
+                            value: 1
+                        }
+                    ]
+                }
+            }
+        }
+
+        ConfigRow {
+            Layout.fillHeight: false
+
+            ContentSubsection {
                 title: Translation.tr("Translator")
                 Layout.fillWidth: false
 
