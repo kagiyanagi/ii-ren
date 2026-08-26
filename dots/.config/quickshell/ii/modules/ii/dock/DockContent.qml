@@ -504,6 +504,8 @@ Item {
                 id: unpinButton
                 anchors.centerIn: parent
                 symbolName: "apps"
+                accented: true
+                normalShapeName: Config.options.dock.appsButtonShape
                 activeShape: MaterialShape.Shape.SoftBurst
                 onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
                 dragActive: (root.dragActive && TaskbarApps.isPinned(root.draggedAppId)) || root.isFileDrag

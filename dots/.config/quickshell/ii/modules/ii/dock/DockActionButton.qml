@@ -11,10 +11,12 @@ DockButton {
     property int symbolSize: Math.round(root.buttonSize * 0.5)
     property string symbolName: ""
     property color activeColor: Appearance.m3colors.m3onPrimary
-    property color inactiveColor: Appearance.colors.colOnLayer0
+    property bool accented: false  // filled, system-accent background instead of bare symbol
+    property color inactiveColor: accented ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer0
     property bool dragActive: false
     property string dragSymbol: ""
     property int normalShape: MaterialShape.Shape.Pill
+    property string normalShapeName: ""  // takes priority over normalShape when set
     property int activeShape: MaterialShape.Shape.Cookie9Sided
     property bool dragOver: false
     property string fileDropIcon: ""
@@ -24,12 +26,19 @@ DockButton {
     background.implicitWidth: 0
     background.implicitHeight: 0
 
+    Connections {
+        target: root
+        function onClicked() { root.bounce() }
+    }
+
     contentItem: Item {
         MaterialShapeWrappedMaterialSymbol {
             id: shapeSymbol
             anchors.centerIn: parent
 
-            shape: root.isDragging ? root.activeShape : root.normalShape
+            shape: root.isDragging ? root.activeShape
+                : root.normalShapeName !== "" ? shapeSymbol.getShape(root.normalShapeName)
+                : root.normalShape
 
             implicitSize: root.dragOver ? root.buttonSize * 1.1 : root.buttonSize * 0.9
             Behavior on implicitSize {
@@ -52,6 +61,11 @@ DockButton {
                     return root.down ? Appearance.colors.colPrimaryActive :
                            root.hovered ? Appearance.colors.colPrimaryHover :
                            Appearance.colors.colPrimary
+                }
+                if (root.accented) {
+                    return root.down ? Appearance.colors.colPrimaryContainerActive :
+                           root.hovered ? Appearance.colors.colPrimaryContainerHover :
+                           Appearance.colors.colPrimaryContainer
                 }
                 return root.down ? Appearance.colors.colLayer1Active :
                        root.hovered ? Appearance.colors.colLayer1Hover :

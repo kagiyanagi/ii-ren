@@ -1283,6 +1283,7 @@ Singleton {
                 property bool revealOnEmptyWorkspace: true
                 property bool enableMediaWidget: false
                 property string position: "bottom"
+                property string appsButtonShape: "Pill"
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []
                 property list<string> pinnedFiles: []

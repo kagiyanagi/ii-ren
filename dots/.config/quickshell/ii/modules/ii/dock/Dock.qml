@@ -78,8 +78,19 @@ Scope {
             property bool positionChanging: false
             readonly property bool readyToReveal: reveal && (dockLoader.item?.ready ?? false)
 
+            // The dock is on the overlay layer, so a pinned dock would sit on top
+            // of fullscreen windows - treat fullscreen as unpinned. Same
+            // per-monitor check as ScreenCorners.
+            readonly property var hyprMonitor: Hyprland.monitorFor(dockRoot.modelData)
+            readonly property bool fullscreenActive: Hyprland.workspaces.values.some(ws =>
+                ws.active && ws.monitor?.name === dockRoot.hyprMonitor?.name
+                && ws.toplevels.values.some(toplevel => toplevel.wayland?.fullscreen))
+            readonly property bool pinnedEffective: dock.pinned && !fullscreenActive
+
+            onPinnedEffectiveChanged: updateReveal()
+
             function updateReveal() {
-                var shouldReveal = dock.pinned
+                var shouldReveal = dockRoot.pinnedEffective
                     || (dockMouseArea.containsMouse || graceTimer.running)
                     || (dockLoader.item?.requestDockShow ?? false)
                     || (Config.options?.dock?.revealOnEmptyWorkspace && workspaceEmpty)
@@ -119,7 +130,7 @@ Scope {
                 right: dock.dockEffectivePosition !== "left"
             }
 
-            exclusiveZone: dock.pinned ? dockThickness : 0
+            exclusiveZone: dockRoot.pinnedEffective ? dockThickness : 0
             WlrLayershell.namespace: "quickshell:dock"
             WlrLayershell.layer: WlrLayer.Overlay
             color: "transparent"
@@ -182,7 +193,7 @@ Scope {
                 // start the grace timer so the dock stays open for 1 second while
                 // it animates and the user moves the cursor onto it.
                 onContainsMouseChanged: {
-                    if (containsMouse && !dockRoot.reveal && !dock.pinned) {
+                    if (containsMouse && !dockRoot.reveal && !dockRoot.pinnedEffective) {
                         graceTimer.restart()
                     }
                     // Update reveal imperatively to avoid binding loop

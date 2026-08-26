@@ -196,6 +196,7 @@ DockButton {
                 return
             }
 
+            root.bounce()
             Quickshell.execDetached({ command: ["xdg-open", root.filePath] })
         }
     }

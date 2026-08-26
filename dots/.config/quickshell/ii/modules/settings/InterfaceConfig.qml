@@ -202,6 +202,29 @@ ContentPage {
                 }
             }
         }
+
+        ContentSubsection {
+            title: Translation.tr("App menu button shape")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.dock.appsButtonShape
+                onSelected: newValue => {
+                    Config.options.dock.appsButtonShape = newValue;
+                }
+                options: ([
+                    "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle",
+                    "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided",
+                    "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst",
+                    "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"
+                ]).map(shape => {
+                    return {
+                        displayName: "",
+                        shape: shape,
+                        value: shape
+                    }
+                })
+            }
+        }
     }
 
     ContentSection {

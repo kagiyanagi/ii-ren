@@ -171,6 +171,7 @@ DockButton {
                 dockContextMenu.open()
                 return
             }
+            root.bounce()
             if (mouse.button === Qt.MiddleButton) {
                 root.desktopEntry?.execute()
                 return
