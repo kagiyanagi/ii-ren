@@ -39,17 +39,16 @@ while [ "$ELAPSED" -lt "$TOTAL_DURATION" ]; do
     WAV="$TMPDIR/chunk.wav"
     rm -f "$RAW" "$WAV"
 
-    # INTERVAL saniyelik PCM kaydı al
-    timeout "$((INTERVAL + 2))" parec \
-        --device="$AUDIO_DEVICE" \
-        --rate=44100 --channels=2 --format=s16le \
-        --raw "$RAW" 2>/dev/null
+    # Record exactly INTERVAL seconds of PCM (44100 * 2ch * 2 bytes per second).
+    parec --device="$AUDIO_DEVICE" \
+        --rate=44100 --channels=2 --format=s16le --raw 2>/dev/null \
+        | head -c "$((44100 * 4 * INTERVAL))" > "$RAW"
 
     ffmpeg -loglevel quiet -f s16le -ar 44100 -ac 2 -i "$RAW" -y "$WAV" 2>/dev/null
 
     RESULT=$(songrec recognize --json "$WAV" 2>/dev/null)
 
-    if echo "$RESULT" | grep -q '"matches": \[{' ; then
+    if echo "$RESULT" | grep -q '"track"' ; then
         echo "$RESULT"
         exit 0
     fi
