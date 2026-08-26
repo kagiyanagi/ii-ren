@@ -24,12 +24,22 @@ Item {
     property var extensionPages: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
 
+    // Reassigning extensionPages re-runs the contentChildren binding below, which
+    // rebuilds every extension page from a fresh ?_t= URL and throws its state
+    // away. The manager also refreshes on any config write - switching a model,
+    // clearing a chat - so only reassign when the contributions really changed.
+    function syncExtensionPages() {
+        let next = ExtensionManager.getContributionPoint("sidebarLeftPages")
+        if (JSON.stringify(next) === JSON.stringify(root.extensionPages)) return
+        root.extensionPages = next
+    }
+
     Connections {
         target: ExtensionManager
-        function onRefreshExtensions() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
-        function onExtensionInstalled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
-        function onExtensionRemoved() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
-        function onExtensionToggled() { root.extensionPages = ExtensionManager.getContributionPoint("sidebarLeftPages") }
+        function onRefreshExtensions() { root.syncExtensionPages() }
+        function onExtensionInstalled() { root.syncExtensionPages() }
+        function onExtensionRemoved() { root.syncExtensionPages() }
+        function onExtensionToggled() { root.syncExtensionPages() }
     }
 
     property var tabButtonList: [  
