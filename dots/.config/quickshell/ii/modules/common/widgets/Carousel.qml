@@ -2,7 +2,6 @@ import QtQuick
 import Qt5Compat.GraphicalEffects
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 
 /*
  * As close to as possible recreation of Material 3 Expressive Carousel. 
@@ -137,18 +136,12 @@ Item {
                     }
                 }
 
-                Rectangle {
-                    id: stateOverlay
+                StateOverlay {
                     anchors.fill: parent
                     radius: itemContainer.cornerRadius
-                    color: "transparent"
-
-                    property color hoverColor: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.95)
-                    property color pressedColor: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.8)
-
-                    Behavior on color {
-                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                    }
+                    contentColor: Appearance.colors.colOnSurface
+                    hover: itemMouseArea.containsMouse
+                    press: itemMouseArea.pressed
                 }
 
                 Rectangle {
@@ -189,6 +182,7 @@ Item {
                 }
 
                 MouseArea {
+                    id: itemMouseArea
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.itemClicked(itemContainer.index, itemContainer.modelData)
@@ -205,12 +199,6 @@ Item {
 
                     onPressed: {
                         root.pressedAny()
-                    }
-                    onContainsMouseChanged: {
-                        stateOverlay.color = containsMouse ? stateOverlay.hoverColor : "transparent"
-                    }
-                    onPressedChanged: {
-                        stateOverlay.color = pressed ? stateOverlay.pressedColor : (containsMouse ? stateOverlay.hoverColor : "transparent")
                     }
                 }
 
