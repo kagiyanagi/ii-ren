@@ -19,8 +19,23 @@ Singleton {
 
     // NOTE: bash -c "cmd1 && cmd2 && ..." prevents a race between separate hyprset calls
     function _execChained(parts) {
-        if (parts.length > 0)
+        if (parts.length > 0) {
             Quickshell.execDetached(["bash", "-c", parts.join(" && ")])
+            root._queueReload()
+        }
+    }
+
+    // hyprset only rewrites shellOverrides/main.lua; Hyprland keeps running the
+    // values it parsed at startup until told to re-source it. Debounced because
+    // a slider drag fires this on every step.
+    function _queueReload() {
+        reloadTimer.restart()
+    }
+
+    Timer {
+        id: reloadTimer
+        interval: 400
+        onTriggered: Quickshell.execDetached(["hyprctl", "reload"])
     }
 
     function changeKey(key, value) {
@@ -30,6 +45,7 @@ Singleton {
         }
         if (!key.includes(":")) return
         Quickshell.execDetached([Directories.cliPath, "hyprset", "key", key, String(value)])
+        root._queueReload()
     }
 
     function changeAnimation(animName, style) {
@@ -38,6 +54,7 @@ Singleton {
             return
         }
         Quickshell.execDetached([Directories.cliPath, "hyprset", "anim", animName, String(style)])
+        root._queueReload()
     }
 
     function setLayout(layout) {
@@ -73,6 +90,7 @@ Singleton {
             return
         }
         Quickshell.execDetached([Directories.cliPath, "hyprset", "reset", key])
+        root._queueReload()
     }
 
     function resetKeys(keys) {

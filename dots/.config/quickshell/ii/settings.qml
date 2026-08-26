@@ -68,6 +68,11 @@ ApplicationWindow {
             component: "modules/settings/ExtensionsConfig.qml"
         },
         {
+            name: Translation.tr("Hyprland"),
+            icon: "desktop_windows",
+            component: "modules/settings/HyprlandConfig.qml"
+        },
+        {
             name: Translation.tr("Advanced"),
             icon: "construction",
             component: "modules/settings/AdvancedConfig.qml"

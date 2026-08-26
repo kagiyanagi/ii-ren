@@ -13,6 +13,22 @@ NestableObject {
     property bool set
     property var value
 
+    // False until the first fetch lands. Controls bound to `value` fire their
+    // change handlers during construction, while it is still undefined, so
+    // writing before this flips would clobber the real config with a default.
+    property bool loaded: false
+
+    // hyprctl reports gaps as css ("4 4 4 4") and switches as true/false.
+    // Controls need one comparable number out of all of those.
+    readonly property real numericValue: {
+        if (typeof root.value === "number")
+            return root.value;
+        if (typeof root.value === "boolean")
+            return root.value ? 1 : 0;
+        const parsed = parseFloat(String(root.value ?? ""));
+        return isNaN(parsed) ? 0 : parsed;
+    }
+
     Component.onCompleted: fetch()
 
     Connections {
@@ -54,6 +70,7 @@ NestableObject {
                         else
                             root.value = obj[key];
                     }
+                    root.loaded = true;
                 } catch (e) {
                     console.log(`[HyprlandConfigOption] Failed to fetch option "${root.key}":\n  - Output: ${text.trim()}\n  - Error: ${e}`);
                 }
