@@ -35,7 +35,14 @@ SpinBox {
             font.pixelSize: Appearance.font.pixelSize.small
             validator: root.validator
             onTextChanged: {
-                root.value = parseFloat(text);
+                // Fires while the input is still being built, and again for
+                // every programmatic change of root.value. Writing back then is
+                // a no-op that breaks whatever binding feeds root.value, which
+                // leaves the box stuck on its clamped starting number whenever
+                // the real value arrives asynchronously.
+                const parsed = parseFloat(text);
+                if (!isNaN(parsed) && parsed !== root.value)
+                    root.value = parsed;
             }
         }
     }

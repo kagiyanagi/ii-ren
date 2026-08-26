@@ -18,6 +18,11 @@ RowLayout {
     property real to: slider.to
     property real textWidth: 120
 
+    // Emitted only for actual user interaction. valueChanged also fires for
+    // every frame of StyledSlider's settle animation, so a handler that writes
+    // config on it will both save garbage on load and feed itself in a loop.
+    signal moved(real value)
+
     SearchHandler {
         visible: false // Root is a RowLayout; don't take up a cell
         searchString: root.text
@@ -53,5 +58,6 @@ RowLayout {
         value: root.value
         from: root.from
         to: root.to
+        onMoved: root.moved(value)
     }
 }
