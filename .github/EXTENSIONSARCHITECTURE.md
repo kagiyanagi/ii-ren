@@ -1,5 +1,7 @@
 # ii-vynx Extension System — Internal Architecture
 
+> Inherited unchanged from [ii-vynx](https://github.com/vaguesyntax/ii-vynx).
+
 This document describes how the extension system works under the hood. It is intended for developers contributing to the shell itself, not extension authors. For the extension developer API, see [EXTENSIONS.md](./EXTENSIONS.md).
 
 ---

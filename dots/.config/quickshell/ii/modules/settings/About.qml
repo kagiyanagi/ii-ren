@@ -166,17 +166,22 @@ ContentPage {
                 Layout.alignment: Qt.AlignVCenter
                 // spacing: 10
                 StyledText {
-                    text: Translation.tr("ii-vynx")
+                    text: Translation.tr("ii-ren")
                     font.pixelSize: Appearance.font.pixelSize.title
                 }
                 StyledText {
-                    text: "https://github.com/vaguesyntax/ii-vynx"
+                    text: "https://github.com/kagiyanagi/ii-ren"
                     font.pixelSize: Appearance.font.pixelSize.normal
                     textFormat: Text.MarkdownText
                     onLinkActivated: (link) => {
                         Qt.openUrlExternally(link)
                     }
                     PointingHandLinkHover {}
+                }
+                StyledText {
+                    text: Translation.tr("A fork of ii-vynx by vaguesyntax")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
                 }
             }
         }
@@ -190,7 +195,7 @@ ContentPage {
                 materialIconFill: false
                 mainText: Translation.tr("Issues")
                 onClicked: {
-                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/issues")
+                    Qt.openUrlExternally("https://github.com/kagiyanagi/ii-ren/issues")
                 }
             }
             RippleButtonWithIcon {
@@ -205,6 +210,14 @@ ContentPage {
                 mainText: Translation.tr("Known Issues")
                 onClicked: {
                     Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/wiki/Known-Issues-and-Limitations")
+                }
+            }
+            RippleButtonWithIcon {
+                materialIcon: "call_split"
+                materialIconFill: false
+                mainText: Translation.tr("Upstream: ii-vynx")
+                onClicked: {
+                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx")
                 }
             }
             

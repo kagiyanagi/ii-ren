@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Command: vynx update
-echo -e "${BLUE}Updating Vynx...${NC}"
+# Command: iiren update
+echo -e "${BLUE}Updating ii-ren...${NC}"
 
 export VERBOSE="${VERBOSE:-false}"
 
@@ -20,7 +20,7 @@ for arg in "$@"; do
         --no-confirm)    NO_CONFIRM=true ;;
         *)
             echo -e "${RED}Unknown flag: $arg${NC}"
-            echo "Usage: vynx update [--no-pull] [--no-backup] [--force-install] [--full-install] [--no-confirm]"
+            echo "Usage: iiren update [--no-pull] [--no-backup] [--force-install] [--full-install] [--no-confirm]"
             exit 1
             ;;
     esac
@@ -43,10 +43,10 @@ if [ -d "$BASE_DIR" ]; then
             git pull > /dev/null 2>&1
         fi
         
-        echo -e "${GREEN}Vynx repo updated successfully!${NC}"
+        echo -e "${GREEN}ii-ren repo updated successfully!${NC}"
     fi
     
-    bash setup-ii-vynx.sh $SETUP_FLAGS
+    bash setup-ii-ren.sh $SETUP_FLAGS
 else
     echo -e "${RED}Error: Cannot find install path.${NC}"
     exit 1

@@ -6,13 +6,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-CLI_NAME="vynx"
+CLI_NAME="iiren"
 BIN_PATH="$HOME/.local/bin/$CLI_NAME"
 
-echo -e "${RED}• Removing Vynx CLI (user mode)...${NC}"
+echo -e "${RED}• Removing ii-ren CLI (user mode)...${NC}"
 
 if [ -L "$BIN_PATH" ]; then
-    echo -e "${RED}Are you sure you want to remove Vynx CLI? (y/n): ${NC}"
+    echo -e "${RED}Are you sure you want to remove ii-ren CLI? (y/n): ${NC}"
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}Operation cancelled.${NC}"
@@ -21,10 +21,10 @@ if [ -L "$BIN_PATH" ]; then
 
     rm "$BIN_PATH"
 
-    echo -e "${GREEN}✓ Vynx CLI removed from $BIN_PATH.${NC}"
+    echo -e "${GREEN}✓ ii-ren CLI removed from $BIN_PATH.${NC}"
     echo -e "${BLUE}The repository at $BASE_DIR remains intact.${NC}"
 else
-    echo -e "${YELLOW}Vynx CLI not found at $BIN_PATH.${NC}"
+    echo -e "${YELLOW}ii-ren CLI not found at $BIN_PATH.${NC}"
 
     ALT_PATH="$(command -v $CLI_NAME 2>/dev/null)"
 

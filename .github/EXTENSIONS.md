@@ -1,5 +1,9 @@
 # ii-vynx Extensions
 
+> Inherited unchanged from [ii-vynx](https://github.com/vaguesyntax/ii-vynx). The extension system,
+> the `ii-vynx-extension` topic and the audit database are all upstream's; extensions
+> published for ii-vynx work in ii-ren as-is.
+
 Extensions allow third-party QML components to be dynamically loaded into various shell surfaces — the bar, sidebar, background, overlay canvas — and to run background services. Everything is managed live from the Extensions settings page with no shell restart required.
 
 > [!WARNING]  

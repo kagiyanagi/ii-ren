@@ -1,11 +1,16 @@
-# AGENTS.md - ii-vynx
+# AGENTS.md - ii-ren
+
+Fork of [ii-vynx](https://github.com/vaguesyntax/ii-vynx) by vaguesyntax, which forks
+illogical-impulse by end-4. Upstream remotes: `upstream` -> vaguesyntax/ii-vynx.
 
 Hyprland dotfiles based on illogical-impulse, built with Quickshell (QtQuick/QML).
 
 ## Commands
 
 - **Run settings app:** `qs -c ii settings.qml` (separate QApplication)
-- **Setup/update:** `./setup-ii-vynx.sh` or `vynx update` (CLI)
+- **Setup/update:** `./setup-ii-ren.sh` or `iiren update` (CLI)
+- **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell, no prompts)
+- **Snapshot live settings into the repo:** `iiren save`
 - **Legacy setup router:** `./setup <subcommand>` (install, uninstall, exp-update, etc.)
 - **LSP setup:** `touch ~/.config/quickshell/ii/.qmlls.ini` — gitignored, create manually
 

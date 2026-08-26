@@ -9,7 +9,7 @@
 # through its Bar.* aliases.
 set -euo pipefail
 P3="${P3:?set P3 to <p3drovfx clone>/dots/.config/quickshell/ii}"
-F="${F:-/home/ren/Code/ii-vynx/dots/.config/quickshell/ii}"
+F="${F:-/home/ren/Code/ii-ren/dots/.config/quickshell/ii}"
 BAR="$P3/modules/ii/bar"
 
 # 1. The card library the popup designs compose. p3 versions are supersets;

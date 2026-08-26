@@ -10,7 +10,7 @@ NC='\033[0m' # white
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 INVOKED_AS="$(basename "$0")"
-if [[ "$INVOKED_AS" == "vynx" ]]; then
+if [[ "$INVOKED_AS" == "iiren" ]]; then
     _SOURCE="${BASH_SOURCE[0]}"
     while [ -L "$_SOURCE" ]; do
         _DIR="$(cd -P "$(dirname "$_SOURCE")" && pwd)"
@@ -33,7 +33,7 @@ if [[ "$INVOKED_AS" == "vynx" ]]; then
 
     COMMAND="$1"; shift
     case "$COMMAND" in
-        run|restart|update|remove-cli|hyprset)
+        run|restart|update|remove-cli|hyprset|save)
             if [ -f "$LIB_DIR/${COMMAND}.sh" ]; then
                 source "$LIB_DIR/${COMMAND}.sh" "$@"
                 exit $?
@@ -42,7 +42,7 @@ if [[ "$INVOKED_AS" == "vynx" ]]; then
             fi
             ;;
         "")
-            echo "Usage: vynx [-v] {run|restart|update|remove-cli|hyprset}"; exit 1 ;;
+            echo "Usage: iiren [-v] {run|restart|update|remove-cli|hyprset|save}"; exit 1 ;;
         *)
             echo -e "${RED}Invalid command: $COMMAND${NC}"; exit 1 ;;
     esac
@@ -54,6 +54,7 @@ FORCE_INSTALL=false
 BACKUP=true
 FULL_INSTALL=false
 NO_CONFIRM=false
+FRESH=false
 
 for arg in "$@"; do
     case $arg in
@@ -76,6 +77,16 @@ for arg in "$@"; do
             NO_CONFIRM=true
             FORCE_INSTALL=true
             ;;
+        --fresh)
+            # One shot on a clean machine: dependencies, base dots, this shell
+            # and my settings, with nothing to answer. Nothing to pull either,
+            # since you only get here straight after cloning.
+            FRESH=true
+            FULL_INSTALL=true
+            NO_CONFIRM=true
+            FORCE_INSTALL=true
+            DO_PULL=false
+            ;;
         *)
             echo -e "${RED}Unknown flag: $arg${NC}"
             echo "Usage: $0 [OPTIONS]"
@@ -84,7 +95,8 @@ for arg in "$@"; do
             echo "  --no-pull          Skip git pull operation"
             echo "  --no-backup        Skip backup of existing config"
             echo "  --force-install    Skip illogical-impulse check"
-            echo "  --full-install     Install original dots first, then ii-vynx"
+            echo "  --full-install     Install original dots first, then ii-ren"
+            echo "  --fresh            Clean machine: deps + base dots + shell + my settings, no prompts"
             echo "  --no-confirm       Skip all confirmations and checks"
             echo "  -v, --verbose      Enable verbose output"
             exit 1
@@ -132,6 +144,19 @@ setup_hyprland_overrides() {
 
 
 install_original_dots() {
+    if [ "$FRESH" = true ]; then
+        echo -e "${BLUE}• Installing dependencies and base dots (non-interactive)...${NC}"
+        # -f answers every prompt, --skip-allgreeting drops the intro question,
+        # --ignore-outdate stops the stale-dist check from aborting under -f.
+        # Backups still happen: with ask=false the installer takes them itself.
+        if ! bash "$SCRIPT_DIR/setup" install -f --skip-allgreeting --ignore-outdate; then
+            echo -e "${RED}✗ Base install failed. Fix the error above and re-run.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Base dots installed${NC}"
+        return 0
+    fi
+
     echo -e "${RED}Original dots are not installed! Do you want to install them? (y/n): ${NC}"
     read -r setup_response
     
@@ -166,7 +191,7 @@ ${NC}"
     if [ $? -eq 0 ]; then
         echo ""
         echo -e "${GREEN}✓ Setup completed successfully!${NC}"
-        echo -e "${BLUE}Continuing with ii-vynx installation...${NC}"
+        echo -e "${BLUE}Continuing with ii-ren installation...${NC}"
         echo ""
     else
         echo -e "${RED}✗ Setup failed! Try installing the dots manually.${NC}"
@@ -174,12 +199,28 @@ ${NC}"
     fi
 }
 
+install_personal_config() {
+    local SRC="$SCRIPT_DIR/dots/.config/illogical-impulse/config.json"
+    local DEST="$HOME/.config/illogical-impulse/config.json"
+
+    [ -f "$SRC" ] || return 0
+    if [ -f "$DEST" ]; then
+        echo -e "${BLUE}• Keeping the existing shell settings ($DEST)${NC}"
+        echo -e "${BLUE}  Run 'iiren save' to copy them back into the repo instead.${NC}"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$DEST")"
+    cp "$SRC" "$DEST"
+    echo -e "${GREEN}✓ Installed shell settings: $DEST${NC}"
+}
+
 install_cli() {
     local BIN_PATH="$HOME/.local/bin"
-    local CLI_NAME="vynx"
+    local CLI_NAME="iiren"
     local TARGET="$BIN_PATH/$CLI_NAME"
 
-    echo -e "${BLUE}• Installing Vynx CLI tool (user mode)...${NC}"
+    echo -e "${BLUE}• Installing ii-ren CLI tool (user mode)...${NC}"
 
     if [ ! -d "$BIN_PATH" ]; then
         mkdir -p "$BIN_PATH"
@@ -203,25 +244,25 @@ install_cli() {
         echo ""
     fi
 
-    chmod +x "$SCRIPT_DIR/setup-ii-vynx.sh"
+    chmod +x "$SCRIPT_DIR/setup-ii-ren.sh"
     if [ -d "$SCRIPT_DIR/sdata/cli/lib" ]; then
         chmod +x "$SCRIPT_DIR/sdata/cli/lib/"*.sh "$SCRIPT_DIR/sdata/cli/lib/"*.lua 2>/dev/null || true
     fi
 
-    ln -sf "$SCRIPT_DIR/setup-ii-vynx.sh" "$TARGET"
+    ln -sf "$SCRIPT_DIR/setup-ii-ren.sh" "$TARGET"
 
     echo -e "${GREEN}✓ Symlinked $CLI_NAME → $TARGET${NC}"
 }
 
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${CYAN}          ii-vynx setup     ${NC}"
+echo -e "${CYAN}           ii-ren setup     ${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 if [ "$NO_CONFIRM" = false ]; then
-    echo -e "${NC}Welcome to the ii-vynx setup script!${NC}"
-    echo -e "${NC}This script will install ii-vynx on your system.${NC}"
+    echo -e "${NC}Welcome to the ii-ren setup script!${NC}"
+    echo -e "${NC}This script will install ii-ren on your system.${NC}"
     echo ""
 fi
 
@@ -348,14 +389,14 @@ else
     echo -e "${RED}Skipping the backup process...${NC}"
 fi
 
-if command -v vynx &> /dev/null; then
+if command -v iiren &> /dev/null; then
     install_cli
 else
     if [ "$NO_CONFIRM" = true ]; then
         install_cli
     else
         echo ""
-        echo -e "${BLUE}• Vynx CLI is not installed or not in your PATH. CLI is required for some features yet still optional. ${NC}"
+        echo -e "${BLUE}• ii-ren CLI is not installed or not in your PATH. CLI is required for some features yet still optional. ${NC}"
         echo -e "${BLUE}• Do you want to install it? (y/n): ${NC}"
         read -r cli_response
         if [[ "$cli_response" =~ ^[Yy]$ ]]; then
@@ -374,6 +415,7 @@ cp -r "$SOURCE_DIR/." "$TARGET_DIR/"
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Successfully copied: $TARGET_DIR${NC}"
     sleep 1.0
+    install_personal_config
     setup_hyprland_overrides
 else
     echo -e "${RED}✗ An error occurred while copying!${NC}"
@@ -405,8 +447,9 @@ if [ $? -eq 0 ]; then
     echo -e "${BLUE}Press SUPER+CTRL+R if your shell does not starts.${NC}"
     echo ""
     log_verbose "Script completed successfully"
-    echo -e "${BLUE}Please star this project on GitHub: ${NC}https://github.com/vaguesyntax/ii-vynx"
-    echo -e "${BLUE}And report any issues: ${NC}https://github.com/vaguesyntax/ii-vynx/issues"
+    echo -e "${BLUE}ii-ren: ${NC}https://github.com/kagiyanagi/ii-ren"
+    echo -e "${BLUE}Report issues: ${NC}https://github.com/kagiyanagi/ii-ren/issues"
+    echo -e "${BLUE}Built on ii-vynx by vaguesyntax - please star it: ${NC}https://github.com/vaguesyntax/ii-vynx"
     echo ""
 else
     echo -e "${RED}✗ An error occurred while starting Quickshell!${NC}"

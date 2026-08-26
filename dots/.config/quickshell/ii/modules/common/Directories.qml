@@ -20,7 +20,7 @@ Singleton {
     readonly property string music: StandardPaths.standardLocations(StandardPaths.MusicLocation)[0]
     readonly property string videos: StandardPaths.standardLocations(StandardPaths.MoviesLocation)[0]
 
-    readonly property string cliPath: FileUtils.trimFileProtocol(`${Directories.home}/.local/bin/vynx`)
+    readonly property string cliPath: FileUtils.trimFileProtocol(`${Directories.home}/.local/bin/iiren`)
 
     // Config paths
 

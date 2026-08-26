@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Vendors the ii-p3drovfx desktop widget library into the ii-vynx fork.
+# Vendors the ii-p3drovfx desktop widget library into this fork.
 # Re-runnable: point P3 at a fresh p3drovfx clone when re-syncing.
 set -euo pipefail
 P3="${P3:?set P3 to <p3drovfx clone>/dots/.config/quickshell/ii}"
-F="${F:-/home/ren/Code/ii-vynx/dots/.config/quickshell/ii}"
+F="${F:-/home/ren/Code/ii-ren/dots/.config/quickshell/ii}"
 
 # 1. widgetCanvas: p3 versions are supersets of the fork ones
 #    (grid overlay, snap guide lines, animDuration). Straight replacement.

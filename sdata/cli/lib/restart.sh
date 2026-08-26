@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Command: vynx restart
+# Command: iiren restart
 echo -e "${BLUE}Killing Quickshell & Reloading Hyprland...${NC}"
 
 pkill -x qs

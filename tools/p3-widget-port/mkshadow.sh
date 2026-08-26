@@ -3,7 +3,7 @@
 # Quickshell auto-registers directory modules and injects a synthetic `qs`; qmllint
 # does neither, so it needs this.
 set -euo pipefail
-SRC="${1:-/home/ren/Code/ii-vynx/dots/.config/quickshell/ii}"
+SRC="${1:-/home/ren/Code/ii-ren/dots/.config/quickshell/ii}"
 OUT="${2:?usage: mkshadow.sh <shell-dir> <shadow-dir>}"
 rm -rf "$OUT"; mkdir -p "$OUT"
 cd "$SRC"

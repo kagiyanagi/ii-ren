@@ -102,7 +102,7 @@ ContentPage {
                 buttonIcon: "info"
                 baseHeight: 44
                 extraWidth: 26
-                onClicked: Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/blob/main/.github/EXTENSIONS.md")
+                onClicked: Qt.openUrlExternally("https://github.com/kagiyanagi/ii-ren/blob/main/.github/EXTENSIONS.md")
                 StyledToolTip { text: Translation.tr("Developer documentation to develop extensions") }
             }
 

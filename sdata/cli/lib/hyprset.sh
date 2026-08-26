@@ -13,7 +13,7 @@ case "$MODE" in
     set|set-animation|reset)
            exec lua "$SCRIPT_DIR/hyprset.lua" "$@" ;;
     *)
-        echo "Usage: vynx hyprset <key|anim|reset|merge> [...]"
+        echo "Usage: iiren hyprset <key|anim|reset|merge> [...]"
         echo "  key   <section:field> <value>   Set a hyprland option"
         echo "  anim  <name> <style>            Set animation style"
         echo "  reset <key>                     Remove an override"
