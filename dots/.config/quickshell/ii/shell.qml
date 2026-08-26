@@ -31,6 +31,7 @@ ShellRoot {
         ConflictKiller.load()
         Cliphist.refresh()
         Wallpapers.load()
+        Autostart.load()
         Updates.load()
     }
 

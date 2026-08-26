@@ -1291,6 +1291,12 @@ Singleton {
 
             property JsonObject hyprland: JsonObject {
                 property string defaultHyprlandLayout: "dwindle" // Options: dwindle, monocle, master // It's best to not use scrolling
+                // Apps launched once per login. Each entry is
+                // { cmd: string, workspace: int, delay: int (seconds) }.
+                property JsonObject autostartApps: JsonObject {
+                    property bool enable: false
+                    property list<var> apps: []
+                }
             }
 
             property JsonObject interactions: JsonObject {
