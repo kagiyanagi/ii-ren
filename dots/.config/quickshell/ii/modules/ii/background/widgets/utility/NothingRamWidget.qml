@@ -12,10 +12,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "resource_nothing_ram"
 
-    visibleWhenLocked: root.lockBehavior === "keep"
-                    || root.lockBehavior === "center"
-                    || root.lockBehavior === "lockOnly"
-
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

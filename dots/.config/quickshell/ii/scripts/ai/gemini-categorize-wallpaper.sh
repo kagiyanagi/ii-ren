@@ -21,12 +21,7 @@ magick "$SOURCE_IMG_PATH" -resize 200x -quality 50 "$RESIZED_IMG_PATH"
 API_KEY=$(secret-tool lookup 'application' 'illogical-impulse' | jq -r '.apiKeys.gemini')
 
 # Encode image to base64
-if [[ "$(base64 --version 2>&1)" = *"FreeBSD"* ]]; then
-    B64FLAGS="--input"
-else
-    B64FLAGS="-w0"
-fi
-B64DATA="$(base64 $B64FLAGS $RESIZED_IMG_PATH)"
+B64DATA="$(base64 -w0 $RESIZED_IMG_PATH)"
 # echo $B64DATA
 
 # Prepare request data

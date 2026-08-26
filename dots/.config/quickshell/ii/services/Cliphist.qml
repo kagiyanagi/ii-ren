@@ -13,8 +13,6 @@ Singleton {
     property string cliphistBinary: "cliphist"
     property real pasteDelay: 0.05
     property string pressPasteCommand: "ydotool key -d 1 29:1 47:1 47:0 29:0"
-    property bool sloppySearch: Config.options?.search.sloppy ?? false
-    property real scoreThreshold: 0.2
     property list<string> entries: []
     readonly property var preparedEntries: entries.map(a => ({
         name: Fuzzy.prepare(`${a.replace(/^\s*\S+\s+/, "")}`),
@@ -24,22 +22,7 @@ Singleton {
         if (search.trim() === "") {
             return entries;
         }
-        if (root.sloppySearch) {
-            const results = entries.slice(0, 100).map(str => ({
-                entry: str,
-                score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
-            })).filter(item => item.score > root.scoreThreshold)
-                .sort((a, b) => b.score - a.score)
-            return results
-                .map(item => item.entry)
-        }
-
-        return Fuzzy.go(search, preparedEntries, {
-            all: true,
-            key: "name"
-        }).map(r => {
-            return r.obj.entry
-        });
+        return Fuzzy.queryEntries(search, preparedEntries);
     }
 
     function entryIsImage(entry) {

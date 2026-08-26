@@ -1,11 +1,8 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import qs
-import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import Quickshell
 
 StyledFlickable {
     id: root
@@ -52,9 +49,7 @@ StyledFlickable {
         spacing: 0
 
         Repeater {
-            model: ScriptModel { // TODO: use proper custom object model to insert new char at the correct pos
-                values: Array(root.length)
-            }
+            model: root.length
 
             delegate: Rectangle {
                 id: charItem
@@ -64,63 +59,13 @@ StyledFlickable {
                 property bool selected: index >= root.selectionStart && index < root.selectionEnd
 
                 color: ColorUtils.transparentize(root.selectionColor, selected ? 0 : 1)
-                
-                MaterialShape {
-                    id: materialShape
+
+                Rectangle {
                     anchors.centerIn: parent
-                    property list<var> charShapes: [
-                        MaterialShape.Shape.Clover4Leaf,
-                        MaterialShape.Shape.Arrow,
-                        MaterialShape.Shape.Pill,
-                        MaterialShape.Shape.SoftBurst,
-                        MaterialShape.Shape.Diamond,
-                        MaterialShape.Shape.ClamShell,
-                        MaterialShape.Shape.Pentagon,
-                    ]
-                    shape: charShapes[charItem.index % charShapes.length]
-                    // Animate on appearance
-                    color: charItem.selected ? root.selectedTextColor : root.color
-                    implicitSize: 0
-                    opacity: 0
-                    scale: 0.5
-                    Component.onCompleted: {
-                        appearAnim.start();
-                    }
-                    ParallelAnimation {
-                        id: appearAnim
-                        NumberAnimation {
-                            target: materialShape
-                            properties: "opacity"
-                            to: 1
-                            duration: 50
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                        NumberAnimation {
-                            target: materialShape
-                            properties: "scale"
-                            to: 1
-                            duration: 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-                        }
-                        NumberAnimation {
-                            target: materialShape
-                            properties: "implicitSize"
-                            to: 18
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-                        }
-                        ColorAnimation {
-                            target: materialShape
-                            properties: "color"
-                            from: Appearance.colors.colPrimary
-                            to: Appearance.colors.colOnLayer1
-                            duration: 1000
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
+                    implicitWidth: 10
+                    implicitHeight: 10
+                    radius: width / 2
+                    color: charItem.selected ? root.selectedTextColor : Appearance.colors.colOnLayer1
                 }
             }
         }

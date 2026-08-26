@@ -30,34 +30,16 @@ Singleton {
     property real timeToEmpty: UPower.displayDevice.timeToEmpty
     property real timeToFull: UPower.displayDevice.timeToFull
 
+    readonly property var laptopBattery: UPower.devices.values.find(dev => dev.isLaptopBattery) ?? null
+
     property real health: (function() {
-        const devList = UPower.devices.values;
-        for (let i = 0; i < devList.length; ++i) {
-            const dev = devList[i];
-            if (dev.isLaptopBattery && dev.healthSupported) {
-                const health = dev.healthPercentage;
-                if (health === 0) {
-                    return 0.01;
-                } else if (health < 1) {
-                    return health * 100;
-                } else {
-                    return health;
-                }
-            }
-        }
-        return 0;
+        if (!root.laptopBattery?.healthSupported) return 0;
+        const health = root.laptopBattery.healthPercentage;
+        if (health === 0) return 0.01;
+        return health < 1 ? health * 100 : health;
     })()
 
-    property string batteryNativePath: {
-        const devList = UPower.devices.values;
-        for (let i = 0; i < devList.length; ++i) {
-            const dev = devList[i];
-            if (dev.isLaptopBattery) {
-                return dev.nativePath;
-            }
-        }
-        return "";
-    }
+    property string batteryNativePath: root.laptopBattery?.nativePath ?? ""
 
     property int cycles: -1
 

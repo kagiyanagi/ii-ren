@@ -16,8 +16,10 @@ MouseArea {
     property int columns: 4
     property real previewCellAspectRatio: 4 / 3
     property bool useDarkMode: Appearance.m3colors.darkmode
-    property bool favMode: false
-    property bool browserMode: false
+    // Single source of truth; the two bools below are the read-only views of it.
+    property string viewMode: "folder" // "folder" | "favourites" | "browser"
+    readonly property bool favMode: viewMode === "favourites"
+    readonly property bool browserMode: viewMode === "browser"
 
     property var moreOptionsModelData: null
     property string filterText: extraOptions.text
@@ -57,9 +59,7 @@ MouseArea {
     Connections {
         target: Wallpapers
         function onDirectoryChanged() {
-            // we need a better way instead of these 'mode' properties
-            wallpaperSelectorContent.favMode = false;
-            wallpaperSelectorContent.browserMode = false;
+            wallpaperSelectorContent.viewMode = "folder";
             wallpaperSelectorContent.updateThumbnails()
         }
     }
@@ -197,7 +197,7 @@ MouseArea {
         if (filePath && filePath.length > 0) {
             Wallpapers.select(filePath, wallpaperSelectorContent.useDarkMode);
             filterText = "";
-            wallpaperSelectorContent.browserMode = false;
+            wallpaperSelectorContent.viewMode = "folder";
         }
     }
 
@@ -213,8 +213,7 @@ MouseArea {
     function searchForSimilarImages(id) {
         ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").clearResponses();
         ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").moreLikeThisPicture(id, 1);
-        wallpaperSelectorContent.browserMode = true;
-        wallpaperSelectorContent.favMode = false;
+        wallpaperSelectorContent.viewMode = "browser";
         filterText = "";
     }
 
@@ -232,9 +231,9 @@ MouseArea {
     acceptedButtons: Qt.BackButton | Qt.ForwardButton
     onPressed: event => {
         if (event.button === Qt.BackButton) {
-            Wallpapers.navigateBack();
+            Wallpapers.folderModel.navigateBack();
         } else if (event.button === Qt.ForwardButton) {
-            Wallpapers.navigateForward();
+            Wallpapers.folderModel.navigateForward();
         }
     }
 
@@ -245,13 +244,13 @@ MouseArea {
         } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) { // Intercept Ctrl+V to handle "paste to go to" in pickers
             wallpaperSelectorContent.handleFilePasting(event);
         } else if (event.modifiers & Qt.AltModifier && event.key === Qt.Key_Up) {
-            Wallpapers.navigateUp();
+            Wallpapers.folderModel.navigateUp();
             event.accepted = true;
         } else if (event.modifiers & Qt.AltModifier && event.key === Qt.Key_Left) {
-            Wallpapers.navigateBack();
+            Wallpapers.folderModel.navigateBack();
             event.accepted = true;
         } else if (event.modifiers & Qt.AltModifier && event.key === Qt.Key_Right) {
-            Wallpapers.navigateForward();
+            Wallpapers.folderModel.navigateForward();
             event.accepted = true;
         } else if (event.key === Qt.Key_Left) {
             grid.moveSelection(-1);
@@ -307,8 +306,6 @@ MouseArea {
         border.color: Appearance.colors.colLayer0Border
         color: Appearance.colors.colLayer0
         radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
-
-        property int calculatedRows: Math.ceil(grid.count / grid.columns)
 
         implicitWidth: gridColumnLayout.implicitWidth
         implicitHeight: gridColumnLayout.implicitHeight
@@ -372,7 +369,7 @@ MouseArea {
                                         let isToggled = false;
                                         if (item.path === "FAVOURITES_MODE") isToggled = wallpaperSelectorContent.favMode;
                                         else if (item.path === "BROWSER_MODE") isToggled = wallpaperSelectorContent.browserMode;
-                                        else isToggled = !wallpaperSelectorContent.favMode && !wallpaperSelectorContent.browserMode && Wallpapers.directory === Qt.resolvedUrl(item.path);
+                                        else isToggled = wallpaperSelectorContent.viewMode === "folder" && Wallpapers.directory === Qt.resolvedUrl(item.path);
                                         
                                         if (isToggled) return i;
                                     }
@@ -410,15 +407,12 @@ MouseArea {
                                         
                                         onClicked: {
                                             if (quickDirButton.modelData.path === "FAVOURITES_MODE") {
-                                                wallpaperSelectorContent.favMode = true;
-                                                wallpaperSelectorContent.browserMode = false;
+                                                wallpaperSelectorContent.viewMode = "favourites";
                                                 wallpaperSelectorContent.refreshFavourites();
                                             } else if (quickDirButton.modelData.path === "BROWSER_MODE") {
-                                                wallpaperSelectorContent.favMode = false;
-                                                wallpaperSelectorContent.browserMode = true;
+                                                wallpaperSelectorContent.viewMode = "browser";
                                             } else {
-                                                wallpaperSelectorContent.favMode = false;
-                                                wallpaperSelectorContent.browserMode = false;
+                                                wallpaperSelectorContent.viewMode = "folder";
                                                 Wallpapers.setDirectory(quickDirButton.modelData.path)
                                             }
                                             wallpaperSelectorContent.moreOptionsModelData = null
@@ -443,7 +437,7 @@ MouseArea {
                     Layout.fillWidth: true
                     Layout.fillHeight: false
                     directory: Wallpapers.effectiveDirectory
-                    visible: !wallpaperSelectorContent.favMode && !wallpaperSelectorContent.browserMode
+                    visible: wallpaperSelectorContent.viewMode === "folder"
                     onNavigateToDirectory: path => {
                         Wallpapers.setDirectory(path.length == 0 ? "/" : path);
                     }
@@ -451,7 +445,7 @@ MouseArea {
                 }
 
                 Rectangle {
-                    visible: wallpaperSelectorContent.favMode || wallpaperSelectorContent.browserMode
+                    visible: wallpaperSelectorContent.viewMode !== "folder"
                     Layout.margins: 4
                     Layout.fillWidth: true
                     implicitHeight: addressBar.implicitHeight
@@ -542,7 +536,6 @@ MouseArea {
                         visible: count > 0
 
                         readonly property int columns: wallpaperSelectorContent.columns
-                        readonly property int rows: Math.max(1, Math.ceil(count / columns))
                         property int currentIndex: 0
 
                         anchors.fill: parent
@@ -603,9 +596,6 @@ MouseArea {
                                 wallpaperSelectorContent.selectWallpaperPath(fileModelData.actualPath || fileModelData.filePath);
                             }
 
-                            onSearchSimilarRequested: (path, id) => {
-                                wallpaperSelectorContent.searchForSimilarImages(id)
-                            }
                             onMoreOptionsRequested: (modelData) => {
                                 //console.log("[Wallpaper Selector] More options requested:")
                                 wallpaperSelectorContent.moreOptionsModelData = modelData

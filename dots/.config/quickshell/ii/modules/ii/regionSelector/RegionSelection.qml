@@ -239,29 +239,6 @@ PanelWindow {
         }
     }
 
-    function getScreenshotAction() {
-        switch(root.action) {
-            case RegionSelection.SnipAction.Copy:
-                return ScreenshotAction.Action.Copy;
-            case RegionSelection.SnipAction.Edit:
-                return ScreenshotAction.Action.Edit;
-            case RegionSelection.SnipAction.Search:
-                return ScreenshotAction.Action.Search;
-            case RegionSelection.SnipAction.CharRecognition:
-                return ScreenshotAction.Action.CharRecognition;
-            case RegionSelection.SnipAction.Record:
-                return ScreenshotAction.Action.Record;
-            case RegionSelection.SnipAction.RecordWithSound:
-                return ScreenshotAction.Action.RecordWithSound;
-            case RegionSelection.SnipAction.AskAI:
-                return ScreenshotAction.Action.AskAI;
-            default:
-                console.warn("[Region Selector] Unknown snip action, skipping snip.");
-                root.dismiss();
-                return;
-        }
-    }
-
     // Execution after selection
     function snip() {
         // Validity check
@@ -286,7 +263,7 @@ PanelWindow {
         
         const screenshotDir = Config.options.screenSnip.savePath !== "" ? //
             Config.options.screenSnip.savePath : "";
-        var screenshotAction = root.getScreenshotAction();
+        var screenshotAction = root.action; // SnipAction and ScreenshotAction.Action share the same order
         // Preview only in clipboard-only mode: with a save path set the crop is
         // already on disk under a name of the user's choosing, and a popup
         // offering to save it again would just make a second copy.

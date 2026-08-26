@@ -12,16 +12,10 @@ Options:
 }
 # `man getopt` to see more
 para=$(getopt \
-  -o c \
+  -o h \
   -l help \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 #####################################################################################
-eval set -- "$para"
-while true ; do
-  case "$1" in
-    -h|--help) showhelp;exit;;
-    --) shift;break ;;
-    *) echo -e "$0: Wrong parameters.";exit 1;;
-  esac
-done
+# -h/--help is the only option, and it is honoured regardless of position.
+showhelp_if_asked "$para"

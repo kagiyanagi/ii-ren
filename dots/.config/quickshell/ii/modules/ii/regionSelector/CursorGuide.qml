@@ -8,35 +8,25 @@ Item {
     property var action
     property var selectionMode
 
-    property int duration: 1000
-
-    property string description: switch (root.action) {
-    case RegionSelection.SnipAction.Copy:
-    case RegionSelection.SnipAction.Edit:
-        return Translation.tr("Copy region (LMB) or annotate (RMB)");
-    case RegionSelection.SnipAction.Search:
-        root.duration = 1500;
-        return Translation.tr("Use Google Lens (LMB) or ask AI (RMB)");
-    case RegionSelection.SnipAction.CharRecognition:
-        return Translation.tr("Recognize text");
-    case RegionSelection.SnipAction.Record:
-    case RegionSelection.SnipAction.RecordWithSound:
-        return Translation.tr("Record region");
+    readonly property var actionInfo: {
+        switch (root.action) {
+        case RegionSelection.SnipAction.Copy:
+        case RegionSelection.SnipAction.Edit:
+            return { symbol: "content_cut", description: Translation.tr("Copy region (LMB) or annotate (RMB)"), duration: 1000 };
+        case RegionSelection.SnipAction.Search:
+            return { symbol: "image_search", description: Translation.tr("Use Google Lens (LMB) or ask AI (RMB)"), duration: 1500 };
+        case RegionSelection.SnipAction.CharRecognition:
+            return { symbol: "document_scanner", description: Translation.tr("Recognize text"), duration: 1000 };
+        case RegionSelection.SnipAction.Record:
+        case RegionSelection.SnipAction.RecordWithSound:
+            return { symbol: "videocam", description: Translation.tr("Record region"), duration: 1000 };
+        default:
+            return { symbol: "", description: "", duration: 1000 };
+        }
     }
-    property string materialSymbol: switch (root.action) {
-    case RegionSelection.SnipAction.Copy:
-    case RegionSelection.SnipAction.Edit:
-        return "content_cut";
-    case RegionSelection.SnipAction.Search:
-        return "image_search";
-    case RegionSelection.SnipAction.CharRecognition:
-        return "document_scanner";
-    case RegionSelection.SnipAction.Record:
-    case RegionSelection.SnipAction.RecordWithSound:
-        return "videocam";
-    default:
-        return "";
-    }
+    property int duration: root.actionInfo.duration
+    property string description: root.actionInfo.description
+    property string materialSymbol: root.actionInfo.symbol
 
     property bool showDescription: true
     function hideDescription() {

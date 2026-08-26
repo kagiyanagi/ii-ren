@@ -16,9 +16,11 @@ Item {
     property bool barVertical: Config.options.bar.vertical
     property bool barBottom: Config.options.bar.bottom
 
-    component HorizontalFrame: PanelWindow {
-        id: cornerPanelWindow
+    // A frame strip pinned to one screen edge, stretched along the other axis.
+    component EdgeFrame: PanelWindow {
+        required property string edge // "top" | "bottom" | "left" | "right"
         property bool showBackground: true
+        readonly property bool horizontal: edge === "top" || edge === "bottom"
 
         color: showBackground ? Appearance.colors.colLayer0 : "transparent"
         implicitWidth: frameThickness;implicitHeight: frameThickness
@@ -28,25 +30,10 @@ Item {
         }
 
         anchors {
-            left: true
-            right: true
-        }
-    }
-
-    component VerticalFrame: PanelWindow {
-        id: cornerPanelWindow
-        property bool showBackground: true
-
-        color: showBackground ? Appearance.colors.colLayer0 : "transparent"
-        implicitWidth: frameThickness;implicitHeight: frameThickness
-
-        Behavior on color {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-        }
-
-        anchors {
-            bottom: true
-            top: true
+            left: horizontal || edge === "left"
+            right: horizontal || edge === "right"
+            top: !horizontal || edge === "top"
+            bottom: !horizontal || edge === "bottom"
         }
     }
 
@@ -154,33 +141,33 @@ Item {
 
                 Loader {
                     active: !(!barVertical && barBottom)
-                    sourceComponent: HorizontalFrame {
+                    sourceComponent: EdgeFrame {
+                        edge: "bottom"
                         screen: monitorScope.modelData
-                        anchors.bottom: true
                         showBackground: monitorScope.showBarBackground
                     }
                 }
                 Loader {
                     active: !(!barVertical && !barBottom)
-                    sourceComponent: HorizontalFrame {
+                    sourceComponent: EdgeFrame {
+                        edge: "top"
                         screen: monitorScope.modelData
-                        anchors.top: true
                         showBackground: showBarBackground
                     }
                 }
                 Loader {
                     active: !(barVertical && barBottom)
-                    sourceComponent: VerticalFrame {
+                    sourceComponent: EdgeFrame {
+                        edge: "right"
                         screen: monitorScope.modelData
-                        anchors.right: true
                         showBackground: showBarBackground
                     }
                 }
                 Loader {
                     active: !(barVertical && !barBottom)
-                    sourceComponent: VerticalFrame {
+                    sourceComponent: EdgeFrame {
+                        edge: "left"
                         screen: monitorScope.modelData
-                        anchors.left: true
                         showBackground: showBarBackground
                     }
                 }

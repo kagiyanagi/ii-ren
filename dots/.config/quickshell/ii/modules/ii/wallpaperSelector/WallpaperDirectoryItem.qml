@@ -20,7 +20,6 @@ MouseArea {
     }
     property bool isApi: fileModelData.isApi || false
     property bool useThumbnail: (Images.isValidImageByName(fileModelData.fileName) || root.isVideo) && !root.isApi
-    property bool showLoadingIndicator: false
 
     property alias colBackground: background.color
     property alias colText: wallpaperItemName.color
@@ -31,7 +30,6 @@ MouseArea {
     padding: Appearance.sizes.wallpaperSelectorItemPadding
 
     signal activated
-    signal searchSimilarRequested(string filePath, string wallhavenId)
     signal moreOptionsRequested(var modelData)
 
     hoverEnabled: true
@@ -44,14 +42,6 @@ MouseArea {
         }
     }
     
-
-    function getWallhavenId(url) {
-        const urlStr = url.toString();
-        const fileName = urlStr.split('/').pop();
-        const fileNameWithoutExt = fileName.split('.')[0];
-        const match = fileNameWithoutExt.match(/^wallhaven-([a-zA-Z0-9]{6})$/i);
-        return match ? match[1] : null;
-    }
 
     Rectangle {
         id: background
@@ -146,13 +136,24 @@ MouseArea {
                     anchors.margins: 8
 
                     asynchronous: true
-                    sourceComponent: WallpaperActionButton {
-                        id: button
-                        buttonIcon: "more_vert"
-                        buttonFill: 1
+                    sourceComponent: RippleButton {
+                        implicitWidth: 30
+                        implicitHeight: 30
+
+                        colBackground: root.containsMouse ? Appearance.colors.colSecondaryContainerHover : "transparent"
+                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                        colRipple: Appearance.colors.colSecondaryContainerActive
 
                         onClicked: {
                             root.moreOptionsRequested(fileModelData);
+                        }
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            text: "more_vert"
+                            fill: 1
+                            color: Appearance.colors.colPrimary
+                            font.pixelSize: Appearance.font.pixelSize.large
                         }
                     }
                 }
@@ -204,31 +205,5 @@ MouseArea {
                 text: fileModelData.fileName
             }
         }
-    }
-
-    component WallpaperActionButton: RippleButton {
-        id: button
-
-        property alias buttonIcon: materialSymbol.text
-        property alias buttonFill: materialSymbol.fill
-
-        implicitWidth: 30
-        implicitHeight: 30
-
-        colBackground: root.containsMouse ? Appearance.colors.colSecondaryContainerHover : "transparent"
-        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-        colRipple: Appearance.colors.colSecondaryContainerActive
-
-        MaterialSymbol {
-            id: materialSymbol
-
-            text: button.buttonIcon
-            fill: button.buttonFill
-
-            anchors.centerIn: parent
-            color: Appearance.colors.colPrimary
-            font.pixelSize: Appearance.font.pixelSize.large
-        }
-
     }
 }

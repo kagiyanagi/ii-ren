@@ -24,7 +24,6 @@ cp "$BAR/popups/clock/ClockWidgetPopup.qml"               "$F/modules/ii/bar/Clo
 cp "$BAR/popups/media/MediaPopup.qml"                     "$F/modules/ii/bar/MediaPopup.qml"
 cp "$BAR/popups/resources/ExpressiveResourcesPopup.qml"   "$F/modules/ii/bar/ResourcesPopup.qml"
 cp "$BAR/popups/weather/WeatherPopup.qml"                 "$F/modules/ii/bar/weather/WeatherPopup.qml"
-cp "$BAR/popups/weather/WeatherPopupCompact.qml"          "$F/modules/ii/bar/weather/WeatherPopupCompact.qml"
 
 # 3. The Docker section of the resources popup, and the two services these
 #    designs read. Both services are self-contained; DockerService just shells

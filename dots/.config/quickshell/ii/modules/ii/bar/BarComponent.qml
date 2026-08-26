@@ -166,5 +166,5 @@ Item {
     
     Component { id: dashboardPanelButton; DashboardPanelButton {} }
     Component { id: networkSpeedComp; NetworkSpeed { vertical: rootItem.vertical } }
-    Component { id: dashboardPanelButtonVert; VerticalDashboardPanelButton {} }
+    Component { id: dashboardPanelButtonVert; DashboardPanelButton { vertical: true } }
 }

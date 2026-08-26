@@ -52,8 +52,6 @@ Tips:
   - Used in Hyprland and Quickshell config.
 - `rsync`
   - Used in install script.
-- `go-yq`
-  - Used in install script.
 
 ## illogical-impulse-fonts-themes
 - `adw-gtk-theme-git`

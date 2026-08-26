@@ -124,16 +124,6 @@ Singleton {
     function setDirectory(path) {
         validateDirProc.setDirectoryIfValid(path)
     }
-    function navigateUp() {
-        folderModel.navigateUp()
-    }
-    function navigateBack() {
-        folderModel.navigateBack()
-    }
-    function navigateForward() {
-        folderModel.navigateForward()
-    }
-
     // Folder model
     FolderListModelWithHistory {
         id: folderModel

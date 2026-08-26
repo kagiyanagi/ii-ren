@@ -25,9 +25,6 @@ Item {
     readonly property real fixedLength: fixedSlots * slotSize
 
     readonly property real artSize: Math.round(buttonSize * 0.9)
-    readonly property real artInner: artSize
-
-    readonly property real controlSize: Math.round(buttonSize * 0.68)
 
     readonly property int textSizeL: Math.round(buttonSize * (isVertical ? 0.24 : 0.26))
     readonly property int textSizeS: Math.round(buttonSize * (isVertical ? 0.20 : 0.22))
@@ -74,8 +71,8 @@ Item {
         Rectangle {
             id: artRect
             anchors.centerIn: parent
-            width: root.artInner
-            height: root.artInner
+            width: root.artSize
+            height: root.artSize
             radius: Appearance.rounding.small
             color: Appearance.colors.colPrimaryContainer
 
@@ -104,7 +101,7 @@ Item {
             anchors.centerIn: artRect
             visible: artImg.status !== Image.Ready
             text: "music_note"
-            iconSize: root.artInner * 0.48
+            iconSize: root.artSize * 0.48
             color: Appearance.colors.colPrimary
         }
     }

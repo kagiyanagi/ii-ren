@@ -7,9 +7,6 @@ __pycache__/
 
 /dots/.config/quickshell/ii/.qmlls.ini
 
-# exp-update
-/.update-lock
-
 # custom os-release
 /os-release
 

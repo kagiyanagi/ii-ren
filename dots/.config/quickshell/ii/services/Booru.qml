@@ -21,6 +21,38 @@ Singleton {
     property int runningRequests: 0
     property var defaultUserAgent: Config.options?.networking?.userAgent || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
     property var providerList: Object.keys(providers).filter(provider => provider !== "system" && providers[provider].api)
+
+    // Moebooru-style post shape, shared by yande.re and Konachan
+    function standardMapFunc(response) {
+        return response.map(item => {
+            return {
+                "id": item.id,
+                "width": item.width,
+                "height": item.height,
+                "aspect_ratio": item.width / item.height,
+                "tags": item.tags,
+                "rating": item.rating,
+                "is_nsfw": (item.rating != 's'),
+                "md5": item.md5,
+                "preview_url": item.preview_url,
+                "sample_url": item.sample_url ?? item.file_url,
+                "file_url": item.file_url,
+                "file_ext": item.file_ext,
+                "source": getWorkingImageSource(item.source) ?? item.file_url,
+            }
+        })
+    }
+
+    // Danbooru names this field post_count, so it keeps its own mapper
+    function standardTagMapFunc(response) {
+        return response.map(item => {
+            return {
+                "name": item.name,
+                "count": item.count
+            }
+        })
+    }
+
     property var providers: {
         "system": { "name": Translation.tr("System") },
         "yandere": {
@@ -28,68 +60,18 @@ Singleton {
             "url": "https://yande.re",
             "api": "https://yande.re/post.json",
             "description": Translation.tr("All-rounder | Good quality, decent quantity"),
-            "mapFunc": (response) => {
-                return response.map(item => {
-                    return {
-                        "id": item.id,
-                        "width": item.width,
-                        "height": item.height,
-                        "aspect_ratio": item.width / item.height,
-                        "tags": item.tags,
-                        "rating": item.rating,
-                        "is_nsfw": (item.rating != 's'),
-                        "md5": item.md5,
-                        "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
-                        "file_url": item.file_url,
-                        "file_ext": item.file_ext,
-                        "source": getWorkingImageSource(item.source) ?? item.file_url,
-                    }
-                })
-            },
+            "mapFunc": root.standardMapFunc,
             "tagSearchTemplate": "https://yande.re/tag.json?order=count&limit=10&name={{query}}*",
-            "tagMapFunc": (response) => {
-                return response.map(item => {
-                    return {
-                        "name": item.name,
-                        "count": item.count
-                    }
-                })
-            }
+            "tagMapFunc": root.standardTagMapFunc
         },
         "konachan": {
             "name": "Konachan",
             "url": "https://konachan.net",
             "api": "https://konachan.net/post.json",
             "description": Translation.tr("For desktop wallpapers | Good quality"),
-            "mapFunc": (response) => {
-                return response.map(item => {
-                    return {
-                        "id": item.id,
-                        "width": item.width,
-                        "height": item.height,
-                        "aspect_ratio": item.width / item.height,
-                        "tags": item.tags,
-                        "rating": item.rating,
-                        "is_nsfw": (item.rating != 's'),
-                        "md5": item.md5,
-                        "preview_url": item.preview_url,
-                        "sample_url": item.sample_url ?? item.file_url,
-                        "file_url": item.file_url,
-                        "file_ext": item.file_ext,
-                        "source": getWorkingImageSource(item.source) ?? item.file_url,
-                    }
-                })
-            },
+            "mapFunc": root.standardMapFunc,
             "tagSearchTemplate": "https://konachan.net/tag.json?order=count&limit=10&name={{query}}*",
-            "tagMapFunc": (response) => {
-                return response.map(item => {
-                    return {
-                        "name": item.name,
-                        "count": item.count
-                    }
-                })
-            }
+            "tagMapFunc": root.standardTagMapFunc
         },
         "zerochan": {
             "name": "Zerochan",

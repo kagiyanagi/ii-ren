@@ -350,15 +350,4 @@ Item {
         return results
     }
 
-    function scoreResult(result, text) {
-        return result.score
-    }
-
-    // Debug
-    function listAllSections() {
-        console.log("=== Registered Sections ===")
-        for (let i = 0; i < sections.length; i++) {
-            console.log(i + ":", sections[i].title, "tokens:", sections[i]._tokens)
-        }
-    }
 }

@@ -21,7 +21,6 @@ Item {
     property var currentScreen: null
     property bool isPinned: false
 
-    readonly property real dockPadding: 0
     readonly property bool isVertical: dock.isVertical
     readonly property real dotMargin: (Config.options?.dock.height ?? 60) * 0.2
     readonly property real sepThickness: Math.max(3, Math.round(Appearance.sizes.dockButtonSize * 0.06))
@@ -95,7 +94,6 @@ Item {
     readonly property bool fileDragActive: dragState === "file"
 
     property alias dragGhostItem: dragGhost
-    property alias fileDragGhostItem: dragGhost
 
     property var processedPinnedApps: []
     property var processedRunningApps: []
@@ -153,8 +151,10 @@ Item {
             previewPopupLoader.item.show = false;
     }
 
+    readonly property real dragGhostCenter: isVertical ? dragGhost.y + dragGhost.height / 2 : dragGhost.x + dragGhost.width / 2
+
     function moveDrag() {
-        const center = isVertical ? dragGhost.y + dragGhost.height / 2 : dragGhost.x + dragGhost.width / 2;
+        const center = root.dragGhostCenter;
         const isPinned = TaskbarApps.isPinned(draggedAppId);
         if (center <= pinButtonCenter)
             dragIntent = isPinned ? "reorder" : "pin";
@@ -208,7 +208,7 @@ Item {
     }
 
     function moveFileDrag() {
-        const center = isVertical ? dragGhost.y + dragGhost.height / 2 : dragGhost.x + dragGhost.width / 2;
+        const center = root.dragGhostCenter;
         fileDragIntent = (center >= unpinButtonCenter) ? "unpin" : "reorder";
     }
 

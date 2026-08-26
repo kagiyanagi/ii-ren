@@ -39,16 +39,13 @@ _exec() {
 _check_distro_id() {
   OS_RELEASE_FILE=/etc/os-release
   if [[ -f "$OS_RELEASE_FILE" ]]; then
-    OS_DISTRO_ID=$(awk -F'=' '/^ID=/ { gsub(/["\x27]/,"",$2); print tolower($2) }' ${OS_RELEASE_FILE} 2> /dev/null)
-    OS_DISTRO_ID_LIKE=$(awk -F'=' '/^ID_LIKE=/ { gsub(/["\x27]/,"",$2); print tolower($2) }' ${OS_RELEASE_FILE} 2> /dev/null)
-    echo "distro ID: $OS_DISTRO_ID"
-    echo "distro ID_LIKE: $OS_DISTRO_ID_LIKE"
+    # os-release is a sourceable shell fragment by spec. Source it in a subshell
+    # so its other keys (NAME, VERSION, ...) do not leak into this one.
+    echo "distro ID: $(. "$OS_RELEASE_FILE" 2>/dev/null; echo "${ID,,}")"
+    echo "distro ID_LIKE: $(. "$OS_RELEASE_FILE" 2>/dev/null; echo "${ID_LIKE,,}")"
   else
     echo "$OS_RELEASE_FILE does not exist."
   fi
-}
-_check_distro() {
-  lsb_release -a || cat /etc/os-release || cat /etc/lsb-release
 }
 _check_venv() {
   source $(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate
@@ -71,7 +68,6 @@ x git submodule status --recursive
 e "Checking distro"
 x _check_distro_id
 x cat os-release
-#x _check_distro 
 
 e "Checking variables"
 x declare -p XDG_CACHE_HOME # ~/.cache
@@ -82,13 +78,6 @@ x declare -p ILLOGICAL_IMPULSE_VIRTUAL_ENV # $XDG_STATE_HOME/quickshell/.venv
 
 e "Checking directories/files"
 x ls -l ~/.local/state/quickshell/.venv
-
-#e "Checking command existence"
-#commands=(yay pacman zypper apt dnf yum)
-#commands+=(ags agsv1)
-#commands+=(Hyprland hypr{ctl,idle,lock,picker})
-#commands+=(uv)
-#for i in "${commands[@]}";do x command -v $i;done
 
 e "Checking versions"
 x Hyprland --version

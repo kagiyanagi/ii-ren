@@ -144,18 +144,10 @@ EOF
     mv "$RESTORE_SCRIPT.tmp" "$RESTORE_SCRIPT"
 }
 
-set_wallpaper_path() {
-    local path="$1"
-    if [ -f "$SHELL_CONFIG_FILE" ]; then
-        jq --indent 4 --arg path "$path" '.background.wallpaperPath = $path' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
-    fi
-}
-
-set_thumbnail_path() {
-    local path="$1"
-    if [ -f "$SHELL_CONFIG_FILE" ]; then
-        jq --indent 4 --arg path "$path" '.background.thumbnailPath = $path' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
-    fi
+# Write one string value into the shell config, e.g. jq_set background.wallpaperPath "$path"
+jq_set() {
+    [ -f "$SHELL_CONFIG_FILE" ] || return
+    jq --indent 4 --arg v "$2" ".$1 = \$v" "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
 }
 
 categorize_wallpaper() {
@@ -277,7 +269,7 @@ switch() {
             fi
 
             # Set wallpaper path
-            set_wallpaper_path "$imgpath"
+            jq_set background.wallpaperPath "$imgpath"
 
             # Set video wallpaper
             local video_path="$imgpath"
@@ -292,7 +284,7 @@ switch() {
             ffmpeg -y -i "$imgpath" -vframes 1 "$thumbnail" 2>/dev/null
 
             # Set thumbnail path
-            set_thumbnail_path "$thumbnail"
+            jq_set background.thumbnailPath "$thumbnail"
 
             if [ -f "$thumbnail" ]; then
                 matugen_args+=(image "$thumbnail")
@@ -309,7 +301,7 @@ switch() {
             matugen_args+=(image "$imgpath")
             generate_colors_material_args=(--path "$imgpath")
             # Update wallpaper path in config
-            set_wallpaper_path "$imgpath"
+            jq_set background.wallpaperPath "$imgpath"
             remove_restore
 
             categorize_wallpaper "$imgpath"
@@ -393,11 +385,6 @@ main() {
     get_accent_color_from_config() {
         jq -r '.appearance.palette.accentColor' "$SHELL_CONFIG_FILE" 2>/dev/null || echo ""
     }
-    set_accent_color() {
-        local color="$1"
-        jq --indent 4 --arg color "$color" '.appearance.palette.accentColor = $color' "$SHELL_CONFIG_FILE" > "$SHELL_CONFIG_FILE.tmp" && mv "$SHELL_CONFIG_FILE.tmp" "$SHELL_CONFIG_FILE"
-    }
-
     detect_scheme_type_from_image() {
         local img="$1"
         source "$(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate"
@@ -417,13 +404,13 @@ main() {
                 ;;
             --color)
                 if [[ "$2" =~ ^#?[A-Fa-f0-9]{6}$ ]]; then
-                    set_accent_color "$2"
+                    jq_set appearance.palette.accentColor "$2"
                     shift 2
                 elif [[ "$2" == "clear" ]]; then
-                    set_accent_color ""
+                    jq_set appearance.palette.accentColor ""
                     shift 2
                 else
-                    set_accent_color $(hyprpicker --no-fancy)
+                    jq_set appearance.palette.accentColor "$(hyprpicker --no-fancy)"
                     shift
                 fi
                 ;;
@@ -492,7 +479,7 @@ main() {
     fi
 
     if [[ -n "$imgpath" && -z "$noswitch_flag" ]]; then
-        set_accent_color ""
+        jq_set appearance.palette.accentColor ""
         color_flag=""
         color=""
     fi

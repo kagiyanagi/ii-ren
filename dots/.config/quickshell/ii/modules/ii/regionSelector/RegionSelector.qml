@@ -103,42 +103,33 @@ Scope {
         onDiscard: root.dismissPreview(true)
     }
 
-    function screenshot() {
-        root.action = RegionSelection.SnipAction.Copy
-        root.selectionMode = RegionSelection.SelectionMode.RectCorners
+    // `retrigger` closes an already-open selector first, which is how recording stops.
+    function trigger(action, mode, retrigger = false) {
+        root.action = action
+        root.selectionMode = mode
+        if (retrigger && GlobalStates.regionSelectorOpen) GlobalStates.regionSelectorOpen = false
         GlobalStates.regionSelectorOpen = true
+    }
+
+    function screenshot() {
+        root.trigger(RegionSelection.SnipAction.Copy, RegionSelection.SelectionMode.RectCorners)
     }
 
     function search() {
-        root.action = RegionSelection.SnipAction.Search
-        if (Config.options.search.imageSearch.useCircleSelection) {
-            root.selectionMode = RegionSelection.SelectionMode.Circle
-        } else {
-            root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        }
-        GlobalStates.regionSelectorOpen = true
+        root.trigger(RegionSelection.SnipAction.Search, Config.options.search.imageSearch.useCircleSelection
+            ? RegionSelection.SelectionMode.Circle : RegionSelection.SelectionMode.RectCorners)
     }
 
     function ocr() {
-        root.action = RegionSelection.SnipAction.CharRecognition
-        root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        GlobalStates.regionSelectorOpen = true
+        root.trigger(RegionSelection.SnipAction.CharRecognition, RegionSelection.SelectionMode.RectCorners)
     }
 
     function record() {
-        root.action = RegionSelection.SnipAction.Record
-        root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        // If already open then re-trigger to stop recording
-        if (GlobalStates.regionSelectorOpen) GlobalStates.regionSelectorOpen = false
-        GlobalStates.regionSelectorOpen = true
+        root.trigger(RegionSelection.SnipAction.Record, RegionSelection.SelectionMode.RectCorners, true)
     }
 
     function recordWithSound() {
-        root.action = RegionSelection.SnipAction.RecordWithSound
-        root.selectionMode = RegionSelection.SelectionMode.RectCorners
-        // If already open then re-trigger to stop recording
-        if (GlobalStates.regionSelectorOpen) GlobalStates.regionSelectorOpen = false
-        GlobalStates.regionSelectorOpen = true
+        root.trigger(RegionSelection.SnipAction.RecordWithSound, RegionSelection.SelectionMode.RectCorners, true)
     }
 
     IpcHandler {

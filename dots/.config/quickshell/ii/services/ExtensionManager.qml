@@ -21,7 +21,6 @@ Singleton {
     property var extensionWidgetConfigs: ({}) // { extId: { widgetId: { enable, x, y } } }
     property var extensionOverlayConfigs: ({}) // { extId: { widgetId: { x, y, width, height, pinned, clickthrough } } }
     property var extensionConfigs: ({}) // { extId: { key: value } }
-    property var _updateQueue: ({}) // { extId: string, repoUrl: string, branch: string, step: string }
     property var _updateCheckQueue: []
     property bool _updateCheckRunning: false
     property bool watchFileChanges: true
@@ -399,11 +398,9 @@ Singleton {
 
         root.loading = true
         root.error = ""
-        root._updateQueue = { extId: extId, step: "disable" }
 
         root.toggleExtension(extId, false)
 
-        root._updateQueue.step = "pull"
         updatePullProc._pendingExtId = extId
         updatePullProc.exec(["git", "-C", ext.installedPath, "pull", "--ff-only"])
     }
@@ -413,7 +410,6 @@ Singleton {
             root.error = "Update failed (exit " + exitCode + ")"
             root.loading = false
             root.toggleExtension(extId, true)
-            root._updateQueue = {}
             return
         }
         let ext = root.installedExtensions[extId]
@@ -422,7 +418,6 @@ Singleton {
             updateReader.path = ext.installedPath + "/extension.json"
         } else {
             root.loading = false
-            root._updateQueue = {}
         }
     }
 
@@ -455,7 +450,6 @@ Singleton {
             root.toggleExtension(extId, true)
         }
         root.loading = false
-        root._updateQueue = {}
     }
 
     function checkAllUpdates() {

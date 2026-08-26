@@ -32,8 +32,10 @@ if [[ "$INVOKED_AS" == "iiren" ]]; then
     set -- "${TEMP_ARGS[@]}"
 
     COMMAND="$1"; shift
+    # "restart" is an alias of "run": both kill Quickshell and reload Hyprland.
+    [[ "$COMMAND" == restart ]] && COMMAND=run
     case "$COMMAND" in
-        run|restart|update|remove-cli|hyprset|save)
+        run|update|remove-cli|hyprset|save)
             if [ -f "$LIB_DIR/${COMMAND}.sh" ]; then
                 source "$LIB_DIR/${COMMAND}.sh" "$@"
                 exit $?
@@ -173,7 +175,6 @@ Subcommands:
     install-setups Run the install step \"2. Setup for permissions/services etc\"
     install-files  Run the install step \"3. Copying config files\"
 
-    exp-update     (Experimental) Update illogical-impulse without fully reinstall.
     exp-merge      (Experimental) Merge upstream changes with local configs using git rebase.
 ${NC}"
     echo ""

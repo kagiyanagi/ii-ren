@@ -10,7 +10,6 @@ Singleton {
     id: root
 
     property bool auditDatabaseReady: false
-    property var cachedAuditDb: ({trustedExtensions: [], blockedExtensions: []})
     property var blockedIds: ({})
     property var trustedMap: ({})
     property var recommendedIds: ({})
@@ -23,7 +22,6 @@ Singleton {
     }
 
     function _processAuditDatabase(db) {
-        root.cachedAuditDb = db
         let blocked = {}
         let trusted = {}
         let recommended = {}

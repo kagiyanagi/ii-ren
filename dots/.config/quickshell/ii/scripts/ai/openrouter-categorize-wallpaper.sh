@@ -35,13 +35,7 @@ fi
 # BASE64 ENCODE
 # -------------------------
 
-if [[ "$(base64 --version 2>&1)" == *"FreeBSD"* ]]; then
-    B64FLAGS="--input"
-else
-    B64FLAGS="-w0"
-fi
-
-B64DATA="$(base64 $B64FLAGS "$RESIZED_IMG_PATH")"
+B64DATA="$(base64 -w0 "$RESIZED_IMG_PATH")"
 IMG_URL="data:image/jpeg;base64,$B64DATA"
 
 # -------------------------

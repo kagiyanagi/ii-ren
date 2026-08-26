@@ -38,10 +38,6 @@ ApiStrategy {
         return model.extraParams ? Object.assign({}, baseData, model.extraParams) : baseData;
     }
 
-    function buildAuthorizationHeader(apiKeyEnvVarName: string): string {
-        return `-H "Authorization: Bearer \$\{${apiKeyEnvVarName}\}"`;
-    }
-
     function parseResponseLine(line, message) {
         // Remove 'data: ' prefix if present and trim whitespace
         let cleanData = line.trim();

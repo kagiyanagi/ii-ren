@@ -2,7 +2,6 @@ import qs.modules.common.widgets
 import qs.modules.common
 import QtQuick
 import QtQuick.Layouts
-import qs.services
 
 RowLayout {
     id: root
@@ -19,14 +18,11 @@ RowLayout {
     property real to: slider.to
     property real textWidth: 120
 
-    readonly property string currentSearch: SearchRegistry.currentSearch
-    onCurrentSearchChanged: {
-        if (SearchRegistry.currentSearch.toLowerCase() === root.text.toLowerCase()) {
-            highlightOverlay.startAnimation()
-        }
+    SearchHandler {
+        visible: false // Root is a RowLayout; don't take up a cell
+        searchString: root.text
     }
 
-    
     RowLayout {
         id: row
         spacing: 10

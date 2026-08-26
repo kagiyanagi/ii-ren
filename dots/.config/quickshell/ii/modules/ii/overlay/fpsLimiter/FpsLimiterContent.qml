@@ -35,17 +35,11 @@ OverlayBackground {
             return;
         }
 
-        var cfgPaths = [
-            "~/.config/MangoHud/MangoHud.conf",
-        ]; // MangoHud config files
-
-        var updateCommands = cfgPaths.map(path => {
-            return "if grep -q '^fps_limit=' " + path + "; " +
-            "then sed -i 's/^fps_limit=.*/fps_limit=" + fpsValue + "/' " + path + "; " +
-            "else echo 'fps_limit=" + fpsValue + "' >> " + path + "; fi";
-        }).join("; ");
-
-        var cmd = updateCommands + "; pkill -SIGUSR2 mangohud";
+        var cfg = "~/.config/MangoHud/MangoHud.conf";
+        var cmd = "if grep -q '^fps_limit=' " + cfg + "; " +
+            "then sed -i 's/^fps_limit=.*/fps_limit=" + fpsValue + "/' " + cfg + "; " +
+            "else echo 'fps_limit=" + fpsValue + "' >> " + cfg + "; fi" +
+            "; pkill -SIGUSR2 mangohud";
 
         fpsSetter.command = ["bash", "-c", cmd];
         fpsSetter.startDetached();

@@ -157,9 +157,9 @@ Singleton {
         return _darkFiles.indexOf(filename) >= 0
     }
 
-    // ─── Convenience: backward-compatible Material Symbol fallback ───────
-    // Returns the Material Symbol name for a given WWO code (same as old Icons.getWeatherIcon).
-    // Kept for backward compatibility during transition.
+    // ─── Material Symbol fallback ────────────────────────────────────────
+    // Maps a WWO code to a Material Symbol name, for the places that render a
+    // glyph rather than one of the icon files above.
     readonly property var _materialFallback: ({
         "113": "clear_day",
         "116": "partly_cloudy_day",

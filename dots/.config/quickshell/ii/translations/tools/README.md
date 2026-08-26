@@ -4,7 +4,7 @@ This suite is used to manage project translation files, automatically extract tr
 
 ## Tool Components
 
-### 1. `translation-manager.py` - Main Translation Manager
+### 1. `translation_manager.py` - Main Translation Manager
 - Extract translatable texts
 - Compare and update translation files
 - Interactive addition/removal of translation keys
@@ -57,21 +57,21 @@ Or run from the project root:
 
 ## Detailed Usage
 
-### Translation Manager (`translation-manager.py`)
+### Translation Manager (`translation_manager.py`)
 
 Basic usage:
 ```bash
 # Process all languages
-./translation-manager.py
+./translation_manager.py
 
 # Specify a particular language
-./translation-manager.py --language zh_CN
+./translation_manager.py --language zh_CN
 
 # Extract translatable texts only
-./translation-manager.py --extract-only
+./translation_manager.py --extract-only
 
 # Show extracted texts
-./translation-manager.py --extract-only --show-temp
+./translation_manager.py --extract-only --show-temp
 ```
 
 Parameter description:
@@ -229,7 +229,7 @@ Original key count: 470, after cleaning: 420
 
 ```bash
 # Use custom directories
-./translation-manager.py \
+./translation_manager.py \
   --translations-dir /path/to/translations \
   --source-dir /path/to/source
 ```

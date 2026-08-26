@@ -26,31 +26,19 @@ Singleton {
         console.log("[GlobalFocusGrab] Initialized");
     }
 
-    function addPersistent(window) {
-        if (root.persistent.indexOf(window) === -1) {
-            root.persistent.push(window);
-        }
+    function _addTo(list, window) {
+        if (list.indexOf(window) === -1) list.push(window);
     }
 
-    function removePersistent(window) {
-        var index = root.persistent.indexOf(window);
-        if (index !== -1) {
-            root.persistent.splice(index, 1);
-        }
+    function _removeFrom(list, window) {
+        const index = list.indexOf(window);
+        if (index !== -1) list.splice(index, 1);
     }
 
-    function addDismissable(window) {
-        if (root.dismissable.indexOf(window) === -1) {
-            root.dismissable.push(window);
-        }
-    }
-
-    function removeDismissable(window) {
-        var index = root.dismissable.indexOf(window);
-        if (index !== -1) {
-            root.dismissable.splice(index, 1);
-        }
-    }
+    function addPersistent(window) { root._addTo(root.persistent, window) }
+    function removePersistent(window) { root._removeFrom(root.persistent, window) }
+    function addDismissable(window) { root._addTo(root.dismissable, window) }
+    function removeDismissable(window) { root._removeFrom(root.dismissable, window) }
 
     function hasActive(element) {
         return element?.activeFocus || Array.from(

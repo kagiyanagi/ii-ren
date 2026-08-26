@@ -201,17 +201,18 @@ Singleton {
     }
 
     rounding: QtObject {
+        // Sharp mode flattens everything: 0 out the multiplier, not nine ternaries.
         property real scale: Config.options.appearance.sharpMode ? 0 : 1
-        property int unsharpen: Config.options.appearance.sharpMode ? 0 : 2
-        property int unsharpenmore: Config.options.appearance.sharpMode ? 0 : 6
-        property int verysmall: Config.options.appearance.sharpMode ? 0 : 8
-        property int small: Config.options.appearance.sharpMode ? 0 : 12
-        property int normal: Config.options.appearance.sharpMode ? 0 : 17
-        property int large: Config.options.appearance.sharpMode ? 0 : 23
-        property int verylarge: Config.options.appearance.sharpMode ? 0 : 30
-        property int full: Config.options.appearance.sharpMode ? 0 : 9999
+        property int unsharpen: 2 * scale
+        property int unsharpenmore: 6 * scale
+        property int verysmall: 8 * scale
+        property int small: 12 * scale
+        property int normal: 17 * scale
+        property int large: 23 * scale
+        property int verylarge: 30 * scale
+        property int full: 9999 * scale
         property int screenRounding: large
-        property int windowRounding: Config.options.appearance.sharpMode ? 0 : 18
+        property int windowRounding: 18 * scale
     }
 
     font: QtObject {
@@ -271,137 +272,54 @@ Singleton {
     }
 
     animation: QtObject {
-        property QtObject elementMove: QtObject {
-            property int duration: animationCurves.expressiveDefaultSpatialDuration
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.expressiveDefaultSpatial
-            property int velocity: 650
-            property Component numberAnimation: Component {
-                NumberAnimation {
-                    duration: root.animation.elementMove.duration
-                    easing.type: root.animation.elementMove.type
-                    easing.bezierCurve: root.animation.elementMove.bezierCurve
-                }
-            }
+        property AnimSpec elementMove: AnimSpec {
+            duration: root.animationCurves.expressiveDefaultSpatialDuration
+            bezierCurve: root.animationCurves.expressiveDefaultSpatial
+            alwaysRunToEnd: false
         }
 
-        property QtObject elementMoveSmall: QtObject {
-            property int duration: animationCurves.expressiveFastSpatialDuration
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.expressiveFastSpatial
-            property int velocity: 650
-            property Component numberAnimation: Component {
-                NumberAnimation {
-                    duration: root.animation.elementMoveSmall.duration
-                    easing.type: root.animation.elementMoveSmall.type
-                    easing.bezierCurve: root.animation.elementMoveSmall.bezierCurve
-                }
-            }
+        property AnimSpec elementMoveSmall: AnimSpec {
+            duration: root.animationCurves.expressiveFastSpatialDuration
+            bezierCurve: root.animationCurves.expressiveFastSpatial
+            alwaysRunToEnd: false
         }
 
-        property QtObject elementMoveEnter: QtObject {
-            property int duration: 400
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.emphasizedDecel
-            property int velocity: 650
-            property Component numberAnimation: Component {
-                NumberAnimation {
-                    alwaysRunToEnd: true
-                    duration: root.animation.elementMoveEnter.duration
-                    easing.type: root.animation.elementMoveEnter.type
-                    easing.bezierCurve: root.animation.elementMoveEnter.bezierCurve
-                }
-            }
+        property AnimSpec elementMoveEnter: AnimSpec {
+            duration: 400
+            bezierCurve: root.animationCurves.emphasizedDecel
         }
 
-        property QtObject elementMoveExit: QtObject {
-            property int duration: 200
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.emphasizedAccel
-            property int velocity: 650
-            property Component numberAnimation: Component {
-                NumberAnimation {
-                    alwaysRunToEnd: true
-                    duration: root.animation.elementMoveExit.duration
-                    easing.type: root.animation.elementMoveExit.type
-                    easing.bezierCurve: root.animation.elementMoveExit.bezierCurve
-                }
-            }
+        property AnimSpec elementMoveExit: AnimSpec {
+            duration: 200
+            bezierCurve: root.animationCurves.emphasizedAccel
         }
 
-        property QtObject elementMoveSlow: QtObject {
-            property int duration: animationCurves.expressiveEffectsDuration * 2.5
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.expressiveEffects
-            property int velocity: 850
-            property Component colorAnimation: Component { ColorAnimation {
-                duration: root.animation.elementMoveSlow.duration
-                easing.type: root.animation.elementMoveSlow.type
-                easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
-            }}
-            property Component numberAnimation: Component { NumberAnimation {
-                alwaysRunToEnd: true
-                duration: root.animation.elementMoveSlow.duration
-                easing.type: root.animation.elementMoveSlow.type
-                easing.bezierCurve: root.animation.elementMoveSlow.bezierCurve
-            }}
+        property AnimSpec elementMoveSlow: AnimSpec {
+            duration: root.animationCurves.expressiveEffectsDuration * 2.5
+            bezierCurve: root.animationCurves.expressiveEffects
+            velocity: 850
         }
 
-        property QtObject elementMoveFast: QtObject {
-            property int duration: animationCurves.expressiveEffectsDuration
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.expressiveEffects
-            property int velocity: 850
-            property Component colorAnimation: Component { ColorAnimation {
-                duration: root.animation.elementMoveFast.duration
-                easing.type: root.animation.elementMoveFast.type
-                easing.bezierCurve: root.animation.elementMoveFast.bezierCurve
-            }}
-            property Component numberAnimation: Component { NumberAnimation {
-                alwaysRunToEnd: true
-                duration: root.animation.elementMoveFast.duration
-                easing.type: root.animation.elementMoveFast.type
-                easing.bezierCurve: root.animation.elementMoveFast.bezierCurve
-            }}
+        property AnimSpec elementMoveFast: AnimSpec {
+            duration: root.animationCurves.expressiveEffectsDuration
+            bezierCurve: root.animationCurves.expressiveEffects
+            velocity: 850
         }
 
-        property QtObject elementResize: QtObject {
-            property int duration: 300
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.emphasized
-            property int velocity: 650
-            property Component numberAnimation: Component {
-                NumberAnimation {
-                    alwaysRunToEnd: true
-                    duration: root.animation.elementResize.duration
-                    easing.type: root.animation.elementResize.type
-                    easing.bezierCurve: root.animation.elementResize.bezierCurve
-                }
-            }
+        property AnimSpec elementResize: AnimSpec {
+            duration: 300
+            bezierCurve: root.animationCurves.emphasized
         }
 
-        property QtObject clickBounce: QtObject {
-            property int duration: 400
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: animationCurves.expressiveDefaultSpatial
-            property int velocity: 850
-            property Component numberAnimation: Component { NumberAnimation {
-                alwaysRunToEnd: true
-                duration: root.animation.clickBounce.duration
-                easing.type: root.animation.clickBounce.type
-                easing.bezierCurve: root.animation.clickBounce.bezierCurve
-            }}
-        }
-        
-        property QtObject scroll: QtObject {
-            property int duration: 200
-            property int type: Easing.BezierSpline
-            property list<real> bezierCurve: root.animationCurves.standardDecel
+        property AnimSpec clickBounce: AnimSpec {
+            duration: 400
+            bezierCurve: root.animationCurves.expressiveDefaultSpatial
+            velocity: 850
         }
 
-        property QtObject menuDecel: QtObject {
-            property int duration: 350
-            property int type: Easing.OutExpo
+        property AnimSpec scroll: AnimSpec {
+            duration: 200
+            bezierCurve: root.animationCurves.standardDecel
         }
     }
 

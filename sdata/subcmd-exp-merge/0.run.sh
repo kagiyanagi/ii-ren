@@ -150,6 +150,31 @@ rebase_onto_main() {
   fi
 }
 
+# Copy a config tree into BACKUP_DIR under <name>.
+backup_tree() {
+  mkdir -p "${BACKUP_DIR}"
+  cp -r "$1" "${BACKUP_DIR}/$2"
+  log_success "Backup: $2"
+}
+
+# Replace a user config tree with the repo version. Given a third argument, that
+# subdirectory of the user tree survives the replacement.
+replace_tree() {
+  local repo_dir="$1" user_dir="$2" preserve="${3:-}"
+  local stash=""
+  if [[ -n "$preserve" && -d "${user_dir}/${preserve}" ]]; then
+    stash="$(mktemp -d)"
+    cp -r "${user_dir}/${preserve}" "${stash}/"
+  fi
+  rm -rf "${user_dir}"
+  cp -r "${repo_dir}" "${user_dir}"
+  if [[ -n "$stash" ]]; then
+    rm -rf "${user_dir}/${preserve}"
+    cp -r "${stash}/${preserve}" "${user_dir}/${preserve}"
+    rm -rf "${stash}"
+  fi
+}
+
 apply_quickshell_config() {
   log_header "Apply Quickshell Config"
 
@@ -176,8 +201,7 @@ apply_quickshell_config() {
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY-RUN] Would replace config"
     else
-      rm -rf "${user_quickshell}"
-      cp -r "${repo_quickshell}" "${user_quickshell}"
+      replace_tree "${repo_quickshell}" "${user_quickshell}"
       log_success "Config replaced"
     fi
     ;;
@@ -185,12 +209,8 @@ apply_quickshell_config() {
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY-RUN] Would backup and replace"
     else
-      mkdir -p "${BACKUP_DIR}"
-      local backup_name="quickshell.${timestamp}.bak"
-      cp -r "${user_quickshell}" "${BACKUP_DIR}/${backup_name}"
-      log_success "Backup: ${backup_name}"
-      rm -rf "${user_quickshell}"
-      cp -r "${repo_quickshell}" "${user_quickshell}"
+      backup_tree "${user_quickshell}" "quickshell.${timestamp}.bak"
+      replace_tree "${repo_quickshell}" "${user_quickshell}"
       log_success "Config replaced"
     fi
     ;;
@@ -244,15 +264,7 @@ update_hypr_config() {
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY-RUN] Would update hypr"
     else
-      local temp_custom="/tmp/hypr-custom-${timestamp}"
-      [[ -d "${user_hypr}/custom" ]] && cp -r "${user_hypr}/custom" "${temp_custom}"
-      rm -rf "${user_hypr}"
-      cp -r "${repo_hypr}" "${user_hypr}"
-      if [[ -d "${temp_custom}" ]]; then
-        rm -rf "${user_hypr}/custom"
-        cp -r "${temp_custom}" "${user_hypr}/custom"
-        rm -rf "${temp_custom}"
-      fi
+      replace_tree "${repo_hypr}" "${user_hypr}" custom
       log_success "Hypr updated"
     fi
     ;;
@@ -260,20 +272,8 @@ update_hypr_config() {
     if [[ "$DRY_RUN" == true ]]; then
       log_info "[DRY-RUN] Would backup and update"
     else
-      mkdir -p "${BACKUP_DIR}"
-      local backup_name="hypr.${timestamp}.bak"
-      cp -r "${user_hypr}" "${BACKUP_DIR}/${backup_name}"
-      log_success "Backup: ${backup_name}"
-
-      local temp_custom="/tmp/hypr-custom-${timestamp}"
-      [[ -d "${user_hypr}/custom" ]] && cp -r "${user_hypr}/custom" "${temp_custom}"
-      rm -rf "${user_hypr}"
-      cp -r "${repo_hypr}" "${user_hypr}"
-      if [[ -d "${temp_custom}" ]]; then
-        rm -rf "${user_hypr}/custom"
-        cp -r "${temp_custom}" "${user_hypr}/custom"
-        rm -rf "${temp_custom}"
-      fi
+      backup_tree "${user_hypr}" "hypr.${timestamp}.bak"
+      replace_tree "${repo_hypr}" "${user_hypr}" custom
       log_success "Hypr updated"
     fi
     ;;

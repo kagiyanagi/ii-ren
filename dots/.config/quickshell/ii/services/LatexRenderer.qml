@@ -38,19 +38,14 @@ Singleton {
         
         // 2. Check if the hash is already processed
         if (processedHashes.includes(hash)) {
-            // console.log("Already processed: " + hash)
             renderFinished(hash, imagePath)
             return [hash, false]
         } else {
             root.processedHashes.push(hash)
             root.processedExpressions[hash] = expression
-            // console.log("Rendering expression: " + expression)
         }
 
         // 3. If not, render it with MicroTeX and mark as processed
-        // console.log(`[LatexRenderer] Rendering expression: ${expression} with hash: ${hash}`)
-        // console.log(`                to file: ${imagePath}`)
-        // console.log(`                with command: cd ${microtexBinaryDir} && ./${microtexBinaryName} -headless -input=${StringUtils.shellSingleQuoteEscape(expression)} -output=${imagePath} -textsize=${Appearance.font.pixelSize.normal} -padding=${renderPadding} -background=${Appearance.m3colors.m3tertiary} -foreground=${Appearance.m3colors.m3onTertiary} -maxwidth=0.85`)
         const processQml = `
             import Quickshell.Io
             Process {
@@ -61,22 +56,16 @@ Singleton {
                     + "'-output=${imagePath}' " 
                     + "'-textsize=${Appearance.font.pixelSize.normal}' "
                     + "'-padding=${renderPadding}' "
-                    // + "'-background=${Appearance.m3colors.m3tertiary}' "
                     + "'-foreground=${Appearance.colors.colOnLayer1}' "
                     + "-maxwidth=0.85 "
                 ]
-                // stdout: SplitParser {
-                //     onRead: data => { console.log("MicroTeX: " + data) }
-                // }
                 onExited: (exitCode, exitStatus) => {
-                    // console.log("[LatexRenderer] MicroTeX process exited with code: " + exitCode + ", status: " + exitStatus)
                     renderedImagePaths["${hash}"] = "${imagePath}"
                     root.renderFinished("${hash}", "${imagePath}")
                     microtexProcess${hash}.destroy()
                 }
             }
         `
-        // console.log("MicroTeX: " + processQml)
         Qt.createQmlObject(processQml, root, `MicroTeXProcess_${hash}`)
         return [hash, true]
     }

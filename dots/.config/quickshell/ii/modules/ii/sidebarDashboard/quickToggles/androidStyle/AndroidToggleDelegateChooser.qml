@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import qs.services
 import qs.modules.common
+import qs.modules.common.models.quickToggles
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
@@ -22,7 +23,8 @@ DelegateChooser {
 
     role: "type"
 
-    DelegateChoice { roleValue: "antiFlashbang"; AndroidAntiFlashbangToggle {
+    DelegateChoice { roleValue: "antiFlashbang"; AndroidQuickToggleButton {
+        toggleModel: AntiFlashbangToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -38,7 +40,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "audio"; AndroidAudioToggle {
+    DelegateChoice { roleValue: "audio"; AndroidQuickToggleButton {
+        toggleModel: AudioToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -54,7 +57,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "bluetooth"; AndroidBluetoothToggle {
+    DelegateChoice { roleValue: "bluetooth"; AndroidQuickToggleButton {
+        toggleModel: BluetoothToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -70,7 +74,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "cloudflareWarp"; AndroidCloudflareWarpToggle {
+    DelegateChoice { roleValue: "cloudflareWarp"; AndroidQuickToggleButton {
+        toggleModel: CloudflareWarpToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -83,7 +88,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "colorPicker"; AndroidColorPickerToggle {
+    DelegateChoice { roleValue: "colorPicker"; AndroidQuickToggleButton {
+        toggleModel: ColorPickerToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -96,7 +102,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "darkMode"; AndroidDarkModeToggle {
+    DelegateChoice { roleValue: "darkMode"; AndroidQuickToggleButton {
+        toggleModel: DarkModeToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -109,7 +116,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "easyEffects"; AndroidEasyEffectsToggle {
+    DelegateChoice { roleValue: "easyEffects"; AndroidQuickToggleButton {
+        toggleModel: EasyEffectsToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -122,7 +130,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "gameMode"; AndroidGameModeToggle {
+    DelegateChoice { roleValue: "gameMode"; AndroidQuickToggleButton {
+        toggleModel: GameModeToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -135,7 +144,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "idleInhibitor"; AndroidIdleInhibitorToggle {
+    DelegateChoice { roleValue: "idleInhibitor"; AndroidQuickToggleButton {
+        toggleModel: IdleInhibitorToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -148,7 +158,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "mic"; AndroidMicToggle {
+    DelegateChoice { roleValue: "mic"; AndroidQuickToggleButton {
+        toggleModel: MicToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -164,7 +175,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "musicRecognition"; AndroidMusicRecognition {
+    DelegateChoice { roleValue: "musicRecognition"; AndroidQuickToggleButton {
+        toggleModel: MusicRecognitionToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -177,7 +189,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "network"; AndroidNetworkToggle {
+    DelegateChoice { roleValue: "network"; AndroidQuickToggleButton {
+        toggleModel: NetworkToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -193,7 +206,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "nightLight"; AndroidNightLightToggle {
+    DelegateChoice { roleValue: "nightLight"; AndroidQuickToggleButton {
+        toggleModel: NightLightToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -209,7 +223,8 @@ DelegateChooser {
         }
     } }
 
-    DelegateChoice { roleValue: "notifications"; AndroidNotificationToggle {
+    DelegateChoice { roleValue: "notifications"; AndroidQuickToggleButton {
+        toggleModel: NotificationToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -222,7 +237,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "onScreenKeyboard"; AndroidOnScreenKeyboardToggle {
+    DelegateChoice { roleValue: "onScreenKeyboard"; AndroidQuickToggleButton {
+        toggleModel: OnScreenKeyboardToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -235,7 +251,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "powerProfile"; AndroidPowerProfileToggle {
+    DelegateChoice { roleValue: "powerProfile"; AndroidQuickToggleButton {
+        toggleModel: PowerProfilesToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index
@@ -248,7 +265,8 @@ DelegateChooser {
         cellSize: modelData.size
     } }
 
-    DelegateChoice { roleValue: "screenSnip"; AndroidScreenSnipToggle {
+    DelegateChoice { roleValue: "screenSnip"; AndroidQuickToggleButton {
+        toggleModel: ScreenSnipToggle {}
         required property int index
         required property var modelData
         buttonIndex: root.startingIndex + index

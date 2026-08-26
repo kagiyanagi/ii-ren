@@ -57,7 +57,6 @@ Singleton {
         valid: false,
         lat: 0,
         lon: 0,
-        long: 0,
         city: ""
     })
 
@@ -271,7 +270,6 @@ Singleton {
                             if (loc.status === "success") {
                                 root.location.lat = loc.lat;
                                 root.location.lon = loc.lon;
-                                root.location.long = loc.lon;
                                 root.location.city = loc.city;
                                 root.location.valid = true;
                                 fetchWeather(loc.lat, loc.lon, loc.city);
@@ -301,7 +299,6 @@ Singleton {
                             const loc = res.results[0];
                             root.location.lat = loc.latitude;
                             root.location.lon = loc.longitude;
-                            root.location.long = loc.longitude;
                             root.location.city = loc.name;
                             root.location.valid = true;
                             fetchWeather(loc.latitude, loc.longitude, loc.name);
@@ -376,7 +373,6 @@ Singleton {
                 fallbackTimer.stop();
                 root.location.lat = position.coordinate.latitude;
                 root.location.lon = position.coordinate.longitude;
-                root.location.long = position.coordinate.longitude;
                 root.location.valid = true;
                 root.getData();
             } else {

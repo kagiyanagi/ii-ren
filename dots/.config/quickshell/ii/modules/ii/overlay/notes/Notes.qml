@@ -12,6 +12,5 @@ StyledOverlayWidget {
 
     contentItem: NotesContent {
         radius: root.contentRadius
-        isClickthrough: root.clickthrough
     }
 }

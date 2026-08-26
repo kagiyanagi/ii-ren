@@ -4,7 +4,7 @@
 
 ## 工具组成
 
-### 1. `translation-manager.py` - 主要翻译管理器
+### 1. `translation_manager.py` - 主要翻译管理器
 - 提取可翻译文本
 - 比较和更新翻译文件
 - 交互式添加/删除翻译键
@@ -57,21 +57,21 @@ cd .config/quickshell/translations/tools
 
 ## 详细使用说明
 
-### 翻译管理器 (`translation-manager.py`)
+### 翻译管理器 (`translation_manager.py`)
 
 基本用法：
 ```bash
 # 处理所有语言
-./translation-manager.py
+./translation_manager.py
 
 # 指定特定语言
-./translation-manager.py --language zh_CN
+./translation_manager.py --language zh_CN
 
 # 仅提取可翻译文本
-./translation-manager.py --extract-only
+./translation_manager.py --extract-only
 
 # 显示提取的文本
-./translation-manager.py --extract-only --show-temp
+./translation_manager.py --extract-only --show-temp
 ```
 
 参数说明：
@@ -229,7 +229,7 @@ $ ./manage-translations.sh clean
 
 ```bash
 # 使用自定义目录
-./translation-manager.py \
+./translation_manager.py \
   --translations-dir /path/to/translations \
   --source-dir /path/to/source
 ```
