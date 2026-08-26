@@ -76,7 +76,7 @@ Scope {
             // this binding, and re-arming on unhover is exactly what a Timer does
             // when running goes false and back to true.
             Timer {
-                interval: 6000
+                interval: 2000
                 running: previewPopup.shown && !cardHover.hovered
                 onTriggered: previewPopup.discard()
             }
