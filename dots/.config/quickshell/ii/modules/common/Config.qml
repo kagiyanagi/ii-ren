@@ -200,6 +200,11 @@ Singleton {
                 // Drop an image anywhere on the empty desktop to set it as the
                 // wallpaper. Off leaves the drop to whatever is underneath.
                 property bool dropToSetWallpaper: true
+                // Files a drop cannot set as the wallpaper land on the drop
+                // shelf instead, to be dragged back out somewhere else.
+                property bool dropToShelf: true
+                // Right-click the empty desktop for a context menu.
+                property bool rightClickMenu: true
                 property JsonObject widgets: JsonObject {
                     // Legacy pre-registry clock entry. Kept only so
                     // WidgetStateManager can migrate it into an instance.

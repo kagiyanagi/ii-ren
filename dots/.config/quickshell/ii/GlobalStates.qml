@@ -54,6 +54,18 @@ Singleton {
     // sharing that corner can move out of their way. 0 when none are showing.
     property real notificationPopupHeight: 0
 
+    // Desktop right-click menu, positioned at the click.
+    property bool desktopMenuOpen: false
+    property var desktopMenuScreen: null
+    property real desktopMenuX: 0
+    property real desktopMenuY: 0
+
+    // Drop shelf, positioned at the point the files were dropped. -1 means the
+    // shelf was opened without one and should centre itself.
+    property bool dropShelfOpen: false
+    property real dropShelfX: -1
+    property real dropShelfY: -1
+
     property bool dashboardPanelOpen: false // formerly sidebarRightOpen
     property bool policiesPanelOpen: false  // formerly sidebarLeftOpen
 

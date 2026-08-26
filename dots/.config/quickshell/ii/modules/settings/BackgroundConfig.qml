@@ -149,6 +149,24 @@ ContentPage {
                 Config.options.background.dropToSetWallpaper = checked;
             }
         }
+
+        ConfigSwitch {
+            buttonIcon: "stacks"
+            text: Translation.tr("Drop other files on the desktop to hold them on a shelf")
+            checked: Config.options.background.dropToShelf
+            onCheckedChanged: {
+                Config.options.background.dropToShelf = checked;
+            }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "more_horiz"
+            text: Translation.tr("Right-click the desktop for a context menu")
+            checked: Config.options.background.rightClickMenu
+            onCheckedChanged: {
+                Config.options.background.rightClickMenu = checked;
+            }
+        }
     }
 
     ContentSection {

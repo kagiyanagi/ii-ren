@@ -292,6 +292,27 @@ Variants {
             function onRefreshExtensions() { refreshExtensionBgWidgets() }
         }
 
+        // Right-click the empty desktop for a context menu. Declared before
+        // wallpaperItem for the same reason as the drop area below: a widget that
+        // wants its own right-click still wins wherever it sits.
+        MouseArea {
+            id: desktopMenuArea
+            anchors.fill: parent
+            enabled: Config.options.background.rightClickMenu
+            acceptedButtons: Qt.RightButton
+
+            // Press, not click: waiting for the button to come back up is what
+            // makes a context menu feel like it responded late. The menu's own
+            // dismiss handler takes a full click, so the release that follows
+            // this press cannot immediately close it again.
+            onPressed: mouse => {
+                GlobalStates.desktopMenuScreen = bgRoot.screen;
+                GlobalStates.desktopMenuX = mouse.x;
+                GlobalStates.desktopMenuY = mouse.y;
+                GlobalStates.desktopMenuOpen = true;
+            }
+        }
+
         // Drop an image (or video) anywhere on the desktop to set it as the
         // wallpaper. Declared before wallpaperItem so it sits underneath the
         // widget canvas - a widget that takes its own drops (AtAGlanceWidget)
@@ -302,12 +323,16 @@ Variants {
             keys: ["text/uri-list"]
             // Disabled rather than unloaded so the drop falls through to
             // whatever is underneath instead of being swallowed.
-            enabled: Config.options.background.dropToSetWallpaper
+            enabled: Config.options.background.dropToSetWallpaper || Config.options.background.dropToShelf
 
             // Non-empty only while the drag is carrying something apply() can use.
             property string pendingPath: ""
+            // How many local files the drag is carrying, when the shelf is what
+            // would take them.
+            property int pendingShelfCount: 0
 
-            function firstUsablePath(urls) {
+            function localPaths(urls) {
+                const paths = [];
                 for (const url of urls) {
                     const asString = url.toString();
                     const path = CF.FileUtils.trimFileProtocol(asString);
@@ -316,21 +341,34 @@ Variants {
                     // so it is left for the drag source to handle.
                     if (path === asString)
                         continue;
-                    if (Wallpapers.extensions.some(ext => path.toLowerCase().endsWith(`.${ext}`)))
-                        return path;
+                    paths.push(path);
                 }
-                return "";
+                return paths;
+            }
+
+            function wallpaperPathFrom(paths) {
+                if (!Config.options.background.dropToSetWallpaper || paths.length !== 1)
+                    return "";
+                const path = paths[0];
+                return Wallpapers.extensions.some(ext => path.toLowerCase().endsWith(`.${ext}`)) ? path : "";
             }
 
             onEntered: drag => {
-                wallpaperDrop.pendingPath = drag.hasUrls ? wallpaperDrop.firstUsablePath(drag.urls) : "";
-                // Refusing here means no onDropped, so a dragged .txt falls
-                // through to whatever is underneath instead of being swallowed.
-                if (wallpaperDrop.pendingPath.length === 0)
+                const paths = drag.hasUrls ? wallpaperDrop.localPaths(drag.urls) : [];
+                wallpaperDrop.pendingPath = wallpaperDrop.wallpaperPathFrom(paths);
+                // A single image sets the wallpaper; anything else the shelf can
+                // hold onto goes there instead.
+                wallpaperDrop.pendingShelfCount = (wallpaperDrop.pendingPath.length > 0 || !Config.options.background.dropToShelf) ? 0 : paths.length;
+                // Refusing here means no onDropped, so a drag neither of them can
+                // use falls through instead of being swallowed.
+                if (wallpaperDrop.pendingPath.length === 0 && wallpaperDrop.pendingShelfCount === 0)
                     drag.accepted = false;
             }
 
-            onExited: wallpaperDrop.pendingPath = ""
+            onExited: {
+                wallpaperDrop.pendingPath = "";
+                wallpaperDrop.pendingShelfCount = 0;
+            }
 
             onDropped: drop => {
                 if (wallpaperDrop.pendingPath.length > 0) {
@@ -338,8 +376,15 @@ Variants {
                     // scheme is regenerated too.
                     Wallpapers.apply(wallpaperDrop.pendingPath);
                     drop.acceptProposedAction();
+                } else if (wallpaperDrop.pendingShelfCount > 0) {
+                    // Global coordinates: the shelf is its own layer surface, so
+                    // the drop point has to leave this window's space.
+                    const globalPos = wallpaperDrop.mapToGlobal(drop.x, drop.y);
+                    DropShelf.show(drop.urls, globalPos.x, globalPos.y);
+                    drop.acceptProposedAction();
                 }
                 wallpaperDrop.pendingPath = "";
+                wallpaperDrop.pendingShelfCount = 0;
             }
 
             Rectangle {
@@ -351,7 +396,7 @@ Variants {
                 border.width: 2
                 border.color: Appearance.colors.colPrimary
                 visible: opacity > 0
-                opacity: (wallpaperDrop.containsDrag && wallpaperDrop.pendingPath.length > 0) ? 1 : 0
+                opacity: (wallpaperDrop.containsDrag && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)) ? 1 : 0
 
                 Behavior on opacity {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -363,7 +408,7 @@ Variants {
                     spacing: 12
 
                     MaterialSymbol {
-                        text: "wallpaper"
+                        text: wallpaperDrop.pendingPath.length > 0 ? "wallpaper" : "stacks"
                         iconSize: Appearance.font.pixelSize.huge
                         color: Appearance.colors.colPrimary
                     }
@@ -372,14 +417,18 @@ Variants {
                         spacing: 0
 
                         StyledText {
-                            text: Translation.tr("Set as wallpaper")
+                            text: wallpaperDrop.pendingPath.length > 0
+                                ? Translation.tr("Set as wallpaper")
+                                : Translation.tr("Hold on the shelf")
                             color: Appearance.colors.colOnLayer1
                             font.weight: Font.DemiBold
                         }
 
                         StyledText {
                             Layout.maximumWidth: 320
-                            text: wallpaperDrop.pendingPath.split("/").pop()
+                            text: wallpaperDrop.pendingPath.length > 0
+                                ? wallpaperDrop.pendingPath.split("/").pop()
+                                : Translation.tr("%1 files").arg(wallpaperDrop.pendingShelfCount)
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideMiddle

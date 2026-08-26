@@ -5,7 +5,9 @@ import qs.modules.common
 import qs.modules.ii.background
 import qs.modules.ii.bar
 import qs.modules.ii.cheatsheet
+import qs.modules.ii.desktopMenu
 import qs.modules.ii.dock
+import qs.modules.ii.dropover
 import qs.modules.ii.fastPair
 import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
@@ -47,6 +49,8 @@ Scope {
     PanelLoader { extraCondition: Config.options.background.enable; component: Background {} }
     PanelLoader { component: Cheatsheet {} }
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
+    PanelLoader { extraCondition: Config.options.background.rightClickMenu; component: DesktopMenu {} }
+    PanelLoader { component: DropShelfPanel {} }
     PanelLoader { extraCondition: Config.options.bluetooth.fastPair.enable; component: FastPairPopup {} }
     PanelLoader { component: Lock {} }
     PanelLoader { component: MediaControls {} }
