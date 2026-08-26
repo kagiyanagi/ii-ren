@@ -37,16 +37,20 @@ Singleton {
         w.lastNotify = root._lastNotify;
     }
 
+    // New day: reset counter.
+    function _resetForNewDay() {
+        root.glassesDrunk = 0;
+        root._lastDate = root._todayKey();
+        root._save();
+    }
+
     function _load() {
         if (!Persistent.ready) return;
         const w = Persistent.states.water || {};
         root._lastDate = w.lastDate || "";
         root._lastNotify = w.lastNotify || 0;
         if (root._lastDate !== root._todayKey()) {
-            // New day: reset counter.
-            root.glassesDrunk = 0;
-            root._lastDate = root._todayKey();
-            root._save();
+            root._resetForNewDay();
         } else {
             root.glassesDrunk = Math.max(0, w.glassesDrunk || 0);
         }
@@ -92,9 +96,7 @@ Singleton {
         if (!root.enabled) return;
         // Day rollover reset (also covered by _load on boot).
         if (root._lastDate !== root._todayKey()) {
-            root.glassesDrunk = 0;
-            root._lastDate = root._todayKey();
-            root._save();
+            root._resetForNewDay();
         }
         if (root.dailyGoal > 0 && root.glassesDrunk >= root.dailyGoal) return;
 

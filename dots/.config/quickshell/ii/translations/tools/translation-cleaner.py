@@ -6,20 +6,12 @@ Used to clean and organize translation files, removing unused keys
 """
 
 import os
-import sys
 import json
 import argparse
-import importlib.util
 from pathlib import Path
-from typing import Dict, Set, List
+from typing import List
 
-# Import from the same directory using importlib
-current_dir = os.path.dirname(os.path.abspath(__file__))
-manager_path = os.path.join(current_dir, 'translation-manager.py')
-spec = importlib.util.spec_from_file_location("translation_manager", manager_path)
-translation_manager = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(translation_manager)
-TranslationManager = translation_manager.TranslationManager
+from translation_manager import TranslationManager
 
 def clean_translation_files(translations_dir: str, source_dir: str, backup: bool = True, yes_mode: bool = False):
     """Clean translation files by removing unused keys"""

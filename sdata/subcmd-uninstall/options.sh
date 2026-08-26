@@ -17,13 +17,5 @@ para=$(getopt \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 #####################################################################################
-## getopt Phase 1
-# ignore parameter's order, execute options below first
-eval set -- "$para"
-while true ; do
-  case "$1" in
-    -h|--help) showhelp;exit;;
-    --) break ;;
-    *) shift ;;
-  esac
-done
+# -h/--help is the only option, and it is honoured regardless of position.
+showhelp_if_asked "$para"

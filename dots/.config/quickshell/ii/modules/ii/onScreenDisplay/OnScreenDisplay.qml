@@ -16,28 +16,6 @@ Scope {
     property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name)
 
     property string currentIndicator: "volume"
-    property var indicators: [
-        {
-            id: "volume",
-            sourceUrl: "indicators/VolumeIndicator.qml"
-        },
-        {
-            id: "brightness",
-            sourceUrl: "indicators/BrightnessIndicator.qml"
-        },
-        {
-            id: "playerVolume",
-            sourceUrl: "indicators/PlayerVolumeIndicator.qml"
-        },
-        {
-            id: "gamma",
-            sourceUrl: "indicators/GammaIndicator.qml"
-        },
-        {
-            id: "language",
-            sourceUrl: "indicators/LanguageIndicator.qml"
-        },
-    ]
 
     function triggerOsd() {
         GlobalStates.osdVolumeOpen = true;
@@ -184,9 +162,49 @@ Scope {
                         }
                         spacing: 0
 
-                        Loader {
-                            id: osdIndicatorLoader
-                            source: root.indicators.find(i => i.id === root.currentIndicator)?.sourceUrl
+                        OsdValueIndicator {
+                            id: osdIndicator
+                            readonly property var brightnessMonitor: Brightness.getMonitorForScreen(root.focusedScreen)
+                            readonly property var info: ({
+                                volume: {
+                                    icon: Audio.sink?.audio.muted ? "volume_off" : "volume_up",
+                                    name: Translation.tr("Volume"),
+                                    value: Audio.sink?.audio.volume ?? 0,
+                                    shape: MaterialShape.Shape.Cookie7Sided
+                                },
+                                brightness: {
+                                    icon: Hyprsunset.temperatureActive ? "routine" : "light_mode",
+                                    name: Translation.tr("Brightness"),
+                                    value: osdIndicator.brightnessMonitor?.brightness ?? 50,
+                                    shape: MaterialShape.Shape.Burst
+                                },
+                                playerVolume: {
+                                    icon: "music_note",
+                                    name: Translation.tr("Music"),
+                                    value: MprisController.activePlayer?.volume ?? 0,
+                                    shape: MaterialShape.Shape.Cookie4Sided
+                                },
+                                gamma: {
+                                    icon: "wb_twilight",
+                                    name: Translation.tr("Gamma"),
+                                    value: Hyprsunset.gamma / 100 ?? 0.5,
+                                    from: Hyprsunset.gammaLowerLimit / 100
+                                },
+                                language: {
+                                    icon: "language",
+                                    name: HyprlandXkb.currentLayoutName || "English (US)",
+                                    value: 0,
+                                    showProgressBar: false,
+                                    shape: MaterialShape.Shape.Cookie7Sided
+                                }
+                            })[root.currentIndicator] ?? ({})
+
+                            icon: info.icon ?? ""
+                            name: info.name ?? ""
+                            value: info.value ?? 0
+                            shape: info.shape
+                            from: info.from ?? 0
+                            showProgressBar: info.showProgressBar ?? true
                         }
 
                         Item {

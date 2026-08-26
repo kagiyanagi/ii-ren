@@ -30,10 +30,6 @@ Options for install:
                             Possible values of <set>: $(ls -A ${REPO_ROOT}/dots-extra/fontsets)
 ${STY_CYAN}
 New features (experimental):
-      --exp-files             Use yaml-based config for the third step copying files.
-                              This feature is ${STY_YELLOW}still on early stage${STY_CYAN},
-                              feedback and contribution welcomed,
-                              see https://github.com/end-4/dots-hyprland/issues/2137 for details.
       --via-nix               Use Nix and Home-manager to install dependencies.
                               This feature is ${STY_RED}working in progress${STY_CYAN}. Contribution is welcomed,
                               see https://github.com/end-4/dots-hyprland/issues/1061 for details.
@@ -47,16 +43,16 @@ cleancache(){
 # `man getopt` to see more
 para=$(getopt \
   -o hfFk:cs \
-  -l help,force,firstrun,fontset:,clean,skip-allgreeting,skip-alldeps,skip-allsetups,skip-allfiles,ignore-outdate,skip-sysupdate,skip-plasmaintg,skip-backup,skip-quickshell,skip-fish,skip-hyprland,skip-hyprland-entry,skip-fontconfig,skip-miscconf,core,exp-files,via-nix \
+  -l help,force,firstrun,fontset:,clean,skip-allgreeting,skip-alldeps,skip-allsetups,skip-allfiles,ignore-outdate,skip-sysupdate,skip-plasmaintg,skip-backup,skip-quickshell,skip-fish,skip-hyprland,skip-hyprland-entry,skip-fontconfig,skip-miscconf,core,via-nix \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 #####################################################################################
 ## getopt Phase 1
 # ignore parameter's order, execute options below first
+showhelp_if_asked "$para"
 eval set -- "$para"
 while true ; do
   case "$1" in
-    -h|--help) showhelp;exit;;
     -c|--clean) cleancache;shift;;
     --) shift;break ;;
     *) shift ;;
@@ -88,7 +84,6 @@ while true ; do
     --skip-fontconfig) SKIP_FONTCONFIG=true;shift;;
     --skip-miscconf) SKIP_MISCCONF=true;shift;;
     --core) SKIP_PLASMAINTG=true;SKIP_FISH=true;SKIP_FONTCONFIG=true;SKIP_MISCCONF=true;shift;;
-    --exp-files) EXPERIMENTAL_FILES_SCRIPT=true;shift;;
     --via-nix) INSTALL_VIA_NIX=true;shift;;
     
     ## Ones with parameter

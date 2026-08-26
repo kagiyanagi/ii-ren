@@ -40,8 +40,6 @@ LockScreen {
             height: parent.height
             onStatusChanged: {
                 if (status === Image.Ready) {
-                    print("Lock wallpaper loaded");
-                    print(lockSurfaceItem.height);
                     y = -lockSurfaceItem.height;
                     openAnim.restart();
                 }
@@ -92,13 +90,6 @@ LockScreen {
     component Interactables: Rectangle {
         id: interactablesComponent
         color: ColorUtils.transparentize("#000000", 0.8)
-        // Button {
-        //     onClicked: {
-        //         root.context.unlocked(LockContext.ActionEnum.Unlock);
-        //         GlobalStates.screenLocked = false;
-        //     }
-        //     text: "woah it doesnt work let me out pls uwu colon three"
-        // }
 
         function switchToFocusedView() {
             switchToPasswordViewAnim.restart();

@@ -186,11 +186,3 @@ const series = [
         { name: '', symbol: '', number: -1, weight: 0, type: 'empty' },
     ],
 ];
-
-const niceTypes = {
-    'metal': "Metal",
-    'nonmetal': "Nonmetal",
-    'noblegas': "Noble gas",
-    'lanthanum': "Lanthanum",
-    'actinium': "Actinium"
-}

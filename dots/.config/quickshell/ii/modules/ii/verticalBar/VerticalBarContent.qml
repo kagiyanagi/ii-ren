@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Bluetooth
-import Quickshell.Services.UPower
 import qs
 import qs.services
 import qs.modules.common
@@ -15,21 +13,8 @@ Item { // Bar content region
 
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
-    property bool hasActiveWindows: false
-    property bool showBarBackground: root.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1
-    
-    Connections {
-        enabled: Config.options.bar.barBackgroundStyle === 2
-        target: HyprlandData
-        function onWindowListChanged() {
-            const monitor = HyprlandData.monitors.find(m => m.id === monitorIndex);
-            const wsId = monitor?.activeWorkspace?.id;
-
-            const hasWindow = wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
-
-            root.hasActiveWindows = hasWindow
-        }
-    }
+    // Computed by VerticalBar.qml, which is where monitorIndex actually lives.
+    required property bool showBarBackground
 
     component HorizontalBarSeparator: Rectangle {
         Layout.leftMargin: Appearance.sizes.baseBarHeight / 3

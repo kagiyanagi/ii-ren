@@ -57,10 +57,10 @@ Item {
         return maxCount;
     }
     readonly property bool hasAllDayEvents: maxAllDayEventCount > 0
-    readonly property color todayHighlightFill: withOpacity(Appearance.colors.colPrimary, 0.12)
-    readonly property color todayHighlightBorder: withOpacity(Appearance.colors.colPrimary, 0.28)
-    readonly property color dayBackgroundFill: withOpacity(Appearance.colors.colSecondary, 0.04)
-    readonly property color dayBackgroundFillVariant: withOpacity(Appearance.colors.colSecondary, 0.08)
+    readonly property color todayHighlightFill: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.12)
+    readonly property color todayHighlightBorder: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.28)
+    readonly property color dayBackgroundFill: ColorUtils.applyAlpha(Appearance.colors.colSecondary, 0.04)
+    readonly property color dayBackgroundFillVariant: ColorUtils.applyAlpha(Appearance.colors.colSecondary, 0.08)
 
     function updateCurrentTimeLine() {
         let time = DateTime.clock.date;
@@ -72,14 +72,6 @@ Item {
         let diffMinutes = currentTotalMinutes - baseTotalMinutes;
 
         currentTimeY = diffMinutes * root.pixelsPerMinute;
-    }
-
-    function withOpacity(colorValue, alpha) {
-        if (!colorValue)
-            return Qt.rgba(0, 0, 0, alpha);
-
-        let color = Qt.color(colorValue);
-        return Qt.rgba(color.r, color.g, color.b, alpha);
     }
 
     function isAllDayEvent(event) {
@@ -121,20 +113,18 @@ Item {
         let startTotal = root.parseTimeToMinutes(event.start);
         let endTotal = root.parseTimeToMinutes(event.end);
 
-        let formatTime = (totalMinutes) => {
-            if (totalMinutes === null)
-                return "";
-            let hour = Math.floor(totalMinutes / 60);
-            let minute = totalMinutes % 60;
-            let date = new Date();
-            date.setHours(hour, minute, 0, 0);
-            return Qt.formatTime(date, Config.options?.time.format ?? "hh:mm");
-        };
-
-        let startStr = formatTime(startTotal) || event.start || "";
-        let endStr = formatTime(endTotal) || event.end || "";
+        let startStr = root.formatMinutes(startTotal) || event.start || "";
+        let endStr = root.formatMinutes(endTotal) || event.end || "";
         let range = startStr && endStr ? startStr + " - " + endStr : startStr || endStr;
         return range ? description ? "•  " + title + "\n•  " + range + "\n•  " + description : "•  " +  title + "\n•  " + range : "•  " + title;
+    }
+
+    function formatMinutes(totalMinutes) {
+        if (totalMinutes === null)
+            return "";
+        let date = new Date();
+        date.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+        return Qt.formatTime(date, Config.options?.time.format ?? "hh:mm");
     }
 
     function parseTimeToMinutes(timeStr) {
@@ -361,16 +351,7 @@ Item {
                             height: root.slotHeight
 
                             StyledText {
-                                text: {
-                                    let totalMinutes = root.startMinute + (index * root.slotDuration);
-                                    let hour = root.startHour + Math.floor(totalMinutes / 60);
-                                    let minute = totalMinutes % 60;
-
-                                    // Format time based on DateTime format
-                                    let testDate = new Date();
-                                    testDate.setHours(hour, minute, 0);
-                                    return Qt.formatTime(testDate, Config.options?.time.format ?? "hh:mm");
-                                }
+                                text: root.formatMinutes(root.startHour * 60 + root.startMinute + index * root.slotDuration)
                                 anchors.top: parent.top
                                 anchors.topMargin: -font.pixelSize / 2
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -413,20 +394,9 @@ Item {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     radius: Appearance.rounding.normal
                                     clip: true
-                                    y: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let baseTotalMinutes = root.startHour * 60 + root.startMinute;
-                                        let eventTotalMinutes = startHr * 60 + startMin;
-                                        let diffMinutes = eventTotalMinutes - baseTotalMinutes;
-                                        return diffMinutes * root.pixelsPerMinute;
-                                    }
+                                    y: (root.parseTimeToMinutes(modelData.start) - (root.startHour * 60 + root.startMinute)) * root.pixelsPerMinute
                                     height: {
-                                        let startHr = parseInt(modelData.start.split(":")[0]);
-                                        let endHr = parseInt(modelData.end.split(":")[0]);
-                                        let startMin = parseInt(modelData.start.split(":")[1]);
-                                        let endMin = parseInt(modelData.end.split(":")[1]);
-                                        let totalMins = (endHr * 60 + endMin) - (startHr * 60 + startMin);
+                                        let totalMins = root.parseTimeToMinutes(modelData.end) - root.parseTimeToMinutes(modelData.start);
                                         return Math.max(totalMins * root.pixelsPerMinute - 4, 48); // Minimum height for touch targets
                                     }
 
@@ -459,20 +429,8 @@ Item {
                                         }
 
                                         StyledText {
-                                            text: {
-                                                let startHr = parseInt(modelData.start.split(":")[0]);
-                                                let startMin = parseInt(modelData.start.split(":")[1]);
-                                                let endHr = parseInt(modelData.end.split(":")[0]);
-                                                let endMin = parseInt(modelData.end.split(":")[1]);
-
-                                                let formatTime = (hour, minute) => {
-                                                    let testDate = new Date();
-                                                    testDate.setHours(hour, minute, 0);
-                                                    return Qt.formatTime(testDate, Config.options?.time.format ?? "hh:mm");
-                                                };
-
-                                                return formatTime(startHr, startMin) + " - " + formatTime(endHr, endMin);
-                                            }
+                                            text: root.formatMinutes(root.parseTimeToMinutes(modelData.start))
+                                                + " - " + root.formatMinutes(root.parseTimeToMinutes(modelData.end))
                                             font.weight: Font.Medium
                                             width: parent.width
                                             wrapMode: Text.NoWrap

@@ -12,34 +12,17 @@ Item {
     required property int listCount
 
     readonly property var ext: modelData
-    readonly property bool isInstalled: {
-        let installed = ExtensionManager.installedExtensions
+    readonly property var installedEntry: {
+        const installed = ExtensionManager.installedExtensions
         for (let id in installed) {
-            if (installed[id].name === ext.name || installed[id].id === ext.name) return true
+            if (installed[id].name === ext.name || installed[id].id === ext.name) return installed[id]
         }
-        return false
+        return null
     }
-    readonly property bool isLocalExtension: {
-        let installed = ExtensionManager.installedExtensions
-        for (let id in installed) {
-            if ((installed[id].name === ext.name || installed[id].id === ext.name) && installed[id].isLocal) return true
-        }
-        return false
-    }
-    readonly property bool isCustomUrlExtension: {
-        let installed = ExtensionManager.installedExtensions
-        for (let id in installed) {
-            if ((installed[id].name === ext.name || installed[id].id === ext.name) && installed[id].isCustomUrl) return true
-        }
-        return false
-    }
-    readonly property bool isEnabled: {
-        let installed = ExtensionManager.installedExtensions
-        for (let id in installed) {
-            if ((installed[id].name === ext.name || installed[id].id === ext.name) && installed[id].enabled) return true
-        }
-        return false
-    }
+    readonly property bool isInstalled: root.installedEntry !== null
+    readonly property bool isLocalExtension: root.installedEntry?.isLocal ?? false
+    readonly property bool isCustomUrlExtension: root.installedEntry?.isCustomUrl ?? false
+    readonly property bool isEnabled: root.installedEntry?.enabled ?? false
     readonly property string _auditState: {
         ExtensionAudit.auditDbVersion
         if (!ExtensionAudit.auditDatabaseReady || !ext.hasExtensionJson) return ""

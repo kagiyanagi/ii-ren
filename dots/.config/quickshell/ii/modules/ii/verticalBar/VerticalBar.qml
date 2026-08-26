@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import Quickshell.Services.UPower
 import qs
 import qs.services
 import qs.modules.common
@@ -116,6 +115,7 @@ Scope {
 
                     VerticalBarContent {
                         id: barContent
+                        showBarBackground: barRoot.showBarBackground
                         implicitWidth: Appearance.sizes.verticalBarWidth
                         anchors {
                             top: parent.top

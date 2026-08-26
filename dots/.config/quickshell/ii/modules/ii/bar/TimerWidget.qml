@@ -1,3 +1,4 @@
+import "duration.js" as Duration
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -30,13 +31,6 @@ Item {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
-    function formatTime(time) {
-        const sec = Math.floor(time/100)
-        return Math.floor(sec/60).toString().padStart(2,'0') + ":" +
-        (sec%60).toString().padStart(2,'0') + "." +
-        (time%100).toString().padStart(2,'0')
-    }
-
     RowLayout {
         id: rowLayout
         anchors.centerIn: parent
@@ -55,7 +49,7 @@ Item {
 
                 StyledText {
                     Layout.topMargin: 3
-                    text: formatTime(TimerService.stopwatchTime)
+                    text: Duration.format10ms(TimerService.stopwatchTime, true)
                     color: Appearance.colors.colOnPrimary
                 }
             }  
@@ -88,10 +82,7 @@ Item {
 
                 StyledText {
                     Layout.topMargin: 3
-                    text: {
-                        const t = TimerService.pomodoroSecondsLeft
-                        return Math.floor(t/60).toString().padStart(2,'0') + ":" + (t%60).toString().padStart(2,'0')
-                    }
+                    text: Duration.format(TimerService.pomodoroSecondsLeft)
                     color: Appearance.colors.colOnPrimary
                 }
             }

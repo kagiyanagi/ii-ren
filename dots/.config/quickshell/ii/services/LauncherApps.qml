@@ -8,7 +8,7 @@ Singleton {
     id: root
 
     function isPinned(appId) {
-        return Config.options.launcher.pinnedApps.indexOf(appId) !== -1;
+        return Config.options.launcher.pinnedApps.includes(appId);
     }
 
     function togglePin(appId) {

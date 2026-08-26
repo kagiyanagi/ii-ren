@@ -19,9 +19,6 @@ import Quickshell.Io
  *  - playEvent(category, events): gated by Config.options.sounds.enable and
  *    Config.options.sounds[category], rate-limited per category, honors
  *    per-event custom file overrides (Config.options.sounds.custom).
- *  - preview(themeId, events): ungated, for the settings page. Resolves
- *    theme-first so each card demos its own sounds, and repeats very short
- *    samples so they're actually audible.
  *  - startLoop/stopLoop: continuous ring (alarms); ignores the master switch,
  *    the caller checks its own category toggle. Supports gentle fade-in.
  */
@@ -62,36 +59,21 @@ Singleton {
 
     /**
      * Resolve event names to a playable file url.
-     * `events` is a name or a list of names ordered by preference.
-     * Default order tries each event name across the whole theme chain
-     * (selected theme, its Inherits, freedesktop) — right for real playback
-     * where the event's meaning matters most. With themeFirst, each theme is
-     * exhausted before falling back — right for previews, where hearing the
-     * card's own theme matters most.
+     * `events` is a name or a list of names ordered by preference: each name is
+     * tried across the whole theme chain (selected theme, its Inherits,
+     * freedesktop) before the next, so the event's meaning wins over the theme.
+     *
+     * Lists that cross the QML boundary (Repeater models, list properties)
+     * arrive as QVariantList sequences where Array.isArray is false, so
+     * normalize by shape instead.
      */
-    // Lists that cross the QML boundary (Repeater models, list properties)
-    // arrive as QVariantList sequences where Array.isArray is false, so
-    // normalize by shape instead.
-    function _toNames(events) {
-        return typeof events === "string" ? [events] : Array.from(events);
-    }
-
-    function resolve(events, themeId, themeFirst) {
-        const names = root._toNames(events);
-        const chain = root._themeChain(themeId ?? Config.options.sounds.theme);
-        if (themeFirst) {
+    function resolve(events) {
+        const names = typeof events === "string" ? [events] : Array.from(events);
+        const chain = root._themeChain(Config.options.sounds.theme);
+        for (const name of names) {
             for (const dir of chain) {
-                for (const name of names) {
-                    const url = root._fileUrl(dir, name);
-                    if (url !== "") return url;
-                }
-            }
-        } else {
-            for (const name of names) {
-                for (const dir of chain) {
-                    const url = root._fileUrl(dir, name);
-                    if (url !== "") return url;
-                }
+                const url = root._fileUrl(dir, name);
+                if (url !== "") return url;
             }
         }
         return "";
@@ -121,21 +103,6 @@ Singleton {
         return dirs;
     }
 
-    /** True if the theme itself ships any of these event sounds (no fallback). */
-    function hasOwnSound(themeId, events) {
-        const names = root._toNames(events);
-        const theme = root.themes.find(t => t.id === themeId);
-        const dir = theme?.dir ?? `/usr/share/sounds/${themeId}`;
-        return names.some(name => root._fileUrl(dir, name) !== "");
-    }
-
-    /** Number of sound files a theme ships. */
-    function soundCount(themeId) {
-        const theme = root.themes.find(t => t.id === themeId);
-        const dir = (theme?.dir ?? `/usr/share/sounds/${themeId}`) + "/";
-        return Object.keys(root._soundFiles).filter(path => path.startsWith(dir)).length;
-    }
-
     function _customUrl(category) {
         const custom = Config.options.sounds.custom[category] ?? "";
         if (custom === "") return "";
@@ -159,26 +126,10 @@ Singleton {
         root._playUrl(url, category === "volumeChange" ? "blip" : "");
     }
 
-    function playEventFile(category, path) {
-        if (!Config.options.sounds.enable) return;
-        if (!Config.options.sounds[category]) return;
-        root._playUrl(path.startsWith("file://") ? path : "file://" + path);
-    }
-
-    function preview(themeId, events) {
-        const url = root.resolve(events, themeId, true);
-        if (url !== "") root._playUrl(url, "preview");
-    }
-
-    function previewFile(path) {
-        if (!path) return;
-        root._playUrl(path.startsWith("file://") ? path : "file://" + path, "preview");
-    }
-
     property int _poolIndex: 0
     function _playUrl(url, dedicatedPlayerName) {
         const players = root._ensurePlayers();
-        let player = dedicatedPlayerName === "blip" ? players.blipPlayer : (dedicatedPlayerName === "preview" ? players.previewPlayer : null);
+        let player = dedicatedPlayerName === "blip" ? players.blipPlayer : null;
         if (!player) {
             player = players.pool[root._poolIndex];
             root._poolIndex = (root._poolIndex + 1) % players.pool.length;
@@ -235,7 +186,6 @@ Singleton {
     component SoundPlayers: Item {
         readonly property list<MediaPlayer> pool: [player0, player1, player2]
         readonly property MediaPlayer blipPlayer: blip
-        readonly property MediaPlayer previewPlayer: preview
         readonly property MediaPlayer loopPlayer: loop
         readonly property NumberAnimation loopFadeAnim: loopFade
 
@@ -248,15 +198,6 @@ Singleton {
         EventPlayer { id: player2; outputDevice: mediaDevices.defaultAudioOutput }
 
         EventPlayer { id: blip; outputDevice: mediaDevices.defaultAudioOutput }
-
-        EventPlayer {
-            id: preview
-            outputDevice: mediaDevices.defaultAudioOutput
-
-            // Sub-150ms samples (like FreeDesktop's 67ms volume tick) are nearly
-            // imperceptible as a one-shot preview — repeat them a few times.
-            onDurationChanged: loops = (duration > 0 && duration < 150) ? 3 : 1
-        }
 
         EventPlayer {
             id: loop
@@ -314,59 +255,6 @@ Singleton {
         target: Config
         function onReadyChanged() {
             root._maybePlayLoginSound();
-        }
-    }
-
-    // ── Theme installation ────────────────────────────────────────────────
-    signal installFinished(bool success, string message)
-
-    function installFromArchive(archivePath) {
-        if (installProc.running) return;
-        installProc.archivePath = archivePath.startsWith("file://") ? archivePath.substring(7) : archivePath;
-        installProc.running = true;
-    }
-
-    Process {
-        id: installProc
-        property string archivePath: ""
-        command: ["bash", "-c", `
-            set -e
-            dest="$HOME/.local/share/sounds"
-            mkdir -p "$dest"
-            tmp=$(mktemp -d)
-            trap 'rm -rf "$tmp"' EXIT
-            bsdtar -xf "$1" -C "$tmp"
-            found=""
-            if [ -f "$tmp/index.theme" ]; then
-                name=$(basename "$1"); name="\${name%%.tar*}"; name="\${name%.zip}"
-                mkdir -p "$dest/$name"
-                cp -a "$tmp"/. "$dest/$name/"
-                found="$name"
-            else
-                for d in "$tmp"/*/; do
-                    [ -f "$d/index.theme" ] || continue
-                    cp -a "$d" "$dest/"
-                    found="$found $(basename "$d")"
-                done
-            fi
-            [ -n "$found" ] || { echo "NO_THEME"; exit 1; }
-            echo "OK$found"
-        `, "--", installProc.archivePath]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const out = text.trim();
-                if (out.startsWith("OK")) {
-                    root.rescan();
-                    root.installFinished(true, Translation.tr("Installed: %1").arg(out.substring(2).trim()));
-                } else {
-                    root.installFinished(false, Translation.tr("No sound theme (index.theme) found in archive"));
-                }
-            }
-        }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
-                root.installFinished(false, Translation.tr("Extraction failed — is the archive valid?"));
-            }
         }
     }
 

@@ -196,13 +196,10 @@ Singleton {
       Timer {
         id: interval
         running: false
-        interval:10
+        interval: Config.options?.resources?.updateInterval ?? 3000
         repeat: true
-        onTriggered: {
-          getEventsProcess.running = true
-          this.interval =    Config.options?.resources?.updateInterval ?? 3000
-                   
-        }
+        triggeredOnStart: true
+        onTriggered: getEventsProcess.running = true
     }
 
 

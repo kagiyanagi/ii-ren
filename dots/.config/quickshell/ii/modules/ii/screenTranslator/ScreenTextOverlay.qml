@@ -200,41 +200,10 @@ Item {
         Repeater {
             model: root.loading ? [] : root.visionParagraphs
             delegate: VisionBoundingBoxRect {
-                readonly property string text: modelData.text
-                readonly property string translatedText: root.translate(text)
-                visible: translatedText != text
                 scaleFactor: 1
             }
         }
     }
-
-    // I no longer need these but they were a fucking pain in the ass to figure out so they're staying
-    // GaussianBlur {
-    //     id: blurredImage
-    //     z: 3
-    //     width: root.windowWidth
-    //     height: root.windowHeight
-    //     transformOrigin: Item.TopLeft
-    //     scale: root.scaleFactor
-    //     source: screenshotImage
-    //     radius: 10
-    //     samples: radius * 2 + 1
-    //     visible: false
-    // }
-    // MultiEffect {
-    //     id: blurredImage
-    //     z: 3
-    //     source: screenshotImage
-    //     width: root.windowWidth
-    //     height: root.windowHeight
-    //     transformOrigin: Item.TopLeft
-    //     scale: root.scaleFactor
-
-    //     blurEnabled: true
-    //     blur: 1
-    //     blurMax: 64
-    //     visible: false
-    // }
 
     MaskMultiEffect {
         z: 4
@@ -267,6 +236,9 @@ Item {
 
     component VisionBoundingBoxRect: Rectangle {
         required property var modelData
+        readonly property string text: modelData.text
+        readonly property string translatedText: root.translate(text)
+        visible: translatedText != text
         property real scaleFactor: root.scaleFactor
         property list<var> boundingVertices: modelData.boundingBox.vertices
         property real unscaledX: boundingVertices[0].x
@@ -294,10 +266,6 @@ Item {
     component TextItem: VisionBoundingBoxRect {
         id: ti
         // {"boundingPoly": {"vertices": [{"x": 536,"y": 236},{"x": 583,"y": 236},{"x": 583,"y": 262},{"x": 536,"y": 262}]},"description": "宮坂"}
-        readonly property string text: modelData.text
-        readonly property string translatedText: root.translate(text)
-        visible: translatedText != text
-
         color: ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 0.4)
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)

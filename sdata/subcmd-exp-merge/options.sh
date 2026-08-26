@@ -31,14 +31,7 @@ para=$(getopt \
   -n "$0" -- "$@")
 [ $? != 0 ] && echo "$0: Error when getopt, please recheck parameters." && exit 1
 
-eval set -- "$para"
-while true ; do
-  case "$1" in
-    -h|--help) showhelp;exit;;
-    --) break ;;
-    *) shift ;;
-  esac
-done
+showhelp_if_asked "$para"
 
 DRY_RUN=false
 SKIP_FETCH=false

@@ -18,13 +18,16 @@ Singleton {
     property var filePath: Directories.todoPath
     property var list: []
     
-    function addItem(item) {
-        
-          list.push(item)
-          // Reassign to trigger onListChanged
-          root.list = list.slice(0)
+    // Reassign to trigger onListChanged, then write through. khal-backed lists
+    // can't save done marks, so callers can skip the write.
+    function _persist(save = true) {
+        root.list = list.slice(0)
+        if (save) todoFileView.setText(JSON.stringify(root.list))
+    }
 
-          todoFileView.setText(JSON.stringify(root.list))
+    function addItem(item) {
+        list.push(item)
+        _persist()
     }
 
     function addTask(desc) {
@@ -63,37 +66,21 @@ Singleton {
     function markDone(index) {
         if (index >= 0 && index < list.length) {
             list[index].done = true
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-
-            todoFileView.setText(JSON.stringify(root.list))
-
-           
+            _persist()
         }
     }
 
     function markUnfinished(index) {
         if (index >= 0 && index < list.length) {
             list[index].done = false
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-
-            if(CalendarService.khalAvailable){ //kahl does not support saving mark
-              return
-            }
-            todoFileView.setText(JSON.stringify(root.list))
+            _persist(!CalendarService.khalAvailable)
         }
     }
 
     function deleteItem(index) {
-      if (index >= 0 && index < list.length) {
-            let item = list[index]
+        if (index >= 0 && index < list.length) {
             list.splice(index, 1)
-            // Reassign to trigger onListChanged
-            root.list = list.slice(0)
-
-          todoFileView.setText(JSON.stringify(root.list))
- 
+            _persist()
         }
     }
 

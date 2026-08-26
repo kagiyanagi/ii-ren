@@ -1487,7 +1487,6 @@ Singleton {
                 property list<string> excludedSites: ["quora.com", "facebook.com"]
                 property string fileSearchDirectory: "/home"
                 property bool blurFileSearchResultPreviews: false
-                property bool sloppy: false // Uses levenshtein distance based scoring instead of fuzzy sort. Very weird.
                 property JsonObject prefix: JsonObject {
                     property bool showDefaultActionsWithoutPrefix: true
                     property string action: "/"
@@ -1671,14 +1670,6 @@ Singleton {
             }
 
             property JsonObject waffles: JsonObject {
-                // Some spots are kinda janky/awkward. Setting the following to
-                // false will make (some) stuff also be like that for accuracy.
-                // Example: the right-click menu of the Start button
-                property JsonObject tweaks: JsonObject {
-                    property bool switchHandlePositionFix: true
-                    property bool smootherMenuAnimations: true
-                    property bool smootherSearchBar: true
-                }
                 property JsonObject bar: JsonObject {
                     property bool bottom: true
                     property bool leftAlignApps: false

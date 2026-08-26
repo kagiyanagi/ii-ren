@@ -34,11 +34,7 @@ Singleton {
         Config.options.tray.pinnedItems = Config.options.tray.pinnedItems.filter(id => id !== itemId);
     }
     function isPinned(itemId) {
-        for (var i = 0; i < root.pinnedItems.length; i++) {
-            if (root.pinnedItems[i].id === itemId)
-                return true;
-        }
-        return false;
+        return root.pinnedItems.some(item => item.id === itemId);
     }
 
     function togglePin(itemId) {

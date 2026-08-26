@@ -12,7 +12,6 @@ Loader {
 
     required property var contentItem
     property real padding: Looks.radius.large - Looks.radius.medium
-    property bool noSmoothClosing: !Config.options.waffles.tweaks.smootherMenuAnimations
     property bool closeOnFocusLost: true
     signal focusCleared()
     
@@ -62,8 +61,7 @@ Loader {
         }
 
         function close() {
-            if (root.noSmoothClosing) root.active = false;
-            else closeAnim.start();
+            closeAnim.start();
         }
 
         function grabFocus() {

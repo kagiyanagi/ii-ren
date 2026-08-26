@@ -1,0 +1,6 @@
+module qs.modules.common.widgets.transitions
+
+# TransitionImage loads each transition by URL, so the named transitions do not
+# need entries here. These two are the shared bases the thin wrappers import.
+RevealWipe 1.0 RevealWipe.qml
+Wipe 1.0 Wipe.qml

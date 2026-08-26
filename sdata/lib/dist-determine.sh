@@ -78,8 +78,10 @@ elif test -f /etc/os-release; then
 else
   printf "${STY_RED}/etc/os-release does not exist, aborting...${STY_RST}\n" ; exit 1
 fi
-export OS_DISTRO_ID=$(awk -F'=' '/^ID=/ { gsub(/["\x27]/,"",$2); print tolower($2) }' ${OS_RELEASE_FILE} 2> /dev/null)
-export OS_DISTRO_ID_LIKE=$(awk -F'=' '/^ID_LIKE=/ { gsub(/["\x27]/,"",$2); print tolower($2) }' ${OS_RELEASE_FILE} 2> /dev/null)
+# os-release is a sourceable shell fragment by spec. Source it in a subshell so
+# its other keys (NAME, VERSION, ...) do not leak into this one.
+export OS_DISTRO_ID=$(. "${OS_RELEASE_FILE}" 2>/dev/null; echo "${ID,,}")
+export OS_DISTRO_ID_LIKE=$(. "${OS_RELEASE_FILE}" 2>/dev/null; echo "${ID_LIKE,,}")
 
 
 ####################

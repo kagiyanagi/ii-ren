@@ -42,14 +42,12 @@ Scope {
 
         const contentW = opts.isLoaded ? opts.contentVisualWidth : (opts.isVertical ? 60 : unloadedW)
         const contentH = opts.isLoaded ? opts.contentVisualHeight : (opts.isVertical ? unloadedH : 60)
-        const dockPadding = opts.isLoaded ? opts.dockPadding : 0
-
         return {
             maxWidth: maxW,
             maxHeight: maxH,
-            dockWidth: opts.isVertical ? contentW + dockPadding * 2 + gapsOut * 2 : Math.min(contentW + dockPadding * 2 + gapsOut * 2, maxW),
-            dockHeight: opts.isVertical ? Math.min(contentH + dockPadding * 2 + gapsOut * 2, maxH) : contentH + dockPadding * 2 + gapsOut * 2,
-            dockThickness: opts.isVertical ? contentW + dockPadding * 2 + gapsOut * 2 : contentH + dockPadding * 2 + gapsOut * 2,
+            dockWidth: opts.isVertical ? contentW + gapsOut * 2 : Math.min(contentW + gapsOut * 2, maxW),
+            dockHeight: opts.isVertical ? Math.min(contentH + gapsOut * 2, maxH) : contentH + gapsOut * 2,
+            dockThickness: opts.isVertical ? contentW + gapsOut * 2 : contentH + gapsOut * 2,
             backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxW - gapsOut * 2)),
             backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxH - gapsOut * 2) : contentH)
         }
@@ -108,8 +106,7 @@ Scope {
                 availableH: dockRoot.availableH,
                 isLoaded: dockLoader.activeAsync,
                 contentVisualWidth: dockLoader.item?.contentVisualWidth ?? 0,
-                contentVisualHeight: dockLoader.item?.contentVisualHeight ?? 0,
-                dockPadding: dockLoader.item?.dockPadding ?? 0
+                contentVisualHeight: dockLoader.item?.contentVisualHeight ?? 0
             })
 
             implicitWidth: Math.max(1, dockRoot.sizing.dockWidth)
@@ -244,7 +241,6 @@ Scope {
 
                             readonly property real contentVisualWidth: content.visualWidth
                             readonly property real contentVisualHeight: content.visualHeight
-                            readonly property real dockPadding: content.dockPadding
                             readonly property string dragState: content.dragState
                             readonly property bool requestDockShow: content.requestDockShow
                             readonly property bool ready: content.ready

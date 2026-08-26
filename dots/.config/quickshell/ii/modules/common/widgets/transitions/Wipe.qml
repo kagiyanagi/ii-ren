@@ -11,13 +11,17 @@ Item {
     property bool hideFront: true
     signal finished()
 
+    // Optional shaped leading edge dragged along in front of the wipe (Wave).
+    property url edgeImageSource: ""
+    property real edgeWidth: 0
+
     function start() {
         maskContainer.layer.enabled = true
         wipeRect.width = 0
         wipeMask.visible = true
-        
+
         revealAnim.from = 0
-        revealAnim.to = pivot.diagonal
+        revealAnim.to = pivot.diagonal + effect.edgeWidth
         revealAnim.restart()
     }
 
@@ -59,6 +63,16 @@ Item {
                 y: -pivot.diagonal / 2
                 x: -pivot.diagonal / 2
                 width: 0
+            }
+
+            Image {
+                visible: effect.edgeImageSource != ""
+                source: effect.edgeImageSource
+                x: wipeRect.x + wipeRect.width - 1
+                y: -pivot.diagonal / 2
+                width: effect.edgeWidth
+                height: pivot.diagonal
+                fillMode: Image.Stretch
             }
         }
     }

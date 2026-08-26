@@ -17,7 +17,6 @@ OverlayBackground {
     property var copyListEntries: []
     property string lastParsedCopylistText: ""
     property var parsedCopylistLines: []
-    property bool isClickthrough: false
     property real maxCopyButtonSize: 20
     property int currentTabIndex: Persistent.states.overlay.notes.tabIndex
     property bool tabEditModeEnabled: false
@@ -312,12 +311,6 @@ OverlayBackground {
                     }
                     onLoaded: item.height = 50
                 }
-            }
-        }
-        
-        Keys.onPressed: event => {
-            if (event.key === Qt.Key_Delete && event.modifiers & Qt.ShiftModifier) {
-                root.deleteCurrentTab();
             }
         }
 

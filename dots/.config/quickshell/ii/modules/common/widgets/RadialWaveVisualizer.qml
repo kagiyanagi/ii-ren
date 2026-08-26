@@ -1,6 +1,7 @@
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import QtQuick
 import QtQuick.Effects
 
@@ -37,19 +38,11 @@ Canvas { // Visualizer
         var maxRadius = Math.min(w, h) / 2;
         var inwardOffset = maxRadius * 0.8;
 
-        var smoothWindow = root.smoothing; 
-        root.smoothPoints = [];
-        for (var i = 0; i < n; ++i) {
-            var sum = 0, count = 0;
-            for (var j = -smoothWindow; j <= smoothWindow; ++j) {
-                var idx = Math.max(0, Math.min(n - 1, i + j));
-                sum += points[idx];
-                count++;
-            }
-            root.smoothPoints.push(sum / count);
-        }
-        if (!root.live) root.smoothPoints.fill(0); 
-        
+        var smoothed = VisualizerUtils.smooth(points, root.smoothing);
+        if (!root.live) smoothed.fill(0);
+        root.smoothPoints = smoothed;
+
+
         var plotPoints = root.smoothPoints.slice();
         plotPoints.push(root.smoothPoints[0]);
         var visualN = plotPoints.length;

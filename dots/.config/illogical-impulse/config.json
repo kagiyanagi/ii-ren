@@ -1473,8 +1473,7 @@
             "shellCommand": "$",
             "showDefaultActionsWithoutPrefix": true,
             "webSearch": "?"
-        },
-        "sloppy": false
+        }
     },
     "sidebar": {
         "ai": {
@@ -1641,11 +1640,6 @@
         },
         "calendar": {
             "force2CharDayOfWeek": true
-        },
-        "tweaks": {
-            "smootherMenuAnimations": true,
-            "smootherSearchBar": true,
-            "switchHandlePositionFix": true
         }
     },
     "wallpaperSelector": {

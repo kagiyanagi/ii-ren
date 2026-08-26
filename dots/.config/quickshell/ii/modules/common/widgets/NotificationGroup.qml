@@ -21,24 +21,6 @@ MouseArea { // Notification group area
     property real padding: 10
     implicitHeight: background.implicitHeight
 
-    property real dragConfirmThreshold: 70 // Drag further to discard notification
-    property real dismissOvershoot: 20 // Account for gaps and bouncy animations
-    property var qmlParent: root?.parent?.parent // There's something between this and the parent ListView
-    property var parentDragIndex: qmlParent?.dragIndex
-    property var parentDragDistance: qmlParent?.dragDistance
-    property var dragIndexDiff: Math.abs(parentDragIndex - index)
-    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : 
-        Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 :
-        dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
-        dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
-
-    function destroyWithAnimation(left = false) {
-        root.qmlParent.resetDrag()
-        background.anchors.leftMargin = background.anchors.leftMargin; // Break binding
-        destroyAnimation.left = left;
-        destroyAnimation.running = true;
-    }
-
     hoverEnabled: true
     onContainsMouseChanged: {
         if (!root.popup) return;
@@ -50,67 +32,32 @@ MouseArea { // Notification group area
         });
     }
 
-    SequentialAnimation { // Drag finish animation
-        id: destroyAnimation
-        property bool left: true
-        running: false
-
-        NumberAnimation {
-            target: background.anchors
-            property: "leftMargin"
-            to: (root.width + root.dismissOvershoot) * (destroyAnimation.left ? -1 : 1)
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-        }
-        onFinished: () => {
-            root.notifications.forEach((notif) => {
-                Qt.callLater(() => {
-                    Notifications.discardNotification(notif.notificationId);
-                });
-            });
-        }
-    }
-
     function toggleExpanded() {
         if (expanded) implicitHeightAnim.enabled = true;
         else implicitHeightAnim.enabled = false;
         root.expanded = !root.expanded;
     }
 
-    DragManager { // Drag manager
+    SwipeDismissible { // Drag manager
         id: dragManager
+        owner: root
+        target: background
+        itemIndex: root.index ?? root.parent.children.indexOf(root)
+
         anchors.fill: parent
         interactive: !expanded
-        automaticallyReset: false
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         onPressed: {
-            if (mouse.button === Qt.RightButton) 
+            if (mouse.button === Qt.RightButton)
                 root.toggleExpanded();
         }
 
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) 
-                root.destroyWithAnimation();
-        }
-
-        onDraggingChanged: () => {
-            if (dragging) {
-                root.qmlParent.dragIndex = root.index ?? root.parent.children.indexOf(root);
-            }
-        }
-
-        onDragDiffXChanged: () => {
-            root.qmlParent.dragDistance = dragDiffX;
-        }
-
-        onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold)
-                root.destroyWithAnimation(diffX < 0);
-            else 
-                dragManager.resetDrag();
-        }
+        onDismissed: root.notifications.forEach((notif) => {
+            Qt.callLater(() => {
+                Notifications.discardNotification(notif.notificationId);
+            });
+        })
     }
 
     StyledRectangularShadow {
@@ -123,7 +70,7 @@ MouseArea { // Notification group area
         width: parent.width
         color: popup ? Appearance.colors.colBackgroundSurfaceContainer : Appearance.colors.colLayer2
         radius: Appearance.rounding.normal
-        anchors.leftMargin: root.xOffset
+        anchors.leftMargin: dragManager.xOffset
 
         Behavior on anchors.leftMargin {
             enabled: !dragManager.dragging

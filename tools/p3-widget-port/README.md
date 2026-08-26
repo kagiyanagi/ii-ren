@@ -9,10 +9,21 @@ git clone --depth 1 https://github.com/P3DROVFX/ii-p3drovfx /tmp/p3
 P3=/tmp/p3/dots/.config/quickshell/ii ./port-widgets.sh
 ```
 
-`port-widgets.sh` only copies files. Everything that wires them into this shell —
-the config schema, the instance model, the shims in `services/` and
-`modules/common/` — is committed source, so re-running it never loses that work,
-but it will overwrite local edits inside `modules/ii/background/widgets/`.
+`port-widgets.sh` only copies files. The config schema and the instance model are
+committed source, so re-running never loses that work.
+
+It does overwrite local edits, though, and not only under
+`modules/ii/background/widgets/` (which it rsyncs with `--delete`). Both port
+scripts also replace whole files that carry local changes:
+
+| overwritten by | file |
+| --- | --- |
+| `port-widgets.sh` | `services/WidgetColorScheme.qml`, `modules/common/WeatherIcons.qml`, `modules/common/widgets/widgetCanvas/*` |
+| `port-popups.sh` | `services/{SoundService,ResourceUsage,Battery,Weather,AlarmService,DockerService}.qml`, `modules/ii/bar/ClockWidgetPopup.qml`, `modules/ii/bar/cards/*.qml` |
+
+Several of those have since been trimmed locally (dead API removed, duplicated
+helpers factored out). Re-porting reverts those trims, so diff before committing
+a re-port rather than accepting it wholesale.
 
 ## Checks
 

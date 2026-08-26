@@ -16,7 +16,6 @@ Item {
     required property int monitorIndex 
     required property var panelWindow
 
-    readonly property bool hyprscrollingEnabled: true //FIXME
     readonly property list<int> workspaceMap: Config.options.overview.workspaceMap
     readonly property string backgroundStyle: Config.options.overview.scrollingStyle.backgroundStyle
 
@@ -33,8 +32,6 @@ Item {
     property var windowByAddress: HyprlandData.windowByAddress
     property var monitorData: HyprlandData.monitors.find(m => m.id === root.monitor?.id)
 
-    property real normalWindowOffset: root.hyprscrollingEnabled ? 0 : root.workspaceImplicitWidth / 2 // if someone uses default layout with this scrolling overview, we have to add this offset to center the windows
-    
     property real workspaceImplicitWidth: (monitorData?.transform % 2 === 1) ? 
         ((monitor.height - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scaleRatio / monitor.scale) :
         ((monitor.width - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scaleRatio / monitor.scale)
@@ -295,7 +292,7 @@ Item {
                     scale: root.scaleRatio
                     widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id) // used by overview window
                     windowData: windowByAddress[address]
-                    hyprscrollingEnabled: root.hyprscrollingEnabled
+                    hyprscrollingEnabled: true
 
                     property int wsId: windowData?.workspace?.id
 
@@ -382,7 +379,7 @@ Item {
                     // Offset on the canvas
                     property int workspaceColIndex: getWsColumn(windowData?.workspace.id)
                     property int workspaceRowIndex: getWsRow(windowData?.workspace.id)
-                    xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex - root.normalWindowOffset
+                    xOffset: (root.workspaceImplicitWidth + workspaceSpacing) * workspaceColIndex
                     yOffset: (root.workspaceImplicitHeight + workspaceSpacing) * workspaceRowIndex
                     property real xWithinWorkspaceWidget: Math.max((windowData?.at[0] - (monitor?.x ?? 0) - monitorData?.reserved[0]) * root.scaleRatio, 0) - root.workspaceImplicitWidth / 2
                     property real yWithinWorkspaceWidget: Math.max((windowData?.at[1] - (monitor?.y ?? 0) - monitorData?.reserved[1]) * root.scaleRatio, 0)                    
@@ -391,7 +388,7 @@ Item {
                     property bool hovering: false
 
                     Loader { // Hover indicator (only works with hyprscrolling)
-                        active: root.hyprscrollingEnabled && !root.draggingWindowsFloating
+                        active: !root.draggingWindowsFloating
                         anchors.verticalCenter: parent.verticalCenter
                         sourceComponent: Rectangle {
                             anchors.verticalCenter: parent.verticalCenter            
@@ -531,12 +528,6 @@ Item {
                             if (!windowData) return;
 
                             if (event.button === Qt.LeftButton) {
-                                if (!root.hyprscrollingEnabled) {
-                                    Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
-                                    GlobalStates.overviewOpen = false; 
-                                    return
-                                }
-
                                 Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
                                 GlobalStates.overviewOpen = false;
                                 event.accepted = true
@@ -562,10 +553,10 @@ Item {
 
                 z: 999
 
-                x: root.hyprscrollingEnabled ? root.activeWindowData?.x ?? 0 : (root.workspaceImplicitWidth + workspaceSpacing) * colIndex - normalWindowOffset
-                y: root.hyprscrollingEnabled ? root.activeWindowData?.y ?? 0 : (root.workspaceImplicitHeight + workspaceSpacing) * rowIndex
-                width: root.hyprscrollingEnabled ? root.activeWindowData?.width ?? 0 : root.workspaceImplicitWidth + 4
-                height: root.hyprscrollingEnabled ? root.activeWindowData?.height ?? 0 : root.workspaceImplicitHeight
+                x: root.activeWindowData?.x ?? 0
+                y: root.activeWindowData?.y ?? 0
+                width: root.activeWindowData?.width ?? 0
+                height: root.activeWindowData?.height ?? 0
 
                 radius: root.windowRounding
                 color: "transparent"

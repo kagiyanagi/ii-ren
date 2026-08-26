@@ -40,7 +40,7 @@ show_status() {
     
     # Extract current text count
     echo "=== Current Project Status ==="
-    python3 "$SCRIPT_DIR/translation-manager.py" \
+    python3 "$SCRIPT_DIR/translation_manager.py" \
         --translations-dir "$TRANSLATIONS_DIR" \
         --source-dir "$SOURCE_DIR" \
         --extract-only | grep "Extracted"
@@ -126,14 +126,14 @@ BASE_ARGS="--translations-dir $TRANSLATIONS_DIR --source-dir $SOURCE_DIR"
 case $COMMAND in
     extract)
         echo "Extracting translatable texts..."
-        python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG --extract-only --show-temp
+        python3 "$SCRIPT_DIR/translation_manager.py" $BASE_ARGS $YES_FLAG --extract-only --show-temp
         ;;
     update)
         echo "Updating translation files..."
         if [ -n "$LANG_CODE" ]; then
-            python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG --language "$LANG_CODE"
+            python3 "$SCRIPT_DIR/translation_manager.py" $BASE_ARGS $YES_FLAG --language "$LANG_CODE"
         else
-            python3 "$SCRIPT_DIR/translation-manager.py" $BASE_ARGS $YES_FLAG
+            python3 "$SCRIPT_DIR/translation_manager.py" $BASE_ARGS $YES_FLAG
         fi
         ;;
     clean)

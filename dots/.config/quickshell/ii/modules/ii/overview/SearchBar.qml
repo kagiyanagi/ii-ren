@@ -21,6 +21,19 @@ RowLayout {
 
     enum SearchPrefixType { Action, App, Clipboard, Emojis, Math, ShellCommand, WebSearch, DefaultSearch }
 
+    // Indexed by SearchPrefixType - keep in the same order as the enum above.
+    readonly property var prefixStyles: [
+        { shape: MaterialShape.Shape.Pill, icon: "settings_suggest" },
+        { shape: MaterialShape.Shape.Clover4Leaf, icon: "apps" },
+        { shape: MaterialShape.Shape.Gem, icon: "content_paste_search" },
+        { shape: MaterialShape.Shape.Sunny, icon: "add_reaction" },
+        { shape: MaterialShape.Shape.PuffyDiamond, icon: "calculate" },
+        { shape: MaterialShape.Shape.PixelCircle, icon: "terminal" },
+        { shape: MaterialShape.Shape.SoftBurst, icon: "travel_explore" },
+        { shape: MaterialShape.Shape.Cookie7Sided, icon: "search" }
+    ]
+    readonly property var prefixStyle: root.prefixStyles[root.searchPrefixType] ?? root.prefixStyles[SearchBar.SearchPrefixType.DefaultSearch]
+
     property var searchPrefixType: {
         if (root.searchingText.startsWith(Config.options.search.prefix.action)) return SearchBar.SearchPrefixType.Action;
         if (root.searchingText.startsWith(Config.options.search.prefix.app)) return SearchBar.SearchPrefixType.App;
@@ -36,27 +49,8 @@ RowLayout {
         id: searchIcon
         Layout.alignment: Qt.AlignVCenter
         iconSize: Appearance.font.pixelSize.huge
-        shape: switch(root.searchPrefixType) {
-            case SearchBar.SearchPrefixType.Action: return MaterialShape.Shape.Pill;
-            case SearchBar.SearchPrefixType.App: return MaterialShape.Shape.Clover4Leaf;
-            case SearchBar.SearchPrefixType.Clipboard: return MaterialShape.Shape.Gem;
-            case SearchBar.SearchPrefixType.Emojis: return MaterialShape.Shape.Sunny;
-            case SearchBar.SearchPrefixType.Math: return MaterialShape.Shape.PuffyDiamond;
-            case SearchBar.SearchPrefixType.ShellCommand: return MaterialShape.Shape.PixelCircle;
-            case SearchBar.SearchPrefixType.WebSearch: return MaterialShape.Shape.SoftBurst;
-            default: return MaterialShape.Shape.Cookie7Sided;
-        }
-        text: switch (root.searchPrefixType) {
-            case SearchBar.SearchPrefixType.Action: return "settings_suggest";
-            case SearchBar.SearchPrefixType.App: return "apps";
-            case SearchBar.SearchPrefixType.Clipboard: return "content_paste_search";
-            case SearchBar.SearchPrefixType.Emojis: return "add_reaction";
-            case SearchBar.SearchPrefixType.Math: return "calculate";
-            case SearchBar.SearchPrefixType.ShellCommand: return "terminal";
-            case SearchBar.SearchPrefixType.WebSearch: return "travel_explore";
-            case SearchBar.SearchPrefixType.DefaultSearch: return "search";
-            default: return "search";
-        }
+        shape: root.prefixStyle.shape
+        text: root.prefixStyle.icon
     }
     ToolbarTextField { // Search box
         id: searchInput

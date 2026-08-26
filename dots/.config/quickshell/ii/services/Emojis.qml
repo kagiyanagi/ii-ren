@@ -20,22 +20,7 @@ Singleton {
         entry: a
     }))
     function fuzzyQuery(search: string): var {
-        if (root.sloppySearch) {
-            const results = entries.slice(0, 100).map(str => ({
-                entry: str,
-                score: Levendist.computeTextMatchScore(str.toLowerCase(), search.toLowerCase())
-            })).filter(item => item.score > root.scoreThreshold)
-                .sort((a, b) => b.score - a.score)
-            return results
-                .map(item => item.entry)
-        }
-
-        return Fuzzy.go(search, preparedEntries, {
-            all: true,
-            key: "name"
-        }).map(r => {
-            return r.obj.entry
-        });
+        return Fuzzy.queryEntries(search, preparedEntries);
     }
 
     function load() {

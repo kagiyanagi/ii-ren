@@ -1,18 +1,8 @@
 // genius-lyrics.js
 import pkg from 'genius-lyrics-api';
-const { getLyrics, getSong } = pkg;  // fetchLyrics/fetchSong değil, pkg içinden alıyoruz
+const { getSong } = pkg;  // fetchSong değil, pkg içinden alıyoruz
 
-// kendi async wrapper fonksiyonlarımız
-export async function fetchLyrics(apiKey, title, artist) {
-    const options = { apiKey, title, artist, optimizeQuery: true };
-    try {
-        return await getLyrics(options);
-    } catch (err) {
-        console.error("Lyrics fetch error:", err);
-        return null;
-    }
-}
-
+// kendi async wrapper fonksiyonumuz
 export async function fetchSong(apiKey, title, artist) {
     const options = { apiKey, title, artist, optimizeQuery: true };
     try {

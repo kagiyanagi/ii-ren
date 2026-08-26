@@ -633,7 +633,6 @@ AbstractWidget {
             , "--vertical-padding", verticalPadding //
             , wallpaperPath //
             , ...(root.placementStrategy === "mostBusy" || root.placementStrategy === "most_busy" ? ["--busiest"] : [])
-            // "--visual-output",
         ]
         stdout: StdioCollector {
             id: leastBusyRegionOutputCollector

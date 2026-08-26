@@ -29,12 +29,4 @@ Item {
             color: Appearance.colors.colOnSecondaryContainer
         }
     }
-
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        enabled: root.visible
-    }
 }

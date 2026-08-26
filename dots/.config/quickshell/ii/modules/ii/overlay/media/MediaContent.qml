@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
 import qs.services
@@ -23,34 +22,9 @@ StyledOverlayWidget {
     
     readonly property MprisPlayer currentPlayer: MprisController.activePlayer
     
-    property bool downloaded: false
-    property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
-
     property var artUrl: currentPlayer?.trackArtUrl
-    property string artDownloadLocation: Directories.coverArt
-    property string artFileName: Qt.md5(artUrl)
-    property string artFilePath: `${artDownloadLocation}/${artFileName}`
-
-    onArtFilePathChanged: updateArt()
 
     readonly property bool showSlider: Config.options.overlay.media.showSlider
-
-    function updateArt() {
-        coverArtDownloader.targetFile = root.artUrl 
-        coverArtDownloader.artFilePath = root.artFilePath
-        root.downloaded = false
-        coverArtDownloader.running = true
-    }
-
-    Process { // Cover art downloader
-        id: coverArtDownloader
-        property string targetFile: root.artUrl
-        property string artFilePath: root.artFilePath
-        command: [ "bash", "-c", `[ -f ${artFilePath} ] || curl -sSL '${targetFile}' -o '${artFilePath}'` ]
-        onExited: (exitCode, exitStatus) => {
-            root.downloaded = true
-        }
-    }
 
     contentItem: OverlayBackground {
         id: contentItem
@@ -121,20 +95,14 @@ StyledOverlayWidget {
                         }
                     }
 
-                    MouseArea {
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.fill: parent
-                        onClicked: root.updateArt()
-                    }
-
                     StyledImage { // Art image
                         id: mediaArt
                         property int size: parent.height
                         anchors.fill: parent
 
-                        source: root.displayedArtFilePath
+                        source: root.artUrl ?? ""
                         fillMode: Image.PreserveAspectCrop
-                        cache: false
+                        cache: true
                         antialiasing: true
 
                         width: size

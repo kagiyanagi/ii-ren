@@ -107,73 +107,14 @@ Singleton {
 
             property JsonObject overlay: JsonObject {
                 property list<string> open: ["crosshair", "recorder", "media", "volumeMixer", "resources"]
-                property JsonObject crosshair: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: true
-                    property real x: 827
-                    property real y: 441
-                    property real width: 250
-                    property real height: 100
-                }
-                property JsonObject media: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: true
-                    property real x: 827
-                    property real y: 441
-                    property real width: 250
-                    property real height: 100
-                }
-                property JsonObject floatingImage: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: false
-                    property real x: 1650
-                    property real y: 390
-                    property real width: 0
-                    property real height: 0
-                }
-                property JsonObject fpsLimiter: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: false
-                    property real x: 1570
-                    property real y: 615
-                    property real width: 280
-                    property real height: 80
-                }
-                property JsonObject recorder: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: false
-                    property real x: 80
-                    property real y: 80
-                    property real width: 350
-                    property real height: 130
-                }
-                property JsonObject resources: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: true
-                    property real x: 1500
-                    property real y: 770
-                    property real width: 350
-                    property real height: 200
-                    property int tabIndex: 0
-                }
-                property JsonObject volumeMixer: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: false
-                    property real x: 80
-                    property real y: 280
-                    property real width: 350
-                    property real height: 600
-                    property int tabIndex: 0
-                }
-                property JsonObject notes: JsonObject {
-                    property bool pinned: false
-                    property bool clickthrough: true
-                    property real x: 1400
-                    property real y: 42
-                    property real width: 460
-                    property real height: 330
-                    property int tabIndex: 0
-                }
+                property JsonObject crosshair: OverlayState { clickthrough: true; x: 827; y: 441; width: 250; height: 100 }
+                property JsonObject media: OverlayState { clickthrough: true; x: 827; y: 441; width: 250; height: 100 }
+                property JsonObject floatingImage: OverlayState { x: 1650; y: 390; width: 0; height: 0 }
+                property JsonObject fpsLimiter: OverlayState { x: 1570; y: 615; width: 280; height: 80 }
+                property JsonObject recorder: OverlayState { x: 80; y: 80; width: 350; height: 130 }
+                property JsonObject resources: OverlayState { property int tabIndex: 0; clickthrough: true; x: 1500; y: 770; width: 350; height: 200 }
+                property JsonObject volumeMixer: OverlayState { property int tabIndex: 0; x: 80; y: 280; width: 350; height: 600 }
+                property JsonObject notes: OverlayState { property int tabIndex: 0; clickthrough: true; x: 1400; y: 42; width: 460; height: 330 }
             }
 
             property JsonObject screenRecord: JsonObject {

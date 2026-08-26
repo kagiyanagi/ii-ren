@@ -1,3 +1,4 @@
+import "duration.js" as Duration
 import qs.modules.common
 import qs.modules.common.widgets
 import "./cards"
@@ -542,12 +543,7 @@ StyledPopup {
                     font.family: Appearance.font.family.title
                     font.weight: Font.Bold
 
-                    text: {
-                        let totalSeconds = Math.floor(TimerService.stopwatchTime) / 100
-                        let minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
-                        let seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0')
-                        return `${minutes}:${seconds}`
-                    }
+                    text: Duration.format10ms(TimerService.stopwatchTime)
                 }
 
                 StyledText {

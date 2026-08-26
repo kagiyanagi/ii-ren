@@ -13,7 +13,6 @@ import Quickshell.Hyprland
 
 Item {
     id: root
-    property bool hyprscrollingEnabled: false //FIXME
     property int minWorkspaceWidth: (monitorData?.transform % 2 === 1) ? 
         ((monitor.height - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scale / monitor.scale) :
         ((monitor.width - monitorData?.reserved[0] - monitorData?.reserved[2]) * root.scale / monitor.scale)
@@ -48,16 +47,6 @@ Item {
     property real largeWorkspaceRadius: Appearance.rounding.large
     property real smallWorkspaceRadius: Appearance.rounding.verysmall
 
-    // we are using a width map to get all windows width and settings workspaceImplicitWidth to the maximum item of this list/map
-    property list<int> widthMap: [] 
-
-    onWidthMapChanged: root.workspaceImplicitWidth = getMaxWidth()
-
-    function getMaxWidth() {
-        if (widthMap.length === 0) return minWorkspaceWidth;
-        const max = Math.max(...widthMap);
-        return max;
-    }
 
     property real workspaceNumberMargin: 80
     property real workspaceNumberSize: 250 * monitor.scale
@@ -85,16 +74,12 @@ Item {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
-    property Component windowComponent: OverviewWindow {}
-    property list<OverviewWindow> windowWidgets: []
-
     property var activeWindow: windows.find(w =>
         w.focusHistoryID === 0 &&
         w.workspace?.id === monitor.activeWorkspace?.id &&
         w.monitor === monitor.id
     )
 
-    property var activeWindowData
     
     function getWsRow(ws) {
         var wsAdjusted = ws - root.workspaceOffset
@@ -254,7 +239,6 @@ Item {
                     scale: root.scale
                     widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
                     windowData: windowByAddress[address]
-                    hyprscrollingEnabled: root.hyprscrollingEnabled
 
                     property int wsId: windowData?.workspace?.id
 
@@ -296,19 +280,6 @@ Item {
                         return sum * root.scale
                     }
 
-                    onWorkspaceTotalWindowWidthChanged: { // we have to update widthMap here to prevent 'Binding Loop' error
-                        if (workspaceTotalWindowWidth > 0 && root.hyprscrollingEnabled) {
-                            root.widthMap.push(workspaceTotalWindowWidth)
-                        }
-                    }
-
-                    property real windowWidthRatio: {
-                        if (!windowData?.size?.[0] || workspaceTotalWindowWidth === 0)
-                            return 1 / wsCount
-
-                        return (windowData.size[0] * root.scale) / workspaceTotalWindowWidth
-                    }
-
                     function calculateXPos() {
                         let x = xOffset
                         for (let i = 0; i < wsIndex; i++) {
@@ -319,27 +290,6 @@ Item {
                         return x
                     }
 
-
-                    property int wsCount: wsWindowsSorted.length || 1
-
-                    scrollWidth: windowData.floating ? windowData.size[0] * root.scale : root.workspaceImplicitWidth * windowWidthRatio
-                    scrollHeight: windowData.floating ? windowData.size[1] * root.scale : root.workspaceImplicitHeight
-
-                    scrollX: windowData.floating ? xOffset + xWithinWorkspaceWidget : calculateXPos()
-                    scrollY: windowData.floating ? yOffset + yWithinWorkspaceWidget : yOffset
-
-                    property bool isActiveWindow: { // we have to set root.activeWindowData here instead of component.oncompleted
-                        if (window.address == root.activeWindow?.address) {
-                            root.activeWindowData = {
-                                x: scrollX,
-                                y: scrollY,
-                                width: scrollWidth,
-                                height: scrollHeight
-                            }
-                            return true
-                        }
-                        return false
-                    }
 
                     property bool atInitPosition: (initX == x && initY == y)
 
@@ -374,56 +324,18 @@ Item {
                     bottomLeftRadius: Math.max((workspaceAtBottomLeft ? root.largeWorkspaceRadius : root.smallWorkspaceRadius) - distanceFromBottomLeftCorner, minRadius)
                     bottomRightRadius: Math.max((workspaceAtBottomRight ? root.largeWorkspaceRadius : root.smallWorkspaceRadius) - distanceFromBottomRightCorner, minRadius)
 
-                    property int hoveringDir: 0 // 0: none, 1: right, 2: left
-                    property bool hovering: false
-
-                    Loader { // Hover indicator (only works with hyprscrolling)
-                        active: root.hyprscrollingEnabled && !root.draggingWindowsFloating
-                        anchors.verticalCenter: parent.verticalCenter
-                        sourceComponent: Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter            
-
-                            x: hoveringDir == 1 ? window.width / 2 : 0
-                            implicitWidth: window.hovering ? window.width / 2 : 0
-                            implicitHeight: window.height
-
-                            color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.8)
-                            opacity: window.hovering ? 1 : 0
-                            topRightRadius: window.topLeftRadius
-                            bottomRightRadius: window.topLeftRadius
-                            topLeftRadius: window.topLeftRadius
-                            bottomLeftRadius: window.topLeftRadius
-
-                            Behavior on x {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
-                            Behavior on opacity {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
-                        }
-                    }
-                    
-
                     DropArea { // Window drop
                         anchors.fill:  parent 
                         onEntered: {
-                            parent.hovering = true
                             root.dragDropType = 1 // window
                             root.draggingTargetWindowAdress = windowData?.address
                             root.draggingTargetWorkspace = window?.wsId
                             const localX = drag.x
                             const half = width / 2
 
-                            if (localX < half) {
-                                root.draggingDirection = "l"
-                                hoveringDir = 2
-                            } else {
-                                root.draggingDirection = "r"
-                                hoveringDir = 1
-                            }
+                            root.draggingDirection = localX < half ? "l" : "r"
                         }
                         onExited: {
-                            parent.hovering = false
                             root.dragDropType = -1
                             if (root.draggingTargetWindowAdress == windowData?.address) root.draggingTargetWindowAdress = ""
                         }
@@ -517,26 +429,9 @@ Item {
                             if (!windowData) return;
 
                             if (event.button === Qt.LeftButton) {
-                                const sameWorkspaceWithTarget = windowData?.workspace.id === root.activeWindow?.workspace?.id
-
-                                if (!root.hyprscrollingEnabled) {
-                                    Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
-                                    GlobalStates.overviewOpen = false; 
-                                    return
-                                }
-
-                                if (sameWorkspaceWithTarget) {
-                                    Hyprland.dispatch(`hl.dsp.layout("focusaddr ${windowData.address}")`)
-                                    GlobalStates.overviewOpen = false;
-                                } else {
-                                    Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
-                                    Qt.callLater(() => {
-                                        Hyprland.dispatch(`hl.dsp.layout("focusaddr ${windowData.address}")`);
-                                        GlobalStates.overviewOpen = false;
-                                    });
-
-                                }
-                                event.accepted = true
+                                Hyprland.dispatch(`hl.dsp.focus({window = "address:${windowData.address}"})`)
+                                GlobalStates.overviewOpen = false;
+                                return
                             } else if (event.button === Qt.MiddleButton) {
                                 Hyprland.dispatch(`hl.dsp.window.close({window = "address:${windowData.address}"})`)
                                 event.accepted = true
@@ -559,10 +454,10 @@ Item {
 
                 z: 999
 
-                x: root.hyprscrollingEnabled ? root.activeWindowData?.x ?? 0 : (root.workspaceImplicitWidth + workspaceSpacing) * colIndex
-                y: root.hyprscrollingEnabled ? root.activeWindowData?.y ?? 0 : (root.workspaceImplicitHeight + workspaceSpacing) * rowIndex
-                width: root.hyprscrollingEnabled ?  root.activeWindowData?.width ?? 0 : root.workspaceImplicitWidth + 4
-                height: root.hyprscrollingEnabled ? root.activeWindowData?.height ?? 0 : root.workspaceImplicitHeight
+                x: (root.workspaceImplicitWidth + workspaceSpacing) * colIndex
+                y: (root.workspaceImplicitHeight + workspaceSpacing) * rowIndex
+                width: root.workspaceImplicitWidth + 4
+                height: root.workspaceImplicitHeight
 
                 radius: Appearance.rounding.normal
                 color: "transparent"

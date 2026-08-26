@@ -18,25 +18,7 @@ Item { // Notification item area
     property real padding: onlyNotification ? 0 : 8
     property real summaryElideRatio: 0.85
 
-    property real dragConfirmThreshold: 70 // Drag further to discard notification
-    property real dismissOvershoot: notificationIcon.implicitWidth + 20 // Account for gaps and bouncy animations
-    property var qmlParent: root?.parent?.parent // There's something between this and the parent ListView
-    property var parentDragIndex: qmlParent?.dragIndex ?? -1
-    property var parentDragDistance: qmlParent?.dragDistance ?? 0
-    property var dragIndexDiff: Math.abs(parentDragIndex - index)
-    property real xOffset: dragIndexDiff == 0 ? parentDragDistance : 
-        Math.abs(parentDragDistance) > dragConfirmThreshold ? 0 :
-        dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
-        dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
-
     implicitHeight: background.implicitHeight
-
-    function destroyWithAnimation(left = false) {
-        root.qmlParent.resetDrag()
-        background.anchors.leftMargin = background.anchors.leftMargin; // Break binding
-        destroyAnimation.left = left;
-        destroyAnimation.running = true;
-    }
 
     TextMetrics {
         id: summaryTextMetrics
@@ -44,54 +26,19 @@ Item { // Notification item area
         text: root.notificationObject.summary || ""
     }
 
-    SequentialAnimation { // Drag finish animation
-        id: destroyAnimation
-        property bool left: true
-        running: false
-
-        NumberAnimation {
-            target: background.anchors
-            property: "leftMargin"
-            to: (root.width + root.dismissOvershoot) * (destroyAnimation.left ? -1 : 1)
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-        }
-        onFinished: () => {
-            Notifications.discardNotification(notificationObject.notificationId);
-        }
-    }
-
-    DragManager { // Drag manager
+    SwipeDismissible { // Drag manager
         id: dragManager
+        owner: root
+        target: background
+        itemIndex: root.index ?? root.parent.children.indexOf(root)
+        dismissOvershoot: notificationIcon.implicitWidth + 20 // Account for gaps and bouncy animations
+
         anchors.fill: root
         anchors.leftMargin: root.expanded ? -notificationIcon.implicitWidth : 0
         interactive: expanded
-        automaticallyReset: false
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton) {
-                root.destroyWithAnimation();
-            }
-        }
-
-        onDraggingChanged: () => {
-            if (dragging) {
-                root.qmlParent.dragIndex = root.index ?? root.parent.children.indexOf(root);
-            }
-        }
-
-        onDragDiffXChanged: () => {
-            root.qmlParent.dragDistance = dragDiffX;
-        }
-
-        onDragReleased: (diffX, diffY) => {
-            if (Math.abs(diffX) > root.dragConfirmThreshold)
-                root.destroyWithAnimation(diffX < 0);
-            else 
-                dragManager.resetDrag();
-        }
+        onDismissed: Notifications.discardNotification(root.notificationObject.notificationId)
     }
 
     NotificationAppIcon { // App icon
@@ -114,7 +61,7 @@ Item { // Notification item area
         width: parent.width
         anchors.left: parent.left
         radius: Appearance.rounding.small
-        anchors.leftMargin: root.xOffset
+        anchors.leftMargin: dragManager.xOffset
 
         Behavior on anchors.leftMargin {
             enabled: !dragManager.dragging
@@ -256,7 +203,7 @@ Item { // Notification item area
                                     (contentItem.implicitWidth + leftPadding + rightPadding)
 
                                 onClicked: {
-                                    root.destroyWithAnimation()
+                                    dragManager.destroyWithAnimation()
                                 }
 
                                 contentItem: MaterialSymbol {

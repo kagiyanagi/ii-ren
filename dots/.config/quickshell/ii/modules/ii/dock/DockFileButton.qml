@@ -153,11 +153,11 @@ DockButton {
         preventStealing: drag.active
         cursorShape: Qt.PointingHandCursor
 
-        drag.target: dockContent?.fileDragGhostItem ?? null
+        drag.target: dockContent?.dragGhostItem ?? null
         drag.axis: root.isVertical ? Drag.YAxis : Drag.XAxis
         drag.threshold: 0
 
-        readonly property real ghostHalf: (dockContent?.fileDragGhostItem?.width ?? 0) / 2
+        readonly property real ghostHalf: (dockContent?.dragGhostItem?.width ?? 0) / 2
         drag.minimumX: root.isVertical ? 0 : (dockContent?.pinButtonCenter ?? 0) - ghostHalf
         drag.maximumX: root.isVertical ? 0 : (dockContent?.unpinButtonCenter ?? 0) - ghostHalf
         drag.minimumY: root.isVertical ? (dockContent?.pinButtonCenter ?? 0) - ghostHalf : 0
@@ -167,10 +167,10 @@ DockButton {
 
         onPressed: {
             wasDragging = false
-            if (dockContent?.fileDragGhostItem) {
+            if (dockContent?.dragGhostItem) {
                 const p = root.mapToItem(dockContent, 0, 0)
-                dockContent.fileDragGhostItem.x = p.x + root.dotMargin
-                dockContent.fileDragGhostItem.y = p.y + root.dotMargin
+                dockContent.dragGhostItem.x = p.x + root.dotMargin
+                dockContent.dragGhostItem.y = p.y + root.dotMargin
             }
         }
 

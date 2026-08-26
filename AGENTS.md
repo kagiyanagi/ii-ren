@@ -11,7 +11,7 @@ Hyprland dotfiles based on illogical-impulse, built with Quickshell (QtQuick/QML
 - **Setup/update:** `./setup-ii-ren.sh` or `iiren update` (CLI)
 - **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell, no prompts)
 - **Snapshot live settings into the repo:** `iiren save`
-- **Legacy setup router:** `./setup <subcommand>` (install, uninstall, exp-update, etc.)
+- **Legacy setup router:** `./setup <subcommand>` (install, uninstall, exp-merge, etc.)
 - **LSP setup:** `touch ~/.config/quickshell/ii/.qmlls.ini` — gitignored, create manually
 
 ## QML Architecture
