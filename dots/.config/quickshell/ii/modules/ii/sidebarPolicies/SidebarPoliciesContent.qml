@@ -1,3 +1,4 @@
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -24,6 +25,14 @@ Item {
     property var extensionPages: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
 
+    // Conduit is pinned to the front and focused on open. Pinning is keyed off the
+    // contribution identifier because exactly one page wants it.
+    // ponytail: add a "priority" field to the contribution if a second page needs this.
+    readonly property string pinnedPageIdentifier: "conduit"
+    readonly property var pinnedExtensionPages: root.extensionPages.filter(p => p.identifier === root.pinnedPageIdentifier)
+    readonly property var unpinnedExtensionPages: root.extensionPages.filter(p => p.identifier !== root.pinnedPageIdentifier)
+    readonly property int pinnedTabIndex: root.pinnedExtensionPages.length > 0 ? 0 : -1
+
     // Reassigning extensionPages re-runs the contentChildren binding below, which
     // rebuilds every extension page from a fresh ?_t= URL and throws its state
     // away. The manager also refreshes on any config write - switching a model,
@@ -42,12 +51,21 @@ Item {
         function onExtensionToggled() { root.syncExtensionPages() }
     }
 
+    Connections {
+        target: GlobalStates
+        function onPoliciesPanelOpenChanged() {
+            if (GlobalStates.policiesPanelOpen && root.pinnedTabIndex >= 0)
+                Persistent.states.sidebar.policies.tab = root.pinnedTabIndex
+        }
+    }
+
     property var tabButtonList: [  
+        ...root.pinnedExtensionPages.map(p => ({icon: p.icon, name: p.title})),
         ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
-        ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
+        ...root.unpinnedExtensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
     property int tabCount: swipeView.count
 
@@ -141,12 +159,13 @@ Item {
                 }
 
                 contentChildren: [
+                    ...root.pinnedExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item),
                     ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset)) ? [placeholder.createObject()] : []),
+                    ...((root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0)) ? [placeholder.createObject()] : []),
                     ...(root.animeEnabled ? [anime.createObject()] : []),
                     ...(root.continuityEnabled ? [continuity.createObject()] : []),
-                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
+                    ...root.unpinnedExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
                 ]
             }
         }
