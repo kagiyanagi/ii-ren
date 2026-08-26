@@ -3,7 +3,7 @@
      <h3> <b> My Hyprland shell — a fork of <a href="https://github.com/vaguesyntax/ii-vynx">ii-vynx</a> </b> </h3>
 </div>
 
-<div align="center">
+<!-- <div align="center">
 
 <img src="./assets/screenshots/1.png">
 
@@ -14,7 +14,7 @@
 <div style="display:flex; gap:10px; justify-content:center;">
   <img src="./assets/screenshots/5.png" width="48%" />
   <img src="./assets/screenshots/4.png" width="48%" />
-</div>
+</div> -->
 
 </div>
 
