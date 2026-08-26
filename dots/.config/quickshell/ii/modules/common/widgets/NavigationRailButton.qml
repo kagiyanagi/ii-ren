@@ -17,7 +17,11 @@ TabButton {
 
     property bool expanded: false
     property bool showToggledHighlight: true
-    readonly property real visualWidth: root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.baseSize
+    // Width the rail gives this item when collapsed. The icon centres in it and
+    // the label is cut to fit it, so a rail that wants room for longer names
+    // raises this instead of letting them spill past its edge.
+    property real collapsedWidth: baseSize
+    readonly property real visualWidth: root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.collapsedWidth
 
     property real baseSize: 56
     property real baseHighlightHeight: 32
@@ -98,7 +102,7 @@ TabButton {
 
         Item {
             id: itemIconBackground
-            implicitWidth: root.baseSize
+            implicitWidth: root.expanded ? root.baseSize : root.collapsedWidth
             implicitHeight: root.baseHighlightHeight
             anchors {
                 left: parent.left
@@ -160,6 +164,12 @@ TabButton {
                 }
             }
             text: buttonText
+            // Collapsed, the label sits under a baseSize-wide icon in a rail
+            // that is only that wide, so a long name has to be cut rather than
+            // spill out past the rail's edge.
+            width: root.expanded ? implicitWidth : root.collapsedWidth
+            elide: Text.ElideRight
+            horizontalAlignment: root.expanded ? Text.AlignLeft : Text.AlignHCenter
             font.pixelSize: 14
             color: Appearance.colors.colOnLayer1
         }

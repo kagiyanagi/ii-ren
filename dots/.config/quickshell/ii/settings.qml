@@ -291,73 +291,79 @@ ApplicationWindow {
                 id: navRailWrapper
                 Layout.fillHeight: true
                 Layout.margins: 5
-                implicitWidth: navRail.expanded ? 150 : fab.baseSize
+                // Collapsed the rail still shows labels, so it is as wide as
+                // the longest of them rather than just the icon.
+                implicitWidth: navRail.expanded ? 150 : 84
                 Behavior on implicitWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-                NavigationRail { // Window content with navigation rail and content pane
-                    id: navRail
-                    anchors {
-                        left: parent.left
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
-                    spacing: 10
-                    expanded: root.width > 900
-                    
-                    NavigationRailExpandButton {
-                        focus: root.visible
-                    }
+                // The rail grows every time a page is added, so it scrolls
+                // instead of clipping the last tabs off the bottom.
+                StyledFlickable {
+                    anchors.fill: parent
+                    contentWidth: width
+                    contentHeight: navRail.implicitHeight
 
-                    FloatingActionButton {
-                        id: fab
-                        property bool justCopied: false
-                        iconText: justCopied ? "check" : "edit"
-                        buttonText: justCopied ? Translation.tr("Path copied") : Translation.tr("Config file")
-                        expanded: navRail.expanded
-                        downAction: () => {
-                            Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`);
-                        }
-                        altAction: () => {
-                            Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
-                            fab.justCopied = true;
-                            revertTextTimer.restart()
+                    NavigationRail {
+                        id: navRail
+                        width: parent.width
+                        spacing: 5
+                        expanded: root.width > 900
+
+                        NavigationRailExpandButton {
+                            focus: root.visible
                         }
 
-                        Timer {
-                            id: revertTextTimer
-                            interval: 1500
-                            onTriggered: {
-                                fab.justCopied = false;
+                        FloatingActionButton {
+                            id: fab
+                            property bool justCopied: false
+                            iconText: justCopied ? "check" : "edit"
+                            buttonText: justCopied ? Translation.tr("Path copied") : Translation.tr("Config file")
+                            expanded: navRail.expanded
+                            downAction: () => {
+                                Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`);
+                            }
+                            altAction: () => {
+                                Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
+                                fab.justCopied = true;
+                                revertTextTimer.restart()
+                            }
+
+                            Timer {
+                                id: revertTextTimer
+                                interval: 1500
+                                onTriggered: {
+                                    fab.justCopied = false;
+                                }
+                            }
+
+                            StyledToolTip {
+                                text: Translation.tr("Open the shell config file\nAlternatively right-click to copy path")
                             }
                         }
 
-                        StyledToolTip {
-                            text: Translation.tr("Open the shell config file\nAlternatively right-click to copy path")
-                        }
-                    }
-
-                    NavigationRailTabArray {
-                        currentIndex: root.currentPage
-                        expanded: navRail.expanded
-                        Repeater {
-                            model: root.pages
-                            NavigationRailButton {
-                                required property var index
-                                required property var modelData
-                                toggled: root.currentPage === index
-                                onPressed: root.currentPage = index;
-                                expanded: navRail.expanded
-                                buttonIcon: modelData.icon
-                                buttonIconRotation: modelData.iconRotation || 0
-                                buttonText: modelData.name
-                                showToggledHighlight: false
+                        NavigationRailTabArray {
+                            // Tighter than the shared default so every tab fits in
+                            // the window's starting height without scrolling.
+                            Layout.topMargin: 10
+                            currentIndex: root.currentPage
+                            expanded: navRail.expanded
+                            Repeater {
+                                model: root.pages
+                                NavigationRailButton {
+                                    required property var index
+                                    required property var modelData
+                                    toggled: root.currentPage === index
+                                    onPressed: root.currentPage = index;
+                                    expanded: navRail.expanded
+                                    collapsedWidth: navRailWrapper.implicitWidth
+                                    buttonIcon: modelData.icon
+                                    buttonIconRotation: modelData.iconRotation || 0
+                                    buttonText: modelData.name
+                                    showToggledHighlight: false
+                                }
                             }
                         }
-                    }
-
-                    Item {
-                        Layout.fillHeight: true
                     }
                 }
             }
