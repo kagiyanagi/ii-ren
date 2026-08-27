@@ -153,7 +153,7 @@ AbstractBackgroundWidget {
             glowRadius: 28
             spread: 0.15
             color: ColorUtils.transparentize(root.artDominantColor, 0.25)
-            cornerRadius: Config.options.background.widgets.media.backgroundShape === "circle" ? root.widgetSize / 2 : Appearance.rounding.verylarge
+            cornerRadius: Config.options.background.widgets.media.backgroundShape === "Circle" ? root.widgetSize / 2 : Appearance.rounding.verylarge
             opacity: Config.options.background.widgets.media.glow.enable ? (0.01 * Config.options.background.widgets.media.glow.brightness) : 0
 
             Behavior on opacity {

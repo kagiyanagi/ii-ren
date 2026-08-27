@@ -871,6 +871,26 @@ ContentPage {
 
 
 
+        ConfigRow {
+            RippleButtonWithShape {
+                Layout.fillWidth: false
+                shapeString: Config.options.background.widgets.media.backgroundShape
+                implicitWidth: 60
+                extraIcon: "edit"
+
+                onClicked: {
+                    mediaBackgroundShapeLoader.active = !mediaBackgroundShapeLoader.active;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Edit the material shape")
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+        }
+
         Loader { 
             id: mediaBackgroundShapeLoader
             active: false
