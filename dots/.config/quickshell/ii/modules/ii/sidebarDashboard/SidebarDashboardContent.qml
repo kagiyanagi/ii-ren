@@ -226,39 +226,34 @@ Item {
             color: Appearance.colors.colLayer1
             readonly property int fullRadius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2
             radius: fullRadius
-            implicitWidth: uptimeRow.implicitWidth + 24
+            implicitWidth: uptimeRow.implicitWidth + 20
             implicitHeight: uptimeRow.implicitHeight + 8
             
             Row {
                 id: uptimeRow
                 anchors.centerIn: parent
                 spacing: 8
-                CustomIcon {
-                    id: distroIcon
+                Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 25
-                    height: 25
-                    source: SystemInfo.distroIcon
-                    colorize: true
-                    color: Appearance.colors.colOnLayer0
-                }
-                ColumnLayout {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: -4
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.small
+                    implicitWidth: 30
+                    implicitHeight: 30
+                    radius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2
+                    color: Appearance.colors.colLayer2
+                    CustomIcon {
+                        anchors.centerIn: parent
+                        width: 19
+                        height: 19
+                        source: SystemInfo.distroIcon
+                        colorize: true
                         color: Appearance.colors.colOnLayer0
-                        text: Translation.tr("Up")
-                        textFormat: Text.MarkdownText
-                    }
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        text: DateTime.uptime
-                        textFormat: Text.MarkdownText
                     }
                 }
-                
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnLayer0
+                    text: Translation.tr("Uptime: %1").arg(DateTime.uptime)
+                }
             }
         }
 
