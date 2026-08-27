@@ -85,10 +85,12 @@ function getCalendarLayout(dateObject, highlight, firstDayOfWeek) {
     var calendar = [...Array(6)].map(() => Array(7));
     var i = 0, j = 0;
     while (i < 6 && j < 7) {
+        // monthDiff shifts spill cells into the prev/next month they belong to
+        const cellMonth = month - 1 + monthDiff;
         calendar[i][j] = {
             "day": toFill,
-            "month": month - 1,
-            "year": year,
+            "month": (cellMonth + 12) % 12,
+            "year": year + Math.floor(cellMonth / 12),
             "today": ((toFill == day && monthDiff == 0 && highlight) ? 1 : (
                 monthDiff == 0 ? 0 : -1
             ))

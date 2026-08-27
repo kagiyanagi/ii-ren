@@ -10,12 +10,16 @@ import qs.modules.common
 import Qt.labs.platform
 import qs.modules.common.functions
 import qs.modules.common
+import "ics.js" as Ics
 
 Singleton {
     id: root
 
     property bool khalAvailable: false
-    property var events: []
+    property var khalEvents: []
+    property var icsEventsByUrl: ({})
+    property var icsEvents: []
+    property var events: khalEvents.concat(icsEvents)
     property var weekdays: [
           Translation.tr("Sunday"), 
           Translation.tr("Monday"), 
@@ -82,9 +86,6 @@ Singleton {
 
 
       function getTasksByDate(currentDate) {
-        if(!khalAvailable){
-          return []
-        }
         const res = [];
         
         const currentDay = currentDate.getDate();
@@ -186,7 +187,7 @@ Singleton {
                   })
                 }
               }
-              root.events = events
+              root.khalEvents = events
               root.eventsInWeek = root.getEventsInWeek()
           }
     
@@ -200,6 +201,42 @@ Singleton {
         repeat: true
         triggeredOnStart: true
         onTriggered: getEventsProcess.running = true
+    }
+
+    // Google Calendar via "secret address in iCal format" feeds
+    Timer {
+        id: icsInterval
+        running: (Config.options?.calendar?.icsUrls ?? []).length > 0
+        interval: 15 * 60 * 1000 // Google only regenerates these feeds every few hours
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.fetchIcsFeeds()
+    }
+
+    function fetchIcsFeeds() {
+        const winStart = new Date();
+        winStart.setMonth(winStart.getMonth() - 3);
+        const winEnd = new Date();
+        winEnd.setMonth(winEnd.getMonth() + 3);
+        (Config.options?.calendar?.icsUrls ?? []).forEach(url => {
+            const xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState !== XMLHttpRequest.DONE || xhr.status !== 200)
+                    return;
+                root.icsEventsByUrl[url] = Ics.parseEvents(xhr.responseText, winStart, winEnd).map(ev => ({
+                    "content": ev.title,
+                    "startDate": ev.start,
+                    "endDate": ev.end,
+                    "color": ColorUtils.stringToColor(ev.title),
+                    "description": ev.description
+                }));
+                root.icsEvents = Object.values(root.icsEventsByUrl)
+                    .reduce((acc, list) => acc.concat(list), []);
+                root.eventsInWeek = root.getEventsInWeek();
+            };
+            xhr.open("GET", url);
+            xhr.send();
+        });
     }
 
 

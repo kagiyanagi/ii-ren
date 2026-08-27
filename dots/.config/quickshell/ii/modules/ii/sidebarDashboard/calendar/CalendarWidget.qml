@@ -134,9 +134,11 @@ Item {
                     model: Array(7).fill(modelData)
 
                     delegate: CalendarDayButton {
-                        day: calendarLayout[modelData][index].day
-                        isToday: calendarLayout[modelData][index].today
-                        taskList: CalendarService.getTasksByDate(new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day))
+                        property var cell: calendarLayout[modelData][index]
+                        day: cell.day
+                        isToday: cell.today
+                        date: new Date(cell.year, cell.month, cell.day)
+                        taskList: CalendarService.getTasksByDate(date)
                     }
 
                 }

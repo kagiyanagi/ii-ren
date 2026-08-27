@@ -1248,6 +1248,8 @@ Singleton {
 
             property JsonObject calendar: JsonObject {
                 property string locale: "en-GB"
+                // Google Calendar: Settings → your calendar → "Secret address in iCal format"
+                property list<string> icsUrls: []
             }
 
             property JsonObject cheatsheet: JsonObject {

@@ -28,6 +28,23 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "calendar_month"
+        title: Translation.tr("Calendar")
+
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("iCal feed URLs, one per line (Google Calendar → Settings → Secret address in iCal format)")
+            text: (Config.options.calendar.icsUrls || []).join("\n")
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Qt.callLater(() => {
+                    Config.options.calendar.icsUrls = text.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+                });
+            }
+        }
+    }
+
+    ContentSection {
         icon: "bluetooth_searching"
         title: Translation.tr("Fast pairing")
 

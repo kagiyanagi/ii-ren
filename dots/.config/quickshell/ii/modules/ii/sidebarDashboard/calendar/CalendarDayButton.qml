@@ -11,6 +11,7 @@ RippleButton {
     property string day
     property int isToday
     property bool bold
+    property var date: null
     property var taskList
     readonly property int taskMargin: 5
     property bool showPopup: false
@@ -21,6 +22,9 @@ RippleButton {
     implicitHeight: 38
     toggled: (isToday == 1)
     buttonRadius: Appearance.rounding.small
+    downAction: () => {
+        if (date) Qt.openUrlExternally(`https://calendar.google.com/calendar/r/day/${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`)
+    }
     
     Rectangle {
         width: 8
@@ -75,6 +79,7 @@ RippleButton {
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.NoButton // hover only; clicks belong to the button
         onEntered: {
             if (button.taskList.length > 0 && button.isToday !== -1 && !button.bold) {
                 button.showPopup = true
