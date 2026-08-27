@@ -5,7 +5,12 @@ mkdir -p "$(dirname "$STATE_FILE")"
 
 LAST_STATE=""
 
+# Quickshell doesn't reap us when it's killall'd; without this, every shell
+# restart leaks another copy of this poll loop.
+PARENT=$PPID
+
 while true; do
+    kill -0 "$PARENT" 2>/dev/null || exit 0
 
     apps=$(pw-dump | jq -r '.[] | select((.info.props."media.class" == "Stream/Input/Video" or .info.props."media.role" == "Screen") and .info.state == "running") | .info.props["node.name"]' | paste -sd ", " -)
     

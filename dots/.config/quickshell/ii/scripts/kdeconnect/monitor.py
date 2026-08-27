@@ -8,6 +8,7 @@ cheap property reads, so a name filter would be more code guarding less.
 """
 
 import json
+import os
 import re
 import sys
 
@@ -171,6 +172,11 @@ if "--once" in sys.argv:
         assert not missing, missing
     print(json.dumps(snap, indent=2))
     sys.exit(0)
+
+# Quickshell doesn't reap us when it's killall'd; without this, every shell
+# restart leaks another copy of this monitor.
+_parent = os.getppid()
+GLib.timeout_add(2000, lambda: os.getppid() == _parent or os._exit(0))
 
 emit()
 GLib.MainLoop().run()
