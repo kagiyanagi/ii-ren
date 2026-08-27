@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.common
+import qs.modules.common.functions
 import qs.services
 import qs
 
@@ -12,7 +13,7 @@ Item {
         return (Config.options?.bar.bottom && !Config.options?.bar.vertical) ? "top" : "bottom"
     }
     readonly property bool isVertical: dockEffectivePosition === "left" || dockEffectivePosition === "right"
-    property real marginScale: 0.2
+    property real marginScale: 0.12
     property color color: Appearance.colors.colOutlineVariant
 
     Rectangle {
@@ -24,6 +25,13 @@ Item {
         width: root.isVertical ? root.width - currentMargin * 2 : root.width
         height: root.isVertical ? root.height : root.height - currentMargin * 2
         radius: Appearance.rounding.full
-        color: root.color
+
+        // Fade both ends out so the divider hints at a gap instead of cutting the dock.
+        gradient: Gradient {
+            orientation: root.isVertical ? Gradient.Horizontal : Gradient.Vertical
+            GradientStop { position: 0.0; color: ColorUtils.transparentize(root.color, 1) }
+            GradientStop { position: 0.5; color: root.color }
+            GradientStop { position: 1.0; color: ColorUtils.transparentize(root.color, 1) }
+        }
     }
 }
