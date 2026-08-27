@@ -73,6 +73,20 @@ Singleton {
         onLoadFailed: root.resetFilePathNextTime();
     }
 
+    // Automatic dark mode, following the night light schedule
+    property bool autoDarkMode: (Config.options?.light?.night?.automaticDarkMode ?? false) && (Config?.ready ?? true)
+    property bool scheduleDark: Hyprsunset.shouldBeOn
+    onAutoDarkModeChanged: {
+        Hyprsunset.reEvaluate(); // shouldBeOn can be stale right after startup
+        applyAutoDarkMode();
+    }
+    onScheduleDarkChanged: applyAutoDarkMode()
+    function applyAutoDarkMode() {
+        if (!root.autoDarkMode || Appearance.m3colors.darkmode === root.scheduleDark)
+            return;
+        Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", root.scheduleDark ? "dark" : "light", "--noswitch"]);
+    }
+
     function toggleLightDark() {
         const currentlyDark = Appearance.m3colors.darkmode;
         Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", currentlyDark ? "light" : "dark", "--noswitch"]);

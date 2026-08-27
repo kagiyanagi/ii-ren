@@ -13,7 +13,6 @@ ContentPage {
     readonly property int index: 0
     property bool register: parent.register ?? false
     forceWidth: true
-    interactive: false
 
     property bool allowHeavyLoad: false
     property ListModel favouritesCarouselModel: ListModel {}
@@ -293,6 +292,50 @@ ContentPage {
             checked: Config.options.appearance.transparency.enable
             onCheckedChanged: {
                 Config.options.appearance.transparency.enable = checked;
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "routine"
+        title: Translation.tr("Night schedule")
+        tooltip: Translation.tr("Times are 24-hour, HH:mm")
+        Layout.topMargin: -25
+
+        ConfigSwitch {
+            buttonIcon: "nightlight"
+            text: Translation.tr("Automatic night light")
+            checked: Config.options.light.night.automatic
+            onCheckedChanged: {
+                Config.options.light.night.automatic = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "night_sight_auto"
+            text: Translation.tr("Automatic dark mode")
+            checked: Config.options.light.night.automaticDarkMode
+            onCheckedChanged: {
+                Config.options.light.night.automaticDarkMode = checked;
+            }
+        }
+        ConfigRow {
+            MaterialTextField {
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("From (HH:mm)")
+                text: Config.options.light.night.from
+                onEditingFinished: {
+                    if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                        Config.options.light.night.from = text.trim();
+                }
+            }
+            MaterialTextField {
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("Until (HH:mm)")
+                text: Config.options.light.night.to
+                onEditingFinished: {
+                    if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                        Config.options.light.night.to = text.trim();
+                }
             }
         }
     }
