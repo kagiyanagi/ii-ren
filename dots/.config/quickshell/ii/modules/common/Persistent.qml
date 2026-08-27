@@ -138,8 +138,6 @@ Singleton {
                 property JsonObject pomodoro: JsonObject {
                     property bool running: false
                     property int start: 0
-                    property bool isBreak: false
-                    property int cycle: 0
                 }
                 property JsonObject stopwatch: JsonObject {
                     property bool running: false

@@ -19,7 +19,7 @@ Singleton {
         { id: "screen_share_indicator", icon: "screen_share", title: "Screen share indicator" },
         { id: "date", icon: "date_range", title: "Date" },
         { id: "battery", icon: "battery_android_6", title: "Battery" },
-        { id: "timer", icon: "timer", title: "Timer & Pomodoro" },
+        { id: "timer", icon: "timer", title: "Timer" },
         { id: "weather", icon: "weather_mix", title: "Weather" },
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },

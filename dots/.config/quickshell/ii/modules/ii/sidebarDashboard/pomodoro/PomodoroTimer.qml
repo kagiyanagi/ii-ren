@@ -19,12 +19,12 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // The Pomodoro timer circle
+        // The timer circle
         CircularProgress {
             Layout.alignment: Qt.AlignHCenter
             lineWidth: 8
             value: {
-                return TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration;
+                return TimerService.pomodoroSecondsLeft / TimerService.focusTime;
             }
             implicitSize: 200
             enableAnimation: true
@@ -33,38 +33,37 @@ Item {
                 anchors.centerIn: parent
                 spacing: 0
 
-                StyledText {
+                // Click to type a duration. Only while idle: a running lap counts
+                // down from a start timestamp, so typed digits would be
+                // overwritten on the next tick.
+                StyledTextInput {
+                    id: timeInput
                     Layout.alignment: Qt.AlignHCenter
                     text: Duration.format(TimerService.pomodoroSecondsLeft)
                     font.pixelSize: 40
                     color: Appearance.m3colors.m3onSurface
+                    horizontalAlignment: Text.AlignHCenter
+                    readOnly: TimerService.pomodoroRunning
+                    activeFocusOnPress: !readOnly
+                    inputMethodHints: Qt.ImhPreferNumbers
+                    onEditingFinished: {
+                        const seconds = Duration.parse(text);
+                        if (seconds > 0)
+                            Config.options.time.pomodoro.focus = seconds;
+                        // Typing broke the binding; put it back either way.
+                        text = Qt.binding(() => Duration.format(TimerService.pomodoroSecondsLeft));
+                        focus = false;
+                    }
                 }
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: TimerService.pomodoroLongBreak ? Translation.tr("Long break") : TimerService.pomodoroBreak ? Translation.tr("Break") : Translation.tr("Focus")
+                    visible: !TimerService.pomodoroRunning
+                    text: Translation.tr("Click to set")
                     font.pixelSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
                 }
             }
 
-            Rectangle {
-                radius: Appearance.rounding.full
-                color: Appearance.colors.colLayer2
-                
-                anchors {
-                    right: parent.right
-                    bottom: parent.bottom
-                }
-                implicitWidth: 36
-                implicitHeight: implicitWidth
-
-                StyledText {
-                    id: cycleText
-                    anchors.centerIn: parent
-                    color: Appearance.colors.colOnLayer2
-                    text: TimerService.pomodoroCycle + 1
-                }
-            }
         }
 
         // The Start/Stop and Reset buttons
@@ -92,7 +91,7 @@ Item {
                 implicitWidth: 90
 
                 onClicked: TimerService.resetPomodoro()
-                enabled: (TimerService.pomodoroSecondsLeft < TimerService.pomodoroLapDuration) || TimerService.pomodoroCycle > 0 || TimerService.pomodoroBreak
+                enabled: TimerService.pomodoroSecondsLeft < TimerService.focusTime
 
                 font.pixelSize: Appearance.font.pixelSize.larger
                 colBackground: Appearance.colors.colErrorContainer

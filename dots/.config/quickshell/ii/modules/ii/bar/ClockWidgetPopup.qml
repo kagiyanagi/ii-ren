@@ -383,16 +383,15 @@ StyledPopup {
                     sourceComponent: TimerService.pomodoroRunning ? pomodoroText : (TimerService.stopwatchTime > 0 ? stopwatchText : timerOffText)
                 }
                 
-                containerColor: TimerService.pomodoroBreak ? Appearance.colors.colTertiaryContainer : (infoPill.isTimerActive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHighest)
+                containerColor: infoPill.isTimerActive ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHighest
                 color: containerColor
-                shapeColor: TimerService.pomodoroBreak ? Appearance.colors.colTertiary : (infoPill.isTimerActive ? Appearance.colors.colPrimary : Appearance.colors.colSecondary)
-                symbolColor: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiary : (infoPill.isTimerActive ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary)
-                textColor: TimerService.pomodoroBreak ? Appearance.colors.colOnTertiaryContainer : (infoPill.isTimerActive ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer)
+                shapeColor: infoPill.isTimerActive ? Appearance.colors.colPrimary : Appearance.colors.colSecondary
+                symbolColor: infoPill.isTimerActive ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary
+                textColor: infoPill.isTimerActive ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer
                 
                 leftInteractive: true
                 icon: {
                     if (infoPill.isTimerActive) {
-                        if (TimerService.pomodoroBreak) return "coffee";
                         if (TimerService.pomodoroRunning || TimerService.stopwatchRunning) return "pause";
                         return "play_arrow";
                     } else {

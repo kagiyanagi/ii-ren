@@ -11,7 +11,7 @@ Item {
     readonly property bool pRunning: TimerService.pomodoroRunning ?? false
     readonly property bool sRunning: TimerService.stopwatchRunning ?? false
     readonly property bool hasStop: TimerService.stopwatchTime > 0
-    readonly property bool hasPomo: TimerService.pomodoroSecondsLeft > 0 && (TimerService.pomodoroSecondsLeft < TimerService.pomodoroLapDuration || pRunning)
+    readonly property bool hasPomo: TimerService.pomodoroSecondsLeft > 0 && (TimerService.pomodoroSecondsLeft < TimerService.focusTime || pRunning)
 
     property bool showPomodoro: Config.options.bar.timers.showPomodoro
     property bool showStopwatch: Config.options.bar.timers.showStopwatch

@@ -1637,10 +1637,7 @@ Singleton {
                 property int firstDayOfWeek: 0 // 0: Monday, 1: Tuesday, 2: Wednesday, 3: Thursday, 4: Friday, 5: Saturday, 6: Sunday
 
                 property JsonObject pomodoro: JsonObject {
-                    property int breakTime: 300
-                    property int cyclesBeforeLongBreak: 4
                     property int focus: 1500
-                    property int longBreak: 900
                 }
                 property bool secondPrecision: false
             }
