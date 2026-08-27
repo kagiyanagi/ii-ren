@@ -1,16 +1,17 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
+import QtQuick.Effects
 import Quickshell
-import Quickshell.Widgets
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.utils
 import qs.modules.common.functions
+import qs.modules.common.models
 import "./widgets"
 
 Item {
@@ -21,164 +22,256 @@ Item {
     readonly property real buttonSize: Appearance.sizes.dockButtonSize
     readonly property real dotMargin: (Config.options?.dock.height ?? 60) * 0.2
     readonly property real slotSize: buttonSize + dotMargin * 2
-    readonly property real fixedSlots: isVertical ? 2.5 : 3
-    readonly property real fixedLength: fixedSlots * slotSize
+    readonly property real cardHeight: slotSize - Appearance.sizes.hyprlandGapsOut * 2
+    property real cardWidth: 240
+    readonly property real artSize: Math.round(cardHeight * 0.72)
 
-    readonly property real artSize: Math.round(buttonSize * 0.9)
-
-    readonly property int textSizeL: Math.round(buttonSize * (isVertical ? 0.24 : 0.26))
-    readonly property int textSizeS: Math.round(buttonSize * (isVertical ? 0.20 : 0.22))
-    readonly property int marqueeRunningThreshold: isVertical ? 10 : 14
-
-    implicitWidth: isVertical ? slotSize : fixedLength
+    implicitWidth: isVertical ? slotSize : cardWidth
     implicitHeight: isVertical ? buttonSize + dotMargin * 1.3 : slotSize
 
-    readonly property MprisPlayer currentPlayer: MprisController.activePlayer
-    readonly property bool isPlaying: currentPlayer?.isPlaying ?? false
+    readonly property MprisPlayer player: MprisController.activePlayer
+    readonly property bool isPlaying: player?.isPlaying ?? false
+    readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("Unknown Title")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string artUrl: MprisController.artUrlFor(player)
 
-    readonly property string finalTitle: StringUtils.cleanMusicTitle(currentPlayer?.trackTitle) || Translation.tr("Unknown Title")
-    readonly property string finalArtist: currentPlayer?.trackArtist || Translation.tr("Unknown Artist")
-    readonly property string finalArtUrl: MprisController.artUrlFor(currentPlayer)
+    // ColorQuantizer and the blur need a local file, so remote art gets cached first.
+    readonly property bool isLocalArt: artUrl.startsWith("file://")
+    readonly property string artFilePath: `${Directories.coverArt}/${Qt.md5(artUrl)}`
+    property bool artDownloaded: false
+    readonly property string artSource: {
+        if (!artUrl) return "";
+        if (isLocalArt) return artUrl;
+        return artDownloaded ? Qt.resolvedUrl(artFilePath) : "";
+    }
+
+    onArtFilePathChanged: {
+        if (!artUrl || isLocalArt) {
+            artDownloaded = isLocalArt;
+            return;
+        }
+        artDownloaded = false;
+        artDownloader.running = true;
+    }
+
+    Process {
+        id: artDownloader
+        command: ["bash", "-c", `[ -f '${root.artFilePath}' ] || (curl -4 -sSL '${root.artUrl}' -o '${root.artFilePath}.tmp' && mv '${root.artFilePath}.tmp' '${root.artFilePath}')`]
+        onExited: root.artDownloaded = true
+    }
+
+    ColorQuantizer {
+        id: colorQuantizer
+        source: root.artSource
+        depth: 0
+        rescaleSize: 1
+    }
+
+    property color artDominantColor: ColorUtils.mix(colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary, Appearance.colors.colPrimaryContainer, 0.8)
+    property QtObject blendedColors: AdaptedMaterialScheme {
+        color: root.artDominantColor
+    }
 
     property bool mediaHovered: false
 
     MouseArea {
-        id: mediaMouseArea
         anchors.fill: parent
         hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton
-        
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton
         onEntered: root.mediaHovered = true
         onExited: root.mediaHovered = false
-        
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.MiddleButton || mouse.button === Qt.LeftButton) {
-                root.currentPlayer?.togglePlaying();
-            } else if (mouse.button === Qt.RightButton) {
-                root.currentPlayer?.next();
-            } else if (mouse.button === Qt.BackButton) {
-                root.currentPlayer?.previous();
-            } else if (mouse.button === Qt.ForwardButton) {
-                root.currentPlayer?.next();
-            }
+        onClicked: mouse => {
+            if (mouse.button === Qt.BackButton) root.player?.previous();
+            else if (mouse.button === Qt.ForwardButton) root.player?.next();
+            else root.player?.togglePlaying();
         }
     }
 
-    component ArtworkItem: Item {
-        width: root.artSize
-        height: root.artSize
+    component ArtImage: Rectangle {
+        id: artRect
+        color: ColorUtils.transparentize(root.blendedColors.colLayer1, 0.5)
+        radius: Appearance.rounding.small
 
-        Rectangle {
-            id: artRect
-            anchors.centerIn: parent
-            width: root.artSize
-            height: root.artSize
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colPrimaryContainer
-
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: artRect.width
-                    height: artRect.height
-                    radius: Appearance.rounding.small
-                }
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: artRect.width
+                height: artRect.height
+                radius: artRect.radius
             }
+        }
 
-            Image {
-                id: artImg
-                anchors.fill: parent
-                source: root.finalArtUrl
-                fillMode: Image.PreserveAspectCrop
-                cache: true
-                antialiasing: true
-                asynchronous: true
-                visible: status === Image.Ready
-            }
+        StyledImage {
+            id: artImg
+            anchors.fill: parent
+            source: root.artSource
+            fillMode: Image.PreserveAspectCrop
+            cache: false
+            antialiasing: true
+            asynchronous: true
+            sourceSize.width: artRect.width
+            sourceSize.height: artRect.height
         }
 
         MaterialSymbol {
-            anchors.centerIn: artRect
+            anchors.centerIn: parent
             visible: artImg.status !== Image.Ready
             text: "music_note"
-            iconSize: root.artSize * 0.48
-            color: Appearance.colors.colPrimary
+            iconSize: artRect.width * 0.48
+            color: root.blendedColors.colOnLayer1
         }
     }
 
+    StyledRectangularShadow {
+        target: card
+        visible: !root.isVertical
+    }
 
-    Loader {
-        active: !root.isVertical
+    Rectangle {
+        id: card
+        visible: !root.isVertical
         anchors.fill: parent
-        sourceComponent: Item {
-            anchors.fill: parent
+        anchors.margins: Appearance.sizes.hyprlandGapsOut
+        radius: Appearance.rounding.normal
+        color: "transparent"
 
-            ArtworkItem {
-                id: artH
-                anchors.left: parent.left
-                anchors.leftMargin: 8
-                anchors.verticalCenter: parent.verticalCenter
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: card.width
+                height: card.height
+                radius: card.radius
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: root.blendedColors.colLayer0
+        }
+
+        Image {
+            id: blurredArt
+            // Overscan so the blur has pixels to pull from instead of fading at the edges.
+            anchors.fill: parent
+            anchors.margins: -card.height * 0.4
+            source: root.artSource
+            fillMode: Image.PreserveAspectCrop
+            cache: false
+            antialiasing: true
+            asynchronous: true
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                blurEnabled: true
+                blurMax: 64
+                blur: 1
+                saturation: 0.6
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: ColorUtils.transparentize(root.blendedColors.colLayer0, 0.45)
+        }
+
+        WaveVisualizer {
+            anchors.fill: parent
+            points: CavaService.visualizerPoints
+            live: root.isPlaying
+            color: root.blendedColors.colOnLayer0
+            waveOpacity: 0.45
+            smoothing: 2
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 7
+            anchors.rightMargin: 4
+            clip: true
+            spacing: 8
+
+            ArtImage {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.artSize
+                implicitHeight: root.artSize
             }
 
             ColumnLayout {
-                anchors.left: artH.right
-                anchors.right: parent.right
-                anchors.leftMargin: root.dotMargin * 0.6
-                anchors.rightMargin: root.dotMargin * 0.6
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 2
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: -2
 
-                Item {
+                StyledText {
                     Layout.fillWidth: true
-                    implicitHeight: titleH.implicitHeight
-                    clip: true
-                    MarqueeText {
-                        id: titleH
-                        width: parent.width
-                        text: root.finalTitle
-                        fontSize: root.textSizeL
-                        fontWeight: Font.DemiBold
-                        textColor: Appearance.colors.colOnLayer0
-                        running: root.mediaHovered && text.length > root.marqueeRunningThreshold
-                    }
+                    text: root.trackArtist
+                    font.pixelSize: Appearance.font.pixelSize.small - 2
+                    color: root.blendedColors.colSubtext
+                    elide: Text.ElideRight
                 }
 
-                Item {
+                StyledText {
                     Layout.fillWidth: true
-                    implicitHeight: artistH.implicitHeight
-                    clip: true
-                    StyledText {
-                        id: artistH
-                        width: parent.width
-                        text: root.finalArtist
-                        font.pixelSize: root.textSizeS
-                        font.weight: Font.Normal
-                        color: Appearance.colors.colSubtext
+                    text: root.trackTitle
+                    font.pixelSize: Appearance.font.pixelSize.normal - 4
+                    color: root.blendedColors.colOnLayer0
+                    elide: Text.ElideRight
+                    opacity: 0.7
+                }
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: 26
+                implicitHeight: 26
+                buttonRadius: root.isPlaying ? Appearance.rounding.normal : implicitWidth / 2
+                colBackground: root.isPlaying ? root.blendedColors.colPrimary : root.blendedColors.colSecondaryContainer
+                colBackgroundHover: root.isPlaying ? root.blendedColors.colPrimaryHover : root.blendedColors.colSecondaryContainerHover
+                colRipple: root.isPlaying ? root.blendedColors.colPrimaryActive : root.blendedColors.colSecondaryContainerActive
+                downAction: () => root.player?.togglePlaying()
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    text: root.isPlaying ? "pause" : "play_arrow"
+                    iconSize: Appearance.font.pixelSize.large
+                    fill: 1
+                    color: root.isPlaying ? root.blendedColors.colOnPrimary : root.blendedColors.colOnSecondaryContainer
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
+                }
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: 28
+                implicitHeight: 28
+                colBackground: ColorUtils.transparentize(root.blendedColors.colSecondaryContainer, 1)
+                colBackgroundHover: root.blendedColors.colSecondaryContainerHover
+                colRipple: root.blendedColors.colSecondaryContainerActive
+                downAction: () => root.player?.next()
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "skip_next"
+                    iconSize: Appearance.font.pixelSize.large
+                    fill: 1
+                    color: root.blendedColors.colOnSecondaryContainer
                 }
             }
         }
     }
-    
-    Loader {
-        active: root.isVertical
-        anchors.fill: parent
-        sourceComponent: Item {
-            anchors.fill: parent
 
-            ArtworkItem {
-                id: artV
-                anchors.top: parent.top
-                anchors.topMargin: 8
-                anchors.horizontalCenter: parent.horizontalCenter
-            }
-        }
+    ArtImage {
+        visible: root.isVertical
+        anchors.top: parent.top
+        anchors.topMargin: 8
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.round(root.buttonSize * 0.9)
+        height: width
     }
 
     DockTooltip {
-        id: mediaTooltip
         parentItem: root
-        text: root.finalTitle + " - " + root.finalArtist
-        showTooltip: root.mediaHovered
+        text: root.trackTitle + " - " + root.trackArtist
+        showTooltip: root.isVertical && root.mediaHovered
     }
 }
