@@ -87,7 +87,7 @@ Singleton {
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
         Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
-        Quickshell.execDetached(["bash", "-c", `rm -rf '${coverArt}'; mkdir -p '${coverArt}'`])
+        Quickshell.execDetached(["bash", "-c", `mkdir -p '${coverArt}'; find '${coverArt}' -type f -mtime +30 -delete`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${booruPreviews}'; mkdir -p '${booruPreviews}'`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${latexOutput}'; mkdir -p '${latexOutput}'`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${cliphistDecode}'; mkdir -p '${cliphistDecode}'`])

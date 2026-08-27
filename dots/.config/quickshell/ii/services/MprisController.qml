@@ -19,7 +19,9 @@ Singleton {
 	property list<MprisPlayer> allPlayers: Mpris.players.values;
 	property list<MprisPlayer> players: Mpris.players.values.filter(player => isRealPlayer(player));
 	property MprisPlayer trackedPlayer: null;
-	property MprisPlayer activePlayer: trackedPlayer ?? Mpris.players.values[0] ?? null;
+	// Never hand out a player that's filtered as a duplicate (e.g. the native firefox bus
+	// while plasma-browser-integration mirrors it with actual art/artist metadata).
+	property MprisPlayer activePlayer: (trackedPlayer && isRealPlayer(trackedPlayer)) ? trackedPlayer : (players[0] ?? null);
 	signal trackChanged(reverse: bool);
 
 	property string priorityPlayer: Config.options.media.priorityPlayer;
@@ -27,20 +29,12 @@ Singleton {
 	property bool __reverse: false;
 
 	property var activeTrack;
-	property string _artUrlFallback: "";
-	readonly property string artUrl: {
-		const url = activePlayer?.trackArtUrl;
-		return (url && url !== "") ? url : _artUrlFallback;
-	}
+	readonly property string artUrl: activePlayer?.trackArtUrl ?? "";
 
 	onAllPlayersChanged: {
+		// Assigning activePlayer would kill its binding, leaving it stuck on a dead player.
 		const nextPlayer = allPlayers.find(player => player.desktopEntry === root.priorityPlayer);
-		if (nextPlayer) {
-			activePlayer = nextPlayer;
-			return;
-		} else {
-			activePlayer = players[0];
-		}
+		if (nextPlayer) root.trackedPlayer = nextPlayer;
 	}
 
 	property bool hasActivePlasmaIntegration: false
@@ -74,6 +68,7 @@ Singleton {
 			target: modelData;
 
 			Component.onCompleted: {
+				if (!root.isRealPlayer(modelData)) return;
 				if (root.trackedPlayer == null || modelData.isPlaying) {
 					root.trackedPlayer = modelData;
 				}
@@ -95,7 +90,7 @@ Singleton {
 			}
 
 			function onPlaybackStateChanged() {
-				if (root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
+				if (root.isRealPlayer(modelData) && root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
 			}
 		}
 	}
