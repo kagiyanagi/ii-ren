@@ -29,7 +29,18 @@ Singleton {
 	property bool __reverse: false;
 
 	property var activeTrack;
-	readonly property string artUrl: activePlayer?.trackArtUrl ?? "";
+	readonly property string artUrl: artUrlFor(activePlayer);
+
+	// Browsers often expose no artwork at all: the plasma integration only forwards what the
+	// page's MediaSession sets, and falls back to the bare page title when it sets nothing.
+	// Derive the YouTube thumbnail from the track URL in that case.
+	function artUrlFor(player: MprisPlayer): string {
+		const url = player?.trackArtUrl;
+		if (url && url !== "") return url;
+		const videoId = (player?.metadata?.["xesam:url"] ?? "").match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/);
+		// mqdefault is 16:9 with no letterboxing and always exists, unlike maxresdefault.
+		return videoId ? `https://i.ytimg.com/vi/${videoId[1]}/mqdefault.jpg` : "";
+	}
 
 	onAllPlayersChanged: {
 		// Assigning activePlayer would kill its binding, leaving it stuck on a dead player.

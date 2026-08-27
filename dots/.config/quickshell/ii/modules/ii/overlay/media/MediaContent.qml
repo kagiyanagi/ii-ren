@@ -22,7 +22,7 @@ StyledOverlayWidget {
     
     readonly property MprisPlayer currentPlayer: MprisController.activePlayer
     
-    property var artUrl: currentPlayer?.trackArtUrl
+    property var artUrl: MprisController.artUrlFor(currentPlayer)
 
     readonly property bool showSlider: Config.options.overlay.media.showSlider
 
