@@ -23,8 +23,17 @@ Singleton {
         screen
     }))
 
+    // The monitor a brightness gesture means when it comes from something that
+    // is not tied to one screen - a keybind, or a slider in a panel that the
+    // compositor may have put on either output.
+    readonly property var targetScreen: Quickshell.screens.find(screen => screen.name === (Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "")) || Quickshell.screens[0] || null
+
     function getMonitorForScreen(screen: ShellScreen): var {
         return monitors.find(m => m.screen === screen);
+    }
+
+    function getTargetMonitor(): var {
+        return root.getMonitorForScreen(root.targetScreen);
     }
 
     function increaseBrightness(): void {
@@ -34,15 +43,13 @@ Singleton {
             return;
         }
 
-        const focusedName = Hyprland.focusedMonitor.name;
-        const monitor = monitors.find(m => focusedName === m.screen.name);
+        const monitor = root.getTargetMonitor();
         if (monitor)
             monitor.setBrightness(monitor.brightness + 0.05);
     }
 
     function decreaseBrightness(): void {
-        const focusedName = Hyprland.focusedMonitor.name;
-        const monitor = monitors.find(m => focusedName === m.screen.name);
+        const monitor = root.getTargetMonitor();
         if (monitor && monitor.brightness > 0) 
             monitor.setBrightness(monitor.brightness - 0.05);
         // if brightness is 0, then decrease gamma

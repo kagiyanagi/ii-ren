@@ -1232,6 +1232,10 @@ Singleton {
                 property int suspend: 3
             }
 
+            // Per-device artwork for the bluetooth toggle and dialog, as
+            // [{ mac, image }]. `image` names a file in <shellConfig>/bluetooth_images.
+            property list<var> bluetoothDeviceImages: []
+
             property JsonObject bluetooth: JsonObject {
                 // Android-style popup offering nearby unpaired devices.
                 // Off by default: it keeps the adapter discovering whenever
@@ -1552,37 +1556,31 @@ Singleton {
 
                 property JsonObject quickToggles: JsonObject {
                     property string style: "android" // Options: classic, android
+                    property bool useThreeWaySliders: true
                     property JsonObject android: JsonObject {
-                        property int columns: 5
-                        property list<var> toggles: [
-                            {
-                                "size": 2,
-                                "type": "network"
-                            },
-                            {
-                                "size": 1,
-                                "type": "idleInhibitor"
-                            },
-                            {
-                                "size": 2,
-                                "type": "darkMode"
-                            },
-                            {
-                                "size": 1,
-                                "type": "mic"
-                            },
-                            {
-                                "size": 2,
-                                "type": "audio"
-                            },
-                            {
-                                "size": 2,
-                                "type": "nightLight"
-                            }
+                        property int columns: 4
+                        property int layoutVersion: 2
+                        // One entry per page, each a packed list of tiles. The
+                        // panel's edit mode owns this: drag to reorder, drag the
+                        // handles to resize, chevrons to page.
+                        property list<var> pages: [
+                            [
+                                { "id": "brightnessSlider", "type": "brightnessSlider", "sizeW": 4, "sizeH": 1 },
+                                { "id": "volumeSlider", "type": "volumeSlider", "sizeW": 4, "sizeH": 1 },
+                                { "id": "network", "type": "network", "sizeW": 2, "sizeH": 1 },
+                                { "id": "bluetooth", "type": "bluetooth", "sizeW": 2, "sizeH": 1 },
+                                { "id": "mic", "type": "mic", "sizeW": 2, "sizeH": 1 },
+                                { "id": "audio", "type": "audio", "sizeW": 2, "sizeH": 1 },
+                                { "id": "nightLight", "type": "nightLight", "sizeW": 2, "sizeH": 1 },
+                                { "id": "darkMode", "type": "darkMode", "sizeW": 2, "sizeH": 1 }
+                            ]
                         ]
                     }
                 }
 
+                // The standalone slider row above the quick toggles. Only the
+                // classic style draws it - the android panel carries sliders as
+                // grid tiles you can move and resize like any other.
                 property JsonObject quickSliders: JsonObject {
                     property bool enable: true
                     property bool showMic: true

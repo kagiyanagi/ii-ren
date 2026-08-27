@@ -80,7 +80,8 @@ Item {
                     const configQuickSliders = Config.options.sidebar.quickSliders
                     if (!configQuickSliders.enable) return false
                     if (!configQuickSliders.showMic && !configQuickSliders.showVolume && !configQuickSliders.showBrightness) return false;
-                    return true;
+                    // The android panel carries sliders as grid tiles instead.
+                    return Config.options.sidebar.quickToggles.style !== "android";
                 }
                 sourceComponent: QuickSliders {}
             }
@@ -97,10 +98,13 @@ Item {
                 }
             }
 
+            // Editing hands the panel the sidebar's spare height, so the
+            // drawer of unplaced toggles has somewhere to go.
             CenterWidgetGroup {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: true
                 Layout.fillWidth: true
+                visible: !root.editMode
             }
 
             BottomWidgetGroup {
@@ -186,6 +190,7 @@ Item {
         required property string styleName
         Layout.alignment: item?.Layout.alignment ?? Qt.AlignHCenter
         Layout.fillWidth: item?.Layout.fillWidth ?? false
+        Layout.fillHeight: root.editMode && quickPanelImplLoader.styleName === "android"
         visible: active
         active: Config.options.sidebar.quickToggles.style === styleName
         Connections {
@@ -273,7 +278,7 @@ Item {
                 buttonIcon: "edit"
                 onClicked: root.editMode = !root.editMode
                 StyledToolTip {
-                    text: Translation.tr("Edit quick toggles") + (root.editMode ? Translation.tr("\nLMB to enable/disable\nRMB to toggle size\nScroll to swap position") : "")
+                    text: Translation.tr("Edit quick toggles") + (root.editMode ? Translation.tr("\nDrag to move, drag a handle to resize\nClick a tile to remove it, one below to add") : "")
                 }
             }
             QuickToggleButton {

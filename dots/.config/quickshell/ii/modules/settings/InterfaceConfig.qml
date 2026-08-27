@@ -738,6 +738,19 @@ ContentPage {
                     Config.options.sidebar.quickToggles.android.columns = value;
                 }
             }
+
+            ConfigSwitch {
+                enabled: Config.options.sidebar.quickToggles.style === "android"
+                buttonIcon: "tune"
+                text: Translation.tr("Three-way sliders")
+                checked: Config.options.sidebar.quickToggles.useThreeWaySliders
+                onCheckedChanged: {
+                    Config.options.sidebar.quickToggles.useThreeWaySliders = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Draw the power profile toggle as a three-position slider when it is two cells wide")
+                }
+            }
         }
 
         ContentSubsection {
