@@ -64,6 +64,14 @@ apply_anyterm() {
 
   sed -i "s/\$alpha/$term_alpha/g" "$STATE_DIR/user/generated/terminal/sequences.txt"
 
+  # A trailing bare ESC is a truncated ST: it leaves the terminal parked mid-OSC,
+  # silently eating everything the running app prints until some later ST frees it.
+  # Cheap to check here, invisible and infuriating to debug from the other end.
+  seqfile="$STATE_DIR/user/generated/terminal/sequences.txt"
+  if [ "$(tail -c1 "$seqfile" | xxd -p)" = "1b" ]; then
+    printf '\\' >>"$seqfile"
+  fi
+
   for file in /dev/pts/*; do
     if [[ $file =~ ^/dev/pts/[0-9]+$ ]]; then
       {
