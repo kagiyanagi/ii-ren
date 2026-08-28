@@ -15,6 +15,8 @@ Singleton {
     
     // For backward compatibility and UI settings
     property bool gpsActive: Config.options.bar.weather.enableGPS
+    // Matches fallbackTimer: past this we give up and use IP-based location.
+    readonly property int fixTimeout: 5000
     readonly property string city: Config.options.bar.weather.city
 
     // Config settling at startup flips city/units from their defaults, which looks
@@ -43,7 +45,7 @@ Singleton {
     onCityChanged: requestRefetch()
     onGpsActiveChanged: {
         if (root.gpsActive) {
-            positionSource.start();
+            positionSource.update(root.fixTimeout);
         } else {
             positionSource.stop();
             requestRefetch();
@@ -342,8 +344,8 @@ Singleton {
 
     Component.onCompleted: {
         if (root.gpsActive) {
-            console.info("[WeatherService] Starting the GPS service.");
-            positionSource.start();
+            console.info("[WeatherService] Requesting a position fix.");
+            positionSource.update(root.fixTimeout);
             fallbackTimer.start();
         } else {
             root.requestRefetch();
@@ -364,13 +366,16 @@ Singleton {
         }
     }
 
+    // One fix per refresh, not a standing subscription: keeping this running
+    // holds a GeoClue client open, so every privacy indicator on the system
+    // says the shell is using location around the clock.
     PositionSource {
         id: positionSource
-        updateInterval: root.fetchInterval
 
         onPositionChanged: {
             if (position.latitudeValid && position.longitudeValid) {
                 fallbackTimer.stop();
+                positionSource.stop();
                 root.location.lat = position.coordinate.latitude;
                 root.location.lon = position.coordinate.longitude;
                 root.location.valid = true;
@@ -401,6 +406,11 @@ Singleton {
         interval: root.fetchInterval
         // No triggeredOnStart: the initial fetch is owned by Component.onCompleted
         // (or by the GPS/fallback path), otherwise startup fetches twice.
-        onTriggered: root.getData()
+        onTriggered: {
+            // Refresh the fix for the next round; this round uses the last one.
+            if (root.gpsActive)
+                positionSource.update(root.fixTimeout);
+            root.getData();
+        }
     }
 }

@@ -20,6 +20,7 @@ ContentPage {
         "workspaces": workspaces,
         "timer": indicators,
         "record_indicator": indicators,
+        "privacy_indicator": indicators,
         "network_speed": networkSpeed
     })
 
@@ -462,6 +463,31 @@ ContentPage {
                 checked: Config.options.bar.indicators.record.minimal
                 onCheckedChanged: {
                     Config.options.bar.indicators.record.minimal = checked;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Privacy")
+            tooltip: Translation.tr("Shows what is using your microphone and location")
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "mic"
+                    text: Translation.tr("Microphone")
+                    checked: Config.options.bar.indicators.privacy.microphone
+                    onCheckedChanged: {
+                        Config.options.bar.indicators.privacy.microphone = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "location_on"
+                    text: Translation.tr("Location")
+                    checked: Config.options.bar.indicators.privacy.location
+                    onCheckedChanged: {
+                        Config.options.bar.indicators.privacy.location = checked;
+                    }
                 }
             }
         }

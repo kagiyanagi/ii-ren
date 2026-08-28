@@ -23,6 +23,7 @@ Singleton {
         { id: "weather", icon: "weather_mix", title: "Weather" },
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },
+        { id: "privacy_indicator", icon: "privacy_tip", title: "Privacy indicators" },
     ]
 
     property var extensionComponents: []

@@ -1207,6 +1207,10 @@ Singleton {
                     property JsonObject record: JsonObject {
                         property bool minimal: false
                     }
+                    property JsonObject privacy: JsonObject {
+                        property bool microphone: true
+                        property bool location: true
+                    }
                 }
                 property JsonObject layouts: JsonObject {
                     // Only storing id and layout-specific flags (visible, centered)
@@ -1232,6 +1236,9 @@ Singleton {
                         }
                     ]
                     property list<var> right: [
+                        {
+                            id: "privacy_indicator"
+                        },
                         {
                             id: "screen_share_indicator"
                         },

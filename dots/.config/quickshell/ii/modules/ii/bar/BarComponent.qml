@@ -50,6 +50,7 @@ Item {
         "policies_panel_button": [policiesPanelButton, policiesPanelButton],
         "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert],
         "network_speed": [networkSpeedComp, networkSpeedComp],
+        "privacy_indicator": [privacyIndicatorComp, privacyIndicatorComp],
     })
 
     property real startRadius: {
@@ -137,6 +138,8 @@ Item {
     Component { id: timerCompVert; Vertical.VerticalTimerWidget {} }
 
     Component { id: screenshareIndicatorComp; ScreenShareIndicator {} }
+
+    Component { id: privacyIndicatorComp; PrivacyIndicator { vertical: rootItem.vertical } }
 
     Component { id: recordIndicatorComp; RecordIndicator { vertical: rootItem.vertical } }
 
