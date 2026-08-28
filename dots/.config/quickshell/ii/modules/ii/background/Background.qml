@@ -465,7 +465,7 @@ Variants {
             // Wallpaper
             TransitionImage {
                 id: wallpaper
-                visible: !blurLoader.active
+                visible: !blurLoader.active && !wallpaperEffects.takesOver
                 opacity: bgRoot.wallpaperIsVideo ? 0 : 1
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
@@ -542,7 +542,7 @@ Variants {
                     }
                 }
                 sourceComponent: GaussianBlur {
-                    source: wallpaper
+                    source: wallpaperEffects.output
                     radius: GlobalStates.screenLocked ? Config.options.lock.blur.radius : 0
                     samples: radius * 2 + 1
 
@@ -552,6 +552,14 @@ Variants {
                         color: CF.ColorUtils.transparentize(Appearance.colors.colLayer0, 0.7)
                     }
                 }
+            }
+
+            WallpaperEffects {
+                id: wallpaperEffects
+                anchors.fill: wallpaper
+                wallpaper: wallpaper
+                // The lock screen runs its own blur; don't stack the two.
+                visible: !blurLoader.active && !bgRoot.wallpaperIsVideo
             }
 
             WidgetCanvas {

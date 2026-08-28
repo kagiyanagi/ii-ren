@@ -1038,6 +1038,55 @@ Singleton {
                 property string wallpaperPath: ""
                 property string thumbnailPath: ""
                 property bool hideWhenFullscreen: true
+                // Wallpaper post-processing. Mirrors the effect set custom ROMs ship
+                // (risingOS -> Evolution X, Matrixx, Mist, Lunaris, PenguinOS): two blur
+                // styles, a dim level, and one filter at a time, plus a fluted-glass
+                // distortion pass of our own. Every default is a no-op.
+                property JsonObject effects: JsonObject {
+                    // Where the effects apply, as the ROMs' effect target does.
+                    property string target: "both" // "both", "desktop", "lock"
+
+                    // "glass" and "frosted" are the ROMs' two radii, 50 and 9.
+                    property JsonObject blur: JsonObject {
+                        property bool enable: false
+                        property string style: "glass" // "glass", "frosted", "custom"
+                        property int radius: 50        // only read when style is "custom"
+                    }
+
+                    // One at a time, matching the ROMs' effect picker. Options:
+                    // none, grayscale, sepia, negative, posterize, pixelate,
+                    // sharpen, chromatic, radialBlur
+                    property string filter: "none"
+                    property int posterizeLevels: 8 // 2..16
+                    property int pixelSize: 8       // px per block
+                    property real sharpen: 1.0      // 1.0 = the ROMs' 3x3 kernel
+                    property int chromatic: 5       // px of R/B separation
+                    property int radialBlur: 5      // %, matches the ROMs' 0.05 strength
+
+                    // These stack on top of whichever filter is picked.
+                    property int saturation: 100 // 100 = untouched
+                    property int dim: 0          // %
+                    property int vignette: 0     // %
+                    property int grain: 0        // %
+
+                    // Fluted / reeded glass. No ROM has this one.
+                    property JsonObject glass: JsonObject {
+                        property bool enable: false
+                        property string pattern: "lines" // lines, rain, chevron, bubble
+                        property string profile: "lens"  // lens, prism, contour, cascade, flat
+                        property int fluteWidth: 22      // px per flute
+                        property int angle: 0            // degrees
+                        property int distortion: 55      // %
+                        property int dispersion: 25      // % chromatic aberration
+                        property int smear: 10           // % blur along the rib
+                        property int highlights: 55      // %
+                        property int shadows: 35         // % seam darkening
+                        property int edges: 30           // % extra bend at the seams
+                        property int frost: 0            // %
+                        property int irregularity: 0     // % uneven flute widths
+                        property int waviness: 0         // % rib bending, for rain/chevron
+                    }
+                }
                 property JsonObject parallax: JsonObject {
                     property bool vertical: true
                     property bool autoVertical: false
