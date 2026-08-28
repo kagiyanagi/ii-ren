@@ -201,6 +201,11 @@ Singleton {
             }
 
             property JsonObject audio: JsonObject {
+                // Node names of the devices to play to / record from at once.
+                // None means one plain default device, one means multi-device
+                // mode with a single member, two or more get combined.
+                property list<string> combinedSinks: []
+                property list<string> combinedSources: []
                 // Values in %
                 property JsonObject protection: JsonObject {
                     // Prevent sudden bangs

@@ -95,12 +95,15 @@ Item {
                 required property var modelData
                 icon.name: WIcons.audioDeviceIcon(modelData)
                 text: Audio.friendlyDeviceName(modelData)
-                checked: (root.output ? Audio.sink : Audio.source) === modelData
-                onClicked: {
-                    if (root.output) Audio.setDefaultSink(modelData);
-                    else Audio.setDefaultSource(modelData);
-                }
+                checked: Audio.isActiveDevice(modelData, root.output)
+                onClicked: Audio.pickDevice(modelData, root.output)
             }
+        }
+
+        WChoiceButton { // Turns the list above into a pick-several one
+            text: root.output ? Translation.tr("Multiple devices") : Translation.tr("Multiple microphones")
+            checked: Audio.multiDeviceEnabled(root.output)
+            onClicked: Audio.setMultiDeviceEnabled(root.output, !checked)
         }
 
         WPanelSeparator {

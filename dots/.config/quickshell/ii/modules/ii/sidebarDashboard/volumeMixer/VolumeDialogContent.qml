@@ -38,27 +38,32 @@ ColumnLayout {
         }
     }
 
-    StyledComboBox {
-        id: deviceSelector
-        Layout.fillHeight: false
+    Flow { // A click picks one device; with "Multiple" on, it adds or drops one
         Layout.fillWidth: true
         Layout.bottomMargin: 6
-        model: root.devices.map(node => Audio.friendlyDeviceName(node))
-        currentIndex: root.devices.findIndex(item => {
-            if (root.isSink) {
-                return item.id === Pipewire.defaultAudioSink?.id
-            } else {
-                return item.id === Pipewire.defaultAudioSource?.id
+        spacing: 4
+
+        Repeater {
+            model: ScriptModel {
+                values: root.devices
             }
-        })
-        onActivated: (index) => {
-            print(index)
-            const item = root.devices[index]
-            if (root.isSink) {
-                Audio.setDefaultSink(item)
-            } else {
-                Audio.setDefaultSource(item)
+            delegate: SelectionGroupButton {
+                required property var modelData
+                leftmost: true
+                rightmost: true
+                buttonText: Audio.friendlyDeviceName(modelData)
+                toggled: Audio.isActiveDevice(modelData, root.isSink)
+                onClicked: Audio.pickDevice(modelData, root.isSink)
             }
+        }
+
+        SelectionGroupButton {
+            leftmost: true
+            rightmost: true
+            buttonIcon: "speaker_group"
+            buttonText: Translation.tr("Multiple")
+            toggled: Audio.multiDeviceEnabled(root.isSink)
+            onClicked: Audio.setMultiDeviceEnabled(root.isSink, !toggled)
         }
     }
 
