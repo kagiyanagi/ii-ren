@@ -9,6 +9,9 @@ ShaderEffect {
 
     required property Item source
     property var preset: ({})
+    // False freezes the input texture: the result is a still image, so there is
+    // no reason to re-read the source once nothing is changing.
+    property bool live: true
     readonly property var opt: Config.options.background.effects
 
     // Index order matches the shader's `filterMode` switch.
@@ -38,8 +41,10 @@ ShaderEffect {
         id: sourceTexture
         anchors.fill: parent
         visible: false
-        live: true
-        hideSource: false
+        live: root.live
+        // Stops the stage before us painting to the screen as well as into this
+        // texture, which it would otherwise do only to be covered up.
+        hideSource: true
         sourceItem: root.source
     }
 }
