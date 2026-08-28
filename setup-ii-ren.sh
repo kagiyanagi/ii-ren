@@ -216,6 +216,32 @@ install_personal_config() {
     echo -e "${GREEN}✓ Installed shell settings: $DEST${NC}"
 }
 
+migrate_todo_to_markdown() {
+    local STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/user"
+    local OLD="$STATE_DIR/todo.json"
+    local NEW="$STATE_DIR/todo.md"
+
+    [ -f "$OLD" ] || return 0
+    # The .md is the list now, so it wins: a re-run must not resurrect tasks
+    # that were finished or deleted since the conversion.
+    [ -f "$NEW" ] && return 0
+
+    if ! command -v jq &> /dev/null; then
+        echo -e "${YELLOW}⚠ jq is missing, leaving the old to-do list at $OLD${NC}"
+        return 0
+    fi
+
+    if jq -r '.[] | "- [\(if .done then "x" else " " end)] \((.content // "") | gsub("\n"; " "))"' \
+        "$OLD" > "$NEW" 2>/dev/null; then
+        mv "$OLD" "$OLD.bak"
+        echo -e "${GREEN}✓ Converted your to-do list to Markdown: $NEW${NC}"
+        echo -e "${BLUE}  The old file is kept as $OLD.bak${NC}"
+    else
+        rm -f "$NEW"
+        echo -e "${YELLOW}⚠ Couldn't read $OLD, leaving it alone${NC}"
+    fi
+}
+
 install_cli() {
     local BIN_PATH="$HOME/.local/bin"
     local CLI_NAME="iiren"
@@ -417,6 +443,7 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Successfully copied: $TARGET_DIR${NC}"
     sleep 1.0
     install_personal_config
+    migrate_todo_to_markdown
     setup_hyprland_overrides
 else
     echo -e "${RED}✗ An error occurred while copying!${NC}"
