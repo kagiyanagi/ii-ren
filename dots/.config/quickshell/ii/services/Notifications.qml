@@ -159,7 +159,16 @@ Singleton {
         keepOnReload: false
         persistenceSupported: true
 
+        // Phone notifications relayed by KDE Connect belong to the Continuity
+        // page only - mirroring them into the desktop list is the same buzz
+        // twice. Untracked notifications are dropped by the server for us.
+        function fromPhone(notification) {
+            return /kdeconnect/i.test(notification.desktopEntry ?? "")
+                || /kdeconnect/i.test(notification.appName ?? "");
+        }
+
         onNotification: (notification) => {
+            if (notifServer.fromPhone(notification)) return;
             notification.tracked = true
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,

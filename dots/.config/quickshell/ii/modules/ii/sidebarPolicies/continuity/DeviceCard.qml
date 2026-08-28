@@ -21,7 +21,12 @@ Rectangle {
     property bool prominent: false
     property bool dimmed: false
     property bool acceptsDrops: false
+    // Tapping the card opens whatever page it fronts; the chevron is the only
+    // hint the user gets, so it only appears when there is somewhere to go.
+    property bool clickable: false
+    property bool expanded: false
     signal filesDropped(var urls)
+    signal clicked()
     default property alias extraContent: extraColumn.data
 
     readonly property bool hasBattery: root.charge >= 0
@@ -52,6 +57,14 @@ Rectangle {
             root.filesDropped(drop.urls);
             drop.accept();
         }
+    }
+
+    // Under the content column, so the action pills keep their own clicks.
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.clickable
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
     }
 
     ColumnLayout {
@@ -117,6 +130,13 @@ Rectangle {
                     font.weight: Font.DemiBold
                     color: root.chargeColor
                 }
+            }
+
+            MaterialSymbol {
+                visible: root.clickable
+                text: root.expanded ? "expand_less" : "expand_more"
+                iconSize: Appearance.font.pixelSize.larger
+                color: root.colText
             }
         }
 

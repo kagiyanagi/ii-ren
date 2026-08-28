@@ -18,6 +18,9 @@ import Quickshell.Bluetooth
 Item {
     id: root
     property real padding: 10
+    // The phone card is a door: tapping it swaps the rest of the page for the
+    // notification list, which is the only place phone notifications show up.
+    property bool notificationsOpen: false
 
     // Both services idle until something is actually looking at them.
     readonly property bool pageActive: root.visible && (root.QsWindow.window?.visible ?? false)
@@ -30,6 +33,10 @@ Item {
     readonly property var phone: KdeConnectService.activeDevice
     readonly property list<var> audioDevices: Bluetooth.devices.values
         .filter(d => d.connected && d.batteryAvailable)
+
+    readonly property bool canShowNotifications: KdeConnectService.activeReachable
+        && KdeConnectService.hasPlugin("kdeconnect_notifications")
+    onCanShowNotificationsChanged: if (!root.canShowNotifications) root.notificationsOpen = false
 
     readonly property string phoneStatus: {
         if (!KdeConnectService.installed) return Translation.tr("KDE Connect is not installed");
@@ -65,6 +72,84 @@ Item {
         font.pixelSize: Appearance.font.pixelSize.smaller
         color: Appearance.colors.colSubtext
         wrapMode: Text.Wrap
+    }
+
+    // One phone notification. These are the only place Android notifications
+    // surface - services/Notifications.qml drops the KDE Connect copies so the
+    // desktop stays quiet.
+    component PhoneNotification: Rectangle {
+        id: notif
+        required property var modelData
+        Layout.fillWidth: true
+        implicitHeight: notifRow.implicitHeight + 28
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer2
+
+        RowLayout {
+            id: notifRow
+            anchors {
+                left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter
+                leftMargin: 14; rightMargin: 8
+            }
+            spacing: 12
+
+            NotificationAppIcon {
+                Layout.alignment: Qt.AlignTop
+                implicitSize: 40
+                summary: notif.modelData.appName
+                // KDE Connect drops the phone app's icon in /tmp; the shape
+                // falls back to a guessed material symbol when it hasn't yet.
+                image: notif.modelData.iconPath ? `file://${notif.modelData.iconPath}` : ""
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                StyledText {
+                    Layout.fillWidth: true
+                    text: notif.modelData.appName
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colSubtext
+                    elide: Text.ElideRight
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: notif.modelData.title !== ""
+                    text: notif.modelData.title
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnLayer2
+                    elide: Text.ElideRight
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 2
+                    visible: notif.modelData.text !== ""
+                    text: notif.modelData.text
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 4
+                    elide: Text.ElideRight
+                }
+            }
+
+            RippleButton {
+                Layout.alignment: Qt.AlignTop
+                visible: notif.modelData.dismissable
+                implicitWidth: 34
+                implicitHeight: 34
+                buttonRadius: Appearance.rounding.full
+                onClicked: KdeConnectService.dismissNotification(notif.modelData.id)
+                contentItem: MaterialSymbol {
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "close"
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colSubtext
+                }
+            }
+        }
     }
 
     component SectionHeader: RowLayout {
@@ -122,6 +207,9 @@ Item {
                 charging: root.phone?.charging ?? false
                 acceptsDrops: KdeConnectService.activeReachable && KdeConnectService.hasPlugin("kdeconnect_share")
                 onFilesDropped: urls => urls.forEach(url => KdeConnectService.shareUrl(String(url)))
+                clickable: root.canShowNotifications
+                expanded: root.notificationsOpen
+                onClicked: root.notificationsOpen = !root.notificationsOpen
 
                 Flow { // Phone actions
                     Layout.fillWidth: true
@@ -169,10 +257,52 @@ Item {
                 }
             }
 
+            ColumnLayout { // Phone notifications
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.topMargin: 4
+                visible: root.notificationsOpen
+                spacing: 8
+
+                SectionHeader {
+                    icon: "notifications"
+                    title: Translation.tr("Notifications")
+                    trailing: KdeConnectService.notifications.length > 0 ? String(KdeConnectService.notifications.length) : ""
+                }
+
+                // Its own scroll box: the list is unbounded, the page is not.
+                StyledFlickable {
+                    id: notifFlickable
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 120
+                    contentHeight: notifColumn.height
+                    clip: true
+
+                    ColumnLayout {
+                        id: notifColumn
+                        // The Flickable's contentItem is the parent here, and
+                        // its width is contentWidth (unset) - not the viewport.
+                        width: notifFlickable.width
+                        spacing: 8
+
+                        EmptyHint {
+                            visible: KdeConnectService.notifications.length === 0
+                            text: Translation.tr("Nothing on your phone right now")
+                        }
+
+                        Repeater {
+                            model: ScriptModel { values: KdeConnectService.notifications }
+                            PhoneNotification {}
+                        }
+                    }
+                }
+            }
+
             ColumnLayout { // Audio
                 Layout.fillWidth: true
                 Layout.topMargin: 4
-                visible: root.audioDevices.length > 0
+                visible: !root.notificationsOpen && root.audioDevices.length > 0
                 spacing: 8
 
                 SectionHeader { icon: "headphones"; title: Translation.tr("Audio") }
@@ -193,7 +323,7 @@ Item {
             ColumnLayout { // Tailnet
                 Layout.fillWidth: true
                 Layout.topMargin: 4
-                visible: Tailscale.installed
+                visible: !root.notificationsOpen && Tailscale.installed
                 spacing: 8
 
                 SectionHeader {
@@ -221,6 +351,7 @@ Item {
             }
 
             Item { // Fills whatever's left below the real cards.
+                visible: !root.notificationsOpen
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 120
