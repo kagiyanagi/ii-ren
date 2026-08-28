@@ -16,3 +16,6 @@ __pycache__/
 # Third-party widget packs installed by WidgetExtensionManager. The shell writes
 # these into its config dir, which is a symlink into this repo.
 dots/.config/quickshell/ii/user_widgets/
+
+# Stray cover-art download temp when the art path is empty.
+dots/.config/quickshell/ii/.tmp
