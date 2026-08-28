@@ -694,6 +694,18 @@ ContentPage {
             }
         }
 
+        ConfigSwitch {
+            buttonIcon: "memory"
+            text: Translation.tr('Keep left sidebar loaded')
+            checked: Config.options.sidebar.keepLeftSidebarLoaded
+            onCheckedChanged: {
+                Config.options.sidebar.keepLeftSidebarLoaded = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Same trade for the left sidebar. Off: its pages are built on the first open and thrown away when it closes.\nConversations and chat state live in the services, so nothing is lost either way")
+            }
+        }
+
         ConfigRow {
             ContentSubsection {
                 title: Translation.tr("Sidebar position")

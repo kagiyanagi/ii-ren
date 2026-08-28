@@ -64,14 +64,48 @@ Scope { // Scope
         else root.pin = !root.pin;
     }
 
-    Component.onCompleted: {
+    // Building the pages costs RAM while shut and startup time while booting; keeping
+    // them costs nothing on open. Config picks which, same trade as the right sidebar.
+    function ensureContent() {
+        if (root.sidebarContent) return;
         root.sidebarContent = contentComponent.createObject(null, {
             "scopeRoot": root,
         });
-        sidebarLoader.item.contentParent.children = [root.sidebarContent];
+        const host = root.detach ? detachedSidebarLoader : sidebarLoader;
+        if (host.item) host.item.contentParent.children = [root.sidebarContent];
+    }
+
+    function releaseContent() {
+        // A detached window shows the content whether or not the sidebar is open.
+        if (!root.sidebarContent || root.detach || Config.options.sidebar.keepLeftSidebarLoaded) return;
+        root.sidebarContent.parent = null;
+        root.sidebarContent.destroy();
+        root.sidebarContent = null;
+    }
+
+    Component.onCompleted: {
+        if (Config.options.sidebar.keepLeftSidebarLoaded || GlobalStates.policiesPanelOpen)
+            root.ensureContent();
+    }
+
+    Connections {
+        target: GlobalStates
+        function onPoliciesPanelOpenChanged() {
+            if (GlobalStates.policiesPanelOpen) root.ensureContent();
+            else root.releaseContent();
+        }
+    }
+
+    Connections {
+        target: Config.options.sidebar
+        function onKeepLeftSidebarLoadedChanged() {
+            if (Config.options.sidebar.keepLeftSidebarLoaded) root.ensureContent();
+            else root.releaseContent();
+        }
     }
 
     onDetachChanged: {
+        root.ensureContent(); // Detaching while unloaded: build it, there is a window to fill.
         if (root.detach) {
             GlobalFocusGrab.removeDismissable(sidebarLoader.item) // Remove sidebar from the focus grab system
             sidebarContent.parent = null; // Detach content from sidebar

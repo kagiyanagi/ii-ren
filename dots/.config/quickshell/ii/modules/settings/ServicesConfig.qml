@@ -28,6 +28,112 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "electrical_services"
+        title: Translation.tr("Conduit")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Show Conduit in the sidebar")
+            checked: Config.options.conduit.enable
+            onCheckedChanged: {
+                Config.options.conduit.enable = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "construction"
+            text: Translation.tr("Tools (run unattended in the working directory)")
+            checked: Config.options.conduit.enableTools
+            onCheckedChanged: {
+                Config.options.conduit.enableTools = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "notifications"
+            text: Translation.tr("Notify when a reply lands and the tab isn't visible")
+            checked: Config.options.conduit.notifyWhenAway
+            onCheckedChanged: {
+                Config.options.conduit.notifyWhenAway = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "history"
+            text: Translation.tr("Restore the last chat on restart")
+            checked: Config.options.conduit.restoreOnRestart
+            onCheckedChanged: {
+                Config.options.conduit.restoreOnRestart = checked;
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Permissions")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.conduit.permissionMode
+                onSelected: newValue => {
+                    Config.options.conduit.permissionMode = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Bypass"), value: "bypassPermissions" },
+                    { displayName: Translation.tr("Edits"), value: "acceptEdits" },
+                    { displayName: Translation.tr("No ask"), value: "dontAsk" },
+                    { displayName: Translation.tr("Plan"), value: "plan" }
+                ]
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Voice accuracy")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.conduit.sttQuality
+                onSelected: newValue => {
+                    Config.options.conduit.sttQuality = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Fast"), value: "fast" },
+                    { displayName: Translation.tr("Balanced"), value: "balanced" },
+                    { displayName: Translation.tr("Accurate"), value: "accurate" },
+                    { displayName: Translation.tr("Best"), value: "best" }
+                ]
+            }
+        }
+
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("Working directory (empty: home). Tools cannot reach outside it.")
+            text: Config.options.conduit.workingDir
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Qt.callLater(() => {
+                    Config.options.conduit.workingDir = text.trim();
+                });
+            }
+        }
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("Denied tools, comma-separated (claude only)")
+            text: Config.options.conduit.disallowedTools
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Qt.callLater(() => {
+                    Config.options.conduit.disallowedTools = text.trim();
+                });
+            }
+        }
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("System prompt")
+            text: Config.options.conduit.systemPrompt
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Qt.callLater(() => {
+                    Config.options.conduit.systemPrompt = text;
+                });
+            }
+        }
+    }
+
+    ContentSection {
         icon: "calendar_month"
         title: Translation.tr("Calendar")
 

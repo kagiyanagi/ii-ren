@@ -33,6 +33,7 @@ ShellRoot {
         Wallpapers.load()
         Autostart.load()
         Updates.load()
+        ConduitService.load()
     }
 
 

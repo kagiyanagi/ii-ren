@@ -131,6 +131,27 @@ Singleton {
                 ]
             }
 
+            // Conduit: a Claude Code / Antigravity CLI session in the sidebar.
+            property JsonObject conduit: JsonObject {
+                property bool enable: true
+                property string provider: "claude-cli" // claude-cli | antigravity
+                property string model: "claude-sonnet-5"
+                property string systemPrompt: "You are answering from a desktop shell sidebar. Keep replies concise and use markdown when it helps."
+                property bool enableTools: true
+                property string permissionMode: "bypassPermissions" // bypassPermissions | acceptEdits | dontAsk | plan
+                property string disallowedTools: ""
+                property string workingDir: "" // empty: $HOME
+                property string sttModel: ""
+                property string sttLanguage: "en" // en | auto
+                property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-vynx, Conduit, LaTeX, extension, sidebar, attachment, transcript."
+                property string sttSource: ""
+                property string sttQuality: "balanced" // fast | balanced | accurate | best
+                property string currentChatId: ""
+                property bool notifyWhenAway: true
+                property bool restoreOnRestart: false
+                property string ttsVoice: ""
+            }
+
             property JsonObject appearance: JsonObject {
                 property bool extraBackgroundTint: true
                 property int fakeScreenRounding: 2 // 0: None | 1: Always | 2: When not fullscreen | 3: Wrapped
@@ -1593,6 +1614,7 @@ Singleton {
             property JsonObject sidebar: JsonObject {
                 property string position: "default"
                 property bool keepRightSidebarLoaded: true
+                property bool keepLeftSidebarLoaded: true
                 property JsonObject translator: JsonObject {
                     property bool enable: false
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.

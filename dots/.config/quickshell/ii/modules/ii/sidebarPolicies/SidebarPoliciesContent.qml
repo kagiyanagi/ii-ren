@@ -18,6 +18,7 @@ Item {
     property bool animeEnabled: Config.options.policies.weeb !== 0  
     property bool animeCloset: Config.options.policies.weeb === 2  
     property bool continuityEnabled: Config.options.policies.continuity !== 0
+    property bool conduitEnabled: Config.options.conduit.enable
 
     property bool _sidebarExtended: scopeRoot.extend
     property int _maxTextTabs: _sidebarExtended ? 4 : 3
@@ -25,13 +26,8 @@ Item {
     property var extensionPages: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
 
-    // Conduit is pinned to the front and focused on open. Pinning is keyed off the
-    // contribution identifier because exactly one page wants it.
-    // ponytail: add a "priority" field to the contribution if a second page needs this.
-    readonly property string pinnedPageIdentifier: "conduit"
-    readonly property var pinnedExtensionPages: root.extensionPages.filter(p => p.identifier === root.pinnedPageIdentifier)
-    readonly property var unpinnedExtensionPages: root.extensionPages.filter(p => p.identifier !== root.pinnedPageIdentifier)
-    readonly property int pinnedTabIndex: root.pinnedExtensionPages.length > 0 ? 0 : -1
+    // Conduit sits in front of the built-in pages and is focused on open.
+    readonly property int pinnedTabIndex: root.conduitEnabled ? 0 : -1
 
     // Reassigning extensionPages re-runs the contentChildren binding below, which
     // rebuilds every extension page from a fresh ?_t= URL and throws its state
@@ -60,12 +56,12 @@ Item {
     }
 
     property var tabButtonList: [  
-        ...root.pinnedExtensionPages.map(p => ({icon: p.icon, name: p.title})),
+        ...(root.conduitEnabled ? [{"icon": "electrical_services", "name": Translation.tr("Conduit")}] : []),
         ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
-        ...root.unpinnedExtensionPages.map(p => ({icon: p.icon, name: p.title}))
+        ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
     property int tabCount: swipeView.count
 
@@ -159,32 +155,45 @@ Item {
                 }
 
                 contentChildren: [
-                    ...root.pinnedExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item),
+                    ...(root.conduitEnabled ? [conduit.createObject()] : []),
                     ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0)) ? [placeholder.createObject()] : []),
+                    ...((!root.conduitEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
                     ...(root.animeEnabled ? [anime.createObject()] : []),
                     ...(root.continuityEnabled ? [continuity.createObject()] : []),
-                    ...root.unpinnedExtensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
+                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
                 ]
             }
         }
 
+        // Every page in the view re-evaluates on open, whether or not it is the tab
+        // being looked at: measured on this machine, Conduit ~40 and Continuity ~63 CPU
+        // ticks per open, and they add up. Only the current tab is kept alive; a page is
+        // built when you switch to it and dropped when you leave.
+        component PageSlot: Loader {
+            asynchronous: true
+            active: SwipeView.isCurrentItem
+        }
+
+        Component {
+            id: conduit
+            PageSlot { sourceComponent: Conduit {} }
+        }
         Component {
             id: aiChat
-            AiChat {}
+            PageSlot { sourceComponent: AiChat {} }
         }
         Component {
             id: translator
-            Translator {}
+            PageSlot { sourceComponent: Translator {} }
         }
         Component {
             id: anime
-            Anime {}
+            PageSlot { sourceComponent: Anime {} }
         }
         Component {
             id: continuity
-            Continuity {}
+            PageSlot { sourceComponent: Continuity {} }
         }
         Component {
             id: placeholder
