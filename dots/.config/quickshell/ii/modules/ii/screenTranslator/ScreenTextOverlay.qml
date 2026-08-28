@@ -5,10 +5,9 @@ import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import Quickshell
 
-import qs
 import qs.modules.common
 import qs.modules.common.functions
-import qs.modules.common.models.gCloud
+import qs.modules.common.models
 import qs.modules.common.utils
 import qs.modules.common.widgets
 import qs.services
@@ -21,11 +20,10 @@ Item {
     property color textColor: "white"
     required property string screenshotPath
 
-    readonly property string wikiLink: "https://ii.clsty.link/en/ii-qs/02usage/#setting-it-up" // TODO: write a page for this
     readonly property string textColorDetectionScriptPath: Quickshell.shellPath("scripts/images/text-color-venv.sh")
 
     property bool loading: true
-    property var visionParagraphs: []
+    property var paragraphs: []
     property list<string> translationKeys: []
     property var translation: ({})
 
@@ -40,24 +38,7 @@ Item {
     }
 
     Component.onCompleted: {
-        if (GoogleCloud.tokenReady && GoogleCloud.tokenError) {
-            root.showError();
-        }
-        cloudVision.annotateImage(screenshotPath);
-    }
-
-    function reattemptAsNeeded() {
-        if (root.visionParagraphs == [] && GoogleCloud.tokenReady && !GoogleCloud.tokenError) {
-            root.error = false;
-            cloudVision.annotateImage(root.screenshotPath);
-        }
-    }
-
-    Connections {
-        target: GoogleCloud
-        function onTokenReadyChanged() {
-            root.reattemptAsNeeded();
-        }
+        ocr.recognize(root.screenshotPath);
     }
 
     Rectangle {
@@ -81,15 +62,9 @@ Item {
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: {
-                    if (cloudVision.state == GCloudApi.State.Preparing)
-                        return Translation.tr("Uploading image");
-                    else if (cloudVision.state == GCloudApi.State.Processing)
-                        return Translation.tr("Reading image");
-                    else if (cloudVision.state == GCloudApi.State.Error)
-                        return Translation.tr("Error");
-                    else if (cloudTrans.state == GCloudApi.State.Preparing)
-                        return Translation.tr("Getting ready to translate");
-                    else if (cloudTrans.state == GCloudApi.State.Processing)
+                    if (ocr.state == AsyncTask.State.Processing)
+                        return Translation.tr("Reading screen");
+                    else if (translator.state == AsyncTask.State.Processing)
                         return Translation.tr("Translating");
                     else
                         return " ";
@@ -120,51 +95,37 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 textFormat: Text.MarkdownText
                 wrapMode: Text.Wrap
-                text: `**${Translation.tr("Screen Translator")}**\n\n${root.errorMessage}\n\n__[${Translation.tr("See setup instructions on the wiki")}](${root.wikiLink})__`
+                text: `**${Translation.tr("Screen Translator")}**\n\n${root.errorMessage}`
                 font.pixelSize: Appearance.font.pixelSize.small * root.scaleFactor
                 color: root.textColor
-                onLinkActivated: (link) => {
-                    Qt.openUrlExternally(link)
-                    GlobalStates.screenTranslatorOpen = false
-                }
-
-                PointingHandLinkHover {}
             }
         }
     }
 
-    GCloudVisionResult {
-        id: gcr
-    }
-
     function handleError(msg) {
-        if (msg?.length > 0) root.errorMessage = msg;
-        else root.errorMessage = Translation.tr("Set your Google Cloud service account key");
+        root.errorMessage = msg?.length > 0 ? msg : Translation.tr("Something went wrong.");
         root.showError();
     }
 
-    GCloudVision {
-        id: cloudVision
+    TextRecognizer {
+        id: ocr
         onError: (msg) => {
             root.handleError(msg);
         }
         onFinished: {
-            gcr.initializeWithData(outputData);
-            root.visionParagraphs = gcr.coherentParagraphs;
-            // print(gcr.coherentParagraphs)
-            root.translationKeys = gcr.coherentParagraphs.map(p => p.text);
-            // print("TRANSLATION KEYS:", JSON.stringify(root.translationKeys));
-            cloudTrans.translateStrings(root.translationKeys);
+            root.paragraphs = ocr.paragraphs;
+            root.translationKeys = ocr.paragraphs.map(p => p.text);
+            translator.translateStrings(root.translationKeys);
         }
     }
 
-    GCloudTranslate {
-        id: cloudTrans
+    TextTranslator {
+        id: translator
         onError: (msg) => {
             root.handleError(msg);
         }
         onFinished: {
-            var values = outputData.translations.map(translation => translation.translatedText);
+            const values = translator.translations;
             const keys = root.translationKeys;
             root.translation = ({});
             for (var i = 0; i < keys.length; i++) {
@@ -198,7 +159,7 @@ Item {
         layer.enabled: true
         visible: false
         Repeater {
-            model: root.loading ? [] : root.visionParagraphs
+            model: root.loading ? [] : root.paragraphs
             delegate: VisionBoundingBoxRect {
                 scaleFactor: 1
             }
@@ -228,7 +189,7 @@ Item {
         id: textItems
         z: 999
         Repeater {
-            model: root.loading ? [] : root.visionParagraphs
+            model: root.loading ? [] : root.paragraphs
             // An entry looks like this:
             delegate: TextItem {}
         }
