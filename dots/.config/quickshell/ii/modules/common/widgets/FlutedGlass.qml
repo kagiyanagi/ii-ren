@@ -13,6 +13,10 @@ ShaderEffect {
     // False freezes the input texture: the result is a still image, so there is
     // no reason to re-read the source once nothing is changing.
     property bool live: true
+    // The wallpaper must keep rendering itself even though we draw over it:
+    // its transition animation runs through layers on its own images, and an
+    // item nothing renders never produces them, so the wipe never appears.
+    property bool hideSource: true
     readonly property var opt: Config.options.background.effects.glass
 
     // Index order matches the shader's `pattern` / `profile` switches.
@@ -46,9 +50,9 @@ ShaderEffect {
         anchors.fill: parent
         visible: false
         live: root.live
-        // Stops the stage before us painting to the screen as well as into this
-        // texture, which it would otherwise do only to be covered up.
-        hideSource: true
+        // Stops the stage before us painting to the screen as well as into
+        // this texture, which it would otherwise do only to be covered up.
+        hideSource: root.hideSource
         sourceItem: root.source
     }
 }

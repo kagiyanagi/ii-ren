@@ -465,7 +465,7 @@ Variants {
             // Wallpaper
             TransitionImage {
                 id: wallpaper
-                visible: !blurLoader.active && !wallpaperEffects.takesOver
+                visible: !blurLoader.active
                 opacity: bgRoot.wallpaperIsVideo ? 0 : 1
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10

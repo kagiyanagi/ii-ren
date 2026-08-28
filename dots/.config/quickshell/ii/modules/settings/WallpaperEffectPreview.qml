@@ -31,22 +31,13 @@ Item {
         cache: true
     }
 
-    Loader {
-        id: glassStage
-        anchors.fill: parent
-        active: root.glass !== null
-        sourceComponent: FlutedGlass {
-            source: thumb
-            preset: root.glass ?? ({})
-        }
-    }
-
+    // Same order as the desktop: blur first, then the glass refracts it.
     Loader {
         id: blurStage
         anchors.fill: parent
         active: root.blurRadius > 0
         sourceComponent: GaussianBlur {
-            source: glassStage.item ?? thumb
+            source: thumb
             // The radius is in screen pixels, so scale it to the thumbnail or
             // every preview looks far blurrier than the real thing.
             radius: Math.max(1, Math.round(root.blurRadius * root.width / Math.max(1, Screen.width)))
@@ -54,9 +45,19 @@ Item {
         }
     }
 
+    Loader {
+        id: glassStage
+        anchors.fill: parent
+        active: root.glass !== null
+        sourceComponent: FlutedGlass {
+            source: blurStage.item ?? thumb
+            preset: root.glass ?? ({})
+        }
+    }
+
     WallpaperFilter {
         anchors.fill: parent
-        source: blurStage.item ?? glassStage.item ?? thumb
+        source: glassStage.item ?? blurStage.item ?? thumb
         preset: root.filter
     }
 

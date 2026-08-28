@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 import QtQuick
 import Qt5Compat.GraphicalEffects
 
-// Wallpaper post-processing: fluted glass -> blur -> ROM filter/adjustments.
+// Wallpaper post-processing: blur -> fluted glass -> ROM filter/adjustments.
 // Each stage is a Loader, so a default config adds no render passes and the
 // wallpaper keeps drawing itself.
 //
@@ -83,25 +83,20 @@ Item {
         }
     }
 
-    Loader {
-        id: glassLoader
-        anchors.fill: parent
-        active: root.glassActive
-        sourceComponent: FlutedGlass {
-            source: root.wallpaper
-            live: root.baking
-        }
-    }
-
+    // Blur runs first: fluted glass refracts whatever sits behind it, so
+    // blurring its output instead would smear the flutes and their highlights
+    // away - the opposite of a glass pane over a frosted background.
+    //
     // GaussianBlur reads its source through a texture of its own that is always
-    // live, so hand it one that is already frozen instead of the raw stage.
+    // live, so hand it one that is already frozen instead of the raw wallpaper.
     ShaderEffectSource {
         id: blurInput
         anchors.fill: parent
         visible: false
         live: root.baking
-        hideSource: true
-        sourceItem: root.blurActive ? (glassLoader.item ?? root.wallpaper) : null
+        // Never hidden: this one always reads the wallpaper directly.
+        hideSource: false
+        sourceItem: root.blurActive ? root.wallpaper : null
     }
 
     Loader {
@@ -116,11 +111,23 @@ Item {
     }
 
     Loader {
+        id: glassLoader
+        anchors.fill: parent
+        active: root.glassActive
+        sourceComponent: FlutedGlass {
+            source: blurLoader.item ?? root.wallpaper
+            hideSource: source !== root.wallpaper
+            live: root.baking
+        }
+    }
+
+    Loader {
         id: filterLoader
         anchors.fill: parent
         active: root.filterActive
         sourceComponent: WallpaperFilter {
-            source: blurLoader.item ?? glassLoader.item ?? root.wallpaper
+            source: glassLoader.item ?? blurLoader.item ?? root.wallpaper
+            hideSource: source !== root.wallpaper
             live: root.baking
         }
     }
@@ -133,7 +140,7 @@ Item {
         live: root.baking
         hideSource: true
         sourceItem: root.takesOver
-            ? (filterLoader.item ?? blurLoader.item ?? glassLoader.item)
+            ? (filterLoader.item ?? glassLoader.item ?? blurLoader.item)
             : null
     }
 }
