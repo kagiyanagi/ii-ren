@@ -286,6 +286,30 @@ ContentPage {
                     ]
                 }
             }
+
+            ContentSubsection {
+                title: Translation.tr("Conduit")
+                Layout.fillWidth: false
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.conduit.enable ? 1 : 0
+                    onSelected: newValue => {
+                        Config.options.conduit.enable = (newValue === 1);
+                    }
+                    options: [
+                        {
+                            displayName: Translation.tr("No"),
+                            icon: "close",
+                            value: 0
+                        },
+                        {
+                            displayName: Translation.tr("Yes"),
+                            icon: "check",
+                            value: 1
+                        }
+                    ]
+                }
+            }
         }
 
         ConfigRow {
