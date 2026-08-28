@@ -569,30 +569,21 @@ Variants {
                 Behavior on scale {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
-                anchors {
-                    left: wallpaper.left
-                    right: wallpaper.right
-                    top: wallpaper.top
-                    bottom: wallpaper.bottom
-                    horizontalCenter: undefined
-                    verticalCenter: undefined
-                    readonly property real parallaxFactor: Config.options.background.parallax.widgetsFactor
-                    leftMargin: {
-                        const xOnWallpaper = bgRoot.movableXSpace;
-                        const extraMove = (wallpaper.effectiveValueX * 2 * bgRoot.movableXSpace) * (parallaxFactor - 1);
-                        return xOnWallpaper - extraMove;
-                    }
-                    topMargin: {
-                        const yOnWallpaper = bgRoot.movableYSpace;
-                        const extraMove = (wallpaper.effectiveValueY * 2 * bgRoot.movableYSpace) * (parallaxFactor - 1);
-                        return yOnWallpaper - extraMove;
-                    }
-                    Behavior on leftMargin {
-                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                    }
-                    Behavior on topMargin {
-                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                    }
+                // Positioned, not anchored to the wallpaper. Anchoring four sides
+                // to a sibling that animates makes every parallax frame re-run
+                // the anchor solver over this whole subtree on the main thread,
+                // which is most of what a sidebar slide costs; left+right plus
+                // an explicit width made it worse by over-constraining it.
+                readonly property real parallaxFactor: Config.options.background.parallax.widgetsFactor
+                x: -(wallpaper.effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace
+                    - (wallpaper.effectiveValueX * 2 * bgRoot.movableXSpace) * (parallaxFactor - 1)
+                y: -(wallpaper.effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace
+                    - (wallpaper.effectiveValueY * 2 * bgRoot.movableYSpace) * (parallaxFactor - 1)
+                Behavior on x {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+                Behavior on y {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 width: wallpaper.width
                 height: wallpaper.height
@@ -601,30 +592,16 @@ Variants {
                     when: GlobalStates.screenLocked || bgRoot.wallpaperSafetyTriggered
                     PropertyChanges {
                         target: widgetCanvas
-                        width: parent.width
-                        height: parent.height
-                    }
-                    AnchorChanges {
-                        target: widgetCanvas
-                        anchors {
-                            left: undefined
-                            right: undefined
-                            top: undefined
-                            bottom: undefined
-                            horizontalCenter: parent.horizontalCenter
-                            verticalCenter: parent.verticalCenter
-                        }
+                        width: widgetCanvas.parent.width
+                        height: widgetCanvas.parent.height
+                        x: 0
+                        y: 0
                     }
                 }
 
                 transitions: Transition {
                     PropertyAnimation {
-                        properties: "width,height"
-                        duration: Appearance.animation.elementMove.duration
-                        easing.type: Appearance.animation.elementMove.type
-                        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-                    }
-                    AnchorAnimation {
+                        properties: "width,height,x,y"
                         duration: Appearance.animation.elementMove.duration
                         easing.type: Appearance.animation.elementMove.type
                         easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
