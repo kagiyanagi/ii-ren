@@ -26,8 +26,10 @@ Scope {
 
     // Hyprland already keeps the MRU order for us in focusHistoryID (0 = focused).
     function snapshot() {
+        const workspace = Hyprland.focusedWorkspace?.id;
         root.windows = HyprlandData.windowList
             .filter(win => win.mapped && !win.hidden)
+            .filter(win => !Config.options.altTab.currentWorkspaceOnly || win.workspace?.id === workspace)
             .sort((a, b) => a.focusHistoryID - b.focusHistoryID);
     }
 
@@ -191,7 +193,8 @@ Scope {
 
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: tiles.implicitWidth
+                        // A single tile would otherwise squeeze the title to nothing.
+                        Layout.preferredWidth: Math.min(Math.max(tiles.implicitWidth, 260), panel.screen.width * 0.9 - card.padding * 2)
                         Layout.bottomMargin: 4
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight

@@ -1336,6 +1336,7 @@ Singleton {
                 // Hyprland warps the pointer to the newly focused window unless
                 // cursor:no_warps is set; we flip it only while the switcher is up.
                 property bool keepCursorInPlace: true
+                property bool currentWorkspaceOnly: false
             }
 
             property JsonObject dock: JsonObject {

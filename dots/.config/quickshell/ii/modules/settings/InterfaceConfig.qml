@@ -123,6 +123,13 @@ ContentPage {
             checked: Config.options.altTab.keepCursorInPlace
             onCheckedChanged: { Config.options.altTab.keepCursorInPlace = checked; }
         }
+
+        ConfigSwitch {
+            buttonIcon: "select_window"
+            text: Translation.tr("Only show windows on the current workspace")
+            checked: Config.options.altTab.currentWorkspaceOnly
+            onCheckedChanged: { Config.options.altTab.currentWorkspaceOnly = checked; }
+        }
     }
 
     ContentSection {
