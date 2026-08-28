@@ -168,7 +168,7 @@ Singleton {
         }
 
         onNotification: (notification) => {
-            if (notifServer.fromPhone(notification)) return;
+            if (notifServer.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
             notification.tracked = true
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,

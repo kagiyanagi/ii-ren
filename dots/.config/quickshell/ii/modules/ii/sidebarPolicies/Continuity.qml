@@ -80,7 +80,7 @@ Item {
     component PhoneNotification: Rectangle {
         id: notif
         required property var modelData
-        Layout.fillWidth: true
+        width: notif.ListView.view?.width ?? 0
         implicitHeight: notifRow.implicitHeight + 28
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer2
@@ -181,6 +181,71 @@ Item {
         }
     }
 
+    // Bottom bar over the notification list: mute toggle, count, clear all.
+    component BarPill: RippleButton {
+        implicitHeight: 44
+        buttonRadius: Appearance.rounding.full
+        colBackground: Appearance.colors.colLayer2
+        colBackgroundHover: Appearance.colors.colLayer2Hover
+        colBackgroundToggled: Appearance.colors.colPrimaryContainer
+        colBackgroundToggledHover: Appearance.colors.colPrimaryContainerHover
+    }
+
+    RowLayout {
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+            margins: root.padding
+        }
+        visible: root.notificationsOpen
+        spacing: 6
+        z: 1
+
+        BarPill { // Mirror onto the desktop as well, off by default
+            implicitWidth: 56
+            toggled: Config.options.notifications.phoneOnDesktop
+            onClicked: Config.options.notifications.phoneOnDesktop = !Config.options.notifications.phoneOnDesktop
+            StyledToolTip { text: Translation.tr("Also show phone notifications on the desktop") }
+            contentItem: MaterialSymbol {
+                horizontalAlignment: Text.AlignHCenter
+                text: Config.options.notifications.phoneOnDesktop ? "notifications_active" : "notifications_off"
+                iconSize: Appearance.font.pixelSize.huge
+                fill: Config.options.notifications.phoneOnDesktop ? 1 : 0
+                color: Config.options.notifications.phoneOnDesktop
+                    ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer2
+            }
+        }
+
+        Rectangle { // Count, not a button - nothing to press it for
+            Layout.fillWidth: true
+            implicitHeight: 44
+            radius: Appearance.rounding.full
+            color: Appearance.colors.colLayer2
+            StyledText {
+                anchors.centerIn: parent
+                text: KdeConnectService.notifications.length === 1
+                    ? Translation.tr("1 notification")
+                    : Translation.tr("%1 notifications").arg(KdeConnectService.notifications.length)
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colOnLayer2
+            }
+        }
+
+        BarPill {
+            implicitWidth: 56
+            enabled: KdeConnectService.notifications.length > 0
+            onClicked: KdeConnectService.dismissAllNotifications()
+            StyledToolTip { text: Translation.tr("Clear all") }
+            contentItem: MaterialSymbol {
+                horizontalAlignment: Text.AlignHCenter
+                text: "delete_sweep"
+                iconSize: Appearance.font.pixelSize.huge
+                color: Appearance.colors.colOnLayer2
+            }
+        }
+    }
+
     StyledFlickable {
         id: flickable
         anchors.fill: parent
@@ -270,32 +335,28 @@ Item {
                     trailing: KdeConnectService.notifications.length > 0 ? String(KdeConnectService.notifications.length) : ""
                 }
 
+                EmptyHint {
+                    visible: KdeConnectService.notifications.length === 0
+                    text: Translation.tr("Nothing on your phone right now")
+                }
+
                 // Its own scroll box: the list is unbounded, the page is not.
-                StyledFlickable {
-                    id: notifFlickable
+                // A ListView rather than a Repeater purely for the transitions -
+                // dismissing slides the row out and closes the gap, like Android.
+                StyledListView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 120
-                    contentHeight: notifColumn.height
+                    spacing: 8
                     clip: true
-
-                    ColumnLayout {
-                        id: notifColumn
-                        // The Flickable's contentItem is the parent here, and
-                        // its width is contentWidth (unset) - not the viewport.
-                        width: notifFlickable.width
-                        spacing: 8
-
-                        EmptyHint {
-                            visible: KdeConnectService.notifications.length === 0
-                            text: Translation.tr("Nothing on your phone right now")
-                        }
-
-                        Repeater {
-                            model: ScriptModel { values: KdeConnectService.notifications }
-                            PhoneNotification {}
-                        }
+                    animateMovement: true
+                    bottomMargin: 56 // Room to scroll the last row out from under the bottom bar
+                    // Diff by notification id, otherwise every snapshot from the
+                    // monitor looks like a fresh list and the whole page flashes.
+                    model: ScriptModel {
+                        objectProp: "id"
+                        values: KdeConnectService.notifications
                     }
+                    delegate: PhoneNotification {}
                 }
             }
 

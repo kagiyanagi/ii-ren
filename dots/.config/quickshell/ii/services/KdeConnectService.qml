@@ -80,6 +80,10 @@ Singleton {
             "--object-path", `/modules/kdeconnect/devices/${root.activeDeviceId}/notifications/${notificationId}`,
             "--method", "org.kde.kdeconnect.device.notifications.notification.dismiss"]);
     }
+    /** No dbus method dismisses the lot, so walk the ones that allow it. */
+    function dismissAllNotifications(): void {
+        root.notifications.filter(n => n.dismissable).forEach(n => root.dismissNotification(n.id));
+    }
     function replyToNotification(replyId: string, message: string): void {
         root._call("/notifications", "notifications.sendReply", [root._arg(replyId), root._arg(message)]);
     }

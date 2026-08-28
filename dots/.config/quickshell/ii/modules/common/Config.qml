@@ -1437,6 +1437,9 @@ Singleton {
 
             property JsonObject notifications: JsonObject {
                 property int timeout: 7000
+                // Phone notifications relayed by KDE Connect live on the
+                // Continuity page; turn this on to get them here as well.
+                property bool phoneOnDesktop: false
                 property JsonObject monitor: JsonObject {
                     property bool enable: false
                     property string name: "" // Name of the monitor to show notifications on, like "eDP-1". Find out with 'hyprctl monitors' command
