@@ -128,6 +128,179 @@ def desktop_look(target="screen", scale=0.5):
     return base64.b64encode(p.stdout).decode()
 
 
+# ---------------------------------------------------------------- semantic UI
+#
+# The expensive loop is screenshot -> vision -> guess coordinates -> click ->
+# screenshot again to see whether it worked. Accessibility skips all of it: the
+# widget tree names the buttons and fields, and a widget can be activated
+# through its own accessible action, so there is no cursor to aim and nothing to
+# look at afterwards. A tree costs a couple of hundred tokens where a screenshot
+# costs a couple of thousand and a vision pass.
+#
+# ponytail: GTK and Qt export this for free; Electron and Chromium only with
+# --force-renderer-accessibility, and games/video export nothing. Fall back to
+# desktop_look plus move/click for those.
+
+INTERACTIVE = {
+    "push button", "toggle button", "check box", "radio button", "menu item",
+    "check menu item", "radio menu item", "combo box", "entry", "text",
+    "password text", "list item", "link", "page tab", "slider", "spin button",
+    "table cell", "tree item", "toggle", "menu",
+}
+
+
+def atspi():
+    import gi
+    gi.require_version("Atspi", "2.0")
+    from gi.repository import Atspi
+    Atspi.init()
+    return Atspi
+
+
+def focused_app(A):
+    """The AT-SPI application for the window Hyprland says is focused, matched
+    on pid - matching on name disagrees with the window class too often."""
+    aw = hypr_json("activewindow") or {}
+    pid, cls = aw.get("pid"), (aw.get("class") or "").lower()
+    desktop = A.get_desktop(0)
+    fallback = None
+    for i in range(desktop.get_child_count()):
+        app = desktop.get_child_at_index(i)
+        if app is None:
+            continue
+        try:
+            if pid and app.get_process_id() == pid:
+                return app
+        except Exception:
+            pass
+        if cls and cls in (app.get_name() or "").lower():
+            fallback = app
+    return fallback
+
+
+def walk(A, node, out, depth=0):
+    if len(out) >= 300 or depth > 14 or node is None:
+        return
+    try:
+        role = node.get_role_name()
+        name = node.get_name() or ""
+        states = node.get_state_set()
+        showing = states.contains(A.StateType.SHOWING)
+    except Exception:
+        return
+    if showing and role in INTERACTIVE and (name or role in ("entry", "text", "password text")):
+        item = {"role": role, "name": name}
+        try:
+            e = node.get_extents(A.CoordType.SCREEN)
+            item["at"] = [e.x, e.y, e.width, e.height]
+        except Exception:
+            pass
+        if states.contains(A.StateType.CHECKED):
+            item["checked"] = True
+        if not states.contains(A.StateType.SENSITIVE):
+            item["disabled"] = True
+        out.append(item)
+    if not showing and depth > 0:
+        return  # a hidden subtree has nothing clickable under it
+    try:
+        count = node.get_child_count()
+    except Exception:
+        return
+    for i in range(min(count, 200)):
+        try:
+            walk(A, node.get_child_at_index(i), out, depth + 1)
+        except Exception:
+            continue
+
+
+def ui_tree(app_name=""):
+    A = atspi()
+    if app_name:
+        desktop = A.get_desktop(0)
+        app = next((a for i in range(desktop.get_child_count())
+                    if (a := desktop.get_child_at_index(i)) is not None
+                    and app_name.lower() in (a.get_name() or "").lower()), None)
+    else:
+        app = focused_app(A)
+    if app is None:
+        raise RuntimeError("No accessible app for that window. Electron/Chromium need "
+                           "--force-renderer-accessibility; otherwise use desktop_look and click by pixel.")
+    out = []
+    walk(A, app, out)
+    return {"app": app.get_name(), "elements": out}
+
+
+def ui_find(query, app_name=""):
+    q = query.strip().lower()
+    tree = ui_tree(app_name)
+    els = tree["elements"]
+    hit = (next((e for e in els if e["name"].lower() == q), None)
+           or next((e for e in els if q in e["name"].lower()), None))
+    if hit is None:
+        names = ", ".join(f'{e["role"]}:{e["name"]}' for e in els[:25]) or "nothing accessible"
+        raise RuntimeError(f'No element matching {query!r} in {tree["app"]}. Visible: {names}')
+    return hit
+
+
+def ui_node(A, app_name, query):
+    """Same search as ui_find, but returning the live node so it can be acted on."""
+    hit = ui_find(query, app_name)
+    app = focused_app(A) if not app_name else None
+    if app_name:
+        desktop = A.get_desktop(0)
+        app = next((a for i in range(desktop.get_child_count())
+                    if (a := desktop.get_child_at_index(i)) is not None
+                    and app_name.lower() in (a.get_name() or "").lower()), None)
+    found = []
+
+    def search(node, depth=0):
+        if found or node is None or depth > 14:
+            return
+        try:
+            if (node.get_name() or "") == hit["name"] and node.get_role_name() == hit["role"]:
+                found.append(node)
+                return
+            for i in range(min(node.get_child_count(), 200)):
+                search(node.get_child_at_index(i), depth + 1)
+        except Exception:
+            return
+
+    search(app)
+    if not found:
+        raise RuntimeError(f"Lost {hit['name']!r} between finding and acting on it - the UI changed.")
+    return found[0], hit
+
+
+def ui_press(query, app_name=""):
+    A = atspi()
+    node, hit = ui_node(A, app_name, query)
+    try:
+        node.do_action(0)  # the widget's own default action: no pointer, no aiming
+        return f'pressed {hit["role"]} "{hit["name"]}"'
+    except Exception:
+        at = hit.get("at")
+        if not at:
+            raise RuntimeError(f'{hit["name"]!r} exposes no action and no position')
+        act({"move": [at[0] + at[2] // 2, at[1] + at[3] // 2]})
+        return act({"click": "left"}) or f'clicked {hit["name"]} at its centre'
+
+
+def ui_fill(query, text, app_name=""):
+    A = atspi()
+    node, hit = ui_node(A, app_name, query)
+    try:
+        node.set_text_contents(text)
+        return f'set {hit["name"] or hit["role"]!r} to {text!r}'
+    except Exception:
+        at = hit.get("at")
+        if not at:
+            raise RuntimeError(f'{hit["name"]!r} is not editable through accessibility')
+        act({"move": [at[0] + at[2] // 2, at[1] + at[3] // 2]})
+        act({"click": "left"})
+        act({"key": "ctrl+a"})
+        return act({"type": text}) or f'typed into {hit["name"]}'
+
+
 def desktop_entries():
     """Every installed app, parsed once per process: (stem, Name, Exec)."""
     if desktop_entries.cache is not None:
@@ -224,6 +397,12 @@ def act(a):
         return run(["ydotool", "click", BUTTONS.get(str(val or "left"), BUTTONS["left"])])
     if kind == "scroll":
         return run(["ydotool", "mousemove", "-w", "-x", "0", "-y", str(val)])
+    if kind == "ui":
+        return json.dumps(ui_tree("" if val is True else str(val or "")))
+    if kind == "press":
+        return ui_press(str(val), str(a.get("app", "")))
+    if kind == "fill":
+        return ui_fill(str(val), str(a.get("text", "")), str(a.get("app", "")))
     if kind == "app":
         hits = find_app(str(val))
         if not hits:
@@ -286,6 +465,12 @@ TOOLS = [
         "description": (
             "Run a SEQUENCE of desktop actions in one call. Batch aggressively - focus, type "
             "and press enter belong in one call, not three. Stops at the first failure. Actions:\n"
+            '  {"ui": true}            READ THE FOCUSED APP AS A WIDGET TREE - every button, field and '
+            'menu item by name, with coordinates. Prefer this over a screenshot: it is text, it is exact, '
+            'and it needs no vision pass. {"ui": "Firefox"} for a named app instead of the focused one.\n'
+            '  {"press": "Send"}       activate a widget by its name, through accessibility - no cursor to aim, '
+            'nothing to verify afterwards. Falls back to a real click if the widget exposes no action.\n'
+            '  {"fill": "Search", "text": "hello"}  put text straight into a field by name\n'
             '  {"app": "ayugram", "workspace": 8}  launch an app by name on an optional workspace. '
             'Resolves .desktop entries itself - never go hunting with which/flatpak/ls, this is the one call.\n'
             '  {"apps": "gram"}        search installed apps when a name does not resolve\n'
@@ -379,6 +564,12 @@ def selftest():
     r = desktop_do([{"bogus": 1}, {"type": "SHOULD NOT BE TYPED"}])
     assert len(r) == 1 and not r[0]["ok"], r
     assert desktop_entries(), "no .desktop files found"
+    try:
+        tree = ui_tree()
+        print(f'atspi ok - {tree["app"]}: {len(tree["elements"])} elements, '
+              f'e.g. {[e["name"] for e in tree["elements"][:5]]}')
+    except Exception as e:
+        print("atspi unavailable for the focused window:", e)
     assert find_app("firefox") or find_app("kitty"), "app lookup found nothing to launch"
     state = json.loads(handle({"jsonrpc": "2.0", "id": 4, "method": "tools/call",
                                "params": {"name": "desktop_state", "arguments": {}}})["result"]["content"][0]["text"])
