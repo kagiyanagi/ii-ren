@@ -36,8 +36,11 @@ MouseArea {
             }
         }
 
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
+        // The canvas resizes every frame of the lock/unlock transition, and this
+        // repaint is ~20k fillRects of main-thread JS. It is only ever seen while
+        // dragging, and onVisibleChanged repaints it then, so skip it when hidden.
+        onWidthChanged: if (visible) requestPaint()
+        onHeightChanged: if (visible) requestPaint()
         onDotColorChanged: requestPaint()
         onVisibleChanged: {
             if (visible)

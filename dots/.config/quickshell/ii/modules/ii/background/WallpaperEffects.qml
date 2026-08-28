@@ -48,10 +48,16 @@ Item {
     // the reads as binding dependencies.
     readonly property string digest: Config.options.background.wallpaperPath + JSON.stringify(root.opt)
 
+    // Anything below is live only while a bake is in flight.
+    readonly property bool baking: settle.running || quickBake.running
+
     onDigestChanged: settle.restart()
     // Hiding the window (a fullscreen app, per background.hideWhenFullscreen)
-    // can drop the frozen textures, so bake again on the way back.
-    onVisibleChanged: if (root.visible) settle.restart()
+    // can drop the frozen textures, so bake again on the way back. The lock
+    // screen's own blur also flips this on every unlock, and 2.5s of live
+    // fullscreen chain is exactly what the unlock animation cannot afford -
+    // nothing changed there, so a couple of frames is enough.
+    onVisibleChanged: if (root.visible) quickBake.restart()
     onTargetedChanged: settle.restart()
     onWidthChanged: settle.restart()
     onHeightChanged: settle.restart()
@@ -61,6 +67,11 @@ Item {
         // Long enough to ride out a wallpaper transition and a slider drag.
         interval: 2500
         running: true
+    }
+
+    Timer {
+        id: quickBake
+        interval: 150
     }
 
     Connections {
@@ -78,7 +89,7 @@ Item {
         active: root.glassActive
         sourceComponent: FlutedGlass {
             source: root.wallpaper
-            live: settle.running
+            live: root.baking
         }
     }
 
@@ -88,7 +99,7 @@ Item {
         id: blurInput
         anchors.fill: parent
         visible: false
-        live: settle.running
+        live: root.baking
         hideSource: true
         sourceItem: root.blurActive ? (glassLoader.item ?? root.wallpaper) : null
     }
@@ -110,7 +121,7 @@ Item {
         active: root.filterActive
         sourceComponent: WallpaperFilter {
             source: blurLoader.item ?? glassLoader.item ?? root.wallpaper
-            live: settle.running
+            live: root.baking
         }
     }
 
@@ -119,7 +130,7 @@ Item {
         id: baked
         anchors.fill: parent
         visible: root.takesOver
-        live: settle.running
+        live: root.baking
         hideSource: true
         sourceItem: root.takesOver
             ? (filterLoader.item ?? blurLoader.item ?? glassLoader.item)

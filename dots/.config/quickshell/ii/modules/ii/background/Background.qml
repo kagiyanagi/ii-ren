@@ -541,15 +541,39 @@ Variants {
                         easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                     }
                 }
-                sourceComponent: GaussianBlur {
-                    source: wallpaperEffects.output
-                    radius: GlobalStates.screenLocked ? Config.options.lock.blur.radius : 0
-                    samples: radius * 2 + 1
-
+                // radius 100 means a 201-tap two-pass fullscreen Gaussian, and it
+                // re-ran on every frame the desktop widgets repainted - which is
+                // every frame of the lock animation, then once a second forever
+                // after for the clock. The result is a still image, so bake it
+                // once and let extraZoom scale the frozen copy, the same trick
+                // WallpaperEffects uses for its own chain.
+                sourceComponent: Item {
+                    GaussianBlur {
+                        id: lockBlur
+                        anchors.fill: parent
+                        source: wallpaperEffects.output
+                        radius: GlobalStates.screenLocked ? Config.options.lock.blur.radius : 0
+                        samples: radius * 2 + 1
+                    }
+                    ShaderEffectSource {
+                        anchors.fill: parent
+                        // Live again on the way out so the blur unwinds to 0 with
+                        // the zoom instead of popping sharp at the end; radius 0
+                        // is a one-tap pass, so that costs nothing.
+                        live: lockBlurSettle.running || !GlobalStates.screenLocked
+                        hideSource: true
+                        sourceItem: lockBlur
+                    }
                     Rectangle {
                         opacity: GlobalStates.screenLocked ? 1 : 0
                         anchors.fill: parent
                         color: CF.ColorUtils.transparentize(Appearance.colors.colLayer0, 0.7)
+                    }
+                    // Long enough for the wallpaper chain underneath to be there.
+                    Timer {
+                        id: lockBlurSettle
+                        interval: 400
+                        running: true
                     }
                 }
             }
