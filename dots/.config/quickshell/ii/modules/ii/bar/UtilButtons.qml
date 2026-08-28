@@ -1,4 +1,5 @@
 import qs
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
@@ -88,6 +89,22 @@ Item {
                     horizontalAlignment: Qt.AlignHCenter
                     fill: 0
                     text: "keyboard"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: Appearance.colors.colOnLayer2
+                }
+            }
+        }
+
+        Loader {
+            active: Config.options.bar.utilButtons.showKeyboardBacklight && KeyboardBacklight.available
+            visible: active
+            sourceComponent: CircleUtilButton {
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: KeyboardBacklight.cycle()
+                MaterialSymbol {
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: KeyboardBacklight.currentValue > 0 ? 1 : 0
+                    text: KeyboardBacklight.currentValue > 0 ? "keyboard_full" : "keyboard_off"
                     iconSize: Appearance.font.pixelSize.large
                     color: Appearance.colors.colOnLayer2
                 }

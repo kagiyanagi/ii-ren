@@ -605,6 +605,17 @@ ContentPage {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "keyboard_full"
+                text: Translation.tr("Keyboard backlight")
+                checked: Config.options.bar.utilButtons.showKeyboardBacklight
+                onCheckedChanged: {
+                    Config.options.bar.utilButtons.showKeyboardBacklight = checked;
+                }
+            }
+        }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
                 buttonIcon: "mic"
                 text: Translation.tr("Mic toggle")
                 checked: Config.options.bar.utilButtons.showMicToggle
