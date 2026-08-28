@@ -91,6 +91,13 @@ ProviderStrategy {
         return args;
     }
 
+    /** Keeps agy's own MCP registry in step with the shell's desktop-control switch. */
+    function desktopMcpLine(request): string {
+        const path = request.desktopMcp ?? "";
+        if (path.length === 0) return "agy mcp remove desktop >/dev/null 2>&1\n";
+        return `agy mcp add desktop -- python3 ${root.shellQuote(path)} >/dev/null 2>&1\n`;
+    }
+
     /**
      * How to launch the CLI. Roughly ten of the twelve seconds a turn takes is agy
      * getting to its first `init`, and one process serves every turn of the
@@ -107,6 +114,10 @@ ProviderStrategy {
         const script = "#!/usr/bin/env bash\n"
             + 'export PATH="$HOME/.local/bin:$PATH"\n' // Quickshell's PATH may lack ~/.local/bin
             + `cd ${root.shellQuote(request.workingDir)} || { printf '%s\\n' ${root.shellQuote(failure)}; exit 1; }\n`
+            // agy has no per-launch MCP flag, so its registry is the only way in. `add` is
+            // an upsert and the whole call costs a few ms, which is nothing against the ten
+            // seconds of startup below.
+            + root.desktopMcpLine(request)
             // exec matters: `bash script.sh` does NOT implicitly exec its last command
             // (unlike `bash -c`), so without this the shell owns agy as a child and
             // stopping signals only the shell — leaving the agent running, tools and all.

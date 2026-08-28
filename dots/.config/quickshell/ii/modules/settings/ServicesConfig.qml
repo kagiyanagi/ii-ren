@@ -48,6 +48,15 @@ ContentPage {
             }
         }
         ConfigSwitch {
+            buttonIcon: "smart_toy"
+            text: Translation.tr("Desktop control (the agent can see the screen, click and type)")
+            checked: Config.options.conduit.desktopControl
+            enabled: Config.options.conduit.enableTools
+            onCheckedChanged: {
+                Config.options.conduit.desktopControl = checked;
+            }
+        }
+        ConfigSwitch {
             buttonIcon: "notifications"
             text: Translation.tr("Notify when a reply lands and the tab isn't visible")
             checked: Config.options.conduit.notifyWhenAway

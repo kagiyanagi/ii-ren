@@ -107,6 +107,7 @@ Singleton {
 
             property JsonObject overlay: JsonObject {
                 property list<string> open: ["crosshair", "recorder", "media", "volumeMixer", "resources"]
+                property JsonObject assist: OverlayState { x: 1200; y: 120; width: 480; height: 420 }
                 property JsonObject crosshair: OverlayState { clickthrough: true; x: 827; y: 441; width: 250; height: 100 }
                 property JsonObject media: OverlayState { clickthrough: true; x: 827; y: 441; width: 250; height: 100 }
                 property JsonObject floatingImage: OverlayState { x: 1650; y: 390; width: 0; height: 0 }

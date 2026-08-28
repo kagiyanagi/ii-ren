@@ -169,6 +169,11 @@ Singleton {
      * unattended. `workingDir` is the blast radius and is surfaced in the UI.
      */
     readonly property bool enableTools: Config.options.conduit.enableTools
+
+    // Desktop control is MCP, not a built-in tool: the server in scripts/mcp is what
+    // gives the agent the screen, the pointer and the shell's own IPC.
+    readonly property bool desktopControl: Config.options.conduit.desktopControl
+    readonly property string desktopMcpPath: CF.FileUtils.trimFileProtocol(`${Directories.config}/quickshell/ii/scripts/mcp/desktop.py`)
     readonly property string permissionMode: Config.options.conduit.permissionMode
     readonly property string disallowedTools: Config.options.conduit.disallowedTools
     readonly property string workingDir: {
@@ -949,6 +954,7 @@ exit 0
             "attachDir": usesAttachments ? root.attachDir : "",
             "sessionId": root.cliSessionId,
             "enableTools": root.enableTools,
+            "desktopMcp": (root.enableTools && root.desktopControl) ? root.desktopMcpPath : "",
             "permissionMode": root.permissionMode,
             "disallowedTools": root.disallowedTools,
             "continuing": cliHasHistory === true

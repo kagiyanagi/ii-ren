@@ -144,6 +144,7 @@ Singleton {
                 property string model: "claude-sonnet-5"
                 property string systemPrompt: "You are answering from a desktop shell sidebar. Keep replies concise and use markdown when it helps."
                 property bool enableTools: true
+                property bool desktopControl: true // Hands the agent the screen, pointer and keyboard over MCP
                 property string permissionMode: "bypassPermissions" // bypassPermissions | acceptEdits | dontAsk | plan
                 property string disallowedTools: ""
                 property string workingDir: "" // empty: $HOME

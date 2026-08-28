@@ -11,7 +11,7 @@ import QtQuick
  *
  * request: { provider, modelId, messages, systemPrompt, payloadPath, sessionId,
  *            workingDir, attachDir, enableTools, permissionMode, disallowedTools,
- *            continuing }
+ *            desktopMcp, continuing }
  * returns: { script, payload }, or { error } for a request it cannot build.
  *
  * A provider whose `persistentProcess` capability is set serves many turns from

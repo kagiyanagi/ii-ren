@@ -2,7 +2,9 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
+import qs
 import qs.services
+import qs.modules.common
 import QtQuick
 
 Singleton {
@@ -10,7 +12,20 @@ Singleton {
     
     signal requestCenter(string identifier)
 
+    /** Emitted after summon() has the widget on screen, for it to take focus. */
+    signal summoned(string identifier)
+
+    /** Open the overlay straight onto one widget, adding it if it was switched off. */
+    function summon(identifier: string): void {
+        if (!Persistent.states.overlay.open.includes(identifier)) {
+            Persistent.states.overlay.open.push(identifier);
+        }
+        GlobalStates.overlayOpen = true;
+        root.summoned(identifier);
+    }
+
     readonly property list<var> availableWidgets: [
+        { identifier: "assist", materialSymbol: "smart_toy" },
         { identifier: "crosshair", materialSymbol: "point_scan" },
         { identifier: "fpsLimiter", materialSymbol: "animation" },
         { identifier: "floatingImage", materialSymbol: "imagesmode" },

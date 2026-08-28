@@ -81,6 +81,10 @@ Scope {
         function toggle(): void {
             GlobalStates.overlayOpen = !GlobalStates.overlayOpen;
         }
+
+        function assist(): void {
+            OverlayContext.summon("assist");
+        }
     }
 
     GlobalShortcut {
@@ -89,6 +93,16 @@ Scope {
 
         onPressed: {
             GlobalStates.overlayOpen = !GlobalStates.overlayOpen;
+        }
+    }
+
+    GlobalShortcut {
+        name: "assistToggle"
+        description: "Opens the overlay on the assistant, ready to type"
+
+        onPressed: {
+            if (GlobalStates.overlayOpen) GlobalStates.overlayOpen = false;
+            else OverlayContext.summon("assist");
         }
     }
 }

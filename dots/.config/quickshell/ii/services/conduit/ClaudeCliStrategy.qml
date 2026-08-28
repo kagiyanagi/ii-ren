@@ -47,6 +47,16 @@ ProviderStrategy {
             if ((request.disallowedTools ?? "").length > 0) {
                 args.push(`--disallowed-tools ${root.shellQuote(request.disallowedTools)}`);
             }
+            if ((request.desktopMcp ?? "").length > 0) {
+                // Inline, per launch: the user's own MCP servers keep loading from their
+                // config, and the shell's server never has to be written into it. (agy has
+                // no equivalent flag and takes it from `agy mcp add` instead.)
+                const mcp = JSON.stringify({ mcpServers: { desktop: { command: "python3", args: [request.desktopMcp] } } });
+                args.push(`--mcp-config ${root.shellQuote(mcp)}`);
+                // Only bypassPermissions approves everything by itself, and in print mode an
+                // approval prompt is a denial, so the server is allow-listed by name.
+                args.push("--allowed-tools mcp__desktop");
+            }
         } else {
             args.push("--tools ''");
             // Without this the model narrates tool calls it cannot make ("I'll fetch
