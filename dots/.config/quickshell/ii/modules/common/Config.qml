@@ -1331,6 +1331,13 @@ Singleton {
                 property string code: "0;P;d;1;0l;10;0o;2;1b;0"
             }
 
+            property JsonObject altTab: JsonObject {
+                property bool enable: true
+                // Hyprland warps the pointer to the newly focused window unless
+                // cursor:no_warps is set; we flip it only while the switcher is up.
+                property bool keepCursorInPlace: true
+            }
+
             property JsonObject dock: JsonObject {
                 property bool enable: false
                 property bool isolateMonitors: false

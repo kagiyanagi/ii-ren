@@ -107,6 +107,25 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "swap_horiz"
+        title: Translation.tr("Alt+Tab switcher")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Enable")
+            checked: Config.options.altTab.enable
+            onCheckedChanged: { Config.options.altTab.enable = checked; }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "mouse"
+            text: Translation.tr("Keep the cursor in place when switching")
+            checked: Config.options.altTab.keepCursorInPlace
+            onCheckedChanged: { Config.options.altTab.keepCursorInPlace = checked; }
+        }
+    }
+
+    ContentSection {
         icon: "call_to_action"
         title: Translation.tr("Dock")
 
