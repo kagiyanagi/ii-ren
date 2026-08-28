@@ -40,7 +40,6 @@ AsyncTask {
 
         const found = [];
         let current = null;
-        let line = -1;
         for (let i = 1; i < rows.length; i++) {
             const c = rows[i].split("\t");
             if (c.length < 12) continue;
@@ -55,16 +54,11 @@ AsyncTask {
                     }
                 };
                 found.push(current);
-                line = -1;
             } else if (level === 5 && current) { // word
                 const text = c.slice(11).join("\t").trim();
                 if (text.length === 0) continue;
-                const lineNum = parseInt(c[4]);
-                if (current.words.length > 0)
-                    current.words.push(lineNum !== line ? "\n" : " ");
                 current.words.push(text);
                 current.confidences.push(parseFloat(c[10]));
-                line = lineNum;
             }
         }
 
@@ -72,7 +66,7 @@ AsyncTask {
             if (p.confidences.length === 0) return false;
             const mean = p.confidences.reduce((a, b) => a + b, 0) / p.confidences.length;
             if (mean < root.confidenceThreshold) return false;
-            p.text = p.words.join("").trim();
+            p.text = root.joinWords(p.words);
             return p.text.length > 0;
         });
 
@@ -81,6 +75,18 @@ AsyncTask {
             return;
         }
         root.succeed();
+    }
+
+    // One line per paragraph: `trans` collapses newlines anyway, and keeping the
+    // source single-line is what lets the overlay tell a real translation from a
+    // no-op. CJK doesn't take spaces between words.
+    function joinWords(words: list<string>): string {
+        const cjk = /[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff01-\uff9f]/;
+        return words.reduce((acc, w) => {
+            if (acc.length === 0) return w;
+            const glued = cjk.test(acc[acc.length - 1]) && cjk.test(w[0]);
+            return acc + (glued ? "" : " ") + w;
+        }, "").trim();
     }
 
     MultiTurnProcess {

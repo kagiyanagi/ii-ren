@@ -33,13 +33,14 @@ for (const [out, pending] of [["a\n", ["x", "y"]], ["a\nb\nc\n", ["x", "y"]], ["
     if (r.state !== AsyncTask.State.Error) process.exit(1);
 }
 
-// --- TextRecognizer.handleTsv -------------------------------------------------
+// --- TextRecognizer -----------------------------------------------------------
 const ocrQml = require("fs").readFileSync(__dirname + "/TextRecognizer.qml", "utf8");
-const ocrBody = ocrQml.match(/function handleTsv\(tsv: string\) \{([\s\S]*?)\n    \}/)[1];
-const handleTsv = new Function("tsv", "root", "AsyncTask", "Translation", ocrBody);
+const grab = (sig, args) => new Function(...args, ocrQml.match(new RegExp("function " + sig + " \\{([\\s\\S]*?)\\n    \\}"))[1]);
+const handleTsv = grab("handleTsv\\(tsv: string\\)", ["tsv", "root", "AsyncTask", "Translation"]);
+const joinWords = grab("joinWords\\(words: list<string>\\): string", ["words"]);
 
 function ocr(tsv) {
-    const root = { paragraphs: [], confidenceThreshold: 50, state: null, errorMessage: "", errors: 0 };
+    const root = { paragraphs: [], confidenceThreshold: 50, state: null, errorMessage: "", errors: 0, joinWords };
     root.error = () => root.errors++;
     root.fail = m => { root.state = AsyncTask.State.Error; root.errorMessage = m; root.error(m); };
     root.succeed = () => { root.state = AsyncTask.State.Done; };
@@ -51,7 +52,13 @@ const HEADER = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\tt
 const row = (lvl, line, l, t, w, h, conf, text) =>
     [lvl, 1, 1, 1, line, 1, l, t, w, h, conf, text].join("\t");
 
-// Two lines in one paragraph join with a newline; the box comes from the level-3 row.
+// Latin words take spaces; CJK does not, so a wrapped Japanese line rejoins cleanly.
+console.assert(joinWords(["Good", "morning", "everyone"]) === "Good morning everyone");
+console.assert(joinWords(["\u7c73\u5f53\u5c40\u306f\u3001", "\u3042\u306a\u305f\u306e"]) === "\u7c73\u5f53\u5c40\u306f\u3001\u3042\u306a\u305f\u306e", joinWords(["\u7c73\u5f53\u5c40\u306f\u3001", "\u3042\u306a\u305f\u306e"]));
+console.assert(joinWords(["Png", "\u306f"]) === "Png \u306f");
+console.assert(joinWords([]) === "");
+
+// Two lines of one paragraph collapse to one line; the box is the level-3 row.
 let o = ocr([HEADER,
     row(3, 0, 32, 34, 229, 84, -1, ""),
     row(5, 1, 32, 34, 82, 26, 92, "Good"),
@@ -59,7 +66,7 @@ let o = ocr([HEADER,
     row(5, 2, 32, 91, 143, 27, 89, "everyone"),
     ""].join("\n"));
 console.assert(o.paragraphs.length === 1, "paragraph count: " + o.paragraphs.length);
-console.assert(o.paragraphs[0].text === "Good morning\neveryone", JSON.stringify(o.paragraphs[0].text));
+console.assert(o.paragraphs[0].text === "Good morning everyone", JSON.stringify(o.paragraphs[0].text));
 console.assert(JSON.stringify(o.paragraphs[0].boundingBox.vertices)
     === '[{"x":32,"y":34},{"x":261,"y":34},{"x":261,"y":118},{"x":32,"y":118}]',
     JSON.stringify(o.paragraphs[0].boundingBox.vertices));
@@ -73,5 +80,20 @@ console.assert(o.state === AsyncTask.State.Error && o.paragraphs.length === 0, "
 console.assert(ocr(HEADER + "\n").state === AsyncTask.State.Error, "blank page should error");
 console.assert(ocr("").state === AsyncTask.State.Error, "no tesseract should error");
 console.assert(ocr(undefined).state === AsyncTask.State.Error, "undefined should error");
+
+// --- ScreenTextOverlay.isRealTranslation --------------------------------------
+const ovQml = require("fs").readFileSync(__dirname + "/../../ii/screenTranslator/ScreenTextOverlay.qml", "utf8");
+const isReal = new Function("source", "translated",
+    ovQml.match(/function isRealTranslation\(source: string, translated: string\): bool \{([\s\S]*?)\n    \}/)[1]);
+
+// `trans` hands back same-language text with punctuation nudged. Not a translation.
+console.assert(!isReal("View File", "View File"));
+console.assert(!isReal("Hiding InTh..", "Hiding InTh."), "trailing dot");
+console.assert(!isReal("don\u2019t stop", "don't stop"), "smart quote");
+console.assert(!isReal("Safe search: moderate", "Safe search - moderate"));
+console.assert(!isReal("anything", ""), "empty output is not a translation");
+// A real one still shows.
+console.assert(isReal("\u304a\u306f\u3088\u3046", "Good morning"));
+console.assert(isReal("Settings", "\u8a2d\u5b9a"));
 
 console.log("ok");

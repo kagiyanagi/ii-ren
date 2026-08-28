@@ -31,6 +31,17 @@ Item {
         return translation[s] ?? s;
     }
 
+    // `trans` round-trips text that is already in the target language almost
+    // unchanged, but "almost" is not "exactly": it drops a trailing dot, swaps a
+    // quote. Comparing bare strings would paper the screen with boxes that just
+    // repeat what is under them, so compare only the letters and digits.
+    function isRealTranslation(source: string, translated: string): bool {
+        const strip = (t) => t.toLowerCase()
+            .replace(/[\s\u00a0-\u00bf\u2000-\u206f\u3000-\u303f]/g, "")
+            .replace(/[!-\/:-@\[-`{-~]/g, "");
+        return translated.length > 0 && strip(translated) !== strip(source);
+    }
+
     property bool error: false
     property string errorMessage: ""
     function showError() {
@@ -199,7 +210,7 @@ Item {
         required property var modelData
         readonly property string text: modelData.text
         readonly property string translatedText: root.translate(text)
-        visible: translatedText != text
+        visible: root.isRealTranslation(text, translatedText)
         property real scaleFactor: root.scaleFactor
         property list<var> boundingVertices: modelData.boundingBox.vertices
         property real unscaledX: boundingVertices[0].x
