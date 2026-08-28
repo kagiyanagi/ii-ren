@@ -3,118 +3,71 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import Quickshell;
-import qs.services
 import Quickshell.Io;
 import QtQuick;
 import qs.modules.common.functions
+import "markdownTodo.js" as Md
 
 
 /**
- * Simple to-do list manager.
- * Each item is an object with "content" and "done" properties.
+ * To-do list backed by a Markdown checklist at Config.options.todo.filePath,
+ * so the same file can be a note in an editor or vault.
+ * Each item is an object with "content", "done", and the "line" it came from.
  */
 Singleton {
     id: root
-    property var filePath: Directories.todoPath
+    property string filePath: Config.ready ? (Config.options.todo.filePath || Directories.todoPath) : ""
     property var list: []
-    
-    // Reassign to trigger onListChanged, then write through. khal-backed lists
-    // can't save done marks, so callers can skip the write.
-    function _persist(save = true) {
-        root.list = list.slice(0)
-        if (save) todoFileView.setText(JSON.stringify(root.list))
-    }
 
-    function addItem(item) {
-        list.push(item)
-        _persist()
+    // The file is the state - reparse what we just wrote rather than keeping a
+    // second copy of the list around to drift.
+    function _save(text) {
+        todoFileView.setText(text)
+        root.list = Md.parse(text)
     }
 
     function addTask(desc) {
-        const item = {
-            "content": desc,
-            "done": false,
-        }
-        addItem(item)
-      }
-
-
-    function getTasksByDate(currentDate) {
-        const res = [];
-        
-        const currentDay = currentDate.getDate();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-
-        for (let i = 0; i < root.list.length; i++) {
-            const taskDate = new Date(root.list[i]['date']);
-            if (
-                taskDate.getDate() === currentDay &&
-                taskDate.getMonth() === currentMonth &&
-                taskDate.getFullYear() === currentYear
-              ) {
-                res.push(root.list[i]);
-              }
-        }
-
-        return res;
+        _save(Md.append(todoFileView.text(), desc))
     }
 
-
-
-
     function markDone(index) {
-        if (index >= 0 && index < list.length) {
-            list[index].done = true
-            _persist()
-        }
+        const item = root.list[index]
+        if (item) _save(Md.setDone(todoFileView.text(), item.line, true))
     }
 
     function markUnfinished(index) {
-        if (index >= 0 && index < list.length) {
-            list[index].done = false
-            _persist(!CalendarService.khalAvailable)
-        }
+        const item = root.list[index]
+        if (item) _save(Md.setDone(todoFileView.text(), item.line, false))
     }
 
     function deleteItem(index) {
-        if (index >= 0 && index < list.length) {
-            list.splice(index, 1)
-            _persist()
-        }
+        const item = root.list[index]
+        if (item) _save(Md.remove(todoFileView.text(), item.line))
     }
 
     function refresh() {
         todoFileView.reload()
-
-    }
-
-    Component.onCompleted: {
-        refresh()
     }
 
     FileView {
         id: todoFileView
-        path: Qt.resolvedUrl(root.filePath)
+        path: root.filePath
+        watchChanges: true // Edits made in the other editor show up here
+        atomicWrites: true
+        onFileChanged: this.reload()
         onLoaded: {
-            const fileContents = todoFileView.text()
-            root.list = JSON.parse(fileContents)
-
-            for (let i=0; i< root.list.length; i++){ //parse date as date object
-              root.list[i]['date'] = new Date(root.list[i]['date'])
-            }
-
+            root.list = Md.parse(todoFileView.text())
             console.log("[To Do] File loaded")
         }
         onLoadFailed: (error) => {
-            if(error == FileViewError.FileNotFound) {
-                console.log("[To Do] File not found, creating new file.")
+            if (error == FileViewError.FileNotFound) {
+                // Not created here: writing an empty file would clobber the note
+                // if its folder just isn't mounted yet. The first task writes it.
+                console.log("[To Do] No file at " + root.filePath)
                 root.list = []
-                todoFileView.setText(JSON.stringify(root.list))
             } else {
                 console.log("[To Do] Error loading file: " + error)
             }
         }
     }
 }
-

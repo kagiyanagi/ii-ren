@@ -372,6 +372,19 @@ ContentPage {
             }
         }
 
+        MaterialTextArea {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("To-do list file (Markdown checklist)")
+            text: Config.options.todo.filePath
+            wrapMode: TextEdit.Wrap
+            onTextChanged: {
+                Config.options.todo.filePath = text;
+            }
+            StyledToolTip {
+                text: Translation.tr("Point this at a note in a vault to edit the same list there.\nOnly \"- [ ]\" lines are touched; the rest of the note is left alone.")
+            }
+        }
+
         // Sits under the path field because the two decide the same thing
         // between them: whether a snip survives being copied. Hidden once a
         // path is set, since the shot is saved outright then.
