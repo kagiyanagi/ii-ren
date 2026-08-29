@@ -1396,6 +1396,9 @@ Singleton {
                 // The desktop media widget shows on an empty workspace too
                 property bool hideMediaOnEmptyWorkspace: false
                 property string position: "bottom"
+                // Sit flush against the screen edge, squaring off the two
+                // corners that touch it, instead of floating with a gap.
+                property bool attachToEdge: false
                 property string appsButtonShape: "Pill"
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []

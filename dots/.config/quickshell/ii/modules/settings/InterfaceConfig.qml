@@ -234,6 +234,16 @@ ContentPage {
             onValueChanged: { Config.options.dock.height = value; }
         }
         
+        ConfigSwitch {
+            buttonIcon: "vertical_align_bottom"
+            text: Translation.tr("Attach to screen edge")
+            checked: Config.options.dock.attachToEdge
+            onCheckedChanged: { Config.options.dock.attachToEdge = checked; }
+            StyledToolTip {
+                text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
+            }
+        }
+
         ConfigRow {
             ContentSubsection {
                 title: Translation.tr("Dock position")

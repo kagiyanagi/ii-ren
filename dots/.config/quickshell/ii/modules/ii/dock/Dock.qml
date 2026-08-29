@@ -42,12 +42,14 @@ Scope {
 
         const contentW = opts.isLoaded ? opts.contentVisualWidth : (opts.isVertical ? 60 : unloadedW)
         const contentH = opts.isLoaded ? opts.contentVisualHeight : (opts.isVertical ? unloadedH : 60)
+        // Attached to the edge: only the inner gap is left, the outer one goes.
+        const crossGaps = opts.attached ? gapsOut : gapsOut * 2
         return {
             maxWidth: maxW,
             maxHeight: maxH,
-            dockWidth: opts.isVertical ? contentW + gapsOut * 2 : Math.min(contentW + gapsOut * 2, maxW),
-            dockHeight: opts.isVertical ? Math.min(contentH + gapsOut * 2, maxH) : contentH + gapsOut * 2,
-            dockThickness: opts.isVertical ? contentW + gapsOut * 2 : contentH + gapsOut * 2,
+            dockWidth: opts.isVertical ? contentW + crossGaps : Math.min(contentW + gapsOut * 2, maxW),
+            dockHeight: opts.isVertical ? Math.min(contentH + gapsOut * 2, maxH) : contentH + crossGaps,
+            dockThickness: opts.isVertical ? contentW + crossGaps : contentH + crossGaps,
             backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxW - gapsOut * 2)),
             backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxH - gapsOut * 2) : contentH)
         }
@@ -107,8 +109,11 @@ Scope {
 
             onWorkspaceEmptyChanged: updateReveal()
 
+            readonly property bool attachedToEdge: Config.options?.dock?.attachToEdge ?? false
+
             readonly property var sizing: dock.computeSizes({
                 gapsOut: Appearance.sizes.hyprlandGapsOut,
+                attached: dockRoot.attachedToEdge,
                 isVertical: dock.isVertical,
                 barActive: dockRoot.barActive,
                 barIsVertical: dockRoot.barIsVertical,
@@ -280,13 +285,29 @@ Scope {
 
                             Rectangle {
                                 id: visualBackground
+
+                                // Which screen edge the dock is glued to, if any.
+                                readonly property string flushEdge: dockRoot.attachedToEdge ? dock.dockEffectivePosition : ""
+                                readonly property real edgeShift: Appearance.sizes.hyprlandGapsOut / 2
+                                // Run past the edge so the 1px border - and any
+                                // rounding slop - lands off screen, not as a seam.
+                                readonly property real edgeBleed: flushEdge === "" ? 0 : border.width + 1
+                                readonly property real totalShift: edgeShift + edgeBleed / 2
+                                readonly property bool flushVertically: flushEdge === "top" || flushEdge === "bottom"
+
                                 anchors.centerIn: parent
-                                width: dockRoot.sizing.backgroundWidth
-                                height: dockRoot.sizing.backgroundHeight
+                                anchors.verticalCenterOffset: flushEdge === "bottom" ? totalShift : (flushEdge === "top" ? -totalShift : 0)
+                                anchors.horizontalCenterOffset: flushEdge === "right" ? totalShift : (flushEdge === "left" ? -totalShift : 0)
+                                width: dockRoot.sizing.backgroundWidth + (flushVertically ? 0 : edgeBleed)
+                                height: dockRoot.sizing.backgroundHeight + (flushVertically ? edgeBleed : 0)
                                 color: Appearance.colors.colLayer0
                                 border.width: 1
                                 border.color: Appearance.colors.colLayer0Border
                                 radius: Appearance.rounding.large
+                                topLeftRadius: (flushEdge === "top" || flushEdge === "left") ? 0 : radius
+                                topRightRadius: (flushEdge === "top" || flushEdge === "right") ? 0 : radius
+                                bottomLeftRadius: (flushEdge === "bottom" || flushEdge === "left") ? 0 : radius
+                                bottomRightRadius: (flushEdge === "bottom" || flushEdge === "right") ? 0 : radius
 
                                 DropArea {
                                     id: fileDropArea
@@ -317,6 +338,12 @@ Scope {
                                 DockContent {
                                     id: content
                                     anchors.fill: parent
+                                    // Keep the content where it was - only the
+                                    // background grows into the bleed.
+                                    anchors.topMargin: visualBackground.flushEdge === "top" ? visualBackground.edgeBleed : 0
+                                    anchors.bottomMargin: visualBackground.flushEdge === "bottom" ? visualBackground.edgeBleed : 0
+                                    anchors.leftMargin: visualBackground.flushEdge === "left" ? visualBackground.edgeBleed : 0
+                                    anchors.rightMargin: visualBackground.flushEdge === "right" ? visualBackground.edgeBleed : 0
                                     isPinned: dock.pinned
                                     currentScreen: dockRoot.screen
                                     workspaceEmpty: dockRoot.workspaceEmpty
