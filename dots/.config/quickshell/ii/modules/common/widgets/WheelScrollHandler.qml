@@ -21,6 +21,13 @@ MouseArea {
     // Accumulated scroll destination so wheel deltas stack while animating
     property real scrollTargetY: 0
 
+    // Android-style stretch overscroll. Wheel delta that would land past a bound piles up
+    // here instead of being dropped (negative = past the top, positive = past the bottom);
+    // the host scales its contentItem by it, and it springs back once the wheel stops.
+    property real overscroll: 0
+    property real overscrollMax: 0.12   // cap, as a fraction of the viewport height
+    property real overscrollFactor: 0.5 // how much of the leftover delta to keep
+
     visible: Config?.options.interactions.scrolling.fasterTouchpadScroll
     anchors.fill: parent
     acceptedButtons: Qt.NoButton
@@ -32,6 +39,16 @@ MouseArea {
         }
     }
 
+    Behavior on overscroll {
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+    }
+
+    Timer {
+        id: overscrollRelease
+        interval: 60
+        onTriggered: handler.overscroll = 0
+    }
+
     onWheel: function(wheelEvent) {
         const delta = wheelEvent.angleDelta.y / handler.mouseScrollDeltaThreshold;
         // The angleDelta.y of a touchpad is usually small and continuous,
@@ -40,7 +57,18 @@ MouseArea {
 
         const maxY = Math.max(0, handler.flickable.contentHeight - handler.flickable.height);
         const base = handler.scrollAnim?.running ? handler.scrollTargetY : handler.flickable.contentY;
-        var targetY = Math.max(0, Math.min(base - delta * scrollFactor, maxY));
+        const desiredY = base - delta * scrollFactor;
+        var targetY = Math.max(0, Math.min(desiredY, maxY));
+
+        // Whatever the clamp threw away becomes stretch. Skipped when there is nothing to
+        // scroll (a horizontal or short list), where an overscroll would make no sense.
+        const excess = desiredY - targetY;
+        if (excess !== 0 && maxY > 0) {
+            const cap = Math.max(1, handler.flickable.height * handler.overscrollMax);
+            const room = Math.max(0, 1 - Math.abs(handler.overscroll) / cap); // diminishing pull
+            handler.overscroll = Math.max(-cap, Math.min(handler.overscroll + excess * room * handler.overscrollFactor, cap));
+            overscrollRelease.restart();
+        }
 
         handler.scrollTargetY = targetY;
         handler.flickable.contentY = targetY;

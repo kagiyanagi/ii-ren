@@ -48,6 +48,14 @@ ListView {
 
     onContentYChanged: wheelHandler.syncTarget()
 
+    // Android-style stretch overscroll: a uniform scale anchored at the far edge, which is
+    // the 1:1 anchor in Android's StretchEffect. Transform only, so no layer, no FBO and no
+    // shader -- yScale is 1 at rest, so this costs nothing until something overscrolls.
+    contentItem.transform: Scale {
+        origin.y: wheelHandler.overscroll < 0 ? root.contentY + root.height : root.contentY
+        yScale: 1 + Math.abs(wheelHandler.overscroll) / Math.max(1, root.height)
+    }
+
     add: Transition {
         animations: animateAppearance ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
