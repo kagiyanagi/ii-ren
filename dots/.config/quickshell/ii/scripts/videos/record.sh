@@ -61,7 +61,7 @@ getactivemonitor() {
 
 updatestate() {
     local state_value=$1
-    jq "$STATE_JSON_PATH = $state_value" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    jq "$STATE_JSON_PATH = $state_value | .screenRecord.paused = false" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
     if [[ "$state_value" == "true" ]]; then
         start_timer
     else
@@ -97,7 +97,8 @@ done
 if pgrep wf-recorder > /dev/null; then
     notify-send "Recording Stopped" "Stopped" -a 'Recorder' &
     updatestate false
-    pkill wf-recorder &
+    # SIGCONT after: a paused (SIGSTOPped) wf-recorder only handles the TERM once resumed
+    { pkill wf-recorder; pkill -CONT wf-recorder; } &
 else
     if [[ $FULLSCREEN_FLAG -eq 1 ]]; then
         notify-send "Starting recording" 'recording_'"$(getdate)"'.mp4' -a 'Recorder' & disown
