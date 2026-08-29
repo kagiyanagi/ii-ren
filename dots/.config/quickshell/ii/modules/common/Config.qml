@@ -1429,6 +1429,8 @@ Singleton {
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []
                 property list<string> pinnedFiles: []
+                // App folders: [{ name: "Tools", apps: ["firefox", "kitty"] }]
+                property list<var> folders: []
             }
 
             property JsonObject hyprland: JsonObject {

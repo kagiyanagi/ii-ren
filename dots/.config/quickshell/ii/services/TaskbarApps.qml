@@ -96,6 +96,72 @@ Singleton {
         Config.options.dock.pinnedFiles = files
     }
 
+    // ── App folder helpers ────────────────────────────────────────────────
+    // A folder is { name: string, apps: [appId] }. list<var> can't be mutated in
+    // place, so every edit writes a fresh list back to Config.
+    readonly property var folders: Config.options?.dock?.folders ?? []
+
+    function folderApps(index) {
+        return Array.from(root.folders[index]?.apps ?? [])
+    }
+
+    function folderHasApp(index, appId) {
+        const norm = normalizeAppId(appId)
+        return folderApps(index).some(id => normalizeAppId(id) === norm)
+    }
+
+    function _foldersCopy() {
+        return root.folders.map(f => ({ name: f.name ?? "", apps: Array.from(f.apps ?? []) }))
+    }
+
+    // A folder with nothing in it is dead weight, so it never gets written back.
+    function _commitFolders(list) {
+        Config.options.dock.folders = list
+            .filter(f => f.apps.length > 0)
+            .map(f => ({ name: f.name, apps: f.apps }))
+    }
+
+    function createFolder(appId, name) {
+        if (!appId) return
+        const list = _foldersCopy()
+        list.push({ name: name || appId, apps: [appId] })
+        _commitFolders(list)
+        if (isPinned(appId)) togglePin(appId)
+    }
+
+    function addToFolder(index, appId) {
+        if (!appId) return
+        const list = _foldersCopy()
+        if (!list[index] || folderHasApp(index, appId)) return
+        list[index].apps.push(appId)
+        _commitFolders(list)
+        // The app lives in the folder now; leaving it pinned would show it twice.
+        if (isPinned(appId)) togglePin(appId)
+    }
+
+    function removeFromFolder(index, appId) {
+        const list = _foldersCopy()
+        if (!list[index]) return
+        const norm = normalizeAppId(appId)
+        list[index].apps = list[index].apps.filter(id => normalizeAppId(id) !== norm)
+        _commitFolders(list)
+        // Hand it back to the dock rather than letting it vanish.
+        if (!isPinned(appId)) togglePin(appId)
+    }
+
+    function renameFolder(index, name) {
+        const list = _foldersCopy()
+        if (!list[index] || list[index].name === name) return
+        list[index].name = name
+        _commitFolders(list)
+    }
+
+    function removeFolder(index) {
+        const list = _foldersCopy()
+        list.splice(index, 1)
+        _commitFolders(list)
+    }
+
     // ── Icon theme refresh ────────────────────────────────────────────────
     // Bumped several times after a theme change to force icon reload across the dock
     // TODO if loading the wallpaper takes too much time, the icons fail to change, i didn't find a better way

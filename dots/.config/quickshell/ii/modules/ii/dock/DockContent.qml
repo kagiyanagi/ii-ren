@@ -33,7 +33,7 @@ Item {
     readonly property real visualHeight: isVertical ? mainLayout.implicitHeight : Appearance.sizes.dockButtonSize + dotMargin * 2
 
     readonly property bool ready: (isVertical ? visualHeight > 0 : visualWidth > 0) && !suppressSizeAnimation
-    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (mediaWidgetLoader.item?.popupHovered ?? false)
+    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (dock.folderCard?.active ?? false) || (mediaWidgetLoader.item?.popupHovered ?? false)
 
     readonly property real maxWindowPreviewHeight: 200
     readonly property real maxWindowPreviewWidth: 300
@@ -106,6 +106,7 @@ Item {
     property var processedPinnedApps: []
     property var processedRunningApps: []
     property var processedFiles: []
+    property var processedFolders: []
 
     function updateModel() {
         const allApps = TaskbarApps.apps ?? [];
@@ -144,6 +145,14 @@ Item {
         processedFiles = (Config.options?.dock?.pinnedFiles ?? []).map(p => ({
                     uniqueKey: p,
                     path: p
+                }));
+    }
+
+    function updateFolderModel() {
+        processedFolders = (Config.options?.dock?.folders ?? []).map((f, i) => ({
+                    uniqueKey: `${i}:${f.name ?? ""}`,
+                    folder: f,
+                    folderIndex: i
                 }));
     }
 
@@ -275,6 +284,12 @@ Item {
     }
     Connections {
         target: Config.options?.dock ?? null
+        function onFoldersChanged() {
+            updateFolderModel();
+        }
+    }
+    Connections {
+        target: Config.options?.dock ?? null
         function onPinnedFilesChanged() {
             if (isFileDrag)
                 return;
@@ -293,6 +308,7 @@ Item {
     Component.onCompleted: {
         updateModel();
         updateFileModel();
+        updateFolderModel();
         suppressSizeAnimTimer.start();
     }
 
@@ -333,7 +349,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.showPinButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0)
+            show: root.showPinButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFolders.length > 0 || root.processedFiles.length > 0)
         }
 
         Flickable {
@@ -397,7 +413,23 @@ Item {
                 }
 
                 SectionSeparator {
-                    show: root.processedPinnedApps.length > 0 && root.processedRunningApps.length > 0
+                    show: root.processedFolders.length > 0 && root.processedPinnedApps.length > 0
+                }
+
+                DockListView {
+                    modelValues: root.processedFolders
+                    delegateComp: Component {
+                        DockFolderButton {
+                            required property var modelData
+                            folder: modelData.folder
+                            folderIndex: modelData.folderIndex
+                            dockContent: root
+                        }
+                    }
+                }
+
+                SectionSeparator {
+                    show: root.processedRunningApps.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0)
                 }
 
                 DockListView {
@@ -414,7 +446,7 @@ Item {
                 }
 
                 SectionSeparator {
-                    show: root.processedFiles.length > 0 && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0)
+                    show: root.processedFiles.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0 || root.processedRunningApps.length > 0)
                 }
 
                 Item {
@@ -505,7 +537,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.showAppsButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0)
+            show: root.showAppsButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFolders.length > 0 || root.processedFiles.length > 0)
         }
 
         Item {

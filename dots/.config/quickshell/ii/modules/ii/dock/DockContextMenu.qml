@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
@@ -67,6 +69,41 @@ DockContextMenuBase {
             labelText: (root.appToplevel && TaskbarApps.isPinned(root.appToplevel.appId)) ? qsTr("Unpin") : qsTr("Pin")
             onTriggered: {
                 if (root.appToplevel) TaskbarApps.togglePin(root.appToplevel.appId)
+                root.close()
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.topMargin: 8
+            Layout.bottomMargin: 8
+            implicitHeight: 1
+            color: Appearance.colors.colLayer0Border
+        }
+
+        // Folders: drop the app into an existing one, or start a new one from it.
+        Repeater {
+            model: TaskbarApps.folders
+            delegate: DockMenuButton {
+                required property var modelData
+                required property int index
+                Layout.fillWidth: true
+                visible: !TaskbarApps.folderHasApp(index, root.appToplevel?.appId ?? "")
+                symbolName: "folder"
+                labelText: qsTr("Add to %1").arg(modelData.name ?? "")
+                onTriggered: {
+                    TaskbarApps.addToFolder(index, root.appToplevel?.appId ?? "")
+                    root.close()
+                }
+            }
+        }
+
+        DockMenuButton {
+            Layout.fillWidth: true
+            symbolName: "create_new_folder"
+            labelText: qsTr("New folder")
+            onTriggered: {
+                TaskbarApps.createFolder(root.appToplevel?.appId ?? "", root.desktopEntry?.name ?? "")
                 root.close()
             }
         }

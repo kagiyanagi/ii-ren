@@ -55,6 +55,14 @@ Scope {
         }
     }
 
+    // The folder card takes keyboard focus for its name field, which a popup on
+    // the dock's own surface cannot, so it is a panel of its own out here rather
+    // than a child of the dock window.
+    property alias folderCard: folderCardPopup
+    DockFolderPopup {
+        id: folderCardPopup
+    }
+
     Variants {
         model: Quickshell.screens
 
