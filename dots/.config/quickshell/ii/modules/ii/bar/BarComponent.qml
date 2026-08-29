@@ -51,6 +51,7 @@ Item {
         "dashboard_panel_button": [dashboardPanelButton, dashboardPanelButtonVert],
         "network_speed": [networkSpeedComp, networkSpeedComp],
         "privacy_indicator": [privacyIndicatorComp, privacyIndicatorComp],
+        "visualizer": [visualizerComp, visualizerComp],
     })
 
     property real startRadius: {
@@ -169,5 +170,6 @@ Item {
     
     Component { id: dashboardPanelButton; DashboardPanelButton {} }
     Component { id: networkSpeedComp; NetworkSpeed { vertical: rootItem.vertical } }
+    Component { id: visualizerComp; Visualizer { vertical: rootItem.vertical } }
     Component { id: dashboardPanelButtonVert; DashboardPanelButton { vertical: true } }
 }

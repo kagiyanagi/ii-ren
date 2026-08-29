@@ -24,6 +24,7 @@ Singleton {
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },
         { id: "privacy_indicator", icon: "privacy_tip", title: "Privacy indicators" },
+        { id: "visualizer", icon: "graphic_eq", title: "Visualizer" },
     ]
 
     property var extensionComponents: []
