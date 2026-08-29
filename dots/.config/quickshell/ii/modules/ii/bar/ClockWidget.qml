@@ -13,14 +13,14 @@ Item {
 
     Connections {
         target: LocalSend
-        onCurrentTransferChanged: {
+        function onCurrentTransferChanged() {
             if (LocalSend.currentTransfer) {
                 rootItem.toggleHighlight(true)
             } else {
                 rootItem.toggleHighlight(false)
             }
         }
-        onDroppedFilesChanged: {
+        function onDroppedFilesChanged() {
             if (LocalSend.droppedFiles.length > 0) {
                 rootItem.toggleHighlight(true)
             } else {

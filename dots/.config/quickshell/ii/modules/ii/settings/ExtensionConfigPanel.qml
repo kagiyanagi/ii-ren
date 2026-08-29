@@ -83,7 +83,7 @@ Item {
             Connections {
                 target: ExtensionManager
 
-                onExtensionConfigsChanged: {
+                function onExtensionConfigsChanged() {
                     checked = ExtensionManager.extensionConfigs?.[extId]?.[cfgKey] ?? cfgEntry?.default ?? false
                 }
             }
@@ -107,7 +107,7 @@ Item {
             Connections {
                 target: ExtensionManager
 
-                onExtensionConfigsChanged: {
+                function onExtensionConfigsChanged() {
                     value = ExtensionManager.extensionConfigs?.[extId]?.[cfgKey] ?? cfgEntry?.default ?? 0
                 }
             }
@@ -134,7 +134,7 @@ Item {
             Connections {
                 target: ExtensionManager
 
-                onExtensionConfigsChanged: {
+                function onExtensionConfigsChanged() {
                     value = ExtensionManager.extensionConfigs?.[extId]?.[cfgKey] ?? cfgEntry?.default ?? 0
                 }
             }
@@ -163,7 +163,7 @@ Item {
             Connections {
                 target: ExtensionManager
 
-                onExtensionConfigsChanged: {
+                function onExtensionConfigsChanged() {
                     selectionArray.currentValue = ExtensionManager.extensionConfigs?.[extId]?.[cfgKey] ?? cfgEntry?.default ?? ""
                 }
             }
@@ -217,7 +217,7 @@ Item {
             Connections {
                 target: ExtensionManager
 
-                onExtensionConfigsChanged: {
+                function onExtensionConfigsChanged() {
                     textField.text = ExtensionManager.extensionConfigs?.[extId]?.[cfgKey] ?? cfgEntry?.default ?? ""
                 }
             }
