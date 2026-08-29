@@ -285,8 +285,22 @@ Scope {
                             orientation: ListView.Horizontal
                             spacing: 6
                             clip: true
-                            boundsBehavior: Flickable.StopAtBounds
+                            // Rubber band past the ends, like every other list here.
+                            boundsBehavior: Flickable.DragOverBounds
                             model: menuColumn.shuffledWallpapers
+
+                            // Smooths the wheel's jumps into a glide. Off while the
+                            // drag or the flick owns contentX, or it fights them and
+                            // the strip goes rubbery under the pointer.
+                            Behavior on contentX {
+                                enabled: !wallpaperStrip.dragging && !wallpaperStrip.flicking
+                                NumberAnimation {
+                                    id: scrollAnim
+                                    duration: Appearance.animation.scroll.duration
+                                    easing.type: Appearance.animation.scroll.type
+                                    easing.bezierCurve: Appearance.animation.scroll.bezierCurve
+                                }
+                            }
 
                             delegate: Item {
                                 id: wallpaperTile
@@ -373,7 +387,6 @@ Scope {
 
                                 MouseArea {
                                     anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
                                     // Stays open, so several can be tried in a row.
                                     onClicked: {
                                         wallpaperStrip.selectedPath = wallpaperTile.modelData;
@@ -391,14 +404,32 @@ Scope {
                             color: Appearance.m3colors.m3surfaceContainer
                         }
 
-                        // A horizontal Flickable ignores a vertical wheel, so the
-                        // strip only scrolls by dragging without this.
+                        // A horizontal Flickable ignores a vertical wheel, so without
+                        // this the strip only moves by dragging. Deltas stack onto the
+                        // target while the glide is still running, the way
+                        // WheelScrollHandler does it for the vertical lists.
                         MouseArea {
+                            id: wheelCatcher
+
+                            property real scrollTarget: 0
+
                             anchors.fill: parent
                             acceptedButtons: Qt.NoButton
+                            // It covers the tiles, so it owns the strip's cursor as
+                            // well: a MouseArea claims the cursor whether or not it
+                            // sets a shape, and a tile-level one is never seen.
+                            cursorShape: wallpaperStrip.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                             onWheel: event => {
-                                const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
-                                wallpaperStrip.contentX = Math.max(0, Math.min(wallpaperStrip.contentX - delta, wallpaperStrip.contentWidth - wallpaperStrip.width));
+                                const angle = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
+                                const scrolling = Config?.options.interactions.scrolling;
+                                const threshold = scrolling?.mouseScrollDeltaThreshold ?? 120;
+                                // A wheel arrives in multiples of 120, a touchpad in
+                                // small continuous deltas, so they scale differently.
+                                const factor = Math.abs(angle) >= threshold ? (scrolling?.mouseScrollFactor ?? 120) : (scrolling?.touchpadScrollFactor ?? 450);
+                                const base = scrollAnim.running ? wheelCatcher.scrollTarget : wallpaperStrip.contentX;
+                                const maxX = Math.max(0, wallpaperStrip.contentWidth - wallpaperStrip.width);
+                                wheelCatcher.scrollTarget = Math.max(0, Math.min(base - angle / threshold * factor, maxX));
+                                wallpaperStrip.contentX = wheelCatcher.scrollTarget;
                             }
                         }
                     }
