@@ -1400,6 +1400,8 @@ Singleton {
                 // corners that touch it, instead of floating with a gap.
                 property bool attachToEdge: false
                 property string appsButtonShape: "Pill"
+                property bool showPinButton: true
+                property bool showAppsButton: true
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []
                 property list<string> pinnedFiles: []

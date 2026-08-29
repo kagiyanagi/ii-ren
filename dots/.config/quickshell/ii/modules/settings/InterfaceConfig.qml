@@ -234,6 +234,25 @@ ContentPage {
             onValueChanged: { Config.options.dock.height = value; }
         }
         
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "keep"
+                text: Translation.tr("Show pin button")
+                checked: Config.options.dock.showPinButton
+                onCheckedChanged: { Config.options.dock.showPinButton = checked; }
+                StyledToolTip {
+                    text: Translation.tr("The button that keeps the dock open.\nWithout it, 'Pinned on startup' decides whether the dock stays out.")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "apps"
+                text: Translation.tr("Show app menu button")
+                checked: Config.options.dock.showAppsButton
+                onCheckedChanged: { Config.options.dock.showAppsButton = checked; }
+            }
+        }
+
         ConfigSwitch {
             buttonIcon: "vertical_align_bottom"
             text: Translation.tr("Attach to screen edge")

@@ -23,6 +23,8 @@ Item {
     property bool workspaceEmpty: false
 
     readonly property bool isVertical: dock.isVertical
+    readonly property bool showPinButton: Config.options?.dock?.showPinButton ?? true
+    readonly property bool showAppsButton: Config.options?.dock?.showAppsButton ?? true
     readonly property real dotMargin: (Config.options?.dock.height ?? 60) * 0.2
     readonly property real sepThickness: Math.max(3, Math.round(Appearance.sizes.dockButtonSize * 0.06))
     readonly property real buttonSlotSize: Appearance.sizes.dockButtonSize + dotMargin * 2
@@ -308,6 +310,7 @@ Item {
 
         Item {
             id: pinButtonWrapper
+            visible: root.showPinButton
             Layout.preferredWidth: root.buttonSlotSize
             Layout.preferredHeight: root.buttonSlotSize
             Layout.alignment: Qt.AlignCenter
@@ -326,7 +329,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0
+            show: root.showPinButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0)
         }
 
         Flickable {
@@ -498,11 +501,12 @@ Item {
         }
 
         SectionSeparator {
-            show: root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0
+            show: root.showAppsButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFiles.length > 0)
         }
 
         Item {
             id: unpinButtonWrapper
+            visible: root.showAppsButton
             Layout.preferredWidth: root.buttonSlotSize
             Layout.preferredHeight: root.buttonSlotSize
             Layout.alignment: Qt.AlignCenter
