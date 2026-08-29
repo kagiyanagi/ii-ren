@@ -10,7 +10,7 @@ TabButton {
     id: root
     property string buttonText
     property string buttonIcon
-    property int rippleDuration: 1200
+    property int rippleDuration: 225
     property int tabContentWidth: buttonBackground.width - buttonBackground.radius*2
 
     property color colBackground: ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
@@ -49,7 +49,8 @@ TabButton {
 
     RippleAnim {
         id: rippleFadeAnim
-        duration: rippleDuration * 2
+        duration: 150 // Compose RippleAnimation.FadeOutDuration
+        easing.type: Easing.Linear
         target: ripple
         property: "opacity"
         to: 0
@@ -81,7 +82,7 @@ TabButton {
             RippleAnim {
                 target: ripple
                 properties: "implicitWidth,implicitHeight"
-                from: 0
+                from: rippleAnim.radius * 2 * 0.6 // Android starts the ripple at 60% radius
                 to: rippleAnim.radius * 2
             }
         }
@@ -120,7 +121,10 @@ TabButton {
             visible: width > 0 && height > 0
 
             Behavior on opacity {
-                animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
+                NumberAnimation {
+                    duration: 75 // Compose RippleAnimation.FadeInDuration
+                    easing.type: Easing.Linear
+                }
             }
 
             RadialGradient {

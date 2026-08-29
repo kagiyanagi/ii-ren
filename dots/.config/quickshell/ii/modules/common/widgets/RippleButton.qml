@@ -14,9 +14,9 @@ Button {
     property string buttonText
     property bool pointingHandCursor: true
     property real buttonRadius: Appearance?.rounding?.small ?? 4
-    property real buttonRadiusPressed: buttonRadius
+    property real buttonRadiusPressed: Math.min(buttonRadius, Appearance?.rounding?.verysmall ?? 8)
     property real buttonEffectiveRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
-    property int rippleDuration: 1200
+    property int rippleDuration: 225
     property bool rippleEnabled: true
     property var downAction // When left clicking (down)
     property var releaseAction // When left clicking (release)
@@ -38,7 +38,7 @@ Button {
     property color colRippleToggled: Appearance?.colors.colPrimaryActive ?? "#D6CEE2"
 
     Behavior on buttonEffectiveRadius {
-        animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance?.animation.elementMoveSmall.numberAnimation.createObject(this)
     }
 
     opacity: root.enabled ? 1 : 0.4
@@ -108,7 +108,8 @@ Button {
 
     RippleAnim {
         id: rippleFadeAnim
-        duration: rippleDuration * 2
+        duration: 150 // Compose RippleAnimation.FadeOutDuration
+        easing.type: Easing.Linear // Compose fades the ripple out linearly
         target: ripple
         property: "opacity"
         to: 0
@@ -140,7 +141,7 @@ Button {
             RippleAnim {
                 target: ripple
                 properties: "implicitWidth,implicitHeight"
-                from: 0
+                from: rippleAnim.radius * 2 * 0.6
                 to: rippleAnim.radius * 2
             }
         }
@@ -182,7 +183,10 @@ Button {
             property real implicitHeight: 0
 
             Behavior on opacity {
-                animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
+                NumberAnimation {
+                    duration: 75 // Compose RippleAnimation.FadeInDuration
+                    easing.type: Easing.Linear
+                }
             }
 
             RadialGradient {

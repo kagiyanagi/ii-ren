@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Assert the Hyprland spring curves still match Android 16's motion tokens.
+"""Assert the M3 tokens copied out of AOSP still match what AOSP says.
 
 dampening is a damping *coefficient*, but AOSP publishes a damping *ratio*, so the
 numbers in general.lua are derived: c = 2 * zeta * sqrt(stiffness * mass). A typo there
 silently changes the feel instead of erroring, hence this check.
 
 Source of truth: androidx.compose.material3.tokens.ExpressiveMotionTokens (AOSP).
-Run: python3 tools/check-m3-springs.py
+Run: python3 tools/check-m3-tokens.py
 """
 import math, pathlib, re, sys
 
@@ -36,3 +36,20 @@ for name, (mass, stiffness, dampening) in found.items():
     # Hyprland rejects any of these below 0.5.
     assert min(mass, stiffness, dampening) >= 0.5, f"{name}: Hyprland requires mass/stiffness/dampening >= 0.5"
 print(f"ok: {len(found)} springs match Android 16 motion tokens")
+
+# State layer opacities: androidx.compose.material3.tokens.StateTokens.
+# mix(base, on, p) keeps p of the base colour, so an 8% layer is p = 0.92.
+STATE = {"Hover": 0.08, "Active": 0.10}  # Hover/Pressed StateLayerOpacity
+LAYER = re.compile(
+    r"colLayer(\d)(Hover|Active):.*?ColorUtils\.mix\(colLayer\d(?:Base)?, colOnLayer\d, ([\d.]+)\)"
+)
+
+qml = (pathlib.Path(__file__).parent.parent
+       / "dots/.config/quickshell/ii/modules/common/Appearance.qml").read_text()
+layers = LAYER.findall(qml)
+assert len(layers) == 10, f"expected 5 layers x 2 states, found {len(layers)}"
+for num, state, kept in layers:
+    want = 1 - STATE[state]
+    assert abs(float(kept) - want) < 1e-9, \
+        f"colLayer{num}{state}: keeps {kept} of the base, token wants {want:.2f}"
+print(f"ok: {len(layers)} state layers match StateTokens")
