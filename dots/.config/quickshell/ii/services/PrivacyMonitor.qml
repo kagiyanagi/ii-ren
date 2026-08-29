@@ -7,8 +7,8 @@ import Quickshell.Io
 import Quickshell.Services.Pipewire
 
 /**
- * Who is using the microphone and location right now.
- * Microphone comes from Pipewire directly; location needs a poll loop
+ * Who is using the microphone, camera, screen and location right now.
+ * Microphone comes from Pipewire directly; the rest needs a poll loop
  * (see scripts/privacy/privacystate.sh).
  */
 Singleton {
@@ -21,6 +21,8 @@ Singleton {
     }
 
     readonly property bool watchMic: root.enabled && Config.options.bar.indicators.privacy.microphone
+    readonly property bool watchCamera: root.enabled && Config.options.bar.indicators.privacy.camera
+    readonly property bool watchScreen: root.enabled && Config.options.bar.indicators.privacy.screen
     readonly property bool watchLocation: root.enabled && Config.options.bar.indicators.privacy.location
 
     // Capture streams. Properties are only filled in for tracked nodes, so
@@ -50,6 +52,8 @@ Singleton {
         return apps;
     }, [])
 
+    property var cameraApps: []
+    property var screenApps: []
     property bool locationInUse: false
     property var locationApps: []
 
@@ -59,6 +63,16 @@ Singleton {
             result.push({
                 kind: "microphone",
                 apps: root.microphoneApps
+            });
+        if (root.watchCamera && root.cameraApps.length > 0)
+            result.push({
+                kind: "camera",
+                apps: root.cameraApps
+            });
+        if (root.watchScreen && root.screenApps.length > 0)
+            result.push({
+                kind: "screen",
+                apps: root.screenApps
             });
         if (root.watchLocation && root.locationInUse)
             result.push({
@@ -70,9 +84,11 @@ Singleton {
     readonly property bool anyInUse: root.entries.length > 0
 
     Process {
-        running: root.watchLocation
+        running: root.watchCamera || root.watchScreen || root.watchLocation
         command: ["bash", Directories.privacyStateScript]
         onRunningChanged: if (!running) {
+            root.cameraApps = [];
+            root.screenApps = [];
             root.locationInUse = false;
             root.locationApps = [];
         }
@@ -85,12 +101,15 @@ Singleton {
                     console.warn("PrivacyMonitor: bad state line:", line);
                     return;
                 }
-                root.locationInUse = state.location === true;
-                root.locationApps = (state.apps ?? []).map(entry => ({
+                const toApps = list => (list ?? []).map(entry => ({
                             name: entry.name,
                             process: entry.name,
                             pid: entry.pid ?? 0
                         }));
+                root.cameraApps = toApps(state.camera);
+                root.screenApps = toApps(state.screen);
+                root.locationInUse = state.location === true;
+                root.locationApps = toApps(state.apps);
             }
         }
     }

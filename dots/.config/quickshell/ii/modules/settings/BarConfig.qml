@@ -469,7 +469,7 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Privacy")
-            tooltip: Translation.tr("Shows what is using your microphone and location")
+            tooltip: Translation.tr("Shows what is using your microphone, camera, screen and location")
 
             ConfigRow {
                 uniform: true
@@ -479,6 +479,26 @@ ContentPage {
                     checked: Config.options.bar.indicators.privacy.microphone
                     onCheckedChanged: {
                         Config.options.bar.indicators.privacy.microphone = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "photo_camera"
+                    text: Translation.tr("Camera")
+                    checked: Config.options.bar.indicators.privacy.camera
+                    onCheckedChanged: {
+                        Config.options.bar.indicators.privacy.camera = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "screen_share"
+                    text: Translation.tr("Screen sharing")
+                    checked: Config.options.bar.indicators.privacy.screen
+                    onCheckedChanged: {
+                        Config.options.bar.indicators.privacy.screen = checked;
                     }
                 }
                 ConfigSwitch {

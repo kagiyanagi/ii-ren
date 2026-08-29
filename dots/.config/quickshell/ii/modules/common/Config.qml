@@ -1268,6 +1268,8 @@ Singleton {
                     }
                     property JsonObject privacy: JsonObject {
                         property bool microphone: true
+                        property bool camera: true
+                        property bool screen: true
                         property bool location: true
                     }
                 }
@@ -1297,9 +1299,6 @@ Singleton {
                     property list<var> right: [
                         {
                             id: "privacy_indicator"
-                        },
-                        {
-                            id: "screen_share_indicator"
                         },
                         {
                             id: "record_indicator"
