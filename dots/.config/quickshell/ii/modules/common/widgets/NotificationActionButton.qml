@@ -11,7 +11,7 @@ RippleButton {
     implicitHeight: 34
     leftPadding: 15
     rightPadding: 15
-    buttonRadius: Appearance.rounding.small
+    buttonRadius: Appearance.rounding.full
     colBackground: (urgency == NotificationUrgency.Critical) ? Appearance.colors.colSecondaryContainer : Appearance.colors.colLayer4
     colBackgroundHover: (urgency == NotificationUrgency.Critical) ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colLayer4Hover
     colRipple: (urgency == NotificationUrgency.Critical) ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colLayer4Active

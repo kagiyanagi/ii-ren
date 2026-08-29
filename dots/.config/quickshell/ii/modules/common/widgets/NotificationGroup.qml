@@ -7,8 +7,10 @@ import Quickshell
 import Quickshell.Services.Notifications
 
 /**
- * A group of notifications from the same app.
- * Similar to Android's notifications
+ * A group of notifications from the same app, laid out like an Android
+ * notification: one header line (app icon, app name, time, expander), then the
+ * content beneath it. Collapsed shows the newest notification only, the count
+ * lives in the expander.
  */
 MouseArea { // Notification group area
     id: root
@@ -18,7 +20,8 @@ MouseArea { // Notification group area
     property bool multipleNotifications: notificationCount > 1
     property bool expanded: false
     property bool popup: false
-    property real padding: 10
+    property real padding: 16 // Android's content inset
+    readonly property bool urgent: notifications.some(n => n.urgency === NotificationUrgency.Critical.toString())
     implicitHeight: background.implicitHeight
 
     hoverEnabled: true
@@ -69,7 +72,7 @@ MouseArea { // Notification group area
         anchors.left: parent.left
         width: parent.width
         color: popup ? Appearance.colors.colBackgroundSurfaceContainer : Appearance.colors.colLayer2
-        radius: Appearance.rounding.normal
+        radius: Appearance.rounding.large
         anchors.leftMargin: dragManager.xOffset
 
         Behavior on anchors.leftMargin {
@@ -80,126 +83,107 @@ MouseArea { // Notification group area
                 easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
             }
         }
-        
+
         clip: true
-        implicitHeight: root.expanded ? 
-            row.implicitHeight + padding * 2 :
-            Math.min(80, row.implicitHeight + padding * 2)
+        implicitHeight: contentColumn.implicitHeight + root.padding * 2
 
         Behavior on implicitHeight {
             id: implicitHeightAnim
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
-        RowLayout { // Left column for icon, right column for content
-            id: row
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.margins: root.padding
-            spacing: 10
+        ColumnLayout {
+            id: contentColumn
+            anchors {
+                top: parent.top
+                left: parent.left
+                right: parent.right
+                margins: root.padding
+            }
+            spacing: 6
 
-            NotificationAppIcon { // Icons
-                Layout.alignment: Qt.AlignTop
-                Layout.fillWidth: false
-                image: root?.multipleNotifications ? "" : notificationGroup?.notifications[0]?.image ?? ""
-                appIcon: root.notificationGroup?.appIcon
-                summary: root.notificationGroup?.notifications[root.notificationCount - 1]?.summary
-                urgency: root.notifications.some(n => n.urgency === NotificationUrgency.Critical.toString()) ? 
-                    NotificationUrgency.Critical : NotificationUrgency.Normal
+            RowLayout { // Header: icon, app name, time, expander
+                id: header
+                Layout.fillWidth: true
+                spacing: 6
+                property real fontSize: Appearance.font.pixelSize.smaller
+
+                NotificationAppIcon {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitSize: 22
+                    materialIconScale: 0.66
+                    appIconScale: 0.85
+                    appIcon: root.notificationGroup?.appIcon ?? ""
+                    summary: root.notifications[root.notificationCount - 1]?.summary ?? ""
+                    urgency: root.urgent ? NotificationUrgency.Critical : NotificationUrgency.Normal
+                }
+                TextMetrics {
+                    // An eliding Text reports the *elided* width as its
+                    // implicitWidth once the layout gives it one, so measure
+                    // the full string separately or the name shrinks to "a...".
+                    id: appNameMetrics
+                    font: appNameText.font
+                    text: appNameText.text
+                }
+                StyledText {
+                    // Grows to its natural width at most, shrinks (and elides)
+                    // when the header runs out of room.
+                    id: appNameText
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: appNameMetrics.width
+                    elide: Text.ElideRight
+                    text: root.notificationGroup?.appName || ""
+                    font.pixelSize: header.fontSize
+                    color: Appearance.colors.colSubtext
+                }
+                StyledText {
+                    visible: timeText.text.length > 0
+                    text: "•"
+                    font.pixelSize: header.fontSize
+                    color: Appearance.colors.colSubtext
+                }
+                StyledText {
+                    id: timeText
+                    text: NotificationUtils.getFriendlyNotifTimeString(root.notificationGroup?.time)
+                    font.pixelSize: header.fontSize
+                    color: Appearance.colors.colSubtext
+                }
+                Item { Layout.fillWidth: true }
+                NotificationGroupExpandButton {
+                    Layout.alignment: Qt.AlignVCenter
+                    count: root.notificationCount
+                    expanded: root.expanded
+                    fontSize: header.fontSize
+                    onClicked: { root.toggleExpanded() }
+                    altAction: () => { root.toggleExpanded() }
+
+                    StyledToolTip {
+                        text: Translation.tr("Tip: right-clicking a group\nalso expands it")
+                    }
+                }
             }
 
-            ColumnLayout { // Content
+            StyledListView { // Notification content
+                id: notificationsColumn
+                implicitHeight: contentHeight
                 Layout.fillWidth: true
-                spacing: expanded ? (root.multipleNotifications ? 
-                    (notificationGroup?.notifications[root.notificationCount - 1].image != "") ? 35 : 
-                    5 : 0) : 0
-                // spacing: 00
+                spacing: root.expanded ? 16 : 0
+                interactive: false
                 Behavior on spacing {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-
-                Item { // App name (or summary when there's only 1 notif) and time
-                    id: topRow
-                    // spacing: 0
-                    Layout.fillWidth: true
-                    property real fontSize: Appearance.font.pixelSize.smaller
-                    property bool showAppName: root.multipleNotifications
-                    implicitHeight: Math.max(topTextRow.implicitHeight, expandButton.implicitHeight)
-
-                    RowLayout {
-                        id: topTextRow
-                        anchors.left: parent.left
-                        anchors.right: expandButton.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 5
-                        StyledText {
-                            id: appName
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                            text: (topRow.showAppName ?
-                                notificationGroup?.appName :
-                                notificationGroup?.notifications[0]?.summary) || ""
-                            font.pixelSize: topRow.showAppName ?
-                                topRow.fontSize :
-                                Appearance.font.pixelSize.small
-                            color: topRow.showAppName ?
-                                Appearance.colors.colSubtext :
-                                Appearance.colors.colOnLayer2
-                        }
-                        StyledText {
-                            id: timeText
-                            // Layout.fillWidth: true
-                            Layout.rightMargin: 10
-                            horizontalAlignment: Text.AlignLeft
-                            text: NotificationUtils.getFriendlyNotifTimeString(notificationGroup?.time)
-                            font.pixelSize: topRow.fontSize
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-                    NotificationGroupExpandButton {
-                        id: expandButton
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        count: root.notificationCount
-                        expanded: root.expanded
-                        fontSize: topRow.fontSize
-                        onClicked: { root.toggleExpanded() }
-                        altAction: () => { root.toggleExpanded() }
-
-                        StyledToolTip {
-                            text: Translation.tr("Tip: right-clicking a group\nalso expands it")
-                        }
-                    }
+                model: ScriptModel {
+                    values: root.expanded ? root.notifications.slice().reverse() :
+                        root.notifications.slice().reverse().slice(0, 1)
                 }
-
-                StyledListView { // Notification body (expanded)
-                    id: notificationsColumn
-                    implicitHeight: contentHeight
-                    Layout.fillWidth: true
-                    spacing: expanded ? 5 : 3
-                    // clip: true
-                    interactive: false
-                    Behavior on spacing {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
-                    model: ScriptModel {
-                        values: root.expanded ? root.notifications.slice().reverse() : 
-                            root.notifications.slice().reverse().slice(0, 2)
-                    }
-                    delegate: NotificationItem {
-                        required property int index
-                        required property var modelData
-                        notificationObject: modelData
-                        expanded: root.expanded
-                        onlyNotification: (root.notificationCount === 1)
-                        opacity: (!root.expanded && index == 1 && root.notificationCount > 2) ? 0.5 : 1
-                        visible: root.expanded || (index < 2)
-                        anchors.left: parent?.left
-                        anchors.right: parent?.right
-                    }
+                delegate: NotificationItem {
+                    required property int index
+                    required property var modelData
+                    notificationObject: modelData
+                    expanded: root.expanded
+                    anchors.left: parent?.left
+                    anchors.right: parent?.right
                 }
-
             }
         }
     }
