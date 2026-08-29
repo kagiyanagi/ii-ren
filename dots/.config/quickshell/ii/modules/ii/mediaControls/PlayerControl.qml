@@ -26,6 +26,15 @@ Item { // Player instance
     property int visualizerSmoothing: 2 // Number of points to average for smoothing
     property real radius
 
+    readonly property real cardPadding: 12
+    // The art is a square of whatever height the card's interior has.
+    readonly property real artSize: Math.max(0, background.height - cardPadding * 2)
+
+    implicitWidth: Appearance.sizes.mediaControlsWidth
+    // Grows with the text instead of clipping it: a bigger UI font pushed the
+    // row past a hardcoded 160 and knocked the art off centre.
+    implicitHeight: Math.max(Appearance.sizes.mediaControlsHeight, infoColumn.implicitHeight + cardPadding * 2 + Appearance.sizes.elevationMargin * 2)
+
     property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
 
     component TrackChangeButton: RippleButton {
@@ -150,14 +159,15 @@ Item { // Player instance
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 13
-            spacing: 15
+            anchors.margins: root.cardPadding
+            spacing: 14
 
             Rectangle { // Art background
                 id: artBackground
-                Layout.fillHeight: true
-                implicitWidth: height
-                radius: Appearance.rounding.verysmall
+                Layout.alignment: Qt.AlignVCenter
+                implicitWidth: root.artSize
+                implicitHeight: root.artSize
+                radius: Appearance.rounding.small
                 color: ColorUtils.transparentize(blendedColors.colLayer1, 0.5)
 
                 layer.enabled: true
@@ -171,134 +181,133 @@ Item { // Player instance
 
                 StyledImage { // Art image
                     id: mediaArt
-                    property int size: parent.height
                     anchors.fill: parent
-
                     source: root.displayedArtFilePath
                     fillMode: Image.PreserveAspectCrop
                     cache: false
                     antialiasing: true
+                    asynchronous: true
+                    sourceSize.width: artBackground.width
+                    sourceSize.height: artBackground.height
+                }
 
-                    width: size
-                    height: size
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: mediaArt.status !== Image.Ready
+                    text: "music_note"
+                    iconSize: artBackground.width * 0.4
+                    color: blendedColors.colOnLayer1
                 }
             }
 
             ColumnLayout { // Info & controls
+                id: infoColumn
+                Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.rightMargin: 14 // room for the pin button
                 spacing: 2
+
+                Item { Layout.fillHeight: true }
 
                 StyledText {
                     id: trackTitle
                     Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: Appearance.font.pixelSize.large
                     color: blendedColors.colOnLayer0
                     elide: Text.ElideRight
-                    text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || "Untitled"
+                    text: StringUtils.cleanMusicTitle(root.player?.trackTitle) || Translation.tr("Untitled")
                     animateChange: true
                     animationDistanceX: 6
                     animationDistanceY: 0
                 }
+
                 StyledText {
                     id: trackArtist
                     Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: blendedColors.colSubtext
                     elide: Text.ElideRight
-                    text: root.player?.trackArtist
+                    text: root.player?.trackArtist ?? ""
                     animateChange: true
                     animationDistanceX: 6
                     animationDistanceY: 0
                 }
+
                 Item { Layout.fillHeight: true }
-                Item {
+
+                RowLayout { // Seek
                     Layout.fillWidth: true
-                    implicitHeight: trackTime.implicitHeight + sliderRow.implicitHeight
+                    spacing: 8
 
                     StyledText {
-                        id: trackTime
-                        anchors.bottom: sliderRow.top
-                        anchors.bottomMargin: 5
-                        anchors.left: parent.left
-                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.pixelSize: Appearance.font.pixelSize.smaller
                         color: blendedColors.colSubtext
-                        elide: Text.ElideRight
-                        text: `${StringUtils.friendlyTimeForSeconds(root.player?.position)} / ${StringUtils.friendlyTimeForSeconds(root.player?.length)}`
+                        text: StringUtils.friendlyTimeForSeconds(root.player?.position)
                     }
-                    RowLayout {
-                        id: sliderRow
-                        anchors {
-                            bottom: parent.bottom
-                            left: parent.left
-                            right: parent.right
-                        }
-                        TrackChangeButton {
-                            iconName: "skip_previous"
-                            downAction: () => root.player?.previous()
-                        }
-                        Item {
-                            id: progressBarContainer
-                            Layout.fillWidth: true
-                            implicitHeight: Math.max(sliderLoader.implicitHeight, progressBarLoader.implicitHeight)
 
-                            Loader {
-                                id: sliderLoader
-                                anchors.fill: parent
-                                active: root.player?.canSeek ?? false
-                                sourceComponent: StyledSlider { 
-                                    configuration: StyledSlider.Configuration.Wavy
-                                    highlightColor: blendedColors.colPrimary
-                                    trackColor: blendedColors.colSecondaryContainer
-                                    handleColor: blendedColors.colPrimary
-                                    value: root.player?.position / root.player?.length
-                                    onMoved: {
-                                        root.player.position = value * root.player.length;
-                                    }
+                    Item {
+                        id: progressBarContainer
+                        Layout.fillWidth: true
+                        implicitHeight: Math.max(sliderLoader.implicitHeight, progressBarLoader.implicitHeight)
+
+                        Loader {
+                            id: sliderLoader
+                            anchors.fill: parent
+                            active: root.player?.canSeek ?? false
+                            sourceComponent: StyledSlider {
+                                configuration: StyledSlider.Configuration.Wavy
+                                highlightColor: blendedColors.colPrimary
+                                trackColor: blendedColors.colSecondaryContainer
+                                handleColor: blendedColors.colPrimary
+                                value: root.player?.position / root.player?.length
+                                onMoved: {
+                                    root.player.position = value * root.player.length;
                                 }
                             }
+                        }
 
-                            Loader {
-                                id: progressBarLoader
-                                anchors {
-                                    verticalCenter: parent.verticalCenter
-                                    left: parent.left
-                                    right: parent.right
-                                }
-                                active: !(root.player?.canSeek ?? false)
-                                sourceComponent: StyledProgressBar { 
-                                    wavy: root.player?.isPlaying
-                                    highlightColor: blendedColors.colPrimary
-                                    trackColor: blendedColors.colSecondaryContainer
-                                    value: root.player?.position / root.player?.length
-                                }
+                        Loader {
+                            id: progressBarLoader
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: parent.left
+                                right: parent.right
                             }
-
-                            
-                        }
-                        TrackChangeButton {
-                            iconName: "skip_next"
-                            downAction: () => root.player?.next()
-                        }
-
-                        TrackChangeButton {
-                            iconName: "keep"
-                            buttonSize: 18
-                            fill: MprisController.activePlayer == root.player
-                            downAction: () => MprisController.setActivePlayer(root.player)
+                            active: !(root.player?.canSeek ?? false)
+                            sourceComponent: StyledProgressBar {
+                                wavy: root.player?.isPlaying
+                                highlightColor: blendedColors.colPrimary
+                                trackColor: blendedColors.colSecondaryContainer
+                                value: root.player?.position / root.player?.length
+                            }
                         }
                     }
 
-                    
+                    StyledText {
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: blendedColors.colSubtext
+                        text: StringUtils.friendlyTimeForSeconds(root.player?.length)
+                    }
+                }
+
+                RowLayout { // Transport
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 16
+
+                    TrackChangeButton {
+                        iconName: "skip_previous"
+                        buttonSize: 28
+                        downAction: () => root.player?.previous()
+                    }
 
                     RippleButton {
                         id: playPauseButton
-                        anchors.right: parent.right
-                        anchors.bottom: sliderRow.top
-                        anchors.bottomMargin: 5
-                        property real size: 44
+                        property real size: 40
                         implicitWidth: size
                         implicitHeight: size
-                        downAction: () => root.player.togglePlaying();
+                        downAction: () => root.player.togglePlaying()
 
                         buttonRadius: root.player?.isPlaying ? Appearance?.rounding.normal : size / 2
                         colBackground: root.player?.isPlaying ? blendedColors.colPrimary : blendedColors.colSecondaryContainer
@@ -317,8 +326,25 @@ Item { // Player instance
                             }
                         }
                     }
+
+                    TrackChangeButton {
+                        iconName: "skip_next"
+                        buttonSize: 28
+                        downAction: () => root.player?.next()
+                    }
                 }
             }
+        }
+
+        // Out of the centered stack: it picks the active player, it is not transport.
+        TrackChangeButton {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 6
+            iconName: "keep"
+            buttonSize: 18
+            fill: MprisController.activePlayer == root.player
+            downAction: () => MprisController.setActivePlayer(root.player)
         }
     }
 }
