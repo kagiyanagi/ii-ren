@@ -12,7 +12,11 @@ RippleButton {
     property alias iconSize: iconWidget.iconSize
 
     Layout.fillWidth: true
-    implicitHeight: contentItem.implicitHeight + 8 * 2
+    readonly property bool wantsCard: true
+    leftPadding: 8
+    rightPadding: 8
+    implicitHeight: contentItem.implicitHeight + 12 * 2
+    buttonRadius: Appearance.rounding.verysmall
     font.pixelSize: Appearance.font.pixelSize.small
     
     onClicked: checked = !checked

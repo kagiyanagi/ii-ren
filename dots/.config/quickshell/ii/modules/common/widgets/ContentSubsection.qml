@@ -8,17 +8,25 @@ ColumnLayout {
     id: root
     property string title: ""
     property string tooltip: ""
-    default property alias contentData: sectionContent.data
+    default property alias contentData: sectionContent.contentData
 
     Layout.fillWidth: true
-    Layout.topMargin: 4
-    spacing: 2
+    // Inset by exactly the card's bleed, so two subsections sharing a ConfigRow
+    // end up with the row's gap between their cards instead of overlapping by it.
+    Layout.leftMargin: 8
+    Layout.rightMargin: 8
+    Layout.topMargin: 8
+    // Side by side, the shorter one would otherwise centre itself and drop its
+    // label below its neighbour's.
+    Layout.alignment: Qt.AlignTop
+    spacing: 4
 
     SearchHandler {
         searchString: root.title
     }
 
     RowLayout {
+        Layout.leftMargin: 6
         ContentSubsectionLabel {
             opacity: 1 - highlightOverlay.opacity
             visible: root.title && root.title.length > 0
@@ -49,9 +57,7 @@ ColumnLayout {
         }
         Item { Layout.fillWidth: true }
     }
-    ColumnLayout {
+    ContentGroup {
         id: sectionContent
-        Layout.fillWidth: true
-        spacing: 2
     }
 }

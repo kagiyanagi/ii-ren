@@ -8,6 +8,13 @@ import qs.modules.common.functions
 Flow {
     id: root
     Layout.fillWidth: true
+    readonly property bool wantsCard: true
+    readonly property bool hugCard: true
+    // Even on all four sides once the card adds its bleed: 8 + 4 horizontally,
+    // 12 vertically.
+    topPadding: 12
+    bottomPadding: 12
+    leftPadding: 4
 
     property color colBackground: Appearance.colors.colSecondaryContainer
     property color colBackgroundHover: Appearance.colors.colSecondaryContainerHover

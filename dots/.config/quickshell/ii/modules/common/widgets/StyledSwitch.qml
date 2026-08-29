@@ -33,14 +33,23 @@ Switch {
     }
 
     // Custom thumb styling
+    // The handle carries a check/close glyph, so it stays 24dp in both states
+    // instead of shrinking to the iconless 16dp thumb.
     indicator: Rectangle {
-        width: (root.pressed || root.down) ? (28 * root.scale) : root.checked ? (24 * root.scale) : (16 * root.scale)
-        height: (root.pressed || root.down) ? (28 * root.scale) : root.checked ? (24 * root.scale) : (16 * root.scale)
+        width: (root.pressed || root.down) ? (28 * root.scale) : (24 * root.scale)
+        height: (root.pressed || root.down) ? (28 * root.scale) : (24 * root.scale)
         radius: Appearance.rounding.full
         color: root.checked ? Appearance.m3colors.m3onPrimary : Appearance.m3colors.m3outline
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
-        anchors.leftMargin: root.checked ? ((root.pressed || root.down) ? (22 * root.scale) : 24 * root.scale) : ((root.pressed || root.down) ? (2 * root.scale) : 8 * root.scale)
+        anchors.leftMargin: root.checked ? ((root.pressed || root.down) ? (22 * root.scale) : 24 * root.scale) : ((root.pressed || root.down) ? (2 * root.scale) : 4 * root.scale)
+
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: root.checked ? "check" : "close"
+            iconSize: 16 * root.scale
+            color: root.checked ? Appearance.m3colors.m3onPrimaryContainer : Appearance.m3colors.m3surfaceContainerHighest
+        }
 
         Behavior on anchors.leftMargin {
             NumberAnimation {

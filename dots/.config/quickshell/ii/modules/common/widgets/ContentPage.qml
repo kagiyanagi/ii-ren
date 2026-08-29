@@ -5,7 +5,9 @@ import qs.modules.common.widgets
 
 StyledFlickable {
     id: root
-    property real baseWidth: 600
+    // 600 left the two-up chip rows a few pixels short once the cards took
+    // their padding, so every one of them wrapped a trailing chip onto row two.
+    property real baseWidth: 660
     property bool forceWidth: false
     property real bottomContentPadding: 100
 

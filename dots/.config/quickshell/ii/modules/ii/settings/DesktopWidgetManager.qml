@@ -98,7 +98,7 @@ ColumnLayout {
                     Layout.fillWidth: true
 
                     ConfigSelectionArray {
-                        Layout.fillWidth: false
+                        Layout.fillWidth: true
                         currentValue: placedRow.modelData.placementStrategy ?? "free"
                         onSelected: newValue => Config.updateWidgetPlacementStrategy(placedRow.modelData.id, newValue)
                         options: [
@@ -120,10 +120,8 @@ ColumnLayout {
                         ]
                     }
 
-                    Item { Layout.fillWidth: true }
-
                     ConfigSelectionArray {
-                        Layout.fillWidth: false
+                        Layout.fillWidth: true
                         currentValue: placedRow.modelData.lockBehavior ?? "hide"
                         onSelected: newValue => Config.updateWidgetLockBehavior(placedRow.modelData.id, newValue)
                         options: [

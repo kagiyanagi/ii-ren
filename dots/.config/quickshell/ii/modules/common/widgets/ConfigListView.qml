@@ -12,6 +12,7 @@ Rectangle {
     id: root
 
     Layout.fillWidth: true
+    readonly property bool wantsCard: true
     
     // short version of -> height: listModel.length * 40 + (listModel.length - 1) * 4 + listModel.length * 4 + 20 (component height + space between them + component margin + listView padding)
     implicitHeight: listModel.length * 48 + componentSelector.height + 16 + 6

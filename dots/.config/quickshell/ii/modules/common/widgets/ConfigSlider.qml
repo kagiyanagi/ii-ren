@@ -5,9 +5,8 @@ import QtQuick.Layouts
 
 RowLayout {
     id: root
+    readonly property bool wantsCard: true
     spacing: 10
-    Layout.leftMargin: 8
-    Layout.rightMargin: 8
 
     property string text: ""
     property string buttonIcon: ""
@@ -30,6 +29,8 @@ RowLayout {
 
     RowLayout {
         id: row
+        Layout.leftMargin: 8
+        Layout.alignment: Qt.AlignVCenter
         spacing: 10
 
         OptionalMaterialSymbol {
@@ -53,6 +54,9 @@ RowLayout {
     
     StyledSlider {
         id: slider
+        Layout.rightMargin: 8
+        Layout.topMargin: 10
+        Layout.bottomMargin: 10
         configuration: StyledSlider.Configuration.XS
         usePercentTooltip: root.usePercentTooltip
         value: root.value

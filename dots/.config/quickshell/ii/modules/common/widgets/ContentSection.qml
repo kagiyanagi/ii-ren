@@ -11,10 +11,13 @@ ColumnLayout {
     property string icon: ""
     property string tooltip: ""
     property list<string> stringMap: []
-    default property alias contentData: sectionContent.data
+    default property alias contentData: sectionContent.contentData
+
+    readonly property color tintBackground: Appearance.colors.colPrimaryContainer
+    readonly property color tintForeground: Appearance.colors.colOnPrimaryContainer
 
     Layout.fillWidth: true
-    spacing: 6
+    spacing: 10
 
     Component.onCompleted: {
         if (page?.register == false) return
@@ -39,25 +42,38 @@ ColumnLayout {
     }
 
     RowLayout {
-        spacing: 6
-        OptionalMaterialSymbol {
+        spacing: 12
+        Layout.leftMargin: 4
+
+        Rectangle {
+            visible: root.icon.length > 0
             opacity: 1 - highlightOverlay.opacity
-            icon: root.icon
-            iconSize: Appearance.font.pixelSize.hugeass
+            implicitWidth: 38
+            implicitHeight: 38
+            radius: Appearance.rounding.small
+            color: root.tintBackground
+
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: root.icon
+                iconSize: Appearance.font.pixelSize.huge
+                fill: 1
+                color: root.tintForeground
+            }
         }
         StyledText {
             opacity: 1 - highlightOverlay.opacity
             text: root.title
-            font.pixelSize: Appearance.font.pixelSize.larger
-            font.weight: Font.Medium
-            color: Appearance.colors.colOnSecondaryContainer
+            font.pixelSize: Appearance.font.pixelSize.huge
+            font.weight: Font.DemiBold
+            color: Appearance.colors.colOnLayer0
         }
         MaterialSymbol {
             opacity: 1 - highlightOverlay.opacity
             visible: root.tooltip && root.tooltip.length > 0
             text: "info"
             iconSize: Appearance.font.pixelSize.larger
-            
+
             color: Appearance.colors.colOnSecondaryContainer
             MouseArea {
                 id: infoMouseArea
@@ -77,10 +93,7 @@ ColumnLayout {
         }
     }
 
-    ColumnLayout {
+    ContentGroup {
         id: sectionContent
-        Layout.fillWidth: true
-        spacing: 4
-
     }
 }

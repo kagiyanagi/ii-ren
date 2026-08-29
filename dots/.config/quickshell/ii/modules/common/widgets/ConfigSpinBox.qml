@@ -13,10 +13,12 @@ Item {
     property alias from: spinBoxWidget.from
     property alias to: spinBoxWidget.to
     
-    Layout.leftMargin: 8
-    Layout.rightMargin: 8
     Layout.fillWidth: true
-    implicitHeight: rowLayout.implicitHeight
+    readonly property bool wantsCard: true
+    // Anchor margins don't feed implicitWidth the way Layout margins did, so
+    // the row would ask for 16px less than it draws and clip its own spinner.
+    implicitWidth: rowLayout.implicitWidth + 16
+    implicitHeight: rowLayout.implicitHeight + 16
 
     HighlightOverlay {
         id: highlightOverlay
@@ -33,10 +35,19 @@ Item {
 
     RowLayout {
         id: rowLayout
-        anchors.fill: parent
+        // Centered rather than filled: the row is shorter than the card, and
+        // filling would drag the label up to the top edge.
+        anchors {
+            left: parent.left
+            right: parent.right
+            verticalCenter: parent.verticalCenter
+            leftMargin: 8
+            rightMargin: 8
+        }
         spacing: 0
 
         RowLayout {
+            Layout.alignment: Qt.AlignVCenter
             spacing: 10
             OptionalMaterialSymbol {
                 icon: root.icon
