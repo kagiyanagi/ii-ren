@@ -14,7 +14,10 @@ Button {
     property string buttonText
     property bool pointingHandCursor: true
     property real buttonRadius: Appearance?.rounding?.small ?? 4
-    property real buttonRadiusPressed: Math.min(buttonRadius, Appearance?.rounding?.verysmall ?? 8)
+    // M3 Expressive presses converge on CornerSmall (8dp), but 58 buttons here rest at
+    // `rounding.full` or height/2, and squaring a pill or a circle on press reads as a
+    // glitch, not feedback. Opt in per widget with buttonRadiusPressed instead.
+    property real buttonRadiusPressed: buttonRadius
     property real buttonEffectiveRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
     property int rippleDuration: 225
     property bool rippleEnabled: true
