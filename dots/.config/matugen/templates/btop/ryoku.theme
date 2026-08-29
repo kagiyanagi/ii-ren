@@ -1,0 +1,68 @@
+# Ryoku palette -> btop. Rendered by matugen; do not edit.
+# Chrome (text, boxes, dividers) follows the wallpaper palette.
+# Meter/graph gradients are fixed semantic ramps -- matugen dark palettes are
+# often near-monochrome, which makes temp/cpu/net graphs unreadable.
+
+# --- chrome: from matugen ---
+theme[main_bg]="{{colors.surface.default.hex}}"
+theme[main_fg]="{{colors.on_surface.default.hex}}"
+theme[title]="{{colors.primary.default.hex}}"
+theme[hi_fg]="{{colors.error.default.hex}}"
+theme[selected_bg]="{{colors.primary_container.default.hex}}"
+theme[selected_fg]="{{colors.on_primary_container.default.hex}}"
+theme[inactive_fg]="{{colors.outline.default.hex}}"
+theme[graph_text]="{{colors.on_surface_variant.default.hex}}"
+theme[meter_bg]="{{colors.surface_container.default.hex}}"
+theme[proc_misc]="{{colors.tertiary.default.hex}}"
+
+theme[cpu_box]="{{colors.outline_variant.default.hex}}"
+theme[mem_box]="{{colors.outline_variant.default.hex}}"
+theme[net_box]="{{colors.outline_variant.default.hex}}"
+theme[proc_box]="{{colors.outline_variant.default.hex}}"
+theme[div_line]="{{colors.outline_variant.default.hex}}"
+
+# --- gradients: fixed semantic ramps ---
+# Temperature: green -> amber -> red
+theme[temp_start]="#7fd88f"
+theme[temp_mid]="#ffd479"
+theme[temp_end]="#ff6b6b"
+
+# CPU load: green -> amber -> red
+theme[cpu_start]="#7fd88f"
+theme[cpu_mid]="#ffd479"
+theme[cpu_end]="#ff6b6b"
+
+# Mem/disk free: green
+theme[free_start]="#5fbf8f"
+theme[free_mid]="#7fd0a4"
+theme[free_end]="#9fdfba"
+
+# Mem/disk cached: amber
+theme[cached_start]="#e0b354"
+theme[cached_mid]="#edc46e"
+theme[cached_end]="#f5d68f"
+
+# Mem/disk available: purple
+theme[available_start]="#9d8df1"
+theme[available_mid]="#b3a4f5"
+theme[available_end]="#c9bcf9"
+
+# Mem/disk used: blue
+theme[used_start]="#5a9cf8"
+theme[used_mid]="#7fb4ff"
+theme[used_end]="#a8ccff"
+
+# Download: cyan
+theme[download_start]="#4fc3d9"
+theme[download_mid]="#6fd5e8"
+theme[download_end]="#8fe4f2"
+
+# Upload: orange
+theme[upload_start]="#f0955a"
+theme[upload_mid]="#f5ad7a"
+theme[upload_end]="#fac59a"
+
+# Process box gradient: green -> amber -> red
+theme[process_start]="#7fd88f"
+theme[process_mid]="#ffd479"
+theme[process_end]="#ff6b6b"
