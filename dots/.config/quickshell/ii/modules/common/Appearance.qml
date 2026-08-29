@@ -269,6 +269,8 @@ Singleton {
         readonly property real expressiveDefaultSpatialDuration: 500
         readonly property real expressiveSlowSpatialDuration: 650
         readonly property real expressiveEffectsDuration: 200
+        readonly property real expressiveFastEffectsDuration: 130
+        readonly property real expressiveSlowEffectsDuration: 280
     }
 
     animation: QtObject {
@@ -285,19 +287,13 @@ Singleton {
         }
 
         property AnimSpec elementMoveEnter: AnimSpec {
-            duration: 400
-            bezierCurve: root.animationCurves.emphasizedDecel
+            duration: root.animationCurves.expressiveDefaultSpatialDuration
+            bezierCurve: root.animationCurves.expressiveDefaultSpatial
         }
 
         property AnimSpec elementMoveExit: AnimSpec {
-            duration: 200
-            bezierCurve: root.animationCurves.emphasizedAccel
-        }
-
-        property AnimSpec elementMoveSlow: AnimSpec {
-            duration: root.animationCurves.expressiveEffectsDuration * 2.5
+            duration: root.animationCurves.expressiveFastEffectsDuration
             bezierCurve: root.animationCurves.expressiveEffects
-            velocity: 850
         }
 
         property AnimSpec elementMoveFast: AnimSpec {
@@ -307,13 +303,13 @@ Singleton {
         }
 
         property AnimSpec elementResize: AnimSpec {
-            duration: 300
-            bezierCurve: root.animationCurves.emphasized
+            duration: root.animationCurves.expressiveFastSpatialDuration
+            bezierCurve: root.animationCurves.expressiveFastSpatial
         }
 
         property AnimSpec clickBounce: AnimSpec {
-            duration: 400
-            bezierCurve: root.animationCurves.expressiveDefaultSpatial
+            duration: root.animationCurves.expressiveFastSpatialDuration
+            bezierCurve: root.animationCurves.expressiveFastSpatial
             velocity: 850
         }
 
