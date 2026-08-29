@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
@@ -101,7 +100,7 @@ DockButton {
                 anchors.centerIn: parent
                 implicitSize: Math.round(root.buttonSize * 0.88)
                 shape: MaterialShape.Shape.Circle
-                color: root.hovered ? Appearance.colors.colSurfaceContainerHighestHover : ColorUtils.mix(Appearance.m3colors.m3surfaceBright, Appearance.m3colors.m3surfaceContainerHighest, 0.5)
+                color: root.hovered ? Appearance.colors.colSurfaceContainerHighestHover : Appearance.colors.colSurfaceContainerHighest
 
                 Behavior on color {
                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
