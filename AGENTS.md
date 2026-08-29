@@ -104,3 +104,9 @@ The details of the implementation of the extension system is in the file `EXTENS
 
 - **Must clone with `--recurse-submodules`** — submodule at `modules/common/widgets/shapes` (rounded-polygon-qmljs)
 - `.qmlls.ini` is gitignored — agents must create it manually for LSP
+
+## Design System
+
+Material 3 Expressive / Android 16 design law — motion tokens, interaction
+specs, shape and spacing scales, effect budget and per-component recipes — is in
+`DESIGN.md` at `.github/DESIGN.md`. It applies to every UI change by default.
