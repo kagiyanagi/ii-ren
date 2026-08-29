@@ -1386,6 +1386,18 @@ Singleton {
                 }
             }
 
+            property JsonObject clipboard: JsonObject {
+                property JsonObject copyToast: JsonObject {
+                    property bool enable: true
+                    // Same values as screenSnip.previewCorner: top_left, top_right,
+                    // bottom_left, bottom_right. Android puts it bottom left.
+                    property string corner: "bottom_left"
+                    // Seconds, like every other dismissal in here. SystemUI's
+                    // ClipboardOverlayController uses 6. 0 keeps it up until clicked.
+                    property int dismissAfter: 6
+                }
+            }
+
             property JsonObject conflictKiller: JsonObject {
                 property bool autoKillNotificationDaemons: false
                 property bool autoKillTrays: false

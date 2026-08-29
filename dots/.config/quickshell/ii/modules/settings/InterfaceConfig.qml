@@ -430,6 +430,56 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "content_paste"
+        title: Translation.tr("Clipboard")
+
+        ConfigSwitch {
+            buttonIcon: "content_copy"
+            text: Translation.tr("Show a card when text is copied")
+            checked: Config.options.clipboard.copyToast.enable
+            onCheckedChanged: {
+                Config.options.clipboard.copyToast.enable = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Android's clipboard overlay: a preview of what was copied slides into the bottom-left corner, with a link and send-to-phone action when they apply. Click it to open the clipboard history.")
+            }
+        }
+
+        ContentSubsection {
+            visible: Config.options.clipboard.copyToast.enable
+            title: Translation.tr("Copy card")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.clipboard.copyToast.corner
+                onSelected: newValue => {
+                    Config.options.clipboard.copyToast.corner = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Top left"), icon: "north_west", value: "top_left" },
+                    { displayName: Translation.tr("Top right"), icon: "north_east", value: "top_right" },
+                    { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottom_left" },
+                    { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottom_right" },
+                ]
+            }
+
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Dismiss after (seconds)")
+                value: Config.options.clipboard.copyToast.dismissAfter
+                from: 0
+                to: 60
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.clipboard.copyToast.dismissAfter = value;
+                }
+                StyledToolTip {
+                    text: Translation.tr("0 keeps the card up until it is clicked")
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "notifications"
         title: Translation.tr("Notifications")
 
