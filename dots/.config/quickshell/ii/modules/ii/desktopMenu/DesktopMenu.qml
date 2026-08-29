@@ -24,7 +24,7 @@ Scope {
         // No cursor to open at, so centre it on the focused monitor.
         function toggle(): void {
             if (GlobalStates.desktopMenuOpen) {
-                GlobalStates.desktopMenuOpen = false;
+                menuLoader.item?.dismiss();
                 return;
             }
             const screen = Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0];
@@ -36,13 +36,34 @@ Scope {
     }
 
     Loader {
-        active: GlobalStates.desktopMenuOpen
+        id: menuLoader
+
+        // Held open past the state flip so the close animation can finish.
+        property bool closing: false
+        active: GlobalStates.desktopMenuOpen || closing
 
         sourceComponent: PanelWindow {
             id: menuWindow
 
-            function hide(): void {
+            function dismiss(): void {
+                if (closeAnim.running)
+                    return;
+                menuLoader.closing = true;
                 GlobalStates.desktopMenuOpen = false;
+                closeAnim.start();
+            }
+
+            // Right clicking again mid-close has to catch the card on its way
+            // out, or the window survives the animation faded to nothing.
+            Connections {
+                target: GlobalStates
+                function onDesktopMenuOpenChanged(): void {
+                    if (!GlobalStates.desktopMenuOpen)
+                        return;
+                    closeAnim.stop();
+                    menuLoader.closing = false;
+                    openAnim.restart();
+                }
             }
 
             screen: GlobalStates.desktopMenuScreen ?? Quickshell.screens[0]
@@ -64,17 +85,24 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                onClicked: menuWindow.hide()
+                onClicked: menuWindow.dismiss()
             }
 
             StyledRectangularShadow {
                 target: menuCard
+                // anchors.fill doesn't follow a scale transform, so without this
+                // the shadow sits full size around a half-size card.
+                scale: menuCard.scale
+                transformOrigin: menuCard.transformOrigin
+                opacity: menuCard.opacity
             }
 
             Rectangle {
                 id: menuCard
 
                 readonly property real gutter: 8
+                readonly property bool leftAligned: x >= GlobalStates.desktopMenuX
+                readonly property bool topAligned: y >= GlobalStates.desktopMenuY
 
                 // Opens with its top-left at the cursor, like every other context
                 // menu, and slides back inside the screen near an edge.
@@ -87,21 +115,94 @@ Scope {
                 color: Appearance.m3colors.m3surfaceContainer
 
                 opacity: 0
-                scale: 0.96
-                transformOrigin: Item.TopLeft
-                Component.onCompleted: {
-                    menuCard.opacity = 1;
-                    menuCard.scale = 1;
+                scale: 0.5
+
+                // Launcher3 ArrowPopup.setPivotForOpenCloseAnimation(): the popup
+                // grows out of the corner nearest the touch point, so follow the
+                // cursor rather than the corner the edge clamp left it on.
+                transformOrigin: leftAligned ? (topAligned ? Item.TopLeft : Item.BottomLeft) : (topAligned ? Item.TopRight : Item.BottomRight)
+
+                // ArrowPopup.animateOpen(), AOSP main: scale 0.5 -> 1.02 over
+                // OPEN_DURATION_U 200ms on EMPHASIZED_DECELERATE, then settles
+                // 1.02 -> 1 over OPEN_OVERSHOOT_DURATION_U 200ms on
+                // PathInterpolator(0.3, 0, 0.33, 1). The card and its children
+                // each fade in linearly over OPEN_FADE_DURATION_U 83ms, so the
+                // content lands while the card is still growing.
+                ParallelAnimation {
+                    id: openAnim
+                    running: true
+
+                    SequentialAnimation {
+                        NumberAnimation {
+                            target: menuCard
+                            property: "scale"
+                            from: 0.5
+                            to: 1.02
+                            duration: 200
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                        }
+                        NumberAnimation {
+                            target: menuCard
+                            property: "scale"
+                            to: 1
+                            duration: 200
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: [0.3, 0, 0.33, 1, 1, 1]
+                        }
+                    }
+                    NumberAnimation {
+                        target: menuCard
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 83
+                    }
+                    NumberAnimation {
+                        target: menuColumn
+                        property: "opacity"
+                        from: 0
+                        to: 1
+                        duration: 83
+                    }
                 }
 
-                // Both on the 200ms curve. elementMoveEnter is 400ms of
-                // deceleration, which reads as the menu still arriving well after
-                // it is already clickable.
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-                Behavior on scale {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                // ArrowPopup.animateClose(): CLOSE_DURATION_U 233ms down to half
+                // size on EMPHASIZED_ACCELERATE, with both fades held back
+                // CLOSE_FADE_START_DELAY_U 150ms so the card is nearly gone before
+                // it starts disappearing.
+                ParallelAnimation {
+                    id: closeAnim
+
+                    NumberAnimation {
+                        target: menuCard
+                        property: "scale"
+                        to: 0.5
+                        duration: 233
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    }
+                    SequentialAnimation {
+                        PauseAnimation {
+                            duration: 150
+                        }
+                        ParallelAnimation {
+                            NumberAnimation {
+                                target: menuCard
+                                property: "opacity"
+                                to: 0
+                                duration: 83
+                            }
+                            NumberAnimation {
+                                target: menuColumn
+                                property: "opacity"
+                                to: 0
+                                duration: 83
+                            }
+                        }
+                    }
+
+                    onFinished: menuLoader.closing = false
                 }
 
                 // Swallows the clicks the dismiss handler underneath would take.
@@ -112,6 +213,8 @@ Scope {
 
                 ColumnLayout {
                     id: menuColumn
+
+                    opacity: 0
 
                     // Reshuffled on every open, since the whole component is
                     // rebuilt per right click. The current one leads so its check
@@ -141,7 +244,7 @@ Scope {
                     focus: true
                     Keys.onPressed: event => {
                         if (event.key === Qt.Key_Escape)
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                     }
 
                     Item {
@@ -195,8 +298,11 @@ Scope {
                                 // The list repositions its neighbours every frame of
                                 // this, so the whole strip slides along with it.
                                 width: current ? 124 : 80
+                                // Size is spatial, so it runs on the spatial spring
+                                // token and is allowed the overshoot; the scrim
+                                // fading over it is an effect and is not.
                                 Behavior on width {
-                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                                 }
                                 height: wallpaperStrip.height
 
@@ -253,7 +359,7 @@ Scope {
 
                                         scale: wallpaperTile.current ? 1 : 0.5
                                         Behavior on scale {
-                                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                            animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                                         }
 
                                         MaterialSymbol {
@@ -303,7 +409,7 @@ Scope {
                         symbolName: "wallpaper"
                         labelText: Translation.tr("Change wallpaper")
                         onTriggered: {
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                             GlobalStates.wallpaperSelectorOpen = true;
                         }
                     }
@@ -314,7 +420,7 @@ Scope {
                         symbolName: "shuffle"
                         labelText: Translation.tr("Random wallpaper")
                         onTriggered: {
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                             Wallpapers.randomFromCurrentFolder();
                         }
                     }
@@ -325,7 +431,7 @@ Scope {
                         symbolName: "folder_open"
                         labelText: Translation.tr("Open wallpaper file...")
                         onTriggered: {
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                             Wallpapers.openFallbackPicker();
                         }
                     }
@@ -338,7 +444,7 @@ Scope {
                             ? Translation.tr("Drop shelf (%1)").arg(DropShelf.items.length)
                             : Translation.tr("Drop shelf")
                         onTriggered: {
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                             // Reuse the click point so the shelf lands where the
                             // menu was, not back at the last drop.
                             GlobalStates.dropShelfX = GlobalStates.desktopMenuX;
@@ -353,7 +459,7 @@ Scope {
                         symbolName: "settings"
                         labelText: Translation.tr("Settings")
                         onTriggered: {
-                            menuWindow.hide();
+                            menuWindow.dismiss();
                             Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
                         }
                     }
