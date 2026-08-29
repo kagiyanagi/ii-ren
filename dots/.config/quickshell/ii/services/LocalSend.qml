@@ -2,23 +2,24 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
+import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
 
 /**
- * LocalSend service for receiving/sending files via localsend-cli.
- * Monitors incoming file transfers, scans for devices, and sends files.
- * 
- * Note for the process':
- * I have no idea why, but we have to use bash -lc and also set the PATH environment variable manually
- * Or else it cannot detect localsend-cli and cannot use it's functionalities. 
- * The stupid part is that when we run the shell from the terminal "qs -c ii", everything works perfectly fine without the need of "bash -lc" or setting the PATH. 
- * But it doesnt work when we run it from the keybind. So it may be the problem of the lua integration of hyprland or pip's installation path idk.
+ * LocalSend service for receiving/sending files.
+ *
+ * The protocol lives in `scripts/localsend/localsend.py` — stdlib Python
+ * speaking LocalSend v2 (multicast announce + the HTTP endpoints) and
+ * streaming one JSON event per line. The old `localsend-cli` pip package it
+ * replaced is abandoned, and calling the helper by absolute path also drops
+ * the `bash -lc` PATH dance that finding it on $PATH used to need.
  */
 Singleton {
     id: root
 
+    readonly property string helperPath: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/localsend/localsend.py"))
     property bool available: false
     property bool serverRunning: receiveProc.running
     property bool autoStart: Config.options?.localsend?.autoStart ?? false
@@ -78,7 +79,7 @@ Singleton {
         if (!root.available || root.sending || root.droppedFiles.length === 0) return
         root.sending = true
         const filePaths = root.droppedFiles.map(f => f.path)
-        sendProc.command = ["bash", "-lc",`localsend-cli send ${deviceIp} ${filePaths.join(" ")} --json`]
+        sendProc.command = ["python3", root.helperPath, "send", deviceIp].concat(filePaths)
         sendProc.running = true
     }
 
@@ -87,14 +88,11 @@ Singleton {
         root.sending = false
     }
 
-    // Check if localsend-cli is available
+    // Check that the helper can run at all
     Process {
         id: checkAvailabilityProc
         running: true
-        command: ["bash", "-lc", "which localsend-cli"]
-        environment: ({
-            "PATH": Directories.home + "/.local/bin:/usr/local/bin:/usr/bin:/bin"
-        })
+        command: ["python3", root.helperPath, "check"]
         onExited: (exitCode, exitStatus) => {
             root.available = (exitCode === 0)
             if (root.available && root.autoStart) {
@@ -149,10 +147,6 @@ Singleton {
         running: false
         stdinEnabled: true
 
-        environment: ({
-            "PATH": Directories.home + "/.local/bin:/usr/local/bin:/usr/bin:/bin"
-        })
-
         stdout: SplitParser {
             onRead: line => {
                 if (!line || line.trim().length === 0) return
@@ -181,10 +175,6 @@ Singleton {
     Process {
         id: sendProc
         running: false
-
-        environment: ({
-            "PATH": Directories.home + "/.local/bin:/usr/local/bin:/usr/bin:/bin"
-        })
 
         stdout: SplitParser {
             onRead: line => {
@@ -219,7 +209,13 @@ Singleton {
     }
 
     function handleLocalSendEvent(event: var): void {
-        if (!event || !event.event) return
+        if (!event) return
+        if (event.error) {
+            console.warn("[LocalSend]", event.error)
+            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend Error"), event.error, "-a", "LocalSend"])
+            return
+        }
+        if (!event.event) return
         console.log("[LocalSend] Event:", JSON.stringify(event))
 
         switch (event.event) {
@@ -316,7 +312,7 @@ Singleton {
         id: serverStartDelayTimer
         interval: 500
         onTriggered: {
-            receiveProc.command = ["bash", "-lc", `localsend-cli receive --interactive-json --output ${root.downloadPath}`]
+            receiveProc.command = ["python3", root.helperPath, "receive", "--output", root.downloadPath]
             console.log("[LocalSend] Starting receive server with output dir:", root.downloadPath)
             receiveProc.running = true
         }
@@ -324,8 +320,8 @@ Singleton {
 
     function startServer(): void {
         if (!root.available) {
-            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend Error"), Translation.tr("localsend-cli is not available. You can install it with <tt>pip install localsend-cli</tt>. Check the docs for further details."), "-a", "LocalSend"])
-            console.warn("[LocalSend] localsend-cli is not available")
+            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend Error"), Translation.tr("The LocalSend helper could not run. It needs <tt>python3</tt>."), "-a", "LocalSend"])
+            console.warn("[LocalSend] helper is not available:", root.helperPath)
             return
         }
         if (receiveProc.running) {
@@ -335,7 +331,7 @@ Singleton {
 
         // kill any existing servers
         // or else it gives an error saying "address already in use" and doesn't start
-        Quickshell.execDetached(["pkill", "-f", "localsend-cli"])
+        Quickshell.execDetached(["pkill", "-f", root.helperPath])
         serverStartDelayTimer.restart()
     }
 

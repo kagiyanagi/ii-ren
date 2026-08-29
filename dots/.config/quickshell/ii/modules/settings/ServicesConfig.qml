@@ -411,7 +411,7 @@ ContentPage {
     ContentSection {
         icon: "devices"
         title: Translation.tr("LocalSend")
-        tooltip: Translation.tr("You must have the localsend-cli installed\nCheck repo wiki for more information")
+        tooltip: Translation.tr("Send and receive files with any LocalSend device on the network")
 
         ConfigSwitch {
             buttonIcon: "power_settings_new"
