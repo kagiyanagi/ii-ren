@@ -21,6 +21,51 @@ Item {
     // The phone card is a door: tapping it swaps the rest of the page for the
     // notification list, which is the only place phone notifications show up.
     property bool notificationsOpen: false
+    // The layout follows the toggle only at the midpoint of the crossfade, so
+    // the two pages never occupy the column at the same time and nothing jumps.
+    property bool showingNotifications: false
+    property real pageOpacity: 1
+    property real pageShift: 0
+    onNotificationsOpenChanged: pageSwap.restart()
+
+    SequentialAnimation {
+        id: pageSwap
+        ParallelAnimation {
+            NumberAnimation {
+                target: root; property: "pageOpacity"; to: 0
+                duration: Appearance.animationCurves.expressiveFastEffectsDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+            }
+            NumberAnimation {
+                target: root; property: "pageShift"
+                to: root.notificationsOpen ? -12 : 12
+                duration: Appearance.animationCurves.expressiveFastEffectsDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+            }
+        }
+        ScriptAction {
+            script: {
+                root.showingNotifications = root.notificationsOpen;
+                root.pageShift = root.notificationsOpen ? 12 : -12; // enter from the other side
+            }
+        }
+        ParallelAnimation {
+            NumberAnimation {
+                target: root; property: "pageOpacity"; to: 1
+                duration: Appearance.animationCurves.expressiveEffectsDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            }
+            NumberAnimation {
+                target: root; property: "pageShift"; to: 0
+                duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
+            }
+        }
+    }
 
     // Both services idle until something is actually looking at them.
     readonly property bool pageActive: root.visible && (root.QsWindow.window?.visible ?? false)
@@ -45,6 +90,12 @@ Item {
         const bits = [Translation.tr("Connected")];
         if (root.phone.signalType !== "") bits.push(root.phone.signalType);
         return bits.join(" · ");
+    }
+
+    // One half of the swap: fades and slides with pageSwap.
+    component PageSection: ColumnLayout {
+        opacity: root.pageOpacity
+        transform: Translate { y: root.pageShift }
     }
 
     component ActionPill: RippleButtonWithIcon {
@@ -198,7 +249,8 @@ Item {
             bottom: parent.bottom
             margins: root.padding
         }
-        visible: root.notificationsOpen
+        visible: root.showingNotifications
+        opacity: root.pageOpacity
         spacing: 6
         z: 1
 
@@ -322,11 +374,11 @@ Item {
                 }
             }
 
-            ColumnLayout { // Phone notifications
+            PageSection { // Phone notifications
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.topMargin: 4
-                visible: root.notificationsOpen
+                visible: root.showingNotifications
                 spacing: 8
 
                 SectionHeader {
@@ -360,10 +412,10 @@ Item {
                 }
             }
 
-            ColumnLayout { // Audio
+            PageSection { // Audio
                 Layout.fillWidth: true
                 Layout.topMargin: 4
-                visible: !root.notificationsOpen && root.audioDevices.length > 0
+                visible: !root.showingNotifications && root.audioDevices.length > 0
                 spacing: 8
 
                 SectionHeader { icon: "headphones"; title: Translation.tr("Audio") }
@@ -381,10 +433,10 @@ Item {
                 }
             }
 
-            ColumnLayout { // Tailnet
+            PageSection { // Tailnet
                 Layout.fillWidth: true
                 Layout.topMargin: 4
-                visible: !root.notificationsOpen && Tailscale.installed
+                visible: !root.showingNotifications && Tailscale.installed
                 spacing: 8
 
                 SectionHeader {
@@ -412,7 +464,9 @@ Item {
             }
 
             Item { // Fills whatever's left below the real cards.
-                visible: !root.notificationsOpen
+                visible: !root.showingNotifications
+                opacity: root.pageOpacity
+                transform: Translate { y: root.pageShift }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 120

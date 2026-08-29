@@ -134,9 +134,14 @@ Rectangle {
 
             MaterialSymbol {
                 visible: root.clickable
-                text: root.expanded ? "expand_less" : "expand_more"
+                text: "expand_more"
                 iconSize: Appearance.font.pixelSize.larger
                 color: root.colText
+                // Spins to point up rather than swapping glyphs mid-tap.
+                rotation: root.expanded ? 180 : 0
+                Behavior on rotation {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
             }
         }
 
