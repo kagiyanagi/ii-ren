@@ -5,6 +5,7 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 import Quickshell.Bluetooth
@@ -246,6 +247,25 @@ Item {
                         source: SystemInfo.distroIcon
                         colorize: true
                         color: Appearance.colors.colOnLayer0
+                    }
+                    StyledImage { // Configured icon or user avatar, covers the distro icon when one loads
+                        id: uptimeAvatar
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectCrop
+                        // Own fallback chain instead of StyledImage's: that one assigns
+                        // source imperatively, which kills the binding to the setting.
+                        property list<string> candidates: Config.options.sidebar.uptimeIcon.length > 0 ? [Config.options.sidebar.uptimeIcon.replace(/^~\//, Directories.home)] : [Directories.userAvatarPathAccountsService, Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
+                        property int candidateIndex: 0
+                        onCandidatesChanged: candidateIndex = 0
+                        source: candidates[candidateIndex] ?? ""
+                        onStatusChanged: if (status === Image.Error && candidateIndex < candidates.length - 1)
+                            candidateIndex++
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Circle {
+                                diameter: uptimeAvatar.height
+                            }
+                        }
                     }
                 }
                 StyledText {

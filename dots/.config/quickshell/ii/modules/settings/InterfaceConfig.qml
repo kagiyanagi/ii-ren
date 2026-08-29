@@ -682,6 +682,18 @@ ContentPage {
         icon: "side_navigation"
         title: Translation.tr("Sidebars")
 
+        MaterialTextField {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("Uptime pill icon (empty = your user avatar)")
+            text: Config.options.sidebar.uptimeIcon
+            onTextChanged: {
+                Config.options.sidebar.uptimeIcon = text;
+            }
+            StyledToolTip {
+                text: Translation.tr("Path to an image shown next to the uptime in the right sidebar.\nLeave empty to use your user avatar, which falls back to the distro logo.")
+            }
+        }
+
         ConfigSwitch {
             buttonIcon: "memory"
             text: Translation.tr('Keep right sidebar loaded')

@@ -1626,6 +1626,7 @@ Singleton {
 
             property JsonObject sidebar: JsonObject {
                 property string position: "default"
+                property string uptimeIcon: "" // Image for the uptime pill; empty = user avatar, falling back to the distro logo
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
                 property JsonObject translator: JsonObject {
