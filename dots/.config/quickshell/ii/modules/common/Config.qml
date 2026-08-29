@@ -1391,6 +1391,10 @@ Singleton {
                 property bool enablePreview: true
                 property bool revealOnEmptyWorkspace: true
                 property bool enableMediaWidget: false
+                // Media popup: hover to peek, or click to keep it up
+                property bool mediaPopupOnHover: false
+                // The desktop media widget shows on an empty workspace too
+                property bool hideMediaOnEmptyWorkspace: false
                 property string position: "bottom"
                 property string appsButtonShape: "Pill"
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]

@@ -312,6 +312,7 @@ Scope {
                                     anchors.fill: parent
                                     isPinned: dock.pinned
                                     currentScreen: dockRoot.screen
+                                    workspaceEmpty: dockRoot.workspaceEmpty
                                     onTogglePinRequested: dock.pinned = !dock.pinned
                                 }
                             }

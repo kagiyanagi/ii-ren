@@ -20,6 +20,7 @@ Item {
 
     property var currentScreen: null
     property bool isPinned: false
+    property bool workspaceEmpty: false
 
     readonly property bool isVertical: dock.isVertical
     readonly property real dotMargin: (Config.options?.dock.height ?? 60) * 0.2
@@ -30,7 +31,7 @@ Item {
     readonly property real visualHeight: isVertical ? mainLayout.implicitHeight : Appearance.sizes.dockButtonSize + dotMargin * 2
 
     readonly property bool ready: (isVertical ? visualHeight > 0 : visualWidth > 0) && !suppressSizeAnimation
-    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen
+    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (mediaWidgetLoader.item?.popupHovered ?? false)
 
     readonly property real maxWindowPreviewHeight: 200
     readonly property real maxWindowPreviewWidth: 300
@@ -44,6 +45,11 @@ Item {
     property point hoveredButtonCenter: Qt.point(0, 0)
     property string externalDragIcon: ""
     property bool externalDragOver: false
+
+    // The desktop's own media widget owns an empty workspace, so the dock's
+    // copy can step aside there.
+    readonly property bool mediaWidgetEnabled: (Config.options?.dock?.enableMediaWidget ?? false)
+        && !((Config.options?.dock?.hideMediaOnEmptyWorkspace ?? false) && root.workspaceEmpty)
 
     readonly property var activePlayer: MprisController.activePlayer
     readonly property string rawTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || ""
@@ -454,13 +460,13 @@ Item {
         }
 
         SectionSeparator {
-            show: (Config.options?.dock?.enableMediaWidget ?? false) && root.showMusicPlayer
+            show: root.mediaWidgetEnabled && root.showMusicPlayer
         }
 
         Item {
             id: mediaWidgetWrapper
             Layout.alignment: Qt.AlignCenter
-            readonly property bool showWidget: (Config.options?.dock?.enableMediaWidget ?? false) && root.showMusicPlayer
+            readonly property bool showWidget: root.mediaWidgetEnabled && root.showMusicPlayer
             readonly property real innerW: mediaWidgetLoader.item?.implicitWidth ?? 0
             readonly property real innerH: mediaWidgetLoader.item?.implicitHeight ?? 0
             Layout.preferredWidth: root.isVertical ? root.buttonSlotSize : (showWidget ? innerW : 0)

@@ -193,11 +193,35 @@ ContentPage {
             }
         }
 
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "play_pause"
+                text: Translation.tr("Enable media widget")
+                checked: Config.options.dock.enableMediaWidget
+                onCheckedChanged: { Config.options.dock.enableMediaWidget = checked; }
+            }
+            ConfigSwitch {
+                buttonIcon: "pan_tool_alt"
+                text: Translation.tr("Media controls on hover")
+                enabled: Config.options.dock.enableMediaWidget
+                checked: Config.options.dock.mediaPopupOnHover
+                onCheckedChanged: { Config.options.dock.mediaPopupOnHover = checked; }
+                StyledToolTip {
+                    text: Translation.tr("Show the media controls when hovering the widget.\nOff: click the widget to toggle them.")
+                }
+            }
+        }
+
         ConfigSwitch {
-            buttonIcon: "play_pause"
-            text: Translation.tr("Enable media widget")
-            checked: Config.options.dock.enableMediaWidget
-            onCheckedChanged: { Config.options.dock.enableMediaWidget = checked; }
+            buttonIcon: "hide_source"
+            text: Translation.tr("Hide media widget on empty workspace")
+            enabled: Config.options.dock.enableMediaWidget
+            checked: Config.options.dock.hideMediaOnEmptyWorkspace
+            onCheckedChanged: { Config.options.dock.hideMediaOnEmptyWorkspace = checked; }
+            StyledToolTip {
+                text: Translation.tr("The desktop's own media widget is visible there anyway.")
+            }
         }
 
         ConfigSpinBox {

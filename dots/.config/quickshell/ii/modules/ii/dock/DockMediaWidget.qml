@@ -12,6 +12,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.models
+import qs.modules.ii.mediaControls
 import "./widgets"
 
 Item {
@@ -83,7 +84,81 @@ Item {
         onClicked: mouse => {
             if (mouse.button === Qt.BackButton) root.player?.previous();
             else if (mouse.button === Qt.ForwardButton) root.player?.next();
+            else if (mouse.button === Qt.LeftButton && !root.popupOnHover) root.popupOpen = !root.popupOpen;
             else root.player?.togglePlaying();
+        }
+    }
+
+    // Same controls the bar's media widget pops up, but anchored to the dock
+    // like the window previews are - the bar-anchored one lands in the corner
+    // when there is no bar widget to anchor to.
+    readonly property bool popupOnHover: Config.options?.dock.mediaPopupOnHover ?? false
+    readonly property string dockPos: dock.dockEffectivePosition
+    property bool popupOpen: false
+    property bool popupShown: false
+    readonly property bool popupHovered: popupHover.hovered
+    readonly property bool popupShouldShow: !!root.player && (root.popupOnHover ? (root.mediaHovered || root.popupHovered) : root.popupOpen)
+    // Only sampled while opening: mapToItem doesn't track the dock sliding in.
+    property point popupCenter: Qt.point(0, 0)
+
+    onPopupShouldShowChanged: {
+        if (popupShouldShow) {
+            popupCenter = root.mapToItem(null, root.width / 2, root.height / 2);
+            popupShown = true;
+        } else
+            popupHideTimer.restart();
+    }
+
+    Timer {
+        id: popupHideTimer
+        interval: 150
+        onTriggered: root.popupShown = root.popupShouldShow
+    }
+
+    PopupWindow {
+        id: mediaPopup
+        visible: root.popupShown || playerCard.opacity > 0
+        color: "transparent"
+        implicitWidth: Appearance.sizes.mediaControlsWidth
+        implicitHeight: playerCard.implicitHeight
+
+        readonly property var dockWindow: root.QsWindow.window
+
+        anchor {
+            window: mediaPopup.dockWindow
+            adjustment: PopupAdjustment.None
+
+            rect {
+                x: root.isVertical ? (root.dockPos === "left" ? (mediaPopup.dockWindow?.width ?? 0) : 0) : Math.max(0, Math.min(root.popupCenter.x - mediaPopup.implicitWidth / 2, (mediaPopup.dockWindow?.width ?? 0) - mediaPopup.implicitWidth))
+                y: root.isVertical ? Math.max(0, Math.min(root.popupCenter.y - mediaPopup.implicitHeight / 2, (mediaPopup.dockWindow?.height ?? 0) - mediaPopup.implicitHeight)) : (root.dockPos === "top" ? (mediaPopup.dockWindow?.height ?? 0) : 0)
+            }
+
+            gravity: {
+                if (root.dockPos === "left") return Edges.Right | Edges.Bottom;
+                if (root.dockPos === "right") return Edges.Left | Edges.Bottom;
+                if (root.dockPos === "top") return Edges.Bottom | Edges.Right;
+                return Edges.Top | Edges.Right;
+            }
+
+            edges: Edges.Top | Edges.Left
+        }
+
+        PlayerControl {
+            id: playerCard
+            width: parent.width
+            height: implicitHeight
+            player: root.player
+            visualizerPoints: CavaService.visualizerPoints
+            radius: Appearance.rounding.large
+            opacity: root.popupShown ? 1 : 0
+
+            HoverHandler {
+                id: popupHover
+            }
+
+            Behavior on opacity {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
         }
     }
 
