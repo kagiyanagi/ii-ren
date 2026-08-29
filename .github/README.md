@@ -100,6 +100,15 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
 - **Launcher depth** — the wallpaper pushes back and everything behind the launcher dims.
 - **Uptime pill** — a single-line badge in the sidebar wearing your user avatar, or any
   image you point it at.
+- **Android 16 motion** — Hyprland and the shell both run on Material 3 Expressive's
+  motion physics, with the spring constants lifted from AOSP's own token files instead of
+  eyeballed: six springs, spatial ones for anything that moves or resizes and critically
+  damped effects ones for colour and opacity, converted from Android's damping *ratio*
+  into the damping *coefficient* Hyprland's solver wants. The compositor runs them
+  natively, so duration falls out of the physics instead of a hardcoded speed, and a
+  self-check in `tools/` fails if any constant drifts off its token. Lists and flickables
+  stretch at the edges like Android's, done with a transform rather than an offscreen
+  layer, so it costs nothing until something overscrolls.
 - **Faster on integrated graphics** — the wallpaper effect chain bakes once and stops
   re-rendering per frame, the lock blur bakes the same way, and desktop parallax moved
   off the anchor solver: about 22 points of main thread back on a battery-clocked
