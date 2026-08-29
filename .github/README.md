@@ -48,6 +48,11 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
   Bluetooth device battery, and your Tailscale peers with copy-IP, SSH, Taildrop and
   exit-node routing. Phone notifications stay in the panel instead of doubling up on
   the desktop, with swipe-to-dismiss, clear-all, and a toggle to mirror them anyway.
+- **Fast Pair** — Android's one-tap pairing card for nearby earbuds and speakers,
+  ranked by signal strength read straight from BlueZ, since Quickshell exposes no RSSI.
+  One press pairs, trusts and connects, retrying while the buds settle into pairing
+  mode. Snooze, never-show-this-one and mute-all sit on the card. Off by default: it
+  keeps the adapter discovering whenever nothing is connected.
 - **Privacy indicators** — bar indicators naming what is using the microphone and what
   is using location, plus a quick toggle that actually masks GeoClue.
 - **Alt+Tab switcher** — a macOS-style row of app icons in MRU order, focusing on Alt
