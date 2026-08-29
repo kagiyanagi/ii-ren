@@ -10,6 +10,22 @@ STATE_JSON_PATH=".screenRecord.active"
 
 CUSTOM_PATH=$(jq -r "$JSON_PATH" "$CONFIG_FILE" 2>/dev/null)
 
+# One jq read for every encoding option; empty when unset so the wf-recorder
+# defaults win.
+cfg() {
+    jq -r ".screenRecord.$1 // empty" "$CONFIG_FILE" 2>/dev/null
+}
+CONTAINER=$(cfg container); CONTAINER="${CONTAINER:-mp4}"
+CODEC=$(cfg codec)
+DEVICE=$(cfg device)
+FRAMERATE=$(cfg framerate)
+PIXEL_FORMAT=$(cfg pixelFormat); PIXEL_FORMAT="${PIXEL_FORMAT:-yuv420p}"
+QUALITY=$(cfg quality)
+AUDIO_MODE=$(cfg audioMode); AUDIO_MODE="${AUDIO_MODE:-flag}"
+AUDIO_SOURCE=$(cfg audioSource)
+AUDIO_CODEC=$(cfg audioCodec)
+EXTRA_ARGS=$(cfg extraArgs)
+
 RECORDING_DIR=""
 
 TIMER_PID=""  
@@ -53,7 +69,25 @@ getdate() {
 }
 
 getaudiooutput() {
-    pactl list sources | grep 'Name' | grep 'monitor' | cut -d ' ' -f2
+    case "$AUDIO_SOURCE" in
+        "@mic")
+            pactl get-default-source
+            ;;
+        "")
+            # The default sink's own monitor, so we catch what is actually
+            # playing rather than the first monitor pactl happens to list.
+            local sink
+            sink=$(pactl get-default-sink 2>/dev/null)
+            if [[ -n "$sink" ]]; then
+                echo "${sink}.monitor"
+            else
+                pactl list sources | grep 'Name' | grep 'monitor' | cut -d ' ' -f2 | head -n1
+            fi
+            ;;
+        *)
+            echo "$AUDIO_SOURCE"
+            ;;
+    esac
 }
 getactivemonitor() {
     hyprctl monitors -j | jq -r '.[] | select(.focused == true) | .name'
@@ -69,6 +103,28 @@ updatestate() {
     fi
 }
 
+
+record() {
+    local args=(--pixel-format "$PIXEL_FORMAT" -o "$(getactivemonitor)" -f "./recording_$(getdate).$CONTAINER")
+    [[ -n "$CODEC" ]] && args+=(-c "$CODEC")
+    [[ -n "$DEVICE" ]] && args+=(-d "$DEVICE")
+    [[ -n "$FRAMERATE" ]] && args+=(-r "$FRAMERATE")
+    if [[ -n "$QUALITY" && "$QUALITY" != "0" ]]; then
+        # crf is a software-encoder option; the hardware ones take qp and would
+        # otherwise just ignore the quality setting.
+        case "$CODEC" in
+            *_vaapi | *_nvenc | *_qsv | *_amf) args+=(-p "qp=$QUALITY") ;;
+            *) args+=(-p "crf=$QUALITY") ;;
+        esac
+    fi
+    if [[ $SOUND_FLAG -eq 1 ]]; then
+        args+=(--audio="$(getaudiooutput)")
+        [[ -n "$AUDIO_CODEC" ]] && args+=(-C "$AUDIO_CODEC")
+    fi
+    # shellcheck disable=SC2206 # word splitting is the point for a free-text field
+    [[ -n "$EXTRA_ARGS" ]] && args+=($EXTRA_ARGS)
+    wf-recorder "${args[@]}" "$@"
+}
 
 mkdir -p "$RECORDING_DIR"
 cd "$RECORDING_DIR" || exit
@@ -94,6 +150,11 @@ for ((i=0;i<${#ARGS[@]};i++)); do
     fi
 done
 
+case "$AUDIO_MODE" in
+    off) SOUND_FLAG=0 ;;
+    always) SOUND_FLAG=1 ;;
+esac
+
 if pgrep wf-recorder > /dev/null; then
     notify-send "Recording Stopped" "Stopped" -a 'Recorder' &
     updatestate false
@@ -101,13 +162,9 @@ if pgrep wf-recorder > /dev/null; then
     { pkill wf-recorder; pkill -CONT wf-recorder; } &
 else
     if [[ $FULLSCREEN_FLAG -eq 1 ]]; then
-        notify-send "Starting recording" 'recording_'"$(getdate)"'.mp4' -a 'Recorder' & disown
+        notify-send "Starting recording" 'recording_'"$(getdate)"'.'"$CONTAINER" -a 'Recorder' & disown
         updatestate true
-        if [[ $SOUND_FLAG -eq 1 ]]; then
-            wf-recorder -o "$(getactivemonitor)" --pixel-format yuv420p -f './recording_'"$(getdate)"'.mp4' --audio="$(getaudiooutput)"
-        else
-            wf-recorder -o "$(getactivemonitor)" --pixel-format yuv420p -f './recording_'"$(getdate)"'.mp4' 
-        fi
+        record
     else
         # If a manual region was provided via --region, use it; otherwise run slurp as before.
         if [[ -n "$MANUAL_REGION" ]]; then
@@ -126,14 +183,9 @@ else
         y="${pos#*,}"
         geometry="${x},${y} ${size}"
 
-        notify-send "Starting recording" 'recording_'"$(getdate)"'.mp4' -a 'Recorder' & disown
+        notify-send "Starting recording" 'recording_'"$(getdate)"'.'"$CONTAINER" -a 'Recorder' & disown
         updatestate true
-        if [[ $SOUND_FLAG -eq 1 ]]; then
-            wf-recorder -o "$(getactivemonitor)" --pixel-format yuv420p -f './recording_'"$(getdate)"'.mp4'  --geometry "$geometry" --audio="$(getaudiooutput)"
-        else
-            # echo "SCRIPT DEBUG: wf-recorder -o "$(getactivemonitor)" --pixel-format yuv420p -f './recording_'"$(getdate)"'.mp4'  --geometry "$geometry"" >> /tmp/region-record.log
-            wf-recorder -o "$(getactivemonitor)" --pixel-format yuv420p -f './recording_'"$(getdate)"'.mp4'  --geometry "$geometry"
-        fi
+        record --geometry "$geometry"
     fi
 fi
 

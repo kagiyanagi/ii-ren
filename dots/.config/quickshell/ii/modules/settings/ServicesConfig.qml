@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Services.Pipewire
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -358,10 +359,227 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "screen_record"
+        title: Translation.tr("Screen recording")
+
+        ContentSubsection {
+            title: Translation.tr("Video codec")
+            tooltip: Translation.tr("The GPU ones encode without eating the CPU, but need a render device set below.")
+
+            StyledComboBox {
+                buttonIcon: "movie"
+                textRole: "displayName"
+                model: [
+                    { displayName: Translation.tr("H.264 (most compatible)"), value: "libx264" },
+                    { displayName: Translation.tr("H.265 (smaller files)"), value: "libx265" },
+                    { displayName: Translation.tr("VP9 (for WebM)"), value: "libvpx-vp9" },
+                    { displayName: Translation.tr("AV1 (slow, smallest)"), value: "libsvtav1" },
+                    { displayName: Translation.tr("H.264 on GPU (VAAPI)"), value: "h264_vaapi" },
+                    { displayName: Translation.tr("H.265 on GPU (VAAPI)"), value: "hevc_vaapi" }
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.codec))
+                onActivated: index => {
+                    Config.options.screenRecord.codec = model[index].value;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Quality")
+            tooltip: Translation.tr("CRF: lower looks better and takes more space. 0 leaves the codec's own default alone.")
+
+            ConfigRow {
+                uniform: true
+
+                ConfigSpinBox {
+                    icon: "60fps"
+                    text: Translation.tr("Framerate")
+                    value: Config.options.screenRecord.framerate
+                    from: 10
+                    to: 240
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.screenRecord.framerate = value;
+                    }
+                }
+                ConfigSpinBox {
+                    icon: "hd"
+                    text: Translation.tr("Quality (CRF)")
+                    value: Config.options.screenRecord.quality
+                    from: 0
+                    to: 51
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.screenRecord.quality = value;
+                    }
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("File format")
+            tooltip: Translation.tr("MP4 plays anywhere. MKV survives a crash mid-recording. WebM wants VP9.")
+
+            StyledComboBox {
+                buttonIcon: "folder_zip"
+                textRole: "displayName"
+                model: [
+                    { displayName: "MP4", value: "mp4" },
+                    { displayName: "MKV", value: "mkv" },
+                    { displayName: "WebM", value: "webm" },
+                    { displayName: "MOV", value: "mov" }
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.container))
+                onActivated: index => {
+                    Config.options.screenRecord.container = model[index].value;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Pixel format")
+            tooltip: Translation.tr("yuv420p plays everywhere. The others keep text sharper but few players take them.")
+
+            StyledComboBox {
+                buttonIcon: "palette"
+                textRole: "displayName"
+                model: [
+                    { displayName: Translation.tr("yuv420p (most compatible)"), value: "yuv420p" },
+                    { displayName: Translation.tr("yuv444p (sharp text)"), value: "yuv444p" },
+                    { displayName: Translation.tr("yuv420p10le (10-bit)"), value: "yuv420p10le" },
+                    { displayName: "nv12", value: "nv12" }
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.pixelFormat))
+                onActivated: index => {
+                    Config.options.screenRecord.pixelFormat = model[index].value;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Audio")
+            tooltip: Translation.tr("\"Follow the shortcut\" records sound only when the recording was started with the sound keybind.")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.screenRecord.audioMode
+                onSelected: newValue => {
+                    Config.options.screenRecord.audioMode = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Never"), icon: "volume_off", value: "off" },
+                    { displayName: Translation.tr("Follow the shortcut"), icon: "keyboard", value: "flag" },
+                    { displayName: Translation.tr("Always"), icon: "volume_up", value: "always" }
+                ]
+            }
+
+            StyledComboBox {
+                enabled: Config.options.screenRecord.audioMode !== "off"
+                buttonIcon: "graphic_eq"
+                textRole: "displayName"
+                // Rebuilt whenever devices come and go, so a headset plugged in
+                // after the settings opened still shows up.
+                model: [
+                    { displayName: Translation.tr("System audio (default output)"), value: "" },
+                    { displayName: Translation.tr("Microphone (default input)"), value: "@mic" },
+                    ...Audio.outputDevices.map(node => ({
+                        displayName: Translation.tr("Output: %1").arg(Audio.friendlyDeviceName(node)),
+                        value: `${node.name}.monitor`
+                    })),
+                    ...Audio.inputDevices.map(node => ({
+                        displayName: Translation.tr("Mic: %1").arg(Audio.friendlyDeviceName(node)),
+                        value: node.name
+                    }))
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.audioSource))
+                onActivated: index => {
+                    Config.options.screenRecord.audioSource = model[index].value;
+                }
+            }
+
+            // Without tracking them the nodes have no readable name yet
+            PwObjectTracker {
+                objects: [...Audio.outputDevices, ...Audio.inputDevices]
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Audio codec")
+            tooltip: Translation.tr("Only used when recording with sound.")
+
+            StyledComboBox {
+                buttonIcon: "music_note"
+                textRole: "displayName"
+                model: [
+                    { displayName: Translation.tr("Container default"), value: "" },
+                    { displayName: "AAC", value: "aac" },
+                    { displayName: "Opus", value: "libopus" },
+                    { displayName: "MP3", value: "libmp3lame" },
+                    { displayName: Translation.tr("FLAC (lossless)"), value: "flac" }
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.audioCodec))
+                onActivated: index => {
+                    Config.options.screenRecord.audioCodec = model[index].value;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("GPU render device")
+            tooltip: Translation.tr("Needed by the VAAPI codecs, ignored by the rest. Pick another one if you have two GPUs.")
+
+            StyledComboBox {
+                buttonIcon: "memory"
+                textRole: "displayName"
+                model: [
+                    { displayName: Translation.tr("None"), value: "" },
+                    { displayName: "/dev/dri/renderD128", value: "/dev/dri/renderD128" },
+                    { displayName: "/dev/dri/renderD129", value: "/dev/dri/renderD129" }
+                ]
+                currentIndex: Math.max(0, model.findIndex(item => item.value === Config.options.screenRecord.device))
+                onActivated: index => {
+                    Config.options.screenRecord.device = model[index].value;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Advanced")
+
+            MaterialTextArea {
+                id: extraArgsField
+                Layout.fillWidth: true
+                placeholderText: Translation.tr("Extra wf-recorder arguments")
+                text: Config.options.screenRecord.extraArgs
+                wrapMode: TextEdit.Wrap
+                onTextChanged: {
+                    Config.options.screenRecord.extraArgs = text;
+                }
+            }
+
+            RippleButtonWithIcon {
+                Layout.alignment: Qt.AlignLeft
+                materialIcon: "restart_alt"
+                mainText: Translation.tr("Reset recording options")
+                onClicked: {
+                    Config.resetScreenRecord();
+                    // Edited text fields hold their own copy, so they need telling
+                    extraArgsField.text = Config.options.screenRecord.extraArgs;
+                    recordingPathField.text = Config.options.screenRecord.savePath;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Puts every option on this section, save path included, back to how it shipped.")
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "file_open"
         title: Translation.tr("Save paths")
         
         MaterialTextArea {
+            id: recordingPathField
             Layout.fillWidth: true
             placeholderText: Translation.tr("Video Recording Path")
             text: Config.options.screenRecord.savePath

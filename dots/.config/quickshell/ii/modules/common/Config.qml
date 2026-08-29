@@ -14,6 +14,31 @@ Singleton {
     property int readWriteDelay: 75 // milliseconds
     property bool blockWrites: false
 
+    // Kept out of the JsonObject so they are not written to the config file,
+    // and so a reset can put them back without the values living in two places.
+    readonly property var screenRecordDefaults: ({
+        savePath: Directories.videos.replace("file://", ""), // strip "file://"
+        container: "mp4", // file extension, also picks the muxer
+        codec: "libx264", // any encoder ffmpeg knows, e.g. libx265, h264_vaapi
+        device: "", // /dev/dri/renderD128 for the *_vaapi codecs
+        framerate: 60,
+        pixelFormat: "yuv420p",
+        quality: 23, // crf, lower is better; 0 leaves the codec default alone
+        // "off" never records sound, "always" always does, "flag" leaves it to
+        // whatever started the recording (--sound).
+        audioMode: "flag",
+        // "" = the default output's monitor, "@mic" = the default input,
+        // anything else is passed to wf-recorder as the device name.
+        audioSource: "",
+        audioCodec: "", // empty = whatever the muxer defaults to
+        extraArgs: "" // appended to the wf-recorder command as-is
+    })
+
+    function resetScreenRecord() {
+        for (const key in root.screenRecordDefaults)
+            root.options.screenRecord[key] = root.screenRecordDefaults[key];
+    }
+
     function setNestedValue(nestedKey, value) {
         let keys = nestedKey.split(".");
         let obj = root.options;
@@ -1703,7 +1728,17 @@ Singleton {
             }
 
             property JsonObject screenRecord: JsonObject {
-                property string savePath: Directories.videos.replace("file://", "") // strip "file://"
+                property string savePath: root.screenRecordDefaults.savePath
+                property string container: root.screenRecordDefaults.container
+                property string codec: root.screenRecordDefaults.codec
+                property string device: root.screenRecordDefaults.device
+                property int framerate: root.screenRecordDefaults.framerate
+                property string pixelFormat: root.screenRecordDefaults.pixelFormat
+                property int quality: root.screenRecordDefaults.quality
+                property string audioMode: root.screenRecordDefaults.audioMode
+                property string audioSource: root.screenRecordDefaults.audioSource
+                property string audioCodec: root.screenRecordDefaults.audioCodec
+                property string extraArgs: root.screenRecordDefaults.extraArgs
             }
 
             property JsonObject screenSnip: JsonObject {
