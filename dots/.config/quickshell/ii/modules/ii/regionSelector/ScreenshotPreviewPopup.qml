@@ -19,6 +19,10 @@ Scope {
     property string path: ""
     property bool shown: false
 
+    // Which corner the card lives in, straight from the setting.
+    readonly property bool atRight: Config.options.screenSnip.previewCorner.endsWith("right")
+    readonly property bool atBottom: Config.options.screenSnip.previewCorner.startsWith("bottom")
+
     signal save()
     signal edit()
     signal discard()
@@ -27,7 +31,7 @@ Scope {
         id: root
 
         // Stays mapped until the card has finished sliding back off-screen.
-        visible: (previewPopup.shown || card.x > -card.width) && !GlobalStates.screenLocked
+        visible: (previewPopup.shown || card.onScreen) && !GlobalStates.screenLocked
         screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? null
         color: "transparent"
 
@@ -36,13 +40,39 @@ Scope {
         // Reserve nothing, but sit clear of whatever the bar and a pinned dock do.
         exclusiveZone: 0
 
+        // Full height on purpose, like NotificationPopup and the pairing card:
+        // the card's height follows the crop, and resizing a layer surface as
+        // that settles is what makes it stutter. The mask keeps the slack
+        // click-through.
         anchors {
-            left: true
+            left: !previewPopup.atRight
+            right: previewPopup.atRight
+            top: true
             bottom: true
         }
 
-        implicitWidth: card.width + card.gutter + Appearance.sizes.elevationMargin
-        implicitHeight: card.height + card.gutter + Appearance.sizes.elevationMargin
+        // Slide inwards so a sidebar on this side can have the corner, and drift
+        // back out once it closes. This has to move the card rather than the
+        // window's margin: changing margins does not reconfigure an already
+        // committed layer surface, so the window stays put and is made wide
+        // enough to cover both positions.
+        readonly property real sidebarInset: (previewPopup.atRight ? GlobalStates.effectiveRightOpen : GlobalStates.effectiveLeftOpen)
+            ? Appearance.sizes.sidebarWidth : 0
+
+        // Notifications own the top right corner, so drop below them rather than
+        // overlapping. card.y adds the gutter on top of this, leaving the same
+        // gap here as the card keeps from the screen edge. Clamped so a tall
+        // stack cannot push the card off screen.
+        readonly property real notificationInset: {
+            if (previewPopup.atBottom || !previewPopup.atRight || GlobalStates.notificationPopupHeight <= 0)
+                return 0;
+            const room = root.height - card.height - card.gutter * 2;
+            return Math.max(0, Math.min(GlobalStates.notificationPopupHeight, room));
+        }
+
+        // Gutter to the screen edge, elevationMargin of slack on the far side
+        // for the shadow, plus the room the card needs to dodge a sidebar.
+        implicitWidth: card.width + card.gutter + Appearance.sizes.elevationMargin + Appearance.sizes.sidebarWidth
 
         mask: Region {
             item: card
@@ -57,11 +87,24 @@ Scope {
 
             width: thumbWidth + framePadding * 2
             height: content.implicitHeight
-            y: root.height - card.height - card.gutter
-            // Slides out past the screen edge, so there is nothing to clip.
-            x: previewPopup.shown ? card.gutter : -card.width - Appearance.sizes.elevationMargin
+            // Still poking in from its own edge, so the window must stay mapped.
+            readonly property bool onScreen: previewPopup.atRight ? (x < root.width) : (x > -width)
+
+            y: previewPopup.atBottom
+                ? root.height - card.height - card.gutter
+                : card.gutter + root.notificationInset
+            // Slides out past the nearest screen edge, so there is nothing to clip.
+            x: previewPopup.shown
+                ? (previewPopup.atRight
+                    ? root.width - card.width - card.gutter - root.sidebarInset
+                    : card.gutter + root.sidebarInset)
+                : (previewPopup.atRight ? root.width + card.gutter : -card.width - Appearance.sizes.elevationMargin)
 
             Behavior on x {
+                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+            }
+
+            Behavior on y {
                 animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
             }
 
@@ -76,7 +119,7 @@ Scope {
             // this binding, and re-arming on unhover is exactly what a Timer does
             // when running goes false and back to true.
             Timer {
-                interval: 2000
+                interval: Config.options.screenSnip.previewTimeout * 1000
                 running: previewPopup.shown && !cardHover.hovered
                 onTriggered: previewPopup.discard()
             }

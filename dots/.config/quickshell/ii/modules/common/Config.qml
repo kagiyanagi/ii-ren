@@ -1704,6 +1704,12 @@ Singleton {
                 // savePath is empty - with a save path set the crop is already
                 // on disk under a name of the user's choosing.
                 property bool showPreview: true
+                // Corner the preview card slides in at: "top_left", "top_right",
+                // "bottom_left" or "bottom_right".
+                property string previewCorner: "bottom_left"
+                // Seconds the card waits before discarding itself. Hovering it
+                // holds it open regardless.
+                property int previewTimeout: 2
             }
 
             property JsonObject sounds: JsonObject {

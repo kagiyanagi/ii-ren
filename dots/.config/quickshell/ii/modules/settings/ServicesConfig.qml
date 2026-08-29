@@ -406,6 +406,36 @@ ContentPage {
                 Config.options.screenSnip.showPreview = checked;
             }
         }
+
+        ContentSubsection {
+            visible: Config.options.screenSnip.savePath === "" && Config.options.screenSnip.showPreview
+            title: Translation.tr("Screenshot preview")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.screenSnip.previewCorner
+                onSelected: newValue => {
+                    Config.options.screenSnip.previewCorner = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Top left"), icon: "north_west", value: "top_left" },
+                    { displayName: Translation.tr("Top right"), icon: "north_east", value: "top_right" },
+                    { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottom_left" },
+                    { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottom_right" },
+                ]
+            }
+
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Dismiss after (seconds)")
+                value: Config.options.screenSnip.previewTimeout
+                from: 1
+                to: 60
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.screenSnip.previewTimeout = value;
+                }
+            }
+        }
     }
 
     ContentSection {
