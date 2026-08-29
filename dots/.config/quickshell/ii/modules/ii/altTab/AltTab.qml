@@ -71,9 +71,19 @@ Scope {
         if (!root.open) return;
         root.open = false;
         restoreWarpsTimer.restart();
-        const address = root.selectedWindow?.address;
-        if (!address) return;
-        Hyprland.dispatch(`hl.dsp.focus({window = "address:${address}"})`);
+        const target = root.selectedWindow;
+        if (!target?.address) return;
+        const previous = root.windows[0]; // focusHistoryID 0 when we opened
+        Hyprland.dispatch(`hl.dsp.focus({window = "address:${target.address}"})`);
+
+        // Focusing a sibling drops the maximize, which dumps the whole
+        // workspace back into the tiling layout. Hand the state over instead,
+        // so the window you picked takes the space the old one had.
+        if (!(previous?.fullscreen > 0)) return;
+        if (previous.address === target.address) return;
+        if (previous.workspace?.id !== target.workspace?.id) return;
+        const mode = previous.fullscreen === 2 ? "fullscreen" : "maximized";
+        Hyprland.dispatch(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "set" })`);
     }
 
     Timer {
