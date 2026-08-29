@@ -37,19 +37,84 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
     <h2> what this fork adds </h2>
 </div>
 
+- **Conduit** — an agent CLI (Claude Code or Antigravity) as a first-class sidebar
+  page and as a floating overlay you can pin over every window (`Super+Shift+G`),
+  with chat history and voice memo. It ships an MCP server that hands the agent real
+  desktop control: it reads the focused app's widget tree over AT-SPI and presses
+  controls through their own accessible action, so no screenshot round-trip and no
+  aiming a cursor.
 - **Continuity panel** — a left-sidebar tab with your phone over KDE Connect (battery,
-  mirrored notifications with inline reply, ring / send file / messages / push clipboard),
+  notifications with inline reply, ring / send file / messages / push clipboard),
   Bluetooth device battery, and your Tailscale peers with copy-IP, SSH, Taildrop and
-  exit-node routing.
+  exit-node routing. Phone notifications stay in the panel instead of doubling up on
+  the desktop, with swipe-to-dismiss, clear-all, and a toggle to mirror them anyway.
+- **Privacy indicators** — bar indicators naming what is using the microphone and what
+  is using location, plus a quick toggle that actually masks GeoClue.
+- **Alt+Tab switcher** — a macOS-style row of app icons in MRU order, focusing on Alt
+  release, with an optional current-workspace-only filter.
+- **Wallpaper effects** — the effect set every custom ROM ships, reimplemented as GPU
+  shaders: grayscale, sepia, negative, posterize, pixelation, sharpen, chromatic
+  aberration and radial blur, with saturation, dim, vignette and grain on top, the
+  ROMs' Glass and Frosted blur styles, and a desktop / lock / both target. Plus
+  fluted glass, which no ROM has — real refraction through Snell's law with
+  dispersion and a highlight down each rib. Every filter previews live in Settings.
 - **Desktop widgets** — the [ii-p3drovfx](https://github.com/P3DROVFX/ii-p3drovfx) widget library vendored onto the
   background canvas, with a widget manager and colour-scheme picker in Settings.
-- **Fast Pair** — an Android-style popup for nearby Bluetooth devices.
-- **Screen snip preview** — an Android-style card after `Super+Shift+S`, with save,
-  annotate and discard.
-- **Launcher depth** — the wallpaper pushes back and everything behind the launcher dims.
-- **Dock hover** — app names on hover and a rebuilt window-preview card.
-- **Bar** — CPU / RAM / CPU-temp in the resources widget, and the ii-p3drovfx hover popups.
+- **Drop shelf and right-click menu** — drop anything that is not a wallpaper on the
+  desktop and it parks on a shelf at the drop point, to pile up and drag back out
+  one at a time; right-click for wallpaper actions, the shelf and settings.
 - **Wallpaper drop** — drop an image anywhere on the desktop to set it.
+- **Android quick toggles** — rebuilt as a real editable grid: drag to move, corner
+  handles to resize, tiles in four sizes with rich wifi and bluetooth cards, sliders
+  as grid tiles, and toggles spilling onto pages you swipe between.
+- **Dock** — a blurred cover-art media card with a cava wave, media controls that open
+  where the widget actually is, app names on hover, a rebuilt window-preview card,
+  click bounce, an accented app-menu button, and a pinned dock that gets out of the
+  way of fullscreen windows.
+- **Bar** — CPU / RAM / CPU-temp in the resources widget, the ii-p3drovfx hover popups,
+  and a keyboard-backlight button.
+- **Screen snip preview** — an Android-style card after `Super+Shift+S`, with save,
+  annotate and discard, in whichever corner and for however long you set.
+- **Screen translator** — OCR and translation with tesseract and translate-shell
+  instead of a billed Google Cloud key.
+- **LocalSend** — the protocol spoken directly in stdlib Python, so it works without
+  the abandoned `localsend-cli` package.
+- **Calendar** — Google Calendar events through iCal feeds, with event days dotted in
+  the sidebar and a click on any day opening GCal there.
+- **Automatic dark mode** — follows the night light schedule, which is now editable in
+  Settings.
+- **Countdown timer** — replaces the pomodoro; click the time and type minutes or MM:SS.
+- **To-do list in Markdown** — backed by a checklist file, so the same list opens as a
+  note in any editor or vault and edits flow both ways.
+- **Multi-device audio** — pick two or more outputs or inputs and they become one
+  virtual device, kept across reloads.
+- **Autostart** — launch apps at login from Settings, each on its own workspace, with a
+  delay between them.
+- **Hyprland settings page** — displays, tiling, appearance, input and animations edited
+  from the GUI, read live from the compositor, with a drag-to-arrange display canvas.
+- **Launcher depth** — the wallpaper pushes back and everything behind the launcher dims.
+- **Uptime pill** — a single-line badge in the sidebar wearing your user avatar, or any
+  image you point it at.
+- **Faster on integrated graphics** — the wallpaper effect chain bakes once and stops
+  re-rendering per frame, the lock blur bakes the same way, and desktop parallax moved
+  off the anchor solver: about 22 points of main thread back on a battery-clocked
+  TigerLake.
+- **~7.7k lines lighter** — a repo-wide over-engineering audit, applied.
+
+<div align="center">
+    <h2> on the list </h2>
+</div>
+
+Not built yet. No dates.
+
+- **VPN management** — on rightbar
+- **Icon and cursor themes** — pick them from Settings, like everything else.
+- **Lock screen customization** — layout, clock and widgets (also notificaions history like andorid).
+- **Floating window management** — tiling for the windows that aren't tiled.
+- **Lyrics** — word-by-word synced, in the media surfaces.
+- **Depth wallpaper** — the one ROM effect the shader set left out; it needs ML
+  subject segmentation.
+- **More desktop widgets.**
 
 <div align="center">
     <h2> installation </h2>
