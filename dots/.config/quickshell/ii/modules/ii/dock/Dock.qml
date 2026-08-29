@@ -130,7 +130,9 @@ Scope {
                 right: dock.dockEffectivePosition !== "left"
             }
 
-            exclusiveZone: dockRoot.pinnedEffective ? dockThickness : 0
+            // dockThickness already includes gapsOut on the inner side; hyprland
+            // adds its own gaps_out to the reserved edge, so reserve one less.
+            exclusiveZone: dockRoot.pinnedEffective ? dockThickness - Appearance.sizes.hyprlandGapsOut : 0
             WlrLayershell.namespace: "quickshell:dock"
             WlrLayershell.layer: WlrLayer.Overlay
             color: "transparent"
