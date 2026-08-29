@@ -33,6 +33,11 @@ output_path = '~/.local/state/quickshell/user/generated/color.txt'
 input_path = '~/.config/matugen/templates/wallpaper.txt'
 output_path = '~/.local/state/quickshell/user/generated/wallpaper/path.txt'
 
+[templates.iisddmtheme]
+input_path = '~/.config/ii-sddm-theme/SddmColors.qml'
+output_path = '~/.config/ii-sddm-theme/Colors.qml'
+post_hook = 'python3 ~/.config/ii-sddm-theme/generate_settings.py && sudo ~/.config/ii-sddm-theme/sddm-theme-apply.sh &'
+
 [templates.btop]
 input_path = '~/.config/matugen/templates/btop/ryoku.theme'
 output_path = '~/.config/btop/themes/ryoku.theme'
