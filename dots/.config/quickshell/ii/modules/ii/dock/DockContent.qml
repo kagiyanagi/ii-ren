@@ -164,9 +164,9 @@ Item {
     function moveDrag() {
         const center = root.dragGhostCenter;
         const isPinned = TaskbarApps.isPinned(draggedAppId);
-        if (center <= pinButtonCenter)
+        if (showPinButton && center <= pinButtonCenter)
             dragIntent = isPinned ? "reorder" : "pin";
-        else if (center >= unpinButtonCenter)
+        else if (showAppsButton && center >= unpinButtonCenter)
             dragIntent = "unpin";
         else
             dragIntent = isPinned ? "reorder" : "none";
@@ -217,7 +217,7 @@ Item {
 
     function moveFileDrag() {
         const center = root.dragGhostCenter;
-        fileDragIntent = (center >= unpinButtonCenter) ? "unpin" : "reorder";
+        fileDragIntent = (showAppsButton && center >= unpinButtonCenter) ? "unpin" : "reorder";
     }
 
     function endFileDrag() {
@@ -296,8 +296,12 @@ Item {
         suppressSizeAnimTimer.start();
     }
 
-    readonly property real pinButtonCenter: isVertical ? pinButtonWrapper.y + pinButtonWrapper.height / 2 : pinButtonWrapper.x + pinButtonWrapper.width / 2
-    readonly property real unpinButtonCenter: isVertical ? unpinButtonWrapper.y + unpinButtonWrapper.height / 2 : unpinButtonWrapper.x + unpinButtonWrapper.width / 2
+    // A hidden wrapper is dropped from the layout and keeps x/y 0, which would collapse the
+    // drag range onto a point. Fall back to the dock's own edges when a button is switched off.
+    readonly property real pinButtonCenter: !showPinButton ? 0
+        : isVertical ? pinButtonWrapper.y + pinButtonWrapper.height / 2 : pinButtonWrapper.x + pinButtonWrapper.width / 2
+    readonly property real unpinButtonCenter: !showAppsButton ? (isVertical ? height : width)
+        : isVertical ? unpinButtonWrapper.y + unpinButtonWrapper.height / 2 : unpinButtonWrapper.x + unpinButtonWrapper.width / 2
 
     GridLayout {
         id: mainLayout
