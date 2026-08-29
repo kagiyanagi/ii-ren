@@ -72,7 +72,12 @@ Scope {
             exclusiveZone: 0
             WlrLayershell.namespace: "quickshell:desktopMenu"
             WlrLayershell.layer: WlrLayer.Overlay
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+            // OnDemand never actually got the keyboard here -- the menu opens from
+            // a right click on the desktop, so nothing ever handed focus over and
+            // even Escape was dead. Grab it outright, the way a menu does, and give
+            // it straight back the moment the close starts so the next keystroke
+            // reaches the app rather than the card on its way out.
+            WlrLayershell.keyboardFocus: menuLoader.closing ? WlrKeyboardFocus.None : WlrKeyboardFocus.Exclusive
 
             anchors {
                 top: true
@@ -242,9 +247,12 @@ Scope {
                     spacing: 0
 
                     focus: true
+                    // Any key closes it, not just Escape: the keyboard belongs to
+                    // whatever was focused, so the first keystroke is the signal the
+                    // menu is done.
                     Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape)
-                            menuWindow.dismiss();
+                        menuWindow.dismiss();
+                        event.accepted = true;
                     }
 
                     Item {
