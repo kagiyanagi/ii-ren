@@ -22,11 +22,21 @@ Item {
     implicitWidth: wrapper.implicitWidth
     implicitHeight: wrapper.implicitHeight
 
+    // Seed from the layout entry so a rebuilt delegate already matches the config;
+    // otherwise it defaults to true and the widget writes `false` back on every
+    // rebuild, which re-evaluates the Repeater's model and rebuilds it again.
+    // toggleVisible() overwrites this imperatively on a real change.
+    visible: modelData?.visible !== false
+
     function toggleVisible(visibility) {
+        // This writes the layout back, and the layout is the Repeater's model, so
+        // an unconditional write rebuilds every delegate and calls us again.
+        // Callers (SysTray, timer, record/screenshare/privacy indicators) fire on
+        // every update, so only write on a real change.
+        if (visible === visibility) return;
         visible = visibility
-        if (barSection == 0) Config.options.bar.layouts.left[originalIndex].visible = visibility
-        else if (barSection == 1) Config.options.bar.layouts.center[originalIndex].visible = visibility
-        else if (barSection == 2) Config.options.bar.layouts.right[originalIndex].visible = visibility
+        const section = barSection == 0 ? Config.options.bar.layouts.left : barSection == 1 ? Config.options.bar.layouts.center : Config.options.bar.layouts.right;
+        if (section?.[originalIndex]) section[originalIndex].visible = visibility;
     }
 
     function toggleHighlight(highlight) {

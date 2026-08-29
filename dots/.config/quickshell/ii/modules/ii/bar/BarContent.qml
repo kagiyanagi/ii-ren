@@ -222,7 +222,7 @@ Item { // Bar content region
             id: rightRepeater
             model: Config.options.bar.layouts.right
             delegate: BarComponent {
-                list: rightRepeater.model
+                list: Config.options.bar.layouts.right
                 barSection: 2
             }
         }

@@ -109,7 +109,7 @@ Item { // Bar content region
             model: Config.options.bar.layouts.left
             delegate: Bar.BarComponent {
                 vertical: true
-                list: leftRepeater.model
+                list: Config.options.bar.layouts.left
                 barSection: 0
             }
         }
@@ -190,7 +190,7 @@ Item { // Bar content region
             model: Config.options.bar.layouts.right
             delegate: Bar.BarComponent {
                 vertical: true
-                list: rightRepeater.model
+                list: Config.options.bar.layouts.right
                 barSection: 2
             }
         }
