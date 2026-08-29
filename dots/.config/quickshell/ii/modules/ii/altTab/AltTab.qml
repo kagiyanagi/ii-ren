@@ -16,11 +16,16 @@ Scope {
     readonly property int tileSize: 92
     readonly property int iconSize: 58
     readonly property int tileSpacing: 4
+    // Short on purpose: a quick Alt+Tab is over before a 350ms spatial curve
+    // has finished, so the popup would never fully arrive.
+    readonly property int animDuration: Math.round(110 * Appearance.animMultiplier)
 
     property bool open: false
     property var windows: []
-    // ponytail: read once at startup, not on every Hyprland config reload.
+    // Read once at startup, which is only trustworthy because we always put the
+    // option back (including on shutdown) before the next startup reads it.
     property bool userNoWarps: false
+    property bool noWarpsActive: false
     property int selectedIndex: 0
     readonly property var selectedWindow: windows[selectedIndex] ?? null
 
@@ -36,9 +41,14 @@ Scope {
     // Hyprland warps the pointer to the focused window's center unless
     // cursor:no_warps is set, so flip it for the duration of the switch.
     function setNoWarps(value) {
-        if (!Config.options.altTab.keepCursorInPlace || root.userNoWarps) return;
+        if (value && (!Config.options.altTab.keepCursorInPlace || root.userNoWarps)) return;
+        if (value === root.noWarpsActive) return;
+        root.noWarpsActive = value;
         Quickshell.execDetached(["hyprctl", "eval", `hl.config({cursor = {no_warps = ${value}}})`]);
     }
+
+    // Leaving it on would poison the next startup's read of the user's own value.
+    Component.onDestruction: root.setNoWarps(false)
 
     function step(delta) {
         if (!Config.options.altTab.enable) return;
@@ -46,6 +56,9 @@ Scope {
             root.snapshot();
             if (root.windows.length === 0) return;
             root.selectedIndex = (delta > 0 ? 1 : root.windows.length - 1) % root.windows.length;
+            // A second switch inside the restore window would otherwise get
+            // the pointer warp back mid-flight.
+            restoreWarpsTimer.stop();
             root.setNoWarps(true);
             root.open = true;
             return;
@@ -65,7 +78,9 @@ Scope {
 
     Timer {
         id: restoreWarpsTimer
-        interval: 200
+        // Hyprland warps at the end of the workspace-change animation, not when
+        // the focus dispatch lands, so this has to outlast that animation.
+        interval: 600
         onTriggered: root.setNoWarps(false)
     }
 
@@ -127,12 +142,8 @@ Scope {
 
                 scale: root.open ? 1 : 0.92
                 opacity: root.open ? 1 : 0
-                Behavior on scale {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(card)
-                }
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(card)
-                }
+                Behavior on scale { AltTabAnim {} }
+                Behavior on opacity { AltTabAnim {} }
 
                 ColumnLayout {
                     id: layout
@@ -152,9 +163,7 @@ Scope {
                             color: Appearance.colors.colSecondaryContainer
                             visible: root.windows.length > 0
 
-                            Behavior on x {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
+                            Behavior on x { AltTabAnim {} }
                         }
 
                         Row {
@@ -205,6 +214,12 @@ Scope {
                 }
             }
         }
+    }
+
+    component AltTabAnim: NumberAnimation {
+        duration: root.animDuration
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
     }
 
     IpcHandler {

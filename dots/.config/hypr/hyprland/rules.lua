@@ -91,6 +91,7 @@ hl.layer_rule({ match = { namespace = "overview" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "anyrun" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "indicator.*" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "osk" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:altTab" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "hyprpicker" }, no_anim = true})
 
 hl.layer_rule({ match = { namespace = "noanim" }, no_anim = true})
