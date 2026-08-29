@@ -19,8 +19,14 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "quickshell:regionSelector"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Once the region is picked the window is nothing but a border marking what
+    // is being recorded, so it has to stop taking the pointer and the keyboard -
+    // otherwise the whole screen is dead until you press Escape.
+    WlrLayershell.keyboardFocus: root.postPhase ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+    mask: root.postPhase ? passthroughRegion : null
     exclusionMode: ExclusionMode.Ignore
+
+    Region { id: passthroughRegion } // Empty: every click goes to whatever is underneath
     anchors {
         left: true
         right: true
@@ -34,7 +40,25 @@ PanelWindow {
     property var action: RegionSelection.SnipAction.Copy
     property var selectionMode: RegionSelection.SelectionMode.RectCorners
     property var phase: RegionSelection.Phase.Select
+    readonly property bool postPhase: root.phase === RegionSelection.Phase.Post
     signal dismiss()
+
+    // The border belongs to the recording, so it goes when the recording does.
+    // Nothing else can close it now that Escape no longer reaches this window.
+    readonly property bool recordingActive: Persistent.states.screenRecord.active
+    onRecordingActiveChanged: {
+        if (root.postPhase && !root.recordingActive) root.dismiss();
+    }
+    onPostPhaseChanged: {
+        if (root.postPhase) recordingStartTimeout.restart();
+    }
+    Timer {
+        id: recordingStartTimeout
+        interval: 3000
+        // A recording that never started leaves no state change to react to, and
+        // a border with no way to dismiss it would sit there for the session.
+        onTriggered: if (root.postPhase && !root.recordingActive) root.dismiss()
+    }
     // Emitted instead of running the command here when the result should get an
     // Android-style preview popup. This window is destroyed on dismiss, so the
     // process has to be owned by RegionSelector, which outlives it.
@@ -214,7 +238,7 @@ PanelWindow {
     onPreparationDoneChanged: {
         if (!preparationDone) return;
         if (root.isRecording && root.recordingShouldStop) {
-            Quickshell.execDetached([Directories.recordScriptPath]);
+            Quickshell.execDetached([Directories.recordScriptPath, "--stop"]);
             root.dismiss();
             return;
         }

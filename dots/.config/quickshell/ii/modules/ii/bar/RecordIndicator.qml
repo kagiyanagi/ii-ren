@@ -43,7 +43,7 @@ MouseArea {
         colRipple: "transparent"
         
         onClicked: {
-            Quickshell.execDetached(Directories.recordScriptPath)
+            Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
         }
         StyledPopup {
             hoverTarget: indicator
@@ -178,7 +178,7 @@ MouseArea {
                 buttonRadius: Appearance.rounding.full
                 colBackground: Appearance.colors.colError
                 colBackgroundHover: Appearance.colors.colErrorHover
-                onClicked: Quickshell.execDetached([Directories.recordScriptPath])
+                onClicked: Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
                 contentItem: Item {
                     implicitWidth: stopRow.implicitWidth
                     implicitHeight: stopRow.implicitHeight

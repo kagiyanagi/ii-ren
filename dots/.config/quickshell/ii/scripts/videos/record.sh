@@ -61,7 +61,19 @@ stop_timer() {
 }
 
 
-trap stop_timer EXIT
+setactive() {
+    jq "$STATE_JSON_PATH = $1 | .screenRecord.paused = false" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+}
+
+# The timer subshell rewrites the whole state file every second, so it can
+# clobber an "active = false" written while it was mid-update. Killing it first
+# and clearing the flag last makes this process's word the final one.
+cleanup() {
+    stop_timer
+    setactive false
+}
+
+trap cleanup EXIT
 
 
 getdate() {
@@ -95,7 +107,7 @@ getactivemonitor() {
 
 updatestate() {
     local state_value=$1
-    jq "$STATE_JSON_PATH = $state_value | .screenRecord.paused = false" "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+    setactive "$state_value"
     if [[ "$state_value" == "true" ]]; then
         start_timer
     else
@@ -126,6 +138,20 @@ record() {
     wf-recorder "${args[@]}" "$@"
 }
 
+# A codec, pixel format or device the machine can't do makes wf-recorder quit
+# at once, and its stderr goes nowhere when launched from the shell.
+run_recorder() {
+    local errlog started rc
+    errlog=$(mktemp)
+    started=$SECONDS
+    record "$@" 2> "$errlog"
+    rc=$?
+    if (( rc != 0 && SECONDS - started < 3 )); then
+        notify-send "Recording failed" "$(tail -n 3 "$errlog")" -a 'Recorder' & disown
+    fi
+    rm -f "$errlog"
+}
+
 mkdir -p "$RECORDING_DIR"
 cd "$RECORDING_DIR" || exit
 
@@ -134,6 +160,7 @@ ARGS=("$@")
 MANUAL_REGION=""
 SOUND_FLAG=0
 FULLSCREEN_FLAG=0
+STOP_FLAG=0
 for ((i=0;i<${#ARGS[@]};i++)); do
     if [[ "${ARGS[i]}" == "--region" ]]; then
         if (( i+1 < ${#ARGS[@]} )); then
@@ -147,6 +174,8 @@ for ((i=0;i<${#ARGS[@]};i++)); do
         SOUND_FLAG=1
     elif [[ "${ARGS[i]}" == "--fullscreen" ]]; then
         FULLSCREEN_FLAG=1
+    elif [[ "${ARGS[i]}" == "--stop" ]]; then
+        STOP_FLAG=1
     fi
 done
 
@@ -155,7 +184,9 @@ case "$AUDIO_MODE" in
     always) SOUND_FLAG=1 ;;
 esac
 
-if pgrep wf-recorder > /dev/null; then
+# --stop always stops, even if wf-recorder is already on its way out: without it
+# a second click during that window would start a whole new recording.
+if [[ $STOP_FLAG -eq 1 ]] || pgrep wf-recorder > /dev/null; then
     notify-send "Recording Stopped" "Stopped" -a 'Recorder' &
     updatestate false
     # SIGCONT after: a paused (SIGSTOPped) wf-recorder only handles the TERM once resumed
@@ -164,7 +195,7 @@ else
     if [[ $FULLSCREEN_FLAG -eq 1 ]]; then
         notify-send "Starting recording" 'recording_'"$(getdate)"'.'"$CONTAINER" -a 'Recorder' & disown
         updatestate true
-        record
+        run_recorder
     else
         # If a manual region was provided via --region, use it; otherwise run slurp as before.
         if [[ -n "$MANUAL_REGION" ]]; then
@@ -185,7 +216,7 @@ else
 
         notify-send "Starting recording" 'recording_'"$(getdate)"'.'"$CONTAINER" -a 'Recorder' & disown
         updatestate true
-        record --geometry "$geometry"
+        run_recorder --geometry "$geometry"
     fi
 fi
 
