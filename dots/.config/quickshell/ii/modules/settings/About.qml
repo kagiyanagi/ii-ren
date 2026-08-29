@@ -149,8 +149,8 @@ ContentPage {
     }
 
     ContentSection {
-        icon: "folder_data"
-        title: Translation.tr("Dotfiles")
+        icon: "folder_special"
+        title: Translation.tr("Preset-Dots")
 
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
@@ -164,7 +164,74 @@ ContentPage {
             }
             ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
-                // spacing: 10
+                StyledText {
+                    text: Translation.tr("ii-vynx")
+                    font.pixelSize: Appearance.font.pixelSize.title
+                }
+                StyledText {
+                    text: "https://github.com/vaguesyntax/ii-vynx"
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    textFormat: Text.MarkdownText
+                    onLinkActivated: (link) => {
+                        Qt.openUrlExternally(link)
+                    }
+                    PointingHandLinkHover {}
+                }
+                StyledText {
+                    text: Translation.tr("By vaguesyntax")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                }
+            }
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            spacing: 5
+
+            RippleButtonWithIcon {
+                materialIcon: "auto_stories"
+                mainText: Translation.tr("Documentation")
+                onClicked: {
+                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/wiki")
+                }
+            }
+            RippleButtonWithIcon {
+                materialIcon: "bug_report"
+                mainText: Translation.tr("Known Issues")
+                onClicked: {
+                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/wiki/Known-Issues-and-Limitations")
+                }
+            }
+            RippleButtonWithIcon {
+                materialIcon: "adjust"
+                materialIconFill: false
+                mainText: Translation.tr("Issues")
+                onClicked: {
+                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/issues")
+                }
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "folder_data"
+        title: Translation.tr("Dotfiles")
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 20
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            MaterialSymbol {
+                Layout.alignment: Qt.AlignVCenter
+                text: "android"
+                iconSize: 80
+                fill: 1
+                color: "#3DDC84" // Android green, like the two real logos above it
+            }
+            ColumnLayout {
+                Layout.alignment: Qt.AlignVCenter
                 StyledText {
                     text: Translation.tr("ii-ren")
                     font.pixelSize: Appearance.font.pixelSize.title
@@ -179,7 +246,7 @@ ContentPage {
                     PointingHandLinkHover {}
                 }
                 StyledText {
-                    text: Translation.tr("A fork of ii-vynx by vaguesyntax")
+                    text: Translation.tr("A fork of ii-vynx")
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
                 }
@@ -199,20 +266,6 @@ ContentPage {
                 }
             }
             RippleButtonWithIcon {
-                materialIcon: "auto_stories"
-                mainText: Translation.tr("Documentation")
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/wiki")
-                }
-            }
-            RippleButtonWithIcon {
-                materialIcon: "bug_report"
-                mainText: Translation.tr("Known Issues")
-                onClicked: {
-                    Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx/wiki/Known-Issues-and-Limitations")
-                }
-            }
-            RippleButtonWithIcon {
                 materialIcon: "call_split"
                 materialIconFill: false
                 mainText: Translation.tr("Upstream: ii-vynx")
@@ -220,9 +273,6 @@ ContentPage {
                     Qt.openUrlExternally("https://github.com/vaguesyntax/ii-vynx")
                 }
             }
-            
-
-            
         }
     }
 }
