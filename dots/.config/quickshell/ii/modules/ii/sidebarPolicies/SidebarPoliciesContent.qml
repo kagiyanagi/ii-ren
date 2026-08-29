@@ -171,7 +171,14 @@ Item {
         // ticks per open, and they add up. Only the current tab is kept alive; a page is
         // built when you switch to it and dropped when you leave.
         component PageSlot: Loader {
-            asynchronous: true
+            // Synchronous on purpose. Incubating these pages crashes Qt 6.11 in
+            // QQmlConnections::connectSignalsToMethods about half of all launches --
+            // measured 5/8 with async, 0/8 without. Several pages below have a
+            // Connections whose target is not a live QObject during incubation
+            // (`parent`, a Repeater model, a plain JS object); fix those and this can
+            // go back to async. Costs little: `active` already means only the visible
+            // tab is ever built.
+            asynchronous: false
             active: SwipeView.isCurrentItem
         }
 
