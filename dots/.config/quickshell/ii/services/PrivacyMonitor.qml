@@ -31,6 +31,10 @@ Singleton {
     }
 
     readonly property var microphoneApps: root.micNodes.reduce((apps, node) => {
+        // Until the tracker binds a node its properties are empty, so every
+        // filter below would pass and the node would flash up as a microphone.
+        if (!node.ready)
+            return apps;
         const props = node.properties ?? {};
         // A monitor capture (cava, screen recorders) is not the microphone.
         if (props["stream.capture.sink"])
