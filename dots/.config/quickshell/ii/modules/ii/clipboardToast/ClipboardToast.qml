@@ -149,17 +149,35 @@ Scope {
         // that is what keeps the card clear of both without special casing either.
         exclusiveZone: 0
 
+        // Full height on purpose, like NotificationPopup and the pairing card: the
+        // card has to slide clear of a sidebar and of a notification stack, and
+        // changing a committed layer surface's margins does not reconfigure it - so
+        // the window stays put, is made big enough to cover every position the card
+        // can take, and the card moves inside it. The mask keeps the slack
+        // click-through.
         anchors {
-            top: root.atTop
-            bottom: !root.atTop
             left: !root.atRight
             right: root.atRight
+            top: true
+            bottom: true
         }
 
-        // The gutter goes on the card rather than the window, so the shadow has
-        // somewhere to spread on the two edges facing the screen corner.
-        implicitWidth: card.width + toastWindow.gutter + Appearance.sizes.elevationMargin
-        implicitHeight: card.height + toastWindow.gutter + Appearance.sizes.elevationMargin
+        // Slide inwards so a sidebar on this side can have the corner, and drift
+        // back out once it closes.
+        readonly property real sidebarInset: (root.atRight ? GlobalStates.effectiveRightOpen : GlobalStates.effectiveLeftOpen) ? Appearance.sizes.sidebarWidth : 0
+
+        // Notifications own the top right corner, so drop below them there rather
+        // than overlapping. Clamped so a tall stack cannot push the card off screen.
+        readonly property real notificationInset: {
+            if (!root.atTop || !root.atRight || GlobalStates.notificationPopupHeight <= 0)
+                return 0;
+            const room = toastWindow.height - card.height - toastWindow.gutter * 2;
+            return Math.max(0, Math.min(GlobalStates.notificationPopupHeight, room));
+        }
+
+        // Gutter to the screen edge, elevationMargin of slack on the far side for
+        // the shadow, plus the room the card needs to dodge a sidebar.
+        implicitWidth: card.width + toastWindow.gutter + Appearance.sizes.elevationMargin + Appearance.sizes.sidebarWidth
 
         // Only the two surfaces, so the empty corner above the pill stays
         // click-through.
@@ -198,8 +216,18 @@ Scope {
             // x/y rather than anchors: an anchor line is not cleared by assigning
             // undefined to it, so switching corners at runtime left the card
             // anchored to both sides at once and stretched it.
-            x: root.atRight ? toastWindow.width - card.width - toastWindow.gutter : toastWindow.gutter
-            y: root.atTop ? toastWindow.gutter : toastWindow.height - card.height - toastWindow.gutter
+            x: root.atRight ? toastWindow.width - card.width - toastWindow.gutter - toastWindow.sidebarInset : toastWindow.gutter + toastWindow.sidebarInset
+            y: root.atTop ? toastWindow.gutter + toastWindow.notificationInset : toastWindow.height - card.height - toastWindow.gutter
+
+            // Glides out of the way when a sidebar opens or a notification lands,
+            // rather than jumping. Position, so a spatial spec.
+            Behavior on x {
+                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+            }
+
+            Behavior on y {
+                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+            }
             // With nothing to act on, the pill goes and the card stands alone.
             implicitWidth: card.tileLeft + card.tileSize + (card.buttonCount === 0 ? 0 : card.gap + card.rowWidth + card.gap)
             implicitHeight: card.tileSize + card.tileBottomInset
