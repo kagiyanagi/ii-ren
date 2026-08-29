@@ -127,6 +127,48 @@ Item {
                     Layout.maximumWidth: content.width
                     spacing: 2
 
+                    // splitMarkdownBlocks() returns a fresh array of fresh objects, so
+                    // binding it straight to the streaming `text` destroyed and rebuilt
+                    // every segment delegate -- each code block re-highlighted -- on every
+                    // token, which is what made a long reply crawl. Re-split on a timer
+                    // that is left alone while it runs instead: a throttle, not a debounce,
+                    // since a debounce would show nothing until the stream paused.
+                    property var blocks: []
+
+                    function resplit() {
+                        partDelegate.blocks = partDelegate.modelData?.kind === "text"
+                            ? StringUtils.splitMarkdownBlocks(partDelegate.modelData.text)
+                            : [];
+                    }
+
+                    Component.onCompleted: partDelegate.resplit()
+
+                    Timer {
+                        id: resplitThrottle
+                        interval: 60
+                        onTriggered: partDelegate.resplit()
+                    }
+
+                    Connections {
+                        target: partDelegate.modelData
+                        function onTextChanged() {
+                            if (!resplitThrottle.running)
+                                resplitThrottle.start();
+                        }
+                    }
+
+                    // The last delta and `done` can arrive in either order, so a finished
+                    // turn always gets one final split at the full text.
+                    Connections {
+                        target: root.messageData
+                        function onDoneChanged() {
+                            if (root.messageData?.done) {
+                                resplitThrottle.stop();
+                                partDelegate.resplit();
+                            }
+                        }
+                    }
+
                     ToolActivityRow {
                         visible: partDelegate.modelData?.kind === "tool"
                         Layout.fillWidth: true
@@ -134,7 +176,7 @@ Item {
                     }
 
                     Repeater { // Markdown segments within one text part
-                        model: partDelegate.modelData?.kind === "text" ? StringUtils.splitMarkdownBlocks(partDelegate.modelData.text) : []
+                        model: partDelegate.blocks
 
                         delegate: Loader {
                             id: segmentLoader

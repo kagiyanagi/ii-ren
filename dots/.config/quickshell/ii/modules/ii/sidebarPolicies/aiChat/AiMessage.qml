@@ -20,7 +20,39 @@ Rectangle {
     property bool renderMarkdown: true
     property bool editing: false
 
-    property list<var> messageBlocks: StringUtils.splitMarkdownBlocks(root.messageData?.content)
+    // splitMarkdownBlocks() hands back a fresh array every call, so binding this
+    // straight to `content` rebuilt every segment delegate on every streamed token.
+    // Re-split on a throttle instead -- same fix as ConduitTurn.qml.
+    property list<var> messageBlocks: []
+
+    function resplit() {
+        root.messageBlocks = StringUtils.splitMarkdownBlocks(root.messageData?.content);
+    }
+
+    Component.onCompleted: root.resplit()
+    onMessageDataChanged: root.resplit()
+
+    Timer {
+        id: resplitThrottle
+        interval: 60
+        onTriggered: root.resplit()
+    }
+
+    Connections {
+        target: root.messageData
+        function onContentChanged() {
+            if (!resplitThrottle.running)
+                resplitThrottle.start();
+        }
+        // The last delta and `done` can arrive in either order, so a finished
+        // message always gets one final split at the full text.
+        function onDoneChanged() {
+            if (root.messageData?.done) {
+                resplitThrottle.stop();
+                root.resplit();
+            }
+        }
+    }
 
     anchors.left: parent?.left
     anchors.right: parent?.right
