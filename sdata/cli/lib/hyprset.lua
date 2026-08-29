@@ -151,7 +151,7 @@ local function action_set_animation(anim_name, style)
         end
     end
     if not found then
-        table.insert(lines, 'hl.animation({leaf="' .. anim_name .. '", enabled=true, speed=7, bezier="menu_decel", style="' .. style .. '"})')
+        table.insert(lines, 'hl.animation({leaf="' .. anim_name .. '", enabled=true, speed=7, spring="m3DefaultSpatial", style="' .. style .. '"})')
     end
     write_lines(OVERRIDES_PATH, lines)
     print("Set animation " .. anim_name .. " = " .. style)

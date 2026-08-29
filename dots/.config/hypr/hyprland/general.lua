@@ -115,82 +115,64 @@ hl.config({
     },
 })
 -- Curves
-hl.curve("expressiveFastSpatial", {
-    type = "bezier",
-    points = {{0.42, 1.67}, {0.21, 0.90}}
-})
-hl.curve("expressiveSlowSpatial", {
-    type = "bezier",
-    points = {{0.39, 1.29}, {0.35, 0.98}}
-})
-hl.curve("expressiveDefaultSpatial", {
-    type = "bezier",
-    points = {{0.38, 1.21}, {0.22, 1.00}}
-})
-hl.curve("emphasizedDecel", {
-    type = "bezier",
-    points = {{0.05, 0.7}, {0.1, 1}}
-})
-hl.curve("emphasizedAccel", {
-    type = "bezier",
-    points = {{0.3, 0}, {0.8, 0.15}}
-})
-hl.curve("standardDecel", {
-    type = "bezier",
-    points = {{0, 0}, {0, 1}}
-})
+-- Material 3 Expressive motion physics (Android 16). These are native Hyprland springs,
+-- so `speed` is ignored for them -- duration falls out of the physics.
+--   stiffness = md.sys.motion.spring.<speed>.<kind>.stiffness (verbatim from AOSP)
+--   dampening = 2 * dampingRatio * sqrt(stiffness * mass)
+-- Spatial springs (position/size/scale) overshoot; effects springs (opacity/color) never do.
+hl.curve("m3FastSpatial",    { type = "spring", mass = 1, stiffness = 800,  dampening = 33.9411 })  -- z 0.6, ~420ms, 9.5% overshoot
+hl.curve("m3DefaultSpatial", { type = "spring", mass = 1, stiffness = 380,  dampening = 31.1897 })  -- z 0.8, ~530ms, 1.5% overshoot
+hl.curve("m3SlowSpatial",    { type = "spring", mass = 1, stiffness = 200,  dampening = 22.6274 })  -- z 0.8, ~720ms, 1.5% overshoot
+hl.curve("m3FastEffects",    { type = "spring", mass = 1, stiffness = 3800, dampening = 123.2883 }) -- z 1.0, ~220ms
+hl.curve("m3DefaultEffects", { type = "spring", mass = 1, stiffness = 1600, dampening = 80 })       -- z 1.0, ~330ms
+hl.curve("m3SlowEffects",    { type = "spring", mass = 1, stiffness = 800,  dampening = 56.5685 })  -- z 1.0, ~450ms
+-- Kept for `hyprctl keyword animation` callers (Lock.qml, hyprset), which can only name a bezier.
 hl.curve("menu_decel", {
     type = "bezier",
     points = {{0.1, 1}, {0, 1}}
 })
-hl.curve("menu_accel", {
-    type = "bezier",
-    points = {{0.52, 0.03}, {0.72, 0.08}}
-})
-hl.curve("stall", {
-    type = "bezier",
-    points = {{1, -0.1}, {0.7, 0.85}}
-})
 -- Configs
+-- Enters move on spatial springs (scale/slide with overshoot), exits and every fade on
+-- effects springs (critically damped) -- same split Android 16 uses.
 -- windows
 hl.animation({
     leaf = "windowsIn",
     enabled = true,
     speed = 3,
-    bezier = "emphasizedDecel",
+    spring = "m3DefaultSpatial",
     style = "popin 80%"
 })
 hl.animation({
     leaf = "fadeIn",
     enabled = true,
     speed = 3,
-    bezier = "emphasizedDecel"
+    spring = "m3DefaultEffects"
 })
 hl.animation({
     leaf = "windowsOut",
     enabled = true,
     speed = 2,
-    bezier = "emphasizedDecel",
+    spring = "m3DefaultEffects",
     style = "popin 90%"
 })
 hl.animation({
     leaf = "fadeOut",
     enabled = true,
     speed = 2,
-    bezier = "emphasizedDecel"
+    spring = "m3FastEffects"
 })
 hl.animation({
     leaf = "windowsMove",
     enabled = true,
     speed = 3,
-    bezier = "emphasizedDecel",
+    spring = "m3DefaultSpatial",
     style = "slide"
 })
 hl.animation({
     leaf = "border",
     enabled = true,
     speed = 10,
-    bezier = "emphasizedDecel"
+    spring = "m3SlowEffects"
 })
 
 -- layers
@@ -198,14 +180,14 @@ hl.animation({
     leaf = "layersIn",
     enabled = true,
     speed = 2.7,
-    bezier = "emphasizedDecel",
+    spring = "m3DefaultSpatial",
     style = "popin 93%"
 })
 hl.animation({
     leaf = "layersOut",
     enabled = true,
     speed = 2.4,
-    bezier = "menu_accel",
+    spring = "m3DefaultEffects",
     style = "popin 94%"
 })
 -- fade
@@ -213,20 +195,20 @@ hl.animation({
     leaf = "fadeLayersIn",
     enabled = true,
     speed = 0.5,
-    bezier = "menu_decel"
+    spring = "m3DefaultEffects"
 })
 hl.animation({
     leaf = "fadeLayersOut",
     enabled = true,
     speed = 2.7,
-    bezier = "stall"
+    spring = "m3DefaultEffects"
 })
 -- workspaces
 hl.animation({
     leaf = "workspaces",
     enabled = true,
     speed = 7,
-    bezier = "menu_decel",
+    spring = "m3DefaultSpatial",
     style = "slide"
 })
 -- specialWorkspace
@@ -234,14 +216,14 @@ hl.animation({
     leaf = "specialWorkspaceIn",
     enabled = true,
     speed = 2.8,
-    bezier = "emphasizedDecel",
+    spring = "m3DefaultSpatial",
     style = "slidevert"
 })
 hl.animation({
     leaf = "specialWorkspaceOut",
     enabled = true,
     speed = 1.2,
-    bezier = "emphasizedAccel",
+    spring = "m3FastEffects",
     style = "slidevert"
 })
 -- zoom
@@ -249,7 +231,7 @@ hl.animation({
     leaf = "zoomFactor",
     enabled = true,
     speed = 3,
-    bezier = "standardDecel"
+    spring = "m3DefaultSpatial"
 })
 
 hl.config({
