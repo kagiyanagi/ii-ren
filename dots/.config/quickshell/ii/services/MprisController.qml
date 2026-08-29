@@ -57,13 +57,30 @@ Singleton {
             root.hasActivePlasmaIntegration = (exitCode === 0);
         }
     }
+	// YouTube's inline hover previews open a media session of their own, so the plasma bus gets
+	// hijacked by whatever thumbnail the cursor grazed and keeps its title and art afterwards.
+	// Real playback is always on a video page, so a session sitting on a listing page is a preview.
+	function isHoverPreview(player) {
+		const url = player?.metadata?.["xesam:url"] ?? "";
+		return /^https?:\/\/(www\.|m\.)?youtube\.com\//.test(url) && !/\/(watch|shorts|embed)/.test(url);
+	}
+
+	// While a preview holds the plasma bus, the browser's own bus is the one still naming the
+	// track being listened to, so it must stop being filtered away as a duplicate.
+	readonly property bool plasmaBusUsable: root.hasActivePlasmaIntegration
+		&& root.allPlayers.some(player => player.dbusName?.startsWith('org.mpris.MediaPlayer2.plasma-browser-integration') && !root.isHoverPreview(player));
+
 	function isRealPlayer(player) {
+        // A preview is junk on any bus, not a duplicate, so it goes regardless of the setting.
+        if (root.isHoverPreview(player)) {
+            return false;
+        }
         if (!Config.options.media.filterDuplicatePlayers) {
             return true;
         }
         return (
             // Remove native browser buses only if plasma-browser-integration is actually active on D-Bus
-            !(root.hasActivePlasmaIntegration && player.dbusName.startsWith('org.mpris.MediaPlayer2.firefox')) && !(root.hasActivePlasmaIntegration && player.dbusName.startsWith('org.mpris.MediaPlayer2.chromium')) &&
+            !(root.plasmaBusUsable && player.dbusName.startsWith('org.mpris.MediaPlayer2.firefox')) && !(root.plasmaBusUsable && player.dbusName.startsWith('org.mpris.MediaPlayer2.chromium')) &&
             // playerctld just copies other buses and we don't need duplicates
             !player.dbusName?.startsWith('org.mpris.MediaPlayer2.playerctld') &&
             // Non-instance mpd bus
