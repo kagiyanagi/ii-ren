@@ -138,6 +138,11 @@ Scope {
                     onTriggered: {
                         if (!grab.canBeActive)
                             return;
+                        // Persistent shell windows (bar, dock, osk) stay clickable
+                        // instead of the first click just being eaten to close the
+                        // overview. Set here, not as a binding: GlobalFocusGrab
+                        // mutates the list in place and never notifies.
+                        grab.windows = [root, ...GlobalFocusGrab.persistent];
                         grab.active = GlobalStates.overviewOpen;
                     }
                 }

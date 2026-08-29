@@ -175,6 +175,11 @@ Scope {
                 onTriggered: dockRoot.positionChanging = false
             }
 
+            // Make the dock clickable while another panel holds a focus grab
+            // (overview, sidebars) instead of the first click just dismissing them.
+            Component.onCompleted: GlobalFocusGrab.addPersistent(dockRoot)
+            Component.onDestruction: GlobalFocusGrab.removePersistent(dockRoot)
+
             HyprlandFocusGrab {
                 id: dragFocusGrab
                 active: dockLoader.activeAsync && (dockLoader.item?.dragState ?? "idle") !== "idle"
