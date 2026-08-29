@@ -270,7 +270,9 @@ hl.bind("SUPER + ALT + Equal",
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Misc: Lock" })
 hl.bind("SUPER + SHIFT + L", hl.dsp.exec_cmd("systemctl suspend || loginctl suspend"),
     { locked = true, description = "Misc: Suspend system" })                                                                                   -- Sleep
--- hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("systemctl suspend || loginctl suspend"), {locked = true} ) -- # [hidden] Suspend when laptop lid is closed, uncomment if for whatever reason it's not the default behavior
+-- Closing the lid only blanks the screen - no suspend, no lock. Opening it wakes the screen back up.
+hl.bind("switch:on:Lid Switch", hl.dsp.dpms("off"), { locked = true })                                     -- # [hidden] Screen off on lid close
+hl.bind("switch:off:Lid Switch", hl.dsp.dpms("on"), { locked = true })                                     -- # [hidden] Screen on on lid open
 
 hl.bind("CTRL + SHIFT + ALT + SUPER + Delete", hl.dsp.exec_cmd("systemctl poweroff || loginctl poweroff"),
     { description = "Misc: Shutdown" })                                                                                                       -- # [hidden] Power off
