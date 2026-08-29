@@ -9,7 +9,18 @@ MouseArea {
     id: indicator
     property bool vertical: false
 
-    readonly property var entries: PrivacyMonitor.entries
+    // Held one step behind the service: the chips have to stay on screen while
+    // the pill closes over them, or the exit is just a blank box shrinking.
+    property var entries: []
+    readonly property bool active: PrivacyMonitor.entries.length > 0
+
+    Connections {
+        target: PrivacyMonitor
+        function onEntriesChanged() {
+            if (PrivacyMonitor.entries.length > 0)
+                indicator.entries = PrivacyMonitor.entries;
+        }
+    }
     readonly property int chipSize: 24
 
     // Fixed like Android's own chip: green for what is recording you, blue for
@@ -30,16 +41,49 @@ MouseArea {
     readonly property int chipPadding: 4
 
     hoverEnabled: true
+    clip: true
     // Sized off the layout, not off the pill: the pill fills this item, so
     // taking its size back would be a binding loop.
-    implicitWidth: contentLayout.implicitWidth + indicator.chipPadding * 2
+    implicitWidth: indicator.active ? contentLayout.implicitWidth + indicator.chipPadding * 2 : 0
     implicitHeight: contentLayout.implicitHeight + indicator.chipPadding * 2
+    opacity: indicator.active ? 1 : 0
 
-    Component.onCompleted: indicator.updateVisibility()
-    onEntriesChanged: indicator.updateVisibility()
+    // The pill widens out of nothing and snaps back shut, so it can't just be
+    // shown and hidden: stay around until the closing animation lands on zero.
+    Behavior on implicitWidth {
+        animation: indicator.transitionAnimation.createObject(indicator)
+    }
+    Behavior on opacity {
+        animation: indicator.transitionAnimation.createObject(indicator)
+    }
 
-    function updateVisibility() {
-        rootItem.toggleVisible(indicator.entries.length > 0);
+    readonly property Component transitionAnimation: Component {
+        NumberAnimation {
+            // Springy expand on the way in; the exit accelerates away instead,
+            // since the effects curves front-load so hard the collapse was over
+            // in ~70ms of its 200.
+            duration: indicator.active ? Appearance.animation.elementMoveEnter.duration : 200
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: indicator.active ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animationCurves.emphasizedAccel
+        }
+    }
+
+    // toggleVisible writes the bar layout back to disk, so only call it on a
+    // real change.
+    function setVisible(shown) {
+        if (rootItem.visible !== shown)
+            rootItem.toggleVisible(shown);
+    }
+
+    Component.onCompleted: {
+        indicator.entries = PrivacyMonitor.entries;
+        indicator.setVisible(indicator.active);
+    }
+    onActiveChanged: if (indicator.active)
+        indicator.setVisible(true)
+    onImplicitWidthChanged: if (!indicator.active && indicator.implicitWidth === 0) {
+        indicator.setVisible(false);
+        indicator.entries = [];
     }
 
     function iconFor(kind) {
@@ -87,11 +131,22 @@ MouseArea {
         Repeater {
             model: indicator.entries
             delegate: Rectangle {
+                id: chip
                 required property var modelData
                 implicitWidth: indicator.chipSize
                 implicitHeight: indicator.chipSize
                 radius: Appearance.rounding.full
                 color: indicator.chipColors[modelData.kind][0]
+
+                // Each sensor pops in on its own, so a second one lighting up
+                // in an open pill still reads as an event, and they shrink
+                // away together as the pill closes over them.
+                property bool grown: false
+                Component.onCompleted: chip.grown = true
+                scale: (chip.grown && indicator.active) ? 1 : 0
+                Behavior on scale {
+                    animation: indicator.transitionAnimation.createObject(chip)
+                }
 
                 MaterialSymbol {
                     anchors.centerIn: parent
