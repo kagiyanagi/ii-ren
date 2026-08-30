@@ -9,6 +9,12 @@ RippleButton {
     property string shapeString: ""  
     property string labelText: ""
     property bool isDestructive: false
+    // Defaults are the dock menus' dense rows; the desktop menu overrides them
+    // for the launcher popup's roomier ones.
+    property real contentSpacing: 6
+    property real sidePadding: 2
+    property real symbolSize: 18
+    property real fontSize: Appearance.font.pixelSize.small
     signal triggered()
 
     implicitHeight: 35
@@ -21,12 +27,12 @@ RippleButton {
     readonly property color contentColor: isDestructive ? Appearance.colors.colError : Appearance.colors.colOnLayer0
 
     contentItem: RowLayout {
-        spacing: 6
+        spacing: root.contentSpacing
         anchors {
             left: parent.left
             right: parent.right
-            leftMargin: 2
-            rightMargin: 2
+            leftMargin: root.sidePadding
+            rightMargin: root.sidePadding
             verticalCenter: parent.verticalCenter
         }
 
@@ -35,7 +41,7 @@ RippleButton {
             visible: active
             sourceComponent: MaterialShape {
                 shapeString: root.shapeString
-                implicitSize: 18
+                implicitSize: root.symbolSize
                 color: root.contentColor
             }
         }
@@ -43,7 +49,7 @@ RippleButton {
         MaterialSymbol {
             visible: root.symbolName !== "" && root.shapeString === ""
             text: root.symbolName
-            iconSize: 18
+            iconSize: root.symbolSize
             color: root.contentColor
         }
 
@@ -51,7 +57,7 @@ RippleButton {
             text: root.labelText
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignLeft
-            font.pixelSize: Appearance.font.pixelSize.small
+            font.pixelSize: root.fontSize
             color: root.contentColor
         }
     }

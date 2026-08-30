@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 // ponytail: DockMenuButton is a generic icon + label menu row with nothing dock
 // specific in it. Move it to common/widgets if a third menu wants it.
 import qs.modules.ii.dock
@@ -114,9 +115,19 @@ Scope {
                 x: Math.max(gutter, Math.min(GlobalStates.desktopMenuX, menuWindow.width - width - gutter))
                 y: Math.max(gutter, Math.min(GlobalStates.desktopMenuY, menuWindow.height - height - gutter))
 
-                implicitWidth: 280
-                implicitHeight: menuColumn.implicitHeight + 2 * menuColumn.anchors.margins
-                radius: Appearance.rounding.verylarge
+                // Launcher3 stacks its rows with popup_margin 2dp between them and
+                // the big radius only at the ends of the stack; bg_popup_item is
+                // 216dp x 52dp, so keep roughly that proportion. Unlike the
+                // launcher, the gaps show a card rather than the wallpaper.
+                readonly property real innerRadius: Appearance.rounding.unsharpenmore
+                // Ends of the stack, inset inside the card, so smaller than the
+                // card's own corner.
+                readonly property real outerRadius: Appearance.rounding.small
+                readonly property real padding: 8
+
+                implicitWidth: 244 + 2 * padding
+                implicitHeight: menuColumn.implicitHeight + 2 * padding
+                radius: Appearance.rounding.large
                 color: Appearance.m3colors.m3surfaceContainer
 
                 opacity: 0
@@ -243,8 +254,8 @@ Scope {
                     }
 
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 0
+                    anchors.margins: menuCard.padding
+                    spacing: 2
 
                     focus: true
                     // Any key closes it, not just Escape: the keyboard belongs to
@@ -260,7 +271,6 @@ Scope {
 
                         Layout.fillWidth: true
                         Layout.preferredHeight: 108
-                        Layout.bottomMargin: 8
                         visible: wallpaperStrip.count > 0
 
                         // The viewport cuts the tiles at each end square, so round
@@ -270,8 +280,18 @@ Scope {
                             maskSource: Rectangle {
                                 width: stripViewport.width
                                 height: stripViewport.height
-                                radius: Appearance.rounding.normal
+                                topLeftRadius: menuCard.outerRadius
+                                topRightRadius: menuCard.outerRadius
+                                bottomLeftRadius: menuCard.innerRadius
+                                bottomRightRadius: menuCard.innerRadius
                             }
+                        }
+
+                        // Backs the strip so the edge fade has something to fade
+                        // into, now that there is no card behind it.
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Appearance.m3colors.m3surfaceContainer
                         }
 
                         ListView {
@@ -426,7 +446,7 @@ Scope {
                             // It covers the tiles, so it owns the strip's cursor as
                             // well: a MouseArea claims the cursor whether or not it
                             // sets a shape, and a tile-level one is never seen.
-                            cursorShape: wallpaperStrip.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                            cursorShape: wallpaperStrip.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                             onWheel: event => {
                                 const angle = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
                                 const scrolling = Config?.options.interactions.scrolling;
@@ -444,7 +464,21 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
-                        implicitHeight: 44
+                        // Launcher3 popup rows: bg_popup_item_height 52dp,
+                        // system_shortcut_icon_size 20dp, margin_start 16dp,
+                        // deep_shortcut_drawable_padding 16dp between the two,
+                        // each row its own surface with popup_margin 2dp between.
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        topLeftRadius: stripViewport.visible ? menuCard.innerRadius : menuCard.outerRadius
+                        topRightRadius: topLeftRadius
                         symbolName: "wallpaper"
                         labelText: Translation.tr("Change wallpaper")
                         onTriggered: {
@@ -455,7 +489,19 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
-                        implicitHeight: 44
+                        // Launcher3 popup rows: bg_popup_item_height 52dp,
+                        // system_shortcut_icon_size 20dp, margin_start 16dp,
+                        // deep_shortcut_drawable_padding 16dp between the two,
+                        // each row its own surface with popup_margin 2dp between.
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "shuffle"
                         labelText: Translation.tr("Random wallpaper")
                         onTriggered: {
@@ -466,7 +512,19 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
-                        implicitHeight: 44
+                        // Launcher3 popup rows: bg_popup_item_height 52dp,
+                        // system_shortcut_icon_size 20dp, margin_start 16dp,
+                        // deep_shortcut_drawable_padding 16dp between the two,
+                        // each row its own surface with popup_margin 2dp between.
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "folder_open"
                         labelText: Translation.tr("Open wallpaper file...")
                         onTriggered: {
@@ -477,7 +535,19 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
-                        implicitHeight: 44
+                        // Launcher3 popup rows: bg_popup_item_height 52dp,
+                        // system_shortcut_icon_size 20dp, margin_start 16dp,
+                        // deep_shortcut_drawable_padding 16dp between the two,
+                        // each row its own surface with popup_margin 2dp between.
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "stacks"
                         labelText: DropShelf.items.length > 0
                             ? Translation.tr("Drop shelf (%1)").arg(DropShelf.items.length)
@@ -494,7 +564,21 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
-                        implicitHeight: 44
+                        // Launcher3 popup rows: bg_popup_item_height 52dp,
+                        // system_shortcut_icon_size 20dp, margin_start 16dp,
+                        // deep_shortcut_drawable_padding 16dp between the two,
+                        // each row its own surface with popup_margin 2dp between.
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        bottomLeftRadius: menuCard.outerRadius
+                        bottomRightRadius: bottomLeftRadius
                         symbolName: "settings"
                         labelText: Translation.tr("Settings")
                         onTriggered: {
