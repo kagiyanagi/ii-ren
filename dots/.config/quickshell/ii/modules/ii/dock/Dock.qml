@@ -104,6 +104,7 @@ Scope {
                     || (dockMouseArea.containsMouse || graceTimer.running)
                     || (dockLoader.item?.requestDockShow ?? false)
                     || (Config.options?.dock?.revealOnEmptyWorkspace && workspaceEmpty)
+                    || (!GlobalStates.barMediaPresent && GlobalStates.mediaControlsOpen && (Config.options?.dock?.enableMediaWidget ?? false))
                 if (reveal !== shouldReveal)
                     reveal = shouldReveal
             }
@@ -180,6 +181,12 @@ Scope {
                     dockRoot.positionChanging = true
                     positionChangeTimer.restart()
                 }
+            }
+
+            Connections {
+                target: GlobalStates
+                function onMediaControlsOpenChanged() { dockRoot.updateReveal() }
+                function onBarMediaPresentChanged() { dockRoot.updateReveal() }
             }
 
             Timer {

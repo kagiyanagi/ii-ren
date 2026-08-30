@@ -71,7 +71,7 @@ Scope {
 
     Loader {
         id: mediaControlsLoader
-        active: GlobalStates.mediaControlsOpen
+        active: GlobalStates.mediaControlsOpen && (!GlobalStates.dockMediaPresent || GlobalStates.barMediaPresent)
         onActiveChanged: {
             if (!mediaControlsLoader.active && root.realPlayers.length === 0) {
                 GlobalStates.mediaControlsOpen = false;
@@ -103,7 +103,7 @@ Scope {
             }
             margins {
                 top: {
-                    if (rect.width === 0) return 0;
+                    if (rect.width === 0) return barThickness + Appearance.sizes.hyprlandGapsOut;
                     if (Config.options.bar.vertical) {
                         let targetY = rect.y + (rect.height / 2) - (panelWindow.implicitHeight / 2);
                         return Math.max(0, Math.min(targetY, screen.height - panelWindow.implicitHeight));
@@ -116,7 +116,7 @@ Scope {
                     }
                 }
                 left: {
-                    if (rect.width === 0) return 0;
+                    if (rect.width === 0) return Math.max(0, (screen.width - panelWindow.implicitWidth) / 2);
                     if (Config.options.bar.vertical) {
                         if (!Config.options.bar.bottom) {
                             return barThickness;
@@ -223,17 +223,17 @@ Scope {
         target: "mediaControls"
 
         function toggle(): void {
-            mediaControlsLoader.active = !mediaControlsLoader.active;
-            if (mediaControlsLoader.active)
+            GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
+            if (GlobalStates.mediaControlsOpen)
                 Notifications.timeoutAll();
         }
 
         function close(): void {
-            mediaControlsLoader.active = false;
+            GlobalStates.mediaControlsOpen = false;
         }
 
         function open(): void {
-            mediaControlsLoader.active = true;
+            GlobalStates.mediaControlsOpen = true;
             Notifications.timeoutAll();
         }
     }

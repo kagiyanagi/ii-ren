@@ -26,6 +26,27 @@ MouseArea {
         onTriggered: activePlayer.positionChanged()
     }
 
+    Component.onCompleted: {
+        GlobalStates.barMediaCount++;
+    }
+    Component.onDestruction: {
+        GlobalStates.barMediaCount = Math.max(0, GlobalStates.barMediaCount - 1);
+    }
+
+    function updatePopupRect() {
+        var globalPos = root.mapToItem(null, 0, 0);
+        Persistent.states.media.popupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
+    }
+
+    Connections {
+        target: GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (GlobalStates.mediaControlsOpen) {
+                root.updatePopupRect();
+            }
+        }
+    }
+
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
@@ -37,8 +58,7 @@ MouseArea {
         } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
             activePlayer.next();
         } else if (event.button === Qt.LeftButton) {
-            var globalPos = root.mapToItem(null, 0, 0);
-            Persistent.states.media.popupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
+            root.updatePopupRect();
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
         }
     }

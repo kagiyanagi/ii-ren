@@ -41,7 +41,25 @@ Item {
     }
 
     Component.onCompleted: {
-        LyricsService.initiliazeLyrics()
+        LyricsService.initiliazeLyrics();
+        GlobalStates.barMediaCount++;
+    }
+    Component.onDestruction: {
+        GlobalStates.barMediaCount = Math.max(0, GlobalStates.barMediaCount - 1);
+    }
+
+    function updatePopupRect() {
+        var globalPos = root.mapToItem(null, 0, 0);
+        Persistent.states.media.popupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
+    }
+
+    Connections {
+        target: GlobalStates
+        function onMediaControlsOpenChanged() {
+            if (GlobalStates.mediaControlsOpen) {
+                root.updatePopupRect();
+            }
+        }
     }
 
     readonly property string artSource: MprisController.artUrlFor(activePlayer)

@@ -33,6 +33,17 @@ Singleton {
     property bool barOpen: true
     property bool crosshairOpen: false
     property bool mediaControlsOpen: false
+    property int barMediaCount: 0
+    property int dockMediaCount: 0
+    readonly property bool barMediaConfigured: {
+        if (!Config.ready || !Config.options?.bar?.layouts) return false;
+        const l = Config.options.bar.layouts;
+        const hasPlayer = list => (list || []).some(item => item?.id === "music_player" && item?.visible !== false);
+        return (hasPlayer(l.left) || hasPlayer(l.center) || hasPlayer(l.right)) && root.barOpen;
+    }
+    readonly property bool barMediaPresent: root.barOpen && (barMediaConfigured || barMediaCount > 0)
+    readonly property bool dockMediaConfigured: (Config.options?.dock?.enable ?? false) && (Config.options?.dock?.enableMediaWidget ?? false)
+    readonly property bool dockMediaPresent: (Config.options?.dock?.enable ?? false) && (dockMediaConfigured || dockMediaCount > 0)
     property bool osdBrightnessOpen: false
     property bool osdVolumeOpen: false
     property bool oskOpen: false

@@ -84,7 +84,19 @@ Item {
         onClicked: mouse => {
             if (mouse.button === Qt.BackButton) root.player?.previous();
             else if (mouse.button === Qt.ForwardButton) root.player?.next();
-            else if (mouse.button === Qt.LeftButton && !root.popupOnHover) root.popupOpen = !root.popupOpen;
+            else if (mouse.button === Qt.LeftButton && !root.popupOnHover) {
+                if (root.popupShown) {
+                    root.popupOpen = false;
+                    if (root.shouldOpenFromShortcut) {
+                        GlobalStates.mediaControlsOpen = false;
+                    }
+                } else {
+                    root.popupOpen = true;
+                    if (!GlobalStates.barMediaPresent) {
+                        GlobalStates.mediaControlsOpen = true;
+                    }
+                }
+            }
             else root.player?.togglePlaying();
         }
     }
@@ -97,16 +109,56 @@ Item {
     property bool popupOpen: false
     property bool popupShown: false
     readonly property bool popupHovered: popupHover.hovered
-    readonly property bool popupShouldShow: !!root.player && (root.popupOnHover ? (root.mediaHovered || root.popupHovered) : root.popupOpen)
+    readonly property bool shouldOpenFromShortcut: !GlobalStates.barMediaPresent && GlobalStates.mediaControlsOpen
+    readonly property bool popupShouldShow: !!root.player && (
+        (root.popupOnHover && (root.mediaHovered || root.popupHovered)) ||
+        root.popupOpen ||
+        shouldOpenFromShortcut
+    )
     // Only sampled while opening: mapToItem doesn't track the dock sliding in.
     property point popupCenter: Qt.point(0, 0)
 
+    function updatePopupCenter() {
+        popupCenter = root.mapToItem(null, root.width / 2, root.height / 2);
+    }
+
     onPopupShouldShowChanged: {
         if (popupShouldShow) {
-            popupCenter = root.mapToItem(null, root.width / 2, root.height / 2);
+            updatePopupCenter();
             popupShown = true;
-        } else
+        } else {
             popupHideTimer.restart();
+        }
+    }
+
+    onXChanged: if (popupShown) updatePopupCenter()
+    onWidthChanged: if (popupShown) updatePopupCenter()
+
+    onPopupShownChanged: {
+        if (popupShown) {
+            GlobalFocusGrab.addDismissable(mediaPopup);
+        } else {
+            GlobalFocusGrab.removeDismissable(mediaPopup);
+        }
+    }
+
+    Connections {
+        target: GlobalFocusGrab
+        function onDismissed() {
+            root.popupOpen = false;
+            if (!GlobalStates.barMediaPresent) {
+                GlobalStates.mediaControlsOpen = false;
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        GlobalStates.dockMediaCount++;
+    }
+
+    Component.onDestruction: {
+        GlobalFocusGrab.removeDismissable(mediaPopup);
+        GlobalStates.dockMediaCount = Math.max(0, GlobalStates.dockMediaCount - 1);
     }
 
     Timer {

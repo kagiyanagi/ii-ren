@@ -36,7 +36,7 @@ Item {
     readonly property real visualHeight: isVertical ? mainLayout.implicitHeight + padV * 2 : Appearance.sizes.dockButtonSize + dotMargin * 2 + padV * 2
 
     readonly property bool ready: (isVertical ? visualHeight > 0 : visualWidth > 0) && !suppressSizeAnimation
-    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (dock.folderCard?.active ?? false) || (mediaWidgetLoader.item?.popupHovered ?? false)
+    readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (dock.folderCard?.active ?? false) || (mediaWidgetLoader.item?.popupHovered ?? false) || (mediaWidgetLoader.item?.popupShown ?? false)
 
     readonly property real maxWindowPreviewHeight: 200
     readonly property real maxWindowPreviewWidth: 300
