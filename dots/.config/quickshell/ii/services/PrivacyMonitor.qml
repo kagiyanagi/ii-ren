@@ -8,8 +8,8 @@ import Quickshell.Services.Pipewire
 
 /**
  * Who is using the microphone, camera, screen and location right now.
- * Microphone comes from Pipewire directly; the rest needs a poll loop
- * (see scripts/privacy/privacystate.sh).
+ * Microphone comes from Pipewire directly; the rest comes from a watcher
+ * process (see scripts/privacy/privacystate.py).
  */
 Singleton {
     id: root
@@ -85,7 +85,7 @@ Singleton {
 
     Process {
         running: root.watchCamera || root.watchScreen || root.watchLocation
-        command: ["bash", Directories.privacyStateScript]
+        command: ["python3", Directories.privacyStateScript]
         onRunningChanged: if (!running) {
             root.cameraApps = [];
             root.screenApps = [];
