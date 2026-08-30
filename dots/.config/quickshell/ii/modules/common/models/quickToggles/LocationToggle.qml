@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.common
+import qs.services
 import Quickshell.Io
 
 QuickToggleModel {

@@ -49,6 +49,10 @@ RippleButton {
                 visible: root.expanded || implicitWidth > 0
                 reveal: root.expanded
                 implicitWidth: reveal ? (buttonText.implicitWidth + root.elementSpacing + contentRowLayout.horizontalMargins) : 0
+                // Explicit height for the same reason the width is explicit: the
+                // Revealer's default takes it from childrenRect, and the text
+                // centres itself on the Revealer - so each would wait on the other.
+                implicitHeight: buttonText.implicitHeight
                 StyledText {
                     id: buttonText
                     anchors {

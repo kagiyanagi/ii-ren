@@ -154,11 +154,11 @@ Item { // Bar content region
         }
 
         RowLayout {
+            // A Row positions its own children, so it ignores horizontal anchors on
+            // them - only the vertical ones do anything here.
             anchors {
                 top: parent.top
                 bottom: parent.bottom
-                right: centerCenter.left
-                rightMargin: 4
             }
             Repeater {
                 id: middleLeftRepeater
@@ -176,7 +176,6 @@ Item { // Bar content region
             anchors {
                 top: parent.top
                 bottom: parent.bottom
-                horizontalCenter: parent.horizontalCenter
             }
             Repeater {
                 model: root.centerList
@@ -192,8 +191,6 @@ Item { // Bar content region
             anchors {
                 top: parent.top
                 bottom: parent.bottom
-                left: centerCenter.right
-                leftMargin: 4
             }
             Repeater {
                 id: middleRightRepeater

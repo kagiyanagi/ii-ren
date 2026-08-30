@@ -155,6 +155,11 @@ Singleton {
         if (expr.startsWith(Config.options.search.prefix.fileSearch)) {
             expr = expr.slice(Config.options.search.prefix.fileSearch.length);
             fileProc.searchFiles(expr);
+        } else if (root.fileResults.length > 0) {
+            // Dropping stale file results belongs here, not in the `results`
+            // binding: that binding reads fileResults, so clearing it in there
+            // made the binding depend on its own output and re-run itself.
+            root.fileResults = [];
         }
     }
 
@@ -254,11 +259,6 @@ Singleton {
                     }
                 });
             }).filter(Boolean);
-        }
-
-        // A better way to reset file results? //
-        if (!root.query.startsWith(Config.options.search.prefix.fileSearch)) {
-            root.fileResults = [];
         }
 
         ////////////////// Init ///////////////////

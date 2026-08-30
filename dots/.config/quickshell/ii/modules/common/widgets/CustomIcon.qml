@@ -17,6 +17,10 @@ Item {
         id: iconImage
         anchors.fill: parent
         source: {
+            // Nothing to show is not the same as the icon folder itself, which is
+            // what concatenating an empty name used to ask the loader for.
+            if (root.source === "")
+                return "";
             const fullPathWhenSourceIsIconName = iconFolder + "/" + root.source;
             if (iconFolder && fullPathWhenSourceIsIconName) {
                 return fullPathWhenSourceIsIconName

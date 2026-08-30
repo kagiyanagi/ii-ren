@@ -32,8 +32,13 @@ MaterialShape {
 
     CustomIcon {
         id: customIcon
-        visible: symbol.text.endsWith(".svg")
-        source: symbol.text
+        // Only point it at a file when the text really is one: hiding an image does
+        // not stop it loading its source, so a Material Symbol name here had it
+        // chasing an asset by that name on every icon change.
+        readonly property bool isAsset: symbol.text.endsWith(".svg")
+
+        visible: customIcon.isAsset
+        source: customIcon.isAsset ? symbol.text : ""
         anchors.centerIn: parent
         width: symbol.iconSize
         height: symbol.iconSize
