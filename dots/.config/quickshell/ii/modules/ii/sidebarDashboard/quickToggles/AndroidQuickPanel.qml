@@ -357,6 +357,7 @@ AbstractQuickPanel {
                                             onOpenBluetoothDialog: root.openBluetoothDialog()
                                             onOpenNightLightDialog: root.openNightLightDialog()
                                             onOpenWifiDialog: root.openWifiDialog()
+                                            onOpenHotspotDialog: root.openHotspotDialog()
                                         }
                                     }
                                 }
@@ -579,6 +580,7 @@ AbstractQuickPanel {
                             onOpenBluetoothDialog: root.openBluetoothDialog()
                             onOpenNightLightDialog: root.openNightLightDialog()
                             onOpenWifiDialog: root.openWifiDialog()
+                            onOpenHotspotDialog: root.openHotspotDialog()
                         }
                     }
                 }

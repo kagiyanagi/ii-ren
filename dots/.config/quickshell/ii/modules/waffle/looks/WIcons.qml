@@ -37,6 +37,8 @@ Singleton {
         return "wifi-warning";
     }
 
+    property string hotspotIcon: Network.hotspotToggled ? "wifi-4" : "wifi-off"
+
     property string batteryIcon: {
         if (Battery.isCharging)
             return "battery-charge";

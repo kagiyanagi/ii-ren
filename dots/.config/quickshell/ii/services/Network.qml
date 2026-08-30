@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import qs.modules.common
 import qs.services.network
 
 /**
@@ -34,6 +35,21 @@ Singleton {
 
     property string networkName: ""
     property int networkStrength
+
+    property bool hotspotSupported: false
+    property bool hotspotToggled: false
+    property string hotspotName: ""
+    property string hotspotSsid: ""
+
+    property string hotspotConfigSsid: ""
+    property string hotspotConfigPassword: ""
+    property string hotspotConfigBand: "bg"
+    property string hotspotConfigSecurity: "wpa-psk"
+    property int hotspotClientCount: 0
+    property double hotspotRxBytes: 0
+    property double hotspotTxBytes: 0
+    property string hotspotDevice: ""
+
     property string materialSymbol: root.ethernet
         ? "lan"
         : (root.wifiEnabled && root.wifiStatus === "connected")
@@ -60,6 +76,38 @@ Singleton {
 
     function toggleWifi(): void {
         enableWifi(!wifiEnabled);
+    }
+
+    function toggleHotspot(): void {
+        if (!root.hotspotSupported) return;
+        enableHotspot(!root.hotspotToggled);
+    }
+
+    function enableHotspot(enabled = true): void {
+        if (!root.hotspotSupported) return;
+        if (enabled) {
+            startHotspotProc.running = true;
+        } else {
+            stopHotspotProc.running = true;
+        }
+    }
+
+    function fetchHotspotConfig(): void {
+        fetchHotspotConfigProc.running = true;
+    }
+
+    function fetchHotspotUsage(): void {
+        fetchHotspotUsageProc.running = true;
+    }
+
+    function applyHotspotConfig(ssid: string, password: string, band: string, security: string): void {
+        applyHotspotConfigProc.environment = {
+            "NEW_SSID": ssid,
+            "NEW_PASS": password,
+            "NEW_BAND": band,
+            "NEW_SEC": security
+        };
+        applyHotspotConfigProc.running = true;
     }
 
     function rescanWifi(): void {
@@ -157,6 +205,7 @@ Singleton {
         wifiStatusProcess.running = true
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
+        updateHotspotStateProc.running = true;
     }
 
     Process {
@@ -319,6 +368,127 @@ Singleton {
                         }));
                     }
                 }
+            }
+        }
+    }
+
+    Process {
+        id: checkHotspotSupportProc
+        running: true
+        command: ["sh", "-c", "nmcli -t -f GENERAL.TYPE,WIFI-PROPERTIES.AP dev show | awk -F: '$1==\"GENERAL.TYPE\" && $2==\"wifi\"{w=1} w && $1==\"WIFI-PROPERTIES.AP\" && $2==\"yes\"{found=1; exit} $1==\"GENERAL.TYPE\" && $2!=\"wifi\"{w=0} END{print (found ? \"yes\" : \"no\")}'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.hotspotSupported = text.trim() === "yes";
+            }
+        }
+    }
+
+    Process {
+        id: updateHotspotStateProc
+        running: true
+        command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show --active | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli -g connection.id,802-11-wireless.ssid c show \"$u\"; exit 0; fi; done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n").filter(l => l.length > 0);
+                if (lines.length > 0) {
+                    root.hotspotToggled = true;
+                    root.hotspotName = lines[0] || "Hotspot";
+                    root.hotspotSsid = lines[1] || lines[0] || "Hotspot";
+                    root.fetchHotspotUsage();
+                } else {
+                    root.hotspotToggled = false;
+                    root.hotspotName = "";
+                    root.hotspotSsid = "";
+                    root.hotspotClientCount = 0;
+                    root.hotspotRxBytes = 0;
+                    root.hotspotTxBytes = 0;
+                }
+            }
+        }
+    }
+
+    Process {
+        id: startHotspotProc
+        command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli connection up \"$u\" && exit 0; fi; done; nmcli dev wifi hotspot"]
+        onExited: (exitCode, exitStatus) => {
+            updateHotspotStateProc.running = true;
+            if (exitCode !== 0) {
+                Quickshell.execDetached(["notify-send",
+                    Translation.tr("Hotspot"),
+                    Translation.tr("Failed to start hotspot. Please inspect nmcli output."),
+                    "-a", "Shell"
+                ]);
+            }
+        }
+    }
+
+    Process {
+        id: stopHotspotProc
+        command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show --active | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli connection down \"$u\"; fi; done; nmcli connection down Hotspot 2>/dev/null || true"]
+        onExited: (exitCode, exitStatus) => {
+            updateHotspotStateProc.running = true;
+        }
+    }
+
+    Process {
+        id: fetchHotspotConfigProc
+        running: true
+        command: ["sh", "-c", "UUID=$(for u in $(nmcli -t -f UUID,TYPE c show | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then echo \"$u\"; exit 0; fi; done); if [ -n \"$UUID\" ]; then SSID=$(nmcli -g 802-11-wireless.ssid c show \"$UUID\" 2>/dev/null); PASS=$(nmcli -s -g 802-11-wireless-security.psk c show \"$UUID\" 2>/dev/null); BAND=$(nmcli -g 802-11-wireless.band c show \"$UUID\" 2>/dev/null); SEC=$(nmcli -g 802-11-wireless-security.key-mgmt c show \"$UUID\" 2>/dev/null); echo \"${SSID:-Hotspot}\"; echo \"${PASS}\"; echo \"${BAND:-bg}\"; echo \"${SEC:-wpa-psk}\"; else echo \"$(hostname)-Hotspot\"; echo \"\"; echo \"bg\"; echo \"wpa-psk\"; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                if (lines.length >= 4) {
+                    root.hotspotConfigSsid = lines[0];
+                    root.hotspotConfigPassword = lines[1];
+                    root.hotspotConfigBand = lines[2] || "bg";
+                    root.hotspotConfigSecurity = lines[3] || "wpa-psk";
+                }
+            }
+        }
+    }
+
+    Process {
+        id: fetchHotspotUsageProc
+        command: ["sh", "-c", "DEV=$(for u in $(nmcli -t -f UUID,TYPE,DEVICE c show --active | awk -F: '$2==\"802-11-wireless\"{print $1\":\"$3}'); do uuid=\"${u%%:*}\"; dev=\"${u##*:}\"; if [ \"$(nmcli -g 802-11-wireless.mode c show \"$uuid\" 2>/dev/null)\" = \"ap\" ]; then echo \"$dev\"; exit 0; fi; done); if [ -n \"$DEV\" ]; then CLIENTS=$(iw dev \"$DEV\" station dump 2>/dev/null | grep -c '^Station' || echo 0); BYTES=$(awk -v d=\"$DEV:\" '$1==d {print $2, $10}' /proc/net/dev); echo \"$DEV\"; echo \"$CLIENTS\"; echo \"$BYTES\"; else echo \"none\"; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                if (lines.length >= 3 && lines[0] !== "none") {
+                    root.hotspotDevice = lines[0];
+                    root.hotspotClientCount = parseInt(lines[1]) || 0;
+                    const byteParts = lines[2].split(" ");
+                    if (byteParts.length >= 2) {
+                        root.hotspotRxBytes = parseFloat(byteParts[0]) || 0;
+                        root.hotspotTxBytes = parseFloat(byteParts[1]) || 0;
+                    }
+                } else {
+                    root.hotspotDevice = "";
+                    root.hotspotClientCount = 0;
+                    root.hotspotRxBytes = 0;
+                    root.hotspotTxBytes = 0;
+                }
+            }
+        }
+    }
+
+    Process {
+        id: applyHotspotConfigProc
+        command: ["bash", "-c", "UUID=$(for u in $(nmcli -t -f UUID,TYPE c show | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then echo \"$u\"; exit 0; fi; done); if [ -n \"$UUID\" ]; then nmcli connection modify \"$UUID\" 802-11-wireless.ssid \"$NEW_SSID\" 802-11-wireless.band \"$NEW_BAND\"; if [ \"$NEW_SEC\" = \"none\" ]; then nmcli connection modify \"$UUID\" 802-11-wireless-security.key-mgmt none 802-11-wireless-security.psk \"\"; else nmcli connection modify \"$UUID\" 802-11-wireless-security.key-mgmt \"$NEW_SEC\" 802-11-wireless-security.psk \"$NEW_PASS\"; fi; if [ \"$(nmcli -g GENERAL.STATE c show \"$UUID\" 2>/dev/null)\" = \"activated\" ]; then nmcli connection up \"$UUID\"; fi; else nmcli connection add type wifi ifname \"*\" con-name \"Hotspot\" autoconnect no ssid \"$NEW_SSID\" 802-11-wireless.mode ap 802-11-wireless.band \"$NEW_BAND\" ipv4.method shared; if [ \"$NEW_SEC\" = \"none\" ]; then nmcli connection modify \"Hotspot\" 802-11-wireless-security.key-mgmt none; else nmcli connection modify \"Hotspot\" 802-11-wireless-security.key-mgmt \"$NEW_SEC\" 802-11-wireless-security.psk \"$NEW_PASS\"; fi; fi"]
+        onExited: (exitCode, exitStatus) => {
+            fetchHotspotConfigProc.running = true;
+            updateHotspotStateProc.running = true;
+            if (exitCode === 0) {
+                Quickshell.execDetached(["notify-send",
+                    Translation.tr("Hotspot"),
+                    Translation.tr("Configuration updated successfully."),
+                    "-a", "Shell"
+                ]);
+            } else {
+                Quickshell.execDetached(["notify-send",
+                    Translation.tr("Hotspot"),
+                    Translation.tr("Failed to apply hotspot configuration."),
+                    "-a", "Shell"
+                ]);
             }
         }
     }

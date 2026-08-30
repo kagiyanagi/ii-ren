@@ -6,6 +6,7 @@
 // second size policy.
 var TOGGLE_TYPES = {
     network: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    hotspot: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     bluetooth: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     idleInhibitor: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     easyEffects: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },

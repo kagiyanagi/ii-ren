@@ -177,6 +177,13 @@ def rule_async_connections(lines):
         yield i, f"Connections target `{tgt}` under async incubation -- guard with `?? null`"
 
 
+def rule_no_separator_bars(lines):
+    """M3 Expressive separates sections via whitespace and layers, not divider bars."""
+    for i, ln in enumerate(lines):
+        if re.search(r"\bWindowDialogSeparator\b", ln) and not cited(lines, i):
+            yield i, "WindowDialogSeparator -- avoid divider lines; use whitespace (12-16dp) and layer nesting (see DESIGN.md 5.5)"
+
+
 RULES = [
     ("literal-duration", "warn", rule_literal_duration),
     ("inline-curve", "warn", rule_inline_curve),
@@ -189,6 +196,7 @@ RULES = [
     ("spring-animation", "error", rule_spring_animation),
     ("shadowed-property", "error", rule_shadowed_property),
     ("async-connections", "warn", rule_async_connections),
+    ("no-separator-bars", "warn", rule_no_separator_bars),
 ]
 
 

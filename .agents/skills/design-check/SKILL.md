@@ -61,6 +61,9 @@ actual changed QML and judge these, which no regex can:
     resting at `rounding.full` or `height / 2`.
 14. **The anti-patterns in DESIGN.md section 10** — each has shipped and been
     reverted before.
+15. **No separator bars / dividers.** Check that sections and headers are separated
+    by whitespace on the 4dp grid and tonal layers rather than `WindowDialogSeparator`
+    or hairline divider lines, and that no negative margins are used to compensate.
 
 ## Step 3 — report
 

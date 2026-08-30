@@ -23,6 +23,7 @@ DelegateChooser {
     signal openBluetoothDialog
     signal openNightLightDialog
     signal openWifiDialog
+    signal openHotspotDialog
 
     role: "toggleType"
 
@@ -331,6 +332,30 @@ DelegateChooser {
             entranceTrigger: root.entranceTrigger
             onOpenMenu: {
                 root.openWifiDialog();
+            }
+        }
+    }
+
+    DelegateChoice {
+        roleValue: "hotspot"
+        AndroidHotspotToggle {
+            required property int index
+            required property var modelData
+            buttonIndex: index
+            isUnused: root.isUnused
+            buttonData: modelData
+            editMode: root.editMode
+            baseCellWidth: root.baseCellWidth
+            baseCellHeight: root.baseCellHeight
+            cellSpacing: root.spacing
+            cellSize: modelData.sizeW
+            pageIndex: root.pageIndex
+            gridColumns: root.gridColumns
+            panel: root.panel
+            gridRef: root.gridRef
+            entranceTrigger: root.entranceTrigger
+            onOpenMenu: {
+                root.openHotspotDialog();
             }
         }
     }

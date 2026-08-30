@@ -193,8 +193,9 @@ Item {
         scale: (root.isDragging ? 1.05 : 1.0) * (root._entranceDone ? 1.0 : root._entranceScale)
         opacity: {
             if (!root._entranceDone) return root._entranceOpacity;
+            if (!root.available && !root.editMode) return 0.4;
             if (root.isUnused) return 0.5;
-            if (root.editMode && !root.isDragging) return 0.9;
+            if (root.editMode && !root.isDragging) return (!root.available ? 0.4 : 0.9);
             if (root.isDragging) return 0.95;
             return 1.0;
         }

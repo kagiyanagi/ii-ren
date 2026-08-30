@@ -18,6 +18,7 @@ import qs.modules.ii.sidebarDashboard.bluetoothDevices
 import qs.modules.ii.sidebarDashboard.nightLight
 import qs.modules.ii.sidebarDashboard.volumeMixer
 import qs.modules.ii.sidebarDashboard.wifiNetworks
+import qs.modules.ii.sidebarDashboard.hotspot
 
 Item {
     id: root
@@ -29,16 +30,20 @@ Item {
     property bool showBluetoothDialog: false
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
+    property bool showHotspotDialog: false
     property bool editMode: false
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showWifiDialog || showHotspotDialog
 
     Connections {
         target: GlobalStates
         function onSidebarRightOpenChanged() {
             if (!GlobalStates.sidebarRightOpen) {
                 root.showWifiDialog = false;
+                root.showHotspotDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
+                root.showNightLightDialog = false;
             }
         }
     }
@@ -106,6 +111,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 visible: !root.editMode
+                enabled: !root.anyDialogOpen
             }
 
             BottomWidgetGroup {
@@ -159,6 +165,11 @@ Item {
         }
     }
 
+    ToggleDialog {
+        shownPropertyString: "showHotspotDialog"
+        dialog: HotspotDialog {}
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -210,6 +221,9 @@ Item {
             }
             function onOpenWifiDialog() {
                 root.showWifiDialog = true;
+            }
+            function onOpenHotspotDialog() {
+                root.showHotspotDialog = true;
             }
         }
     }

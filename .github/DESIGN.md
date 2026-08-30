@@ -487,6 +487,18 @@ Text buttons keep AOSP's asymmetry: 16 leading / 16 trailing on a small button,
 - Text: never a hard height. Set `elide` or use `MarqueeText`; long strings are
   the norm here (app names, notification bodies, MPRIS titles).
 
+### 5.5 No decorative dividers or separator lines
+
+Material 3 Expressive surfaces rely on **whitespace on the 4dp grid** (12–16dp
+gaps between sections) and **tonal layer nesting** (`colLayer1`, `colLayer2`) to
+establish visual hierarchy and separation.
+
+Do not insert hairline divider lines, separator bars, or
+`WindowDialogSeparator` between section headers and controls or around content
+groups. Separator lines clutter dialog surfaces, fight with container rounding,
+and frequently lead to brittle negative-margin hacks (e.g. `topMargin: -22`) to
+close the gap. Let whitespace and background layer cards do the work.
+
 ---
 
 ## 6. Colour, layers, elevation

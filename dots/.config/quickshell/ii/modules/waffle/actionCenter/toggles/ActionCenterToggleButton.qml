@@ -17,6 +17,11 @@ import qs.modules.waffle.actionCenter
 ColumnLayout { 
     id: root
 
+    opacity: root.available ? 1.0 : 0.4
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+    }
+
     required property QuickToggleModel toggleModel
     property string name: toggleModel?.name ?? ""
     property string statusText: (toggleModel?.hasStatusText) ? (toggleModel?.statusText || (toggled ? Translation.tr("Active") : Translation.tr("Inactive"))) : ""
@@ -95,6 +100,7 @@ ColumnLayout {
     component ToggleFragment: WButton {
         id: toggleFragment
         required property string iconName
+        enabled: root.available
         Layout.fillHeight: true
         Layout.fillWidth: true
         inset: 0

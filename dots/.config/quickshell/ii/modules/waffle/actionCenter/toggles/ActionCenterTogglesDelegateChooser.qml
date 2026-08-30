@@ -113,6 +113,13 @@ DelegateChooser {
         }
     }
     DelegateChoice {
+        roleValue: "hotspot"
+        ActionCenterToggleButton {
+            toggleModel: HotspotToggle {}
+            icon: WIcons.hotspotIcon
+        }
+    }
+    DelegateChoice {
         roleValue: "nightLight"
         ActionCenterToggleButton {
             toggleModel: NightLightToggle {}

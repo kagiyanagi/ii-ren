@@ -105,6 +105,25 @@ RippleButton { // Right sidebar button
                 color: rightSidebarButton.colText
             }
         }
+        Revealer {
+            vertical: rightSidebarButton.vertical
+            reveal: LocationService.available && !LocationService.enabled
+            Layout.fillHeight: !rightSidebarButton.vertical
+            Layout.fillWidth: rightSidebarButton.vertical
+            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
+            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
+            Behavior on Layout.rightMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            Behavior on Layout.bottomMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            MaterialSymbol {
+                text: "location_disabled"
+                iconSize: Appearance.font.pixelSize.larger
+                color: rightSidebarButton.colText
+            }
+        }
         HyprlandXkbIndicator {
             vertical: rightSidebarButton.vertical
             Layout.alignment: rightSidebarButton.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
@@ -129,6 +148,44 @@ RippleButton { // Right sidebar button
             }
             NotificationUnreadCount {
                 id: notificationUnreadCount
+            }
+        }
+        Revealer {
+            vertical: rightSidebarButton.vertical
+            reveal: CloudflareWarpService.available && CloudflareWarpService.connected
+            Layout.fillHeight: !rightSidebarButton.vertical
+            Layout.fillWidth: rightSidebarButton.vertical
+            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
+            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
+            Behavior on Layout.rightMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            Behavior on Layout.bottomMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            MaterialSymbol {
+                text: "cloud_lock"
+                iconSize: Appearance.font.pixelSize.larger
+                color: rightSidebarButton.colText
+            }
+        }
+        Revealer {
+            vertical: rightSidebarButton.vertical
+            reveal: Network.hotspotToggled
+            Layout.fillHeight: !rightSidebarButton.vertical
+            Layout.fillWidth: rightSidebarButton.vertical
+            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
+            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
+            Behavior on Layout.rightMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            Behavior on Layout.bottomMargin {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
+            MaterialSymbol {
+                text: "wifi_tethering"
+                iconSize: Appearance.font.pixelSize.larger
+                color: rightSidebarButton.colText
             }
         }
         MaterialSymbol {
