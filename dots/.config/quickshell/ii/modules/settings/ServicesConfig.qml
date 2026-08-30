@@ -176,6 +176,23 @@ ContentPage {
             }
         }
 
+        ContentSubsection {
+            title: Translation.tr("Popup corner")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.bluetooth.fastPair.popupCorner
+                onSelected: newValue => {
+                    Config.options.bluetooth.fastPair.popupCorner = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Top left"), icon: "north_west", value: "top_left" },
+                    { displayName: Translation.tr("Top right"), icon: "north_east", value: "top_right" },
+                    { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottom_left" },
+                    { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottom_right" },
+                ]
+            }
+        }
+
         ConfigSwitch {
             buttonIcon: "headphones"
             text: Translation.tr("Audio devices only")

@@ -13,11 +13,15 @@ import Quickshell.Wayland
 Scope {
     id: fastPairPopup
 
+    readonly property string corner: Config.options.bluetooth.fastPair.popupCorner
+    readonly property bool atTop: fastPairPopup.corner.startsWith("top")
+    readonly property bool atRight: fastPairPopup.corner.endsWith("right")
+
     PanelWindow {
         id: root
 
         // Stays mapped until the card has finished sliding back off-screen.
-        visible: (FastPair.popupShown || card.x < root.width) && !GlobalStates.screenLocked
+        visible: (FastPair.popupShown || (fastPairPopup.atRight ? card.x < root.width : card.x > -card.width)) && !GlobalStates.screenLocked
         screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? null
         color: "transparent"
 
@@ -33,8 +37,9 @@ Scope {
         // frame is what makes that stutter. The mask keeps the slack
         // click-through.
         anchors {
+            left: !fastPairPopup.atRight
+            right: fastPairPopup.atRight
             top: true
-            right: true
             bottom: true
         }
 
@@ -44,14 +49,14 @@ Scope {
         // committed layer surface, so the window instead stays put and is made
         // wide enough to cover both positions. The mask keeps the slack
         // click-through.
-        readonly property real sidebarInset: GlobalStates.effectiveRightOpen ? Appearance.sizes.sidebarWidth : 0
+        readonly property real sidebarInset: (fastPairPopup.atRight ? GlobalStates.effectiveRightOpen : GlobalStates.effectiveLeftOpen) ? Appearance.sizes.sidebarWidth : 0
 
         // Notifications own this corner, so drop below them rather than
         // overlapping. card.y adds the gutter on top of this, which is what
         // leaves the same gap here as the card keeps from the screen edge.
         // Clamped so a tall stack cannot push the card off screen.
         readonly property real notificationInset: {
-            if (GlobalStates.notificationPopupHeight <= 0)
+            if (!fastPairPopup.atTop || !fastPairPopup.atRight || GlobalStates.notificationPopupHeight <= 0)
                 return 0;
             const room = root.height - card.height - card.gutter * 2;
             return Math.max(0, Math.min(GlobalStates.notificationPopupHeight, room));
@@ -100,9 +105,9 @@ Scope {
 
             width: 344
             height: content.implicitHeight + card.padding * 2
-            y: card.gutter + root.notificationInset
+            y: fastPairPopup.atTop ? card.gutter + root.notificationInset : root.height - card.height - card.gutter
             // Slides out past the screen edge, so there is nothing to clip.
-            x: FastPair.popupShown ? root.width - card.width - card.gutter - root.sidebarInset : root.width + card.gutter
+            x: FastPair.popupShown ? (fastPairPopup.atRight ? root.width - card.width - card.gutter - root.sidebarInset : card.gutter + root.sidebarInset) : (fastPairPopup.atRight ? root.width + card.gutter : -card.width - card.gutter)
 
             Behavior on x {
                 animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)

@@ -1357,6 +1357,7 @@ Singleton {
                 // nothing is connected, which costs radio time and battery.
                 property JsonObject fastPair: JsonObject {
                     property bool enable: false
+                    property string popupCorner: "top_right"
                     property int rssiThreshold: -65 // dBm; higher means the device must be closer
                     property bool audioOnly: true // Only offer headsets, earbuds and speakers
                     property int popupTimeout: 20 // Seconds before the popup snoozes itself; 0 to never
