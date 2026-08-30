@@ -119,16 +119,16 @@ Singleton {
         property color colLayer0Base: ColorUtils.mix(m3colors.m3background, m3colors.m3primary, Config.options.appearance.extraBackgroundTint ? 0.99 : 1)
         property color colLayer0: ColorUtils.transparentize(colLayer0Base, root.backgroundTransparency)
         property color colOnLayer0: m3colors.m3onBackground
-        property color colLayer0Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.92), root.contentTransparency)
-        property color colLayer0Active: ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.90), root.contentTransparency)
+        property color colLayer0Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer0Base, colOnLayer0, 0.92), root.backgroundTransparency)
+        property color colLayer0Active: ColorUtils.transparentize(ColorUtils.mix(colLayer0Base, colOnLayer0, 0.90), root.backgroundTransparency)
         property color colLayer0Border: ColorUtils.mix(root.m3colors.m3outlineVariant, colLayer0, 0.4)
         // Layer 1
         property color colLayer1Base: m3colors.m3surfaceContainerLow
         property color colLayer1: ColorUtils.solveOverlayColor(colLayer0Base, colLayer1Base, 1 - root.contentTransparency);
         property color colOnLayer1: m3colors.m3onSurfaceVariant;
         property color colOnLayer1Inactive: ColorUtils.mix(colOnLayer1, colLayer1, 0.45);
-        property color colLayer1Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
-        property color colLayer1Active: ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.90), root.contentTransparency);
+        property color colLayer1Hover: ColorUtils.solveOverlayColor(colLayer0Base, ColorUtils.mix(colLayer1Base, colOnLayer1, 0.92), 1 - root.contentTransparency);
+        property color colLayer1Active: ColorUtils.solveOverlayColor(colLayer0Base, ColorUtils.mix(colLayer1Base, colOnLayer1, 0.90), 1 - root.contentTransparency);
         // Layer 2
         property color colLayer2Base: m3colors.m3surfaceContainer
         property color colLayer2: ColorUtils.solveOverlayColor(colLayer1Base, colLayer2Base, 1 - root.contentTransparency)
