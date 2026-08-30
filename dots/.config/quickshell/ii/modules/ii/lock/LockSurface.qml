@@ -198,7 +198,7 @@ MouseArea {
                 iconSize: 24
                 text: {
                     if (root.context.targetAction === LockContext.ActionEnum.Unlock) {
-                        return root.ctrlHeld ? "coffee" : "arrow_right_alt";
+                        return root.ctrlHeld ? "local_cafe" : "arrow_right_alt";
                     } else if (root.context.targetAction === LockContext.ActionEnum.Poweroff) {
                         return "power_settings_new";
                     } else if (root.context.targetAction === LockContext.ActionEnum.Reboot) {

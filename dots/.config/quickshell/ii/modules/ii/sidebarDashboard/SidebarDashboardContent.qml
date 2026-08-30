@@ -288,6 +288,7 @@ Item {
             padding: 4
 
             QuickToggleButton {
+                iconFill: 1
                 toggled: root.editMode
                 visible: Config.options.sidebar.quickToggles.style === "android"
                 buttonIcon: "edit"
@@ -297,6 +298,7 @@ Item {
                 }
             }
             QuickToggleButton {
+                iconFill: 1
                 toggled: false
                 buttonIcon: "restart_alt"
                 onClicked: {
@@ -308,6 +310,7 @@ Item {
                 }
             }
             QuickToggleButton {
+                iconFill: 1
                 toggled: false
                 buttonIcon: "settings"
                 onClicked: {
@@ -319,6 +322,7 @@ Item {
                 }
             }
             QuickToggleButton {
+                iconFill: 1
                 id: updateButton
                 toggled: confirm
                 property bool confirm: false
@@ -346,6 +350,7 @@ Item {
                 }
             }
             QuickToggleButton {
+                iconFill: 1
                 toggled: false
                 buttonIcon: "power_settings_new"
                 onClicked: {

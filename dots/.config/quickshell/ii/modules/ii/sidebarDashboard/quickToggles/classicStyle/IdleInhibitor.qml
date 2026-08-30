@@ -4,7 +4,7 @@ import qs.services
 QuickToggleButton {
     id: root
     toggled: Idle.inhibit
-    buttonIcon: "coffee"
+    buttonIcon: "local_cafe"
     onClicked: {
         Idle.toggleInhibit()
     }

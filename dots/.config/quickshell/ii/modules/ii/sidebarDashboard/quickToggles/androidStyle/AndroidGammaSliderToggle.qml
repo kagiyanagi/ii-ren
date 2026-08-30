@@ -10,7 +10,13 @@ AndroidSliderWidgetBase {
     property var brightnessMonitor: Brightness.getTargetMonitor()
 
     tooltipText: Translation.tr("Gamma / Brightness")
-    materialSymbol: "light_mode"
+    // Android swaps the sun between hollow, half and full as the level moves.
+    materialSymbol: {
+        const val = root.brightnessMonitor?.brightness ?? 0;
+        if (val <= 0.33) return "brightness_low";
+        if (val <= 0.66) return "brightness_medium";
+        return "brightness_high";
+    }
     secondaryMaterialSymbol: "wb_twilight"
     
     sliderValue: Hyprsunset.gamma === 100 ? 0.3 + (root.brightnessMonitor?.brightness ?? 0) * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3

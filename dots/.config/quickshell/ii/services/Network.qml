@@ -38,12 +38,11 @@ Singleton {
         ? "lan"
         : (root.wifiEnabled && root.wifiStatus === "connected")
             ? (
-                (root.active?.strength ?? 0) > 83 ? "signal_wifi_4_bar" :
-                (root.active?.strength ?? 0) > 67 ? "network_wifi" :
-                (root.active?.strength ?? 0) > 50 ? "network_wifi_3_bar" :
-                (root.active?.strength ?? 0) > 33 ? "network_wifi_2_bar" :
-                (root.active?.strength ?? 0) > 17 ? "network_wifi_1_bar" :
-                "signal_wifi_0_bar"
+                // Android 16 dropped the filled cone for the arcs and dot, and
+                // ships three levels rather than five.
+                (root.active?.strength ?? 0) > 66 ? "wifi" :
+                (root.active?.strength ?? 0) > 33 ? "wifi_2_bar" :
+                "wifi_1_bar"
             )
             : (root.wifiStatus === "connecting")
                 ? "signal_wifi_statusbar_not_connected"

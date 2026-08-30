@@ -10,7 +10,7 @@ QuickToggleModel {
     name: Translation.tr("Keep awake")
 
     toggled: Idle.inhibit
-    icon: toggled ? "kettle" : "coffee"
+    icon: toggled ? "kettle" : "local_cafe"
     mainAction: () => {
         Idle.toggleInhibit()
     }

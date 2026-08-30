@@ -5,6 +5,9 @@ import QtQuick
 GroupButton {
     id: button
     property string buttonIcon
+    // Tiles fill only while on; the dashboard header row is filled either way,
+    // the way Android draws its header icons.
+    property real iconFill: toggled ? 1 : 0
     baseWidth: 40
     baseHeight: 40
     clickedWidth: baseWidth + 20
@@ -17,7 +20,7 @@ GroupButton {
     contentItem: MaterialSymbol {
         anchors.centerIn: parent
         iconSize: 22
-        fill: toggled ? 1 : 0
+        fill: button.iconFill
         color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

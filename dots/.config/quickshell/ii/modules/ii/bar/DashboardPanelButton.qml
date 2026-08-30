@@ -62,7 +62,7 @@ RippleButton { // Right sidebar button
                 animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
             MaterialSymbol {
-                text: "coffee"
+                text: "local_cafe"
                 iconSize: Appearance.font.pixelSize.larger
                 color: rightSidebarButton.colText
             }

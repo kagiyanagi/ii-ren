@@ -122,10 +122,10 @@ Scope {
                 readonly property real innerRadius: Appearance.rounding.unsharpenmore
                 // Ends of the stack, inset inside the card, so smaller than the
                 // card's own corner.
-                readonly property real outerRadius: Appearance.rounding.small
-                readonly property real padding: 8
+                readonly property real outerRadius: Appearance.rounding.normal
+                readonly property real padding: 6
 
-                implicitWidth: 244 + 2 * padding
+                implicitWidth: 320
                 implicitHeight: menuColumn.implicitHeight + 2 * padding
                 radius: Appearance.rounding.large
                 color: Appearance.m3colors.m3surfaceContainer
@@ -183,10 +183,11 @@ Scope {
                     }
                 }
 
-                // ArrowPopup.animateClose(): CLOSE_DURATION_U 233ms down to half
-                // size on EMPHASIZED_ACCELERATE, with both fades held back
-                // CLOSE_FADE_START_DELAY_U 150ms so the card is nearly gone before
-                // it starts disappearing.
+                // ArrowPopup.animateClose() shape -- half size on
+                // EMPHASIZED_ACCELERATE with the fades held back -- but quicker
+                // than AOSP's CLOSE_DURATION_U 233ms / CLOSE_FADE_START_DELAY_U
+                // 150ms, which drags on a desktop where the menu is dismissed
+                // constantly.
                 ParallelAnimation {
                     id: closeAnim
 
@@ -194,13 +195,13 @@ Scope {
                         target: menuCard
                         property: "scale"
                         to: 0.5
-                        duration: 233
+                        duration: 190
                         easing.type: Easing.Bezier
                         easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
                     }
                     SequentialAnimation {
                         PauseAnimation {
-                            duration: 150
+                            duration: 60
                         }
                         ParallelAnimation {
                             NumberAnimation {
@@ -270,7 +271,8 @@ Scope {
                         id: stripViewport
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 108
+                        Layout.preferredHeight: 132
+                        Layout.bottomMargin: 6
                         visible: wallpaperStrip.count > 0
 
                         // The viewport cuts the tiles at each end square, so round
@@ -282,8 +284,8 @@ Scope {
                                 height: stripViewport.height
                                 topLeftRadius: menuCard.outerRadius
                                 topRightRadius: menuCard.outerRadius
-                                bottomLeftRadius: menuCard.innerRadius
-                                bottomRightRadius: menuCard.innerRadius
+                                bottomLeftRadius: menuCard.outerRadius
+                                bottomRightRadius: menuCard.outerRadius
                             }
                         }
 
@@ -339,7 +341,7 @@ Scope {
                                 // The one in use gets the wider tile, like the launcher's.
                                 // The list repositions its neighbours every frame of
                                 // this, so the whole strip slides along with it.
-                                width: current ? 124 : 80
+                                width: current ? 152 : 98
                                 // Size is spatial, so it runs on the spatial spring
                                 // token and is allowed the overshoot; the scrim
                                 // fading over it is an effect and is not.
@@ -477,7 +479,7 @@ Scope {
                         colBackground: Appearance.colors.colSurfaceContainerHigh
                         colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
                         colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
-                        topLeftRadius: stripViewport.visible ? menuCard.innerRadius : menuCard.outerRadius
+                        topLeftRadius: menuCard.outerRadius
                         topRightRadius: topLeftRadius
                         symbolName: "wallpaper"
                         labelText: Translation.tr("Change wallpaper")

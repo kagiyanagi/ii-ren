@@ -52,7 +52,14 @@ Rectangle {
         Repeater {
             id: repeater
             model: [
-                { show: showBrightness, icon: "brightness_6", 
+                // Android's brightness slider swaps the sun between hollow, half
+                // and full as the level moves, rather than sitting on one glyph.
+                { show: showBrightness, getIcon: () => {
+                    const val = root.brightnessMonitor?.brightness ?? 0;
+                    if (val <= 0.33) return "brightness_low";
+                    if (val <= 0.66) return "brightness_medium";
+                    return "brightness_high";
+                },
                 getVal: () => root.brightnessMonitor.brightness, 
                 setVal: (v) => root.brightnessMonitor.setBrightness(v) },
                 { show: showVolume, icon: "volume_up", 
@@ -84,7 +91,7 @@ Rectangle {
                 required property var modelData
                 Layout.fillWidth: true
                 visible: modelData.show
-                materialSymbol: modelData.icon
+                materialSymbol: modelData.getIcon ? modelData.getIcon() : modelData.icon
                 secondaryMaterialSymbol: modelData?.secondaryIcon ?? "" 
                 value: modelData.getVal()
                 onMoved: modelData.setVal(value)

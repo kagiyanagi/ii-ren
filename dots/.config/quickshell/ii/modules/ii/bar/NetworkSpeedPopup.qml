@@ -51,7 +51,7 @@ StyledPopup {
             
             // Show signal strength in the pill if wifi
             pillText: !Network.ethernet ? (Network.networkStrength + "%") : ""
-            pillIcon: !Network.ethernet ? "signal_wifi_4_bar" : ""
+            pillIcon: !Network.ethernet ? "wifi" : ""
         }
 
         ColumnLayout {
