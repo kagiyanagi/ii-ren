@@ -21,6 +21,7 @@ DockButton {
     property bool dragOver: false
     property string fileDropIcon: ""
     property bool fileDropActive: false
+    property bool showBackground: true
     readonly property bool isDragging: dragActive || fileDropActive
 
     background.implicitWidth: 0
@@ -40,7 +41,7 @@ DockButton {
                 : root.normalShapeName !== "" ? shapeSymbol.getShape(root.normalShapeName)
                 : root.normalShape
 
-            implicitSize: root.dragOver ? root.buttonSize * 1.1 : root.buttonSize * 0.9
+            implicitSize: root.dragOver ? root.buttonSize * 1.15 : root.buttonSize * 1.0
             Behavior on implicitSize {
                 animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
             }
@@ -57,12 +58,12 @@ DockButton {
                            Appearance.colors.colSecondaryContainer
                 }
 
-                if (root.toggled) {
+                if (root.toggled && root.showBackground) {
                     return root.down ? Appearance.colors.colPrimaryActive :
                            root.hovered ? Appearance.colors.colPrimaryHover :
                            Appearance.colors.colPrimary
                 }
-                if (root.accented) {
+                if (root.accented && root.showBackground) {
                     return root.down ? Appearance.colors.colPrimaryContainerActive :
                            root.hovered ? Appearance.colors.colPrimaryContainerHover :
                            Appearance.colors.colPrimaryContainer

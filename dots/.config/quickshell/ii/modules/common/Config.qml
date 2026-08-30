@@ -1190,6 +1190,7 @@ Singleton {
 
                 property bool bottom: false // Instead of top
                 property int cornerStyle: 0 // 0: Hug | 1: Float | 2: Plain rectangle
+                property real cornerRadius: 18
                 property bool floatStyleShadow: true // Show shadow behind bar when cornerStyle == 1 (Float)
                 property int barGroupStyle: 0 // 0: Pills | 1: Island (opaque) | 2: Transparent (or maybe line-separated in the future)
                 property string topLeftIcon: "spark" // Options: "distro" or any icon name in ~/.config/quickshell/ii/assets/icons
@@ -1422,6 +1423,13 @@ Singleton {
                 property bool monochromeIcons: true
                 property bool dimInactiveIcons: false
                 property real height: 60
+                property bool showAppsButtonBackground: true
+                property real itemSpacing: 0
+                property real sectionSpacing: 0
+                property string separatorStyle: "Line"
+                property real cornerRadius: -1
+                property real paddingHorizontal: 0
+                property real paddingVertical: 0
                 property real hoverRegionHeight: 2
                 property bool pinnedOnStartup: false
                 property bool enablePreview: true
@@ -1436,6 +1444,7 @@ Singleton {
                 // corners that touch it, instead of floating with a gap.
                 property bool attachToEdge: false
                 property string appsButtonShape: "Pill"
+                property string pinButtonShape: ""
                 property bool showPinButton: true
                 property bool showAppsButton: true
                 property list<string> pinnedApps: ["org.kde.dolphin", "kitty",]

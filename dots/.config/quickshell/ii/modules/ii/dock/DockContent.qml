@@ -29,8 +29,11 @@ Item {
     readonly property real sepThickness: Math.max(3, Math.round(Appearance.sizes.dockButtonSize * 0.06))
     readonly property real buttonSlotSize: Appearance.sizes.dockButtonSize + dotMargin * 2
 
-    readonly property real visualWidth: isVertical ? Appearance.sizes.dockButtonSize + dotMargin * 2 : mainLayout.implicitWidth
-    readonly property real visualHeight: isVertical ? mainLayout.implicitHeight : Appearance.sizes.dockButtonSize + dotMargin * 2
+    readonly property real padH: Config.options?.dock?.paddingHorizontal ?? 0
+    readonly property real padV: Config.options?.dock?.paddingVertical ?? 0
+
+    readonly property real visualWidth: isVertical ? Appearance.sizes.dockButtonSize + dotMargin * 2 + padH * 2 : mainLayout.implicitWidth + padH * 2
+    readonly property real visualHeight: isVertical ? mainLayout.implicitHeight + padV * 2 : Appearance.sizes.dockButtonSize + dotMargin * 2 + padV * 2
 
     readonly property bool ready: (isVertical ? visualHeight > 0 : visualWidth > 0) && !suppressSizeAnimation
     readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (dock.folderCard?.active ?? false) || (mediaWidgetLoader.item?.popupHovered ?? false)
@@ -338,6 +341,7 @@ Item {
                 id: pinButton
                 anchors.centerIn: parent
                 symbolName: "keep"
+                normalShapeName: Config.options?.dock?.pinButtonShape ?? ""
                 toggled: root.isPinned
                 onClicked: root.togglePinRequested()
                 dragActive: root.isAppDrag && !TaskbarApps.isPinned(root.draggedAppId)
@@ -549,8 +553,9 @@ Item {
             DockActionButton {
                 id: unpinButton
                 anchors.centerIn: parent
-                symbolName: "apps"
+                symbolName: "app_search.svg"
                 accented: true
+                showBackground: Config.options?.dock?.showAppsButtonBackground ?? true
                 normalShapeName: Config.options.dock.appsButtonShape
                 activeShape: MaterialShape.Shape.SoftBurst
                 onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen

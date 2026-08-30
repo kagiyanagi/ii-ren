@@ -311,7 +311,7 @@ Scope {
                                 color: Appearance.colors.colLayer0
                                 border.width: 1
                                 border.color: Appearance.colors.colLayer0Border
-                                radius: Appearance.rounding.large
+                                radius: Config.options?.dock?.cornerRadius >= 0 ? Config.options.dock.cornerRadius : Appearance.rounding.large
                                 topLeftRadius: (flushEdge === "top" || flushEdge === "left") ? 0 : radius
                                 topRightRadius: (flushEdge === "top" || flushEdge === "right") ? 0 : radius
                                 bottomLeftRadius: (flushEdge === "bottom" || flushEdge === "left") ? 0 : radius
@@ -348,10 +348,10 @@ Scope {
                                     anchors.fill: parent
                                     // Keep the content where it was - only the
                                     // background grows into the bleed.
-                                    anchors.topMargin: visualBackground.flushEdge === "top" ? visualBackground.edgeBleed : 0
-                                    anchors.bottomMargin: visualBackground.flushEdge === "bottom" ? visualBackground.edgeBleed : 0
-                                    anchors.leftMargin: visualBackground.flushEdge === "left" ? visualBackground.edgeBleed : 0
-                                    anchors.rightMargin: visualBackground.flushEdge === "right" ? visualBackground.edgeBleed : 0
+                                    anchors.topMargin: (visualBackground.flushEdge === "top" ? visualBackground.edgeBleed : 0) + (Config.options?.dock?.paddingVertical ?? 0)
+                                    anchors.bottomMargin: (visualBackground.flushEdge === "bottom" ? visualBackground.edgeBleed : 0) + (Config.options?.dock?.paddingVertical ?? 0)
+                                    anchors.leftMargin: (visualBackground.flushEdge === "left" ? visualBackground.edgeBleed : 0) + (Config.options?.dock?.paddingHorizontal ?? 0)
+                                    anchors.rightMargin: (visualBackground.flushEdge === "right" ? visualBackground.edgeBleed : 0) + (Config.options?.dock?.paddingHorizontal ?? 0)
                                     isPinned: dock.pinned
                                     currentScreen: dockRoot.screen
                                     workspaceEmpty: dockRoot.workspaceEmpty

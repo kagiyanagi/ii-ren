@@ -228,6 +228,16 @@ ContentPage {
             }
         }
 
+        ConfigSpinBox {
+            icon: "rounded_corner"
+            text: Translation.tr("Corner radius")
+            value: Config.options.bar.cornerRadius
+            from: 0
+            to: 64
+            stepSize: 1
+            onValueChanged: { Config.options.bar.cornerRadius = value; }
+        }
+
         ContentSubsection {
             title: Translation.tr("Bar background style")
             tooltip: Translation.tr("Adaptive style makes the bar background transparent when there are no active windows")

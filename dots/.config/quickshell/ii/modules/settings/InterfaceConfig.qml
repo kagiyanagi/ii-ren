@@ -1,16 +1,18 @@
 import QtQuick
 import QtQuick.Layouts
-import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
 import Quickshell
 import Quickshell.Io
+import qs
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
 
 ContentPage {
     id: page
+
     readonly property int index: 4
     property bool register: parent.register ?? false
+
     forceWidth: true
 
     ContentSection {
@@ -20,21 +22,21 @@ ContentPage {
         ContentSubsection {
             title: Translation.tr("Super key symbol")
             tooltip: Translation.tr("You can also manually edit cheatsheet.superKey")
+
             ConfigSelectionArray {
                 currentValue: Config.options.cheatsheet.superKey
-                onSelected: newValue => {
+                onSelected: (newValue) => {
                     Config.options.cheatsheet.superKey = newValue;
                 }
                 // Use a nerdfont to see the icons
-                options: ([
-                  "󰖳", "", "󰨡", "", "󰌽", "󰣇", "", "", "", 
-                  "", "", "󱄛", "", "", "", "⌘", "󰀲", "󰟍", ""
-                ]).map(icon => { return {
-                  displayName: icon,
-                  value: icon
-                  }
+                options: (["󰖳", "", "󰨡", "", "󰌽", "󰣇", "", "", "", "", "", "󱄛", "", "", "", "⌘", "󰀲", "󰟍", ""]).map((icon) => {
+                    return {
+                        "displayName": icon,
+                        "value": icon
+                    };
                 })
             }
+
         }
 
         ConfigSwitch {
@@ -44,9 +46,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.cheatsheet.useMacSymbol = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("e.g. 󰘴  for Ctrl, 󰘵  for Alt, 󰘶  for Shift, etc")
             }
+
         }
 
         ConfigSwitch {
@@ -56,10 +60,13 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.cheatsheet.useFnSymbol = checked;
             }
+
             StyledToolTip {
-              text: Translation.tr("e.g. 󱊫 for F1, 󱊶  for F12")
+                text: Translation.tr("e.g. 󱊫 for F1, 󱊶  for F12")
             }
+
         }
+
         ConfigSwitch {
             buttonIcon: "󰍽"
             text: Translation.tr("Use symbols for mouse")
@@ -67,10 +74,13 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.cheatsheet.useMouseSymbol = checked;
             }
+
             StyledToolTip {
-              text: Translation.tr("Replace 󱕐   for \"Scroll ↓\", 󱕑   \"Scroll ↑\", L󰍽   \"LMB\", R󰍽   \"RMB\", 󱕒   \"Scroll ↑/↓\" and ⇞/⇟ for \"Page_↑/↓\"")
+                text: Translation.tr("Replace 󱕐   for \"Scroll ↓\", 󱕑   \"Scroll ↑\", L󰍽   \"LMB\", R󰍽   \"RMB\", 󱕒   \"Scroll ↑/↓\" and ⇞/⇟ for \"Page_↑/↓\"")
             }
+
         }
+
         ConfigSwitch {
             buttonIcon: "highlight_keyboard_focus"
             text: Translation.tr("Split buttons")
@@ -78,6 +88,7 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.cheatsheet.splitButtons = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("Display modifiers and keys in multiple keycap (e.g., \"Ctrl + A\" instead of \"Ctrl A\" or \"󰘴 + A\" instead of \"󰘴 A\")")
             }
@@ -94,6 +105,7 @@ ContentPage {
                 Config.options.cheatsheet.fontSize.key = value;
             }
         }
+
         ConfigSpinBox {
             text: Translation.tr("Description font size")
             value: Config.options.cheatsheet.fontSize.comment
@@ -104,6 +116,7 @@ ContentPage {
                 Config.options.cheatsheet.fontSize.comment = value;
             }
         }
+
     }
 
     ContentSection {
@@ -114,22 +127,29 @@ ContentPage {
             buttonIcon: "check"
             text: Translation.tr("Enable")
             checked: Config.options.altTab.enable
-            onCheckedChanged: { Config.options.altTab.enable = checked; }
+            onCheckedChanged: {
+                Config.options.altTab.enable = checked;
+            }
         }
 
         ConfigSwitch {
             buttonIcon: "mouse"
             text: Translation.tr("Keep the cursor in place when switching")
             checked: Config.options.altTab.keepCursorInPlace
-            onCheckedChanged: { Config.options.altTab.keepCursorInPlace = checked; }
+            onCheckedChanged: {
+                Config.options.altTab.keepCursorInPlace = checked;
+            }
         }
 
         ConfigSwitch {
             buttonIcon: "select_window"
             text: Translation.tr("Only show windows on the current workspace")
             checked: Config.options.altTab.currentWorkspaceOnly
-            onCheckedChanged: { Config.options.altTab.currentWorkspaceOnly = checked; }
+            onCheckedChanged: {
+                Config.options.altTab.currentWorkspaceOnly = checked;
+            }
         }
+
     }
 
     ContentSection {
@@ -140,77 +160,108 @@ ContentPage {
             buttonIcon: "check"
             text: Translation.tr("Enable")
             checked: Config.options.dock.enable
-            onCheckedChanged: { Config.options.dock.enable = checked; }
+            onCheckedChanged: {
+                Config.options.dock.enable = checked;
+            }
         }
 
         ConfigSwitch {
             buttonIcon: "desktop_windows"
             text: Translation.tr("Isolate monitors")
             checked: Config.options.dock.isolateMonitors ?? false
-            onCheckedChanged: { Config.options.dock.isolateMonitors = checked; }
+            onCheckedChanged: {
+                Config.options.dock.isolateMonitors = checked;
+            }
         }
 
         ConfigSwitch {
             buttonIcon: "ad"
             text: Translation.tr("Enable windows preview")
             checked: Config.options.dock.enablePreview
-            onCheckedChanged: { Config.options.dock.enablePreview = checked; }
+            onCheckedChanged: {
+                Config.options.dock.enablePreview = checked;
+            }
         }
 
         ConfigRow {
             uniform: true
+
             ConfigSwitch {
                 buttonIcon: "computer_arrow_up"
                 text: Translation.tr("Reveal on empty workspace")
                 checked: Config.options.dock.revealOnEmptyWorkspace
-                onCheckedChanged: { Config.options.dock.revealOnEmptyWorkspace = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.revealOnEmptyWorkspace = checked;
+                }
             }
+
             ConfigSwitch {
                 buttonIcon: "keep"
                 text: Translation.tr("Pinned on startup")
                 checked: Config.options.dock.pinnedOnStartup
-                onCheckedChanged: { Config.options.dock.pinnedOnStartup = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.pinnedOnStartup = checked;
+                }
             }
+
         }
 
         ConfigRow {
             uniform: true
+
             ConfigSwitch {
                 buttonIcon: "colors"
                 text: Translation.tr("Tint app icons")
                 checked: Config.options.dock.monochromeIcons
-                onCheckedChanged: { Config.options.dock.monochromeIcons = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.monochromeIcons = checked;
+                }
             }
+
             ConfigSwitch {
                 buttonIcon: "contrast"
                 text: Translation.tr("Dim inactive app icons")
                 enabled: !Config.options.dock.monochromeIcons
                 checked: Config.options.dock.dimInactiveIcons
-                onCheckedChanged: { Config.options.dock.dimInactiveIcons = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.dimInactiveIcons = checked;
+                }
+
                 StyledToolTip {
                     text: Translation.tr("Greyscale icons for pinned apps that are not running.\nDisabled when 'Tint app icons' is active.")
                 }
+
             }
+
         }
 
         ConfigRow {
             uniform: true
+
             ConfigSwitch {
                 buttonIcon: "play_pause"
                 text: Translation.tr("Enable media widget")
                 checked: Config.options.dock.enableMediaWidget
-                onCheckedChanged: { Config.options.dock.enableMediaWidget = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.enableMediaWidget = checked;
+                }
             }
+
             ConfigSwitch {
                 buttonIcon: "pan_tool_alt"
                 text: Translation.tr("Media controls on hover")
                 enabled: Config.options.dock.enableMediaWidget
                 checked: Config.options.dock.mediaPopupOnHover
-                onCheckedChanged: { Config.options.dock.mediaPopupOnHover = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.mediaPopupOnHover = checked;
+                }
+
                 StyledToolTip {
                     text: Translation.tr("Show the media controls when hovering the widget.\nOff: click the widget to toggle them.")
                 }
+
             }
+
         }
 
         ConfigSwitch {
@@ -218,10 +269,14 @@ ContentPage {
             text: Translation.tr("Hide media widget on empty workspace")
             enabled: Config.options.dock.enableMediaWidget
             checked: Config.options.dock.hideMediaOnEmptyWorkspace
-            onCheckedChanged: { Config.options.dock.hideMediaOnEmptyWorkspace = checked; }
+            onCheckedChanged: {
+                Config.options.dock.hideMediaOnEmptyWorkspace = checked;
+            }
+
             StyledToolTip {
                 text: Translation.tr("The desktop's own media widget is visible there anyway.")
             }
+
         }
 
         ConfigSpinBox {
@@ -231,55 +286,204 @@ ContentPage {
             from: 40
             to: 80
             stepSize: 1
-            onValueChanged: { Config.options.dock.height = value; }
+            onValueChanged: {
+                Config.options.dock.height = value;
+            }
         }
-        
+
+        ConfigSpinBox {
+            icon: "rounded_corner"
+            text: Translation.tr("Corner radius")
+            value: Config.options.dock.cornerRadius
+            from: -1
+            to: 40
+            stepSize: 1
+            onValueChanged: {
+                Config.options.dock.cornerRadius = value;
+            }
+            StyledToolTip {
+                text: Translation.tr("Set to -1 to use default large rounding")
+            }
+        }
+
         ConfigRow {
             uniform: true
+
+            ConfigSpinBox {
+                icon: "space_bar"
+                text: Translation.tr("Item spacing")
+                value: Config.options.dock.itemSpacing
+                from: 0
+                to: 32
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.dock.itemSpacing = value;
+                }
+            }
+
+            ConfigSpinBox {
+                icon: "format_line_spacing"
+                text: Translation.tr("Section spacing")
+                value: Config.options.dock.sectionSpacing
+                from: 0
+                to: 64
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.dock.sectionSpacing = value;
+                }
+            }
+
+        }
+
+        ConfigRow {
+            uniform: true
+
+            ConfigSpinBox {
+                icon: "padding"
+                text: Translation.tr("Horizontal padding")
+                value: Config.options.dock.paddingHorizontal
+                from: 0
+                to: 64
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.dock.paddingHorizontal = value;
+                }
+            }
+
+            ConfigSpinBox {
+                icon: "padding"
+                text: Translation.tr("Vertical padding")
+                value: Config.options.dock.paddingVertical
+                from: 0
+                to: 64
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.dock.paddingVertical = value;
+                }
+            }
+
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Separator style")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.dock.separatorStyle
+                onSelected: (newValue) => {
+                    Config.options.dock.separatorStyle = newValue;
+                }
+                options: [{
+                    "displayName": Translation.tr("Line"),
+                    "icon": "remove",
+                    "value": "Line"
+                }, {
+                    "displayName": Translation.tr("Dot"),
+                    "icon": "fiber_manual_record",
+                    "value": "Dot"
+                }, {
+                    "displayName": Translation.tr("Empty"),
+                    "icon": "check_box_outline_blank",
+                    "value": "Empty"
+                }]
+            }
+
+        }
+
+        ConfigRow {
+            uniform: true
+
             ConfigSwitch {
                 buttonIcon: "keep"
                 text: Translation.tr("Show pin button")
                 checked: Config.options.dock.showPinButton
-                onCheckedChanged: { Config.options.dock.showPinButton = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.showPinButton = checked;
+                }
+
                 StyledToolTip {
                     text: Translation.tr("The button that keeps the dock open.\nWithout it, 'Pinned on startup' decides whether the dock stays out.")
                 }
+
             }
+
             ConfigSwitch {
                 buttonIcon: "apps"
                 text: Translation.tr("Show app menu button")
                 checked: Config.options.dock.showAppsButton
-                onCheckedChanged: { Config.options.dock.showAppsButton = checked; }
+                onCheckedChanged: {
+                    Config.options.dock.showAppsButton = checked;
+                }
             }
+
         }
 
-        ConfigSwitch {
-            buttonIcon: "vertical_align_bottom"
-            text: Translation.tr("Attach to screen edge")
-            checked: Config.options.dock.attachToEdge
-            onCheckedChanged: { Config.options.dock.attachToEdge = checked; }
-            StyledToolTip {
-                text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
+        ConfigRow {
+            uniform: true
+
+            ConfigSwitch {
+                buttonIcon: "vertical_align_bottom"
+                text: Translation.tr("Attach to screen edge")
+                checked: Config.options.dock.attachToEdge
+                onCheckedChanged: {
+                    Config.options.dock.attachToEdge = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
+                }
+
             }
+
+            ConfigSwitch {
+                buttonIcon: "format_color_fill"
+                text: Translation.tr("Apps button background")
+                checked: Config.options.dock.showAppsButtonBackground
+                onCheckedChanged: {
+                    Config.options.dock.showAppsButtonBackground = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Show a filled background on the apps button.")
+                }
+
+            }
+
         }
 
         ConfigRow {
             ContentSubsection {
                 title: Translation.tr("Dock position")
+
                 ConfigSelectionArray {
                     currentValue: Config.options.dock.position
-                    onSelected: newValue => {
+                    onSelected: (newValue) => {
                         Config.options.dock.position = newValue;
                     }
-                    options: [
-                        { displayName: Translation.tr("Auto"), icon: "expand", value: "auto" },
-                        { displayName: Translation.tr("Bottom"), icon: "vertical_align_bottom", value: "bottom" },
-                        { displayName: Translation.tr("Top"), icon: "vertical_align_top", value: "top" },
-                        { displayName: Translation.tr("Left"), icon: "keyboard_tab_rtl", value: "left" },
-                        { displayName: Translation.tr("Right"), icon: "keyboard_tab", value: "right" }
-                    ]
+                    options: [{
+                        "displayName": Translation.tr("Auto"),
+                        "icon": "expand",
+                        "value": "auto"
+                    }, {
+                        "displayName": Translation.tr("Bottom"),
+                        "icon": "vertical_align_bottom",
+                        "value": "bottom"
+                    }, {
+                        "displayName": Translation.tr("Top"),
+                        "icon": "vertical_align_top",
+                        "value": "top"
+                    }, {
+                        "displayName": Translation.tr("Left"),
+                        "icon": "keyboard_tab_rtl",
+                        "value": "left"
+                    }, {
+                        "displayName": Translation.tr("Right"),
+                        "icon": "keyboard_tab",
+                        "value": "right"
+                    }]
                 }
+
             }
+
         }
 
         ContentSubsection {
@@ -287,23 +491,38 @@ ContentPage {
 
             ConfigSelectionArray {
                 currentValue: Config.options.dock.appsButtonShape
-                onSelected: newValue => {
+                onSelected: (newValue) => {
                     Config.options.dock.appsButtonShape = newValue;
                 }
-                options: ([
-                    "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle",
-                    "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided",
-                    "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst",
-                    "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"
-                ]).map(shape => {
+                options: (["Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"]).map((shape) => {
                     return {
-                        displayName: "",
-                        shape: shape,
-                        value: shape
-                    }
+                        "displayName": "",
+                        "shape": shape,
+                        "value": shape
+                    };
+                })
+            }
+
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Pin button shape")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.dock.pinButtonShape
+                onSelected: (newValue) => {
+                    Config.options.dock.pinButtonShape = newValue;
+                }
+                options: (["Pill", "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"]).map((shape) => {
+                    return {
+                        "displayName": "",
+                        "shape": shape,
+                        "value": shape
+                    };
                 })
             }
         }
+
     }
 
     ContentSection {
@@ -317,7 +536,8 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.sidebar.ai.showProviderAndModelButtons = checked;
             }
-        }    
+        }
+
     }
 
     ContentSection {
@@ -331,9 +551,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.lock.useHyprlock = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("If you want to somehow use fingerprint unlock...")
             }
+
         }
 
         ConfigSwitch {
@@ -355,9 +577,11 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.lock.security.requirePasswordToPower = checked;
                 }
+
                 StyledToolTip {
                     text: Translation.tr("Remember that on most devices one can always hold the power button to force shutdown\nThis only makes it a tiny bit harder for accidents to happen")
                 }
+
             }
 
             ConfigSwitch {
@@ -367,10 +591,13 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.lock.security.unlockKeyring = checked;
                 }
+
                 StyledToolTip {
                     text: Translation.tr("This is usually safe and needed for your browser and AI sidebar anyway\nMostly useful for those who use lock on startup instead of a display manager that does it (GDM, SDDM, etc.)")
                 }
+
             }
+
         }
 
         ContentSubsection {
@@ -402,7 +629,9 @@ ContentPage {
                     Config.options.lock.materialShapeChars = checked;
                 }
             }
+
         }
+
         ContentSubsection {
             title: Translation.tr("Style: Blurred")
 
@@ -426,7 +655,9 @@ ContentPage {
                     Config.options.lock.blur.extraZoom = value / 100;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -440,9 +671,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.clipboard.copyToast.enable = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("Android's clipboard overlay: a preview of what was copied slides into the bottom-left corner, with a link and send-to-phone action when they apply. Click it to open the clipboard history.")
             }
+
         }
 
         ContentSubsection {
@@ -451,15 +684,26 @@ ContentPage {
 
             ConfigSelectionArray {
                 currentValue: Config.options.clipboard.copyToast.corner
-                onSelected: newValue => {
+                onSelected: (newValue) => {
                     Config.options.clipboard.copyToast.corner = newValue;
                 }
-                options: [
-                    { displayName: Translation.tr("Top left"), icon: "north_west", value: "top_left" },
-                    { displayName: Translation.tr("Top right"), icon: "north_east", value: "top_right" },
-                    { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottom_left" },
-                    { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottom_right" },
-                ]
+                options: [{
+                    "displayName": Translation.tr("Top left"),
+                    "icon": "north_west",
+                    "value": "top_left"
+                }, {
+                    "displayName": Translation.tr("Top right"),
+                    "icon": "north_east",
+                    "value": "top_right"
+                }, {
+                    "displayName": Translation.tr("Bottom left"),
+                    "icon": "south_west",
+                    "value": "bottom_left"
+                }, {
+                    "displayName": Translation.tr("Bottom right"),
+                    "icon": "south_east",
+                    "value": "bottom_right"
+                }]
             }
 
             ConfigSpinBox {
@@ -472,11 +716,15 @@ ContentPage {
                 onValueChanged: {
                     Config.options.clipboard.copyToast.dismissAfter = value;
                 }
+
                 StyledToolTip {
                     text: Translation.tr("0 keeps the card up until it is clicked")
                 }
+
             }
+
         }
+
     }
 
     ContentSection {
@@ -502,13 +750,16 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.notifications.forceMonitor.enable = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("If you have multiple monitors and want notifications to only show on one of them, enable this and enter the monitor name below (e.g., eDP-1)")
             }
+
         }
 
         ConfigRow {
             enabled: Config.options.notifications.forceMonitor.enable
+
             MaterialTextArea {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Monitor name to show notifications on (e.g., eDP-1)")
@@ -518,7 +769,9 @@ ContentPage {
                     Config.options.notifications.forceMonitor.name = text;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -533,6 +786,7 @@ ContentPage {
                 Config.options.overlay.openingZoomAnimation = checked;
             }
         }
+
         ConfigSwitch {
             buttonIcon: "texture"
             text: Translation.tr("Darken screen")
@@ -541,6 +795,7 @@ ContentPage {
                 Config.options.overlay.darkenScreen = checked;
             }
         }
+
     }
 
     ContentSection {
@@ -564,22 +819,29 @@ ContentPage {
                 font.pixelSize: Appearance.font.pixelSize.smallie
                 text: Translation.tr("Press Super+G to open the overlay and pin the crosshair")
             }
+
             Item {
                 Layout.fillWidth: true
             }
+
             RippleButtonWithIcon {
                 id: editorButton
+
                 buttonRadius: Appearance.rounding.full
                 materialIcon: "open_in_new"
                 mainText: Translation.tr("Open editor")
                 onClicked: {
                     Qt.openUrlExternally(`https://www.vcrdb.net/builder?c=${Config.options.crosshair.code}`);
                 }
+
                 StyledToolTip {
                     text: "www.vcrdb.net"
                 }
+
             }
+
         }
+
     }
 
     ContentSection {
@@ -595,6 +857,7 @@ ContentPage {
                 Config.options.overlay.floatingImage.imageSource = text;
             }
         }
+
     }
 
     ContentSection {
@@ -622,14 +885,15 @@ ContentPage {
                     Config.options.overlay.notes.allowEditingIcon = checked;
                 }
             }
-            
+
         }
+
     }
 
     ContentSection {
         icon: "music_note"
         title: Translation.tr("Overlay: Media")
-    
+
         ConfigSwitch {
             buttonIcon: "sliders"
             text: Translation.tr("Show slider")
@@ -674,6 +938,7 @@ ContentPage {
                     Config.options.overlay.media.lyricSize = value;
                 }
             }
+
         }
 
     }
@@ -693,6 +958,7 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Hint target regions")
+
             ConfigRow {
                 ConfigSwitch {
                     buttonIcon: "select_window"
@@ -702,6 +968,7 @@ ContentPage {
                         Config.options.regionSelector.targetRegions.windows = checked;
                     }
                 }
+
                 ConfigSwitch {
                     buttonIcon: "right_panel_open"
                     text: Translation.tr('Layers')
@@ -710,6 +977,7 @@ ContentPage {
                         Config.options.regionSelector.targetRegions.layers = checked;
                     }
                 }
+
                 ConfigSwitch {
                     buttonIcon: "nearby"
                     text: Translation.tr('Content')
@@ -717,26 +985,36 @@ ContentPage {
                     onCheckedChanged: {
                         Config.options.regionSelector.targetRegions.content = checked;
                     }
+
                     StyledToolTip {
                         text: Translation.tr("Could be images or parts of the screen that have some containment.\nMight not always be accurate.\nThis is done with an image processing algorithm run locally and no AI is used.")
                     }
+
                 }
+
             }
+
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Google Lens")
-            
+
             ConfigSelectionArray {
                 currentValue: Config.options.search.imageSearch.useCircleSelection ? "circle" : "rectangles"
-                onSelected: newValue => {
+                onSelected: (newValue) => {
                     Config.options.search.imageSearch.useCircleSelection = (newValue === "circle");
                 }
-                options: [
-                    { icon: "activity_zone", value: "rectangles", displayName: Translation.tr("Rectangular selection") },
-                    { icon: "gesture", value: "circle", displayName: Translation.tr("Circle to Search") }
-                ]
+                options: [{
+                    "icon": "activity_zone",
+                    "value": "rectangles",
+                    "displayName": Translation.tr("Rectangular selection")
+                }, {
+                    "icon": "gesture",
+                    "value": "circle",
+                    "displayName": Translation.tr("Circle to Search")
+                }]
             }
+
         }
 
         ContentSubsection {
@@ -750,11 +1028,12 @@ ContentPage {
                     Config.options.regionSelector.rect.showAimLines = checked;
                 }
             }
+
         }
 
         ContentSubsection {
             title: Translation.tr("Circle selection")
-            
+
             ConfigSpinBox {
                 icon: "eraser_size_3"
                 text: Translation.tr("Stroke width")
@@ -778,7 +1057,9 @@ ContentPage {
                     Config.options.regionSelector.circle.padding = value;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -792,9 +1073,11 @@ ContentPage {
             onTextChanged: {
                 Config.options.sidebar.uptimeIcon = text;
             }
+
             StyledToolTip {
                 text: Translation.tr("Path to an image shown next to the uptime in the right sidebar.\nLeave empty to use your user avatar, which falls back to the distro logo.")
             }
+
         }
 
         ConfigSwitch {
@@ -804,9 +1087,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.sidebar.keepRightSidebarLoaded = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help")
             }
+
         }
 
         ConfigSwitch {
@@ -816,9 +1101,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.sidebar.keepLeftSidebarLoaded = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("Same trade for the left sidebar. Off: its pages are built on the first open and thrown away when it closes.\nConversations and chat state live in the services, so nothing is lost either way")
             }
+
         }
 
         ConfigRow {
@@ -827,56 +1114,50 @@ ContentPage {
 
                 ConfigSelectionArray {
                     currentValue: Config.options.sidebar.position
-                    onSelected: newValue => {
+                    onSelected: (newValue) => {
                         Config.options.sidebar.position = newValue;
                     }
-                    options: [
-                        {
-                            displayName: Translation.tr("Default"),
-                            icon: "side_navigation",
-                            value: "default"
-                        },
-                        {
-                            displayName: Translation.tr("Inverted"),
-                            icon: "swap_horiz",
-                            value: "inverted"
-                        },
-                        {
-                            displayName: Translation.tr("Left"),
-                            icon: "align_horizontal_left",
-                            value: "left"
-                        },
-                        {
-                            displayName: Translation.tr("Right"),
-                            icon: "align_horizontal_right",
-                            value: "right"
-                        }
-                    ]
+                    options: [{
+                        "displayName": Translation.tr("Default"),
+                        "icon": "side_navigation",
+                        "value": "default"
+                    }, {
+                        "displayName": Translation.tr("Inverted"),
+                        "icon": "swap_horiz",
+                        "value": "inverted"
+                    }, {
+                        "displayName": Translation.tr("Left"),
+                        "icon": "align_horizontal_left",
+                        "value": "left"
+                    }, {
+                        "displayName": Translation.tr("Right"),
+                        "icon": "align_horizontal_right",
+                        "value": "right"
+                    }]
                 }
+
             }
+
         }
 
         ContentSubsection {
             title: Translation.tr("Quick toggles")
-            
+
             ConfigSelectionArray {
                 Layout.fillWidth: false
                 currentValue: Config.options.sidebar.quickToggles.style
-                onSelected: newValue => {
+                onSelected: (newValue) => {
                     Config.options.sidebar.quickToggles.style = newValue;
                 }
-                options: [
-                    {
-                        displayName: Translation.tr("Classic"),
-                        icon: "password_2",
-                        value: "classic"
-                    },
-                    {
-                        displayName: Translation.tr("Android"),
-                        icon: "action_key",
-                        value: "android"
-                    }
-                ]
+                options: [{
+                    "displayName": Translation.tr("Classic"),
+                    "icon": "password_2",
+                    "value": "classic"
+                }, {
+                    "displayName": Translation.tr("Android"),
+                    "icon": "action_key",
+                    "value": "android"
+                }]
             }
 
             ConfigSpinBox {
@@ -900,10 +1181,13 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.sidebar.quickToggles.useThreeWaySliders = checked;
                 }
+
                 StyledToolTip {
                     text: Translation.tr("Draw the power profile toggle as a three-position slider when it is two cells wide")
                 }
+
             }
+
         }
 
         ContentSubsection {
@@ -917,7 +1201,7 @@ ContentPage {
                     Config.options.sidebar.quickSliders.enable = checked;
                 }
             }
-            
+
             ConfigSwitch {
                 buttonIcon: "brightness_6"
                 text: Translation.tr("Brightness")
@@ -957,13 +1241,16 @@ ContentPage {
                     Config.options.sidebar.quickSliders.showMic = checked;
                 }
             }
+
         }
 
         ContentSubsection {
             title: Translation.tr("Corner open")
             tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
+
             ConfigRow {
                 uniform: true
+
                 ConfigSwitch {
                     buttonIcon: "check"
                     text: Translation.tr("Enable")
@@ -972,7 +1259,9 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.enable = checked;
                     }
                 }
+
             }
+
             ConfigSwitch {
                 buttonIcon: "highlight_mouse_cursor"
                 text: Translation.tr("Hover to trigger")
@@ -984,7 +1273,9 @@ ContentPage {
                 StyledToolTip {
                     text: Translation.tr("When this is off you'll have to click")
                 }
+
             }
+
             Row {
                 ConfigSwitch {
                     enabled: !Config.options.sidebar.cornerOpen.clickless
@@ -997,7 +1288,9 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll")
                     }
+
                 }
+
                 ConfigSpinBox {
                     icon: "arrow_cool_down"
                     text: Translation.tr("with vertical offset")
@@ -1009,10 +1302,12 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset = value;
                     }
                 }
+
             }
-            
+
             ConfigRow {
                 uniform: true
+
                 ConfigSwitch {
                     buttonIcon: "vertical_align_bottom"
                     text: Translation.tr("Place at bottom")
@@ -1024,7 +1319,9 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Place the corners to trigger at the bottom")
                     }
+
                 }
+
                 ConfigSwitch {
                     buttonIcon: "unfold_more_double"
                     text: Translation.tr("Value scroll")
@@ -1036,8 +1333,11 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Brightness and volume")
                     }
+
                 }
+
             }
+
             ConfigSwitch {
                 buttonIcon: "visibility"
                 text: Translation.tr("Visualize region")
@@ -1046,6 +1346,7 @@ ContentPage {
                     Config.options.sidebar.cornerOpen.visualize = checked;
                 }
             }
+
             ConfigRow {
                 ConfigSpinBox {
                     icon: "arrow_range"
@@ -1058,6 +1359,7 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.cornerRegionWidth = value;
                     }
                 }
+
                 ConfigSpinBox {
                     icon: "height"
                     text: Translation.tr("Region height")
@@ -1069,8 +1371,11 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.cornerRegionHeight = value;
                     }
                 }
+
             }
+
         }
+
     }
 
     ContentSection {
@@ -1088,6 +1393,7 @@ ContentPage {
                 Config.options.osd.timeout = value;
             }
         }
+
     }
 
     ContentSection {
@@ -1104,7 +1410,9 @@ ContentPage {
                     Config.options.languageSwitcher.enable = checked;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -1120,10 +1428,12 @@ ContentPage {
                     Config.options.overview.enable = checked;
                 }
             }
+
         }
-        
+
         ConfigRow {
             uniform: true
+
             ConfigSwitch {
                 buttonIcon: "visibility"
                 text: Translation.tr("Show icons")
@@ -1132,6 +1442,7 @@ ContentPage {
                     Config.options.overview.showIcons = checked;
                 }
             }
+
             ConfigSwitch {
                 enabled: Config.options.overview.showIcons
                 buttonIcon: "center_focus_strong"
@@ -1141,8 +1452,9 @@ ContentPage {
                     Config.options.overview.centerIcons = checked;
                 }
             }
+
         }
-        
+
         ConfigSwitch {
             buttonIcon: "grid_3x3"
             text: Translation.tr("Use workspace map")
@@ -1150,9 +1462,11 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.overview.useWorkspaceMap = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("Only for multi-monitor setups, you must edit the workspace map manually in config.json\n Refer to the repo wiki for more information")
             }
+
         }
 
         ConfigSpinBox {
@@ -1175,39 +1489,43 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.overview.showOpeningAnimation = checked;
                 }
+
                 StyledToolTip {
                     text: Translation.tr("Using zoom-in style zoomes the wallpaper in default state, may look pixelated on crisp wallpapers")
                 }
+
             }
+
             Item {
                 Layout.fillWidth: true
             }
+
             ConfigSelectionArray {
                 Layout.fillWidth: false
                 enabled: Config.options.overview.showOpeningAnimation
                 currentValue: Config.options.overview.scrollingStyle.zoomStyle
-                onSelected: newValue => {
-                    Config.options.overview.scrollingStyle.zoomStyle = newValue
+                onSelected: (newValue) => {
+                    Config.options.overview.scrollingStyle.zoomStyle = newValue;
                 }
-                options: [
-                    {
-                        displayName: Translation.tr("In"),
-                        icon: "zoom_in_map",
-                        value: "in"
-                    },
-                    {
-                        displayName: Translation.tr("Out"),
-                        icon: "zoom_out_map",
-                        value: "out"
-                    }
-                ]
+                options: [{
+                    "displayName": Translation.tr("In"),
+                    "icon": "zoom_in_map",
+                    "value": "in"
+                }, {
+                    "displayName": Translation.tr("Out"),
+                    "icon": "zoom_out_map",
+                    "value": "out"
+                }]
             }
+
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Classic overview style")
+
             ConfigRow {
                 uniform: true
+
                 ConfigSpinBox {
                     icon: "splitscreen_bottom"
                     text: Translation.tr("Rows")
@@ -1219,6 +1537,7 @@ ContentPage {
                         Config.options.overview.rows = value;
                     }
                 }
+
                 ConfigSpinBox {
                     icon: "splitscreen_right"
                     text: Translation.tr("Columns")
@@ -1230,48 +1549,47 @@ ContentPage {
                         Config.options.overview.columns = value;
                     }
                 }
+
             }
 
             ConfigRow {
                 uniform: true
+
                 ConfigSelectionArray {
                     currentValue: Config.options.overview.orderRightLeft
-                    onSelected: newValue => {
-                        Config.options.overview.orderRightLeft = newValue
+                    onSelected: (newValue) => {
+                        Config.options.overview.orderRightLeft = newValue;
                     }
-                    options: [
-                        {
-                            displayName: Translation.tr("Left to right"),
-                            icon: "arrow_forward",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Right to left"),
-                            icon: "arrow_back",
-                            value: 1
-                        }
-                    ]
+                    options: [{
+                        "displayName": Translation.tr("Left to right"),
+                        "icon": "arrow_forward",
+                        "value": 0
+                    }, {
+                        "displayName": Translation.tr("Right to left"),
+                        "icon": "arrow_back",
+                        "value": 1
+                    }]
                 }
+
                 ConfigSelectionArray {
                     Layout.leftMargin: 50
                     currentValue: Config.options.overview.orderBottomUp
-                    onSelected: newValue => {
-                        Config.options.overview.orderBottomUp = newValue
+                    onSelected: (newValue) => {
+                        Config.options.overview.orderBottomUp = newValue;
                     }
-                    options: [
-                        {
-                            displayName: Translation.tr("Top-down"),
-                            icon: "arrow_downward",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Bottom-up"),
-                            icon: "arrow_upward",
-                            value: 1
-                        }
-                    ]
+                    options: [{
+                        "displayName": Translation.tr("Top-down"),
+                        "icon": "arrow_downward",
+                        "value": 0
+                    }, {
+                        "displayName": Translation.tr("Bottom-up"),
+                        "icon": "arrow_upward",
+                        "value": 1
+                    }]
                 }
+
             }
+
         }
 
         ConfigSpinBox {
@@ -1287,33 +1605,31 @@ ContentPage {
             }
         }
 
-
         ContentSubsection {
             title: Translation.tr("Scrolling overview style")
+
             ConfigSelectionArray {
                 currentValue: Config.options.overview.scrollingStyle.backgroundStyle
-                onSelected: newValue => {
-                    Config.options.overview.scrollingStyle.backgroundStyle = newValue
+                onSelected: (newValue) => {
+                    Config.options.overview.scrollingStyle.backgroundStyle = newValue;
                 }
-                options: [
-                    {
-                        displayName: Translation.tr("Blur"),
-                        icon: "blur_on",
-                        value: "blur"
-                    },
-                    {
-                        displayName: Translation.tr("Dim"),
-                        icon: "ev_shadow",
-                        value: "dim"
-                    },
-                    {
-                        displayName: Translation.tr("Transparent"),
-                        icon: "opacity",
-                        value: "transparent"
-                    }
-                ]
+                options: [{
+                    "displayName": Translation.tr("Blur"),
+                    "icon": "blur_on",
+                    "value": "blur"
+                }, {
+                    "displayName": Translation.tr("Dim"),
+                    "icon": "ev_shadow",
+                    "value": "dim"
+                }, {
+                    "displayName": Translation.tr("Transparent"),
+                    "icon": "opacity",
+                    "value": "transparent"
+                }]
             }
+
         }
+
     }
 
     ContentSection {
@@ -1328,8 +1644,7 @@ ContentPage {
                 Config.options.wallpaperSelector.useSystemFileDialog = checked;
             }
         }
-    }
 
-    
+    }
 
 }

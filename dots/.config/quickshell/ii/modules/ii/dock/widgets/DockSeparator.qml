@@ -13,25 +13,30 @@ Item {
         return (Config.options?.bar.bottom && !Config.options?.bar.vertical) ? "top" : "bottom"
     }
     readonly property bool isVertical: dockEffectivePosition === "left" || dockEffectivePosition === "right"
-    property real marginScale: 0.12
+    property real marginScale: 0.3
     property color color: Appearance.colors.colOutlineVariant
+    readonly property string style: Config.options?.dock?.separatorStyle ?? "Line"
 
     Rectangle {
         id: line
+        visible: root.style === "Line"
         readonly property real currentMargin: Math.round((root.isVertical 
             ? root.width : root.height) * root.marginScale)
 
         anchors.centerIn: parent
-        width: root.isVertical ? root.width - currentMargin * 2 : root.width
-        height: root.isVertical ? root.height : root.height - currentMargin * 2
+        width: root.isVertical ? root.width - currentMargin * 2 : 2
+        height: root.isVertical ? 2 : root.height - currentMargin * 2
         radius: Appearance.rounding.full
+        color: root.color
+    }
 
-        // Fade both ends out so the divider hints at a gap instead of cutting the dock.
-        gradient: Gradient {
-            orientation: root.isVertical ? Gradient.Horizontal : Gradient.Vertical
-            GradientStop { position: 0.0; color: ColorUtils.transparentize(root.color, 1) }
-            GradientStop { position: 0.5; color: root.color }
-            GradientStop { position: 1.0; color: ColorUtils.transparentize(root.color, 1) }
-        }
+    Rectangle {
+        id: dot
+        visible: root.style === "Dot"
+        anchors.centerIn: parent
+        width: root.isVertical ? Math.min(root.width * 0.3, 6) : Math.min(root.height * 0.3, 6)
+        height: width
+        radius: width / 2
+        color: root.color
     }
 }

@@ -53,8 +53,8 @@ GroupButton {
             visible: active
             sourceComponent: MaterialShape {
                 id: materialSymbol
-                implicitWidth: Appearance.font.pixelSize.larger
-                implicitHeight: Appearance.font.pixelSize.larger
+                implicitWidth: Appearance.font.pixelSize.larger * 1.5
+                implicitHeight: Appearance.font.pixelSize.larger * 1.5
                 shapeString: root.buttonShape
                 color: root.buttonColor !== "" ? root.buttonColor : root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
             }

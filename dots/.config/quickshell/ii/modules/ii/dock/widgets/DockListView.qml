@@ -15,7 +15,7 @@ StyledListView {
     layoutDirection: listLayoutDirection
     verticalLayoutDirection: listVerticalLayoutDirection
     orientation: root.isVertical ? ListView.Vertical : ListView.Horizontal
-    spacing: 0
+    spacing: Config.options?.dock?.itemSpacing ?? 0
     interactive: false
     clip: true
     animateAppearance: false

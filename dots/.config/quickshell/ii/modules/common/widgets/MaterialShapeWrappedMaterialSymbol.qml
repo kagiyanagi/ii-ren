@@ -15,7 +15,6 @@ MaterialShape {
     property bool rotateIconWithShape: false
 
     color: Appearance.colors.colSecondaryContainer
-    colSymbol: Appearance.colors.colOnSecondaryContainer
     shape: MaterialShape.Shape.Clover4Leaf
     implicitSize: iconSize + padding * 2
 
@@ -25,10 +24,21 @@ MaterialShape {
 
     MaterialSymbol {
         id: symbol
+        visible: !text.endsWith(".svg")
         anchors.centerIn: parent
-        color: root.colSymbol
-        width: root.iconSize
-        height: root.iconSize
+        color: Appearance.colors.colOnSecondaryContainer
         rotation: !root.rotateIconWithShape ? 360 - root.rotation: root.rotation
+    }
+
+    CustomIcon {
+        id: customIcon
+        visible: symbol.text.endsWith(".svg")
+        source: symbol.text
+        anchors.centerIn: parent
+        width: symbol.iconSize
+        height: symbol.iconSize
+        color: symbol.color
+        colorize: true
+        rotation: symbol.rotation
     }
 }

@@ -13,6 +13,11 @@ Item {
     property alias from: spinBoxWidget.from
     property alias to: spinBoxWidget.to
     
+    property bool hovered: hoverHandler.hovered
+    HoverHandler {
+        id: hoverHandler
+    }
+    
     Layout.fillWidth: true
     readonly property bool wantsCard: true
     // Anchor margins don't feed implicitWidth the way Layout margins did, so
