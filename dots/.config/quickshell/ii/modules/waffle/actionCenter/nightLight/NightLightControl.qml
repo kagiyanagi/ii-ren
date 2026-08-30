@@ -98,6 +98,20 @@ Item {
         }
 
         SectionText {
+            text: Translation.tr("Reading Mode")
+        }
+
+        ToggleItem {
+            name: Translation.tr("Reading mode")
+            description: Translation.tr("Grayscale monochrome display mode")
+            iconName: "book"
+            checked: HyprlandReadingMode.manualEnable
+            onCheckedChanged: {
+                HyprlandReadingMode.toggleManual(checked);
+            }
+        }
+
+        SectionText {
             text: Translation.tr("Anti-flashbang (experimental)")
         }
 

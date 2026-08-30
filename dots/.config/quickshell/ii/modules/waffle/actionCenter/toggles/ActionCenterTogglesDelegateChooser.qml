@@ -169,4 +169,15 @@ DelegateChooser {
             }
         }
     }
+
+    DelegateChoice {
+        roleValue: "readingMode"
+        ActionCenterToggleButton {
+            toggleModel: ReadingModeToggle {}
+            icon: toggleModel.icon
+            menu: Component {
+                NightLightControl {}
+            }
+        }
+    }
 }

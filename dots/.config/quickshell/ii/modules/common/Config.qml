@@ -1506,6 +1506,12 @@ Singleton {
                     property bool automatic: false
                     property int intensity: 50
                 }
+                property JsonObject readingMode: JsonObject {
+                    property bool enable: false
+                    property bool automatic: false
+                    property int intensity: 100
+                    property bool paperTone: false
+                }
             }
 
             property JsonObject lock: JsonObject {
@@ -1893,7 +1899,7 @@ Singleton {
                     property bool leftAlignApps: false
                 }
                 property JsonObject actionCenter: JsonObject {
-                    property list<string> toggles: ["network", "hotspot", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker"]
+                    property list<string> toggles: ["network", "hotspot", "bluetooth", "easyEffects", "powerProfile", "idleInhibitor", "nightLight", "comfortView", "readingMode", "darkMode", "antiFlashbang", "cloudflareWarp", "mic", "musicRecognition", "notifications", "onScreenKeyboard", "gameMode", "screenSnip", "colorPicker"]
                 }
                 property JsonObject calendar: JsonObject {
                     property bool force2CharDayOfWeek: true

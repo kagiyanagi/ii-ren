@@ -159,6 +159,89 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                text: Translation.tr("Reading Mode")
+            }
+
+            // design-ok: matches existing NightLightDialog section separator pattern
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
+            }
+
+            Column {
+                id: readingModeColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "menu_book"
+                    text: Translation.tr("Enable now")
+                    checked: HyprlandReadingMode.manualEnable
+                    onCheckedChanged: {
+                        HyprlandReadingMode.toggleManual(checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Grayscale monochrome display mode for long-term reading comfort.")
+                    }
+                }
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "auto_mode"
+                    text: Translation.tr("Dynamic automatic")
+                    checked: HyprlandReadingMode.automatic
+                    onCheckedChanged: {
+                        HyprlandReadingMode.toggleAutomatic(checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Automatically enables Reading Mode based on schedule.")
+                    }
+                }
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "history_edu"
+                    text: Translation.tr("Paper warmth tone")
+                    checked: HyprlandReadingMode.paperTone
+                    onCheckedChanged: {
+                        HyprlandReadingMode.togglePaperTone(checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Simulates natural paper reflection tone to further ease reading fatigue.")
+                    }
+                }
+
+                WindowDialogSlider {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    text: Translation.tr("Grayscale intensity")
+                    from: 0
+                    to: 100
+                    value: HyprlandReadingMode.intensity
+                    onMoved: HyprlandReadingMode.setIntensity(value)
+                    tooltipContent: `${Math.round(value)}%`
+                }
+            }
+
+            WindowDialogSectionHeader {
                 text: Translation.tr("Anti-flashbang (experimental)")
             }
 

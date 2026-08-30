@@ -12,6 +12,7 @@ var TOGGLE_TYPES = {
     easyEffects: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     nightLight: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     comfortView: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    readingMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     darkMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     cloudflareWarp: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     gameMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },

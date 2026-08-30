@@ -26,6 +26,10 @@ Singleton {
     }
 
     function applyShader() {
+        if (HyprlandReadingMode.effectiveActive) {
+            HyprlandReadingMode.applyShader();
+            return;
+        }
         const sat = (1.0 - (root.intensity * 0.85 / 100.0)).toFixed(3);
         const warmth = (root.intensity * 0.50 / 100.0).toFixed(3);
         const cap = (1.0 - (root.intensity * 0.15 / 100.0)).toFixed(3);
@@ -79,7 +83,11 @@ void main() {
             Config.options.light.comfortView.enable = false;
         }
         if (!root.automatic || !Hyprsunset.shouldBeOn) {
-            Quickshell.execDetached(["bash", "-c", `${Directories.cliPath} hyprset reset decoration:screen_shader && hyprctl reload`]);
+            if (HyprlandReadingMode.effectiveActive) {
+                HyprlandReadingMode.applyShader();
+            } else {
+                Quickshell.execDetached(["bash", "-c", `${Directories.cliPath} hyprset reset decoration:screen_shader && hyprctl reload`]);
+            }
         }
     }
 
@@ -127,7 +135,11 @@ void main() {
                 if (Hyprsunset.shouldBeOn) {
                     root.applyShader();
                 } else {
-                    Quickshell.execDetached(["bash", "-c", `${Directories.cliPath} hyprset reset decoration:screen_shader && hyprctl reload`]);
+                    if (HyprlandReadingMode.effectiveActive) {
+                        HyprlandReadingMode.applyShader();
+                    } else {
+                        Quickshell.execDetached(["bash", "-c", `${Directories.cliPath} hyprset reset decoration:screen_shader && hyprctl reload`]);
+                    }
                 }
             }
         }

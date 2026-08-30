@@ -375,6 +375,48 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "menu_book"
+        title: Translation.tr("Reading Mode")
+        tooltip: Translation.tr("Grayscale monochrome display mode for long-term reading comfort")
+        Layout.topMargin: -25
+
+        ConfigSwitch {
+            buttonIcon: "menu_book"
+            text: Translation.tr("Enable Reading Mode")
+            checked: HyprlandReadingMode.manualEnable
+            onCheckedChanged: {
+                HyprlandReadingMode.toggleManual(checked);
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "auto_mode"
+            text: Translation.tr("Dynamic automatic mode")
+            checked: HyprlandReadingMode.automatic
+            onCheckedChanged: {
+                HyprlandReadingMode.toggleAutomatic(checked);
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "history_edu"
+            text: Translation.tr("Paper warmth tone")
+            checked: HyprlandReadingMode.paperTone
+            onCheckedChanged: {
+                HyprlandReadingMode.togglePaperTone(checked);
+            }
+        }
+        ConfigSpinBox {
+            text: Translation.tr("Grayscale intensity (%)")
+            value: HyprlandReadingMode.intensity
+            from: 0
+            to: 100
+            stepSize: 5
+            onValueChanged: {
+                HyprlandReadingMode.setIntensity(value);
+            }
+        }
+    }
+
+    ContentSection {
         icon: "screenshot_monitor"
         title: Translation.tr("Bar & screen")
         Layout.topMargin: -25
