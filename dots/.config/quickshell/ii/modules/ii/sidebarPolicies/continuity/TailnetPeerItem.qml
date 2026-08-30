@@ -132,7 +132,7 @@ Rectangle {
                 onClicked: Tailscale.copyIp(root.modelData.ip)
             }
             RippleButtonWithIcon {
-                visible: root.online
+                visible: root.online && (root.modelData?.ssh ?? false)
                 materialIcon: "terminal"
                 mainText: Translation.tr("SSH")
                 implicitHeight: 30

@@ -148,7 +148,8 @@ Singleton {
             relay: p.Relay ?? "",
             rx: p.RxBytes ?? 0,
             tx: p.TxBytes ?? 0,
-            taildrop: (p.TaildropTarget ?? 0) === 1
+            taildrop: (p.TaildropTarget ?? 0) === 1,
+            ssh: Boolean((p.sshHostKeys ?? p.SSHHostKeys)?.length)
         };
     }
 }
