@@ -9,6 +9,10 @@ import qs.modules.common.widgets
 ContentPage {
     forceWidth: true
 
+    EasterEggWindow {
+        id: easterEggWindow
+    }
+
     ContentSection {
         icon: "box"
         title: Translation.tr("Distro")
@@ -223,12 +227,38 @@ ContentPage {
             spacing: 20
             Layout.topMargin: 10
             Layout.bottomMargin: 10
-            MaterialSymbol {
+            Item {
+                id: eggIconContainer
+                width: 80
+                height: 80
                 Layout.alignment: Qt.AlignVCenter
-                text: "android"
-                iconSize: 80
-                fill: 1
-                color: "#3DDC84" // Android green, like the two real logos above it
+                
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    text: "android"
+                    iconSize: 80
+                    fill: 1
+                    color: "#3DDC84" // Android green, like the two real logos above it
+                }
+
+                property int clickCount: 0
+                Timer {
+                    id: eggClickTimer
+                    interval: 500
+                    onTriggered: eggIconContainer.clickCount = 0
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        eggIconContainer.clickCount++
+                        eggClickTimer.restart()
+                        if (eggIconContainer.clickCount >= 3) {
+                            eggIconContainer.clickCount = 0
+                            easterEggWindow.show()
+                        }
+                    }
+                }
             }
             ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
