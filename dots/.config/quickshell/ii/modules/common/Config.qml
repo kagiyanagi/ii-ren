@@ -1491,6 +1491,11 @@ Singleton {
                 property JsonObject antiFlashbang: JsonObject {
                     property bool enable: false
                 }
+                property JsonObject comfortView: JsonObject {
+                    property bool enable: false
+                    property bool automatic: false
+                    property int intensity: 50
+                }
             }
 
             property JsonObject lock: JsonObject {

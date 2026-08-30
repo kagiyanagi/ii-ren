@@ -341,6 +341,40 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "visibility"
+        title: Translation.tr("Comfort View")
+        tooltip: Translation.tr("Soften screen colors, reduce OLED saturation and glare")
+        Layout.topMargin: -25
+
+        ConfigSwitch {
+            buttonIcon: "visibility"
+            text: Translation.tr("Enable Comfort View")
+            checked: HyprlandComfortView.manualEnable
+            onCheckedChanged: {
+                HyprlandComfortView.toggleManual(checked);
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "auto_mode"
+            text: Translation.tr("Dynamic automatic mode")
+            checked: HyprlandComfortView.automatic
+            onCheckedChanged: {
+                HyprlandComfortView.toggleAutomatic(checked);
+            }
+        }
+        ConfigSpinBox {
+            text: Translation.tr("Effect intensity (%)")
+            value: HyprlandComfortView.intensity
+            from: 0
+            to: 100
+            stepSize: 5
+            onValueChanged: {
+                HyprlandComfortView.setIntensity(value);
+            }
+        }
+    }
+
+    ContentSection {
         icon: "screenshot_monitor"
         title: Translation.tr("Bar & screen")
         Layout.topMargin: -25

@@ -15,180 +15,260 @@ WindowDialog {
     id: root
     property var screen: root.QsWindow.window?.screen
     property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
-    backgroundHeight: 700
+    backgroundHeight: 670
 
     WindowDialogTitle {
         text: Translation.tr("Eye protection")
     }
+
+    StyledFlickable {
+        Layout.fillWidth: true
+        Layout.preferredHeight: Math.min(scrollColumn.implicitHeight, 520)
+        contentHeight: scrollColumn.implicitHeight
+        contentWidth: width
+        clip: true
+
+        ColumnLayout {
+            id: scrollColumn
+            width: parent.width
+            spacing: 16
     
-    WindowDialogSectionHeader {
-        text: Translation.tr("Night Light")
-    }
-
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
-
-    Column {
-        id: nightLightColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
-
-        ConfigSwitch {
-            anchors {
-                left: parent.left
-                right: parent.right
+            WindowDialogSectionHeader {
+                text: Translation.tr("Night Light")
             }
-            iconSize: Appearance.font.pixelSize.larger
-            buttonIcon: "check"
-            text: Translation.tr("Enable now")
-            checked: Hyprsunset.temperatureActive
-            onCheckedChanged: {
-                Hyprsunset.toggleTemperature(checked)
+
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
             }
-        }
 
-        ConfigSwitch {
-            anchors {
-                left: parent.left
-                right: parent.right
+            Column {
+                id: nightLightColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "check"
+                    text: Translation.tr("Enable now")
+                    checked: Hyprsunset.temperatureActive
+                    onCheckedChanged: {
+                        Hyprsunset.toggleTemperature(checked)
+                    }
+                }
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "night_sight_auto"
+                    text: Translation.tr("Automatic")
+                    checked: Config.options.light.night.automatic
+                    onCheckedChanged: {
+                        Config.options.light.night.automatic = checked;
+                    }
+                }
+
+                WindowDialogSlider {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    text: Translation.tr("Intensity")
+                    from: 6500
+                    to: 1200
+                    stopIndicatorValues: [5000, to]
+                    value: Config.options.light.night.colorTemperature
+                    onMoved: Config.options.light.night.colorTemperature = value
+                    tooltipContent: `${Math.round(value)}K`
+                }
             }
-            iconSize: Appearance.font.pixelSize.larger
-            buttonIcon: "night_sight_auto"
-            text: Translation.tr("Automatic")
-            checked: Config.options.light.night.automatic
-            onCheckedChanged: {
-                Config.options.light.night.automatic = checked;
+
+            WindowDialogSectionHeader {
+                text: Translation.tr("Comfort View")
             }
-        }
 
-        WindowDialogSlider {
-            anchors {
-                left: parent.left
-                right: parent.right
-                leftMargin: 4
-                rightMargin: 4
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
             }
-            text: Translation.tr("Intensity")
-            from: 6500
-            to: 1200
-            stopIndicatorValues: [5000, to]
-            value: Config.options.light.night.colorTemperature
-            onMoved: Config.options.light.night.colorTemperature = value
-            tooltipContent: `${Math.round(value)}K`
-        }
-    }
 
-    WindowDialogSectionHeader {
-        text: Translation.tr("Anti-flashbang (experimental)")
-    }
+            Column {
+                id: comfortViewColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
 
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "visibility"
+                    text: Translation.tr("Enable now")
+                    checked: HyprlandComfortView.manualEnable
+                    onCheckedChanged: {
+                        HyprlandComfortView.toggleManual(checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Softens display colors and reduces OLED saturation to protect eyes.")
+                    }
+                }
 
-    Column {
-        id: antiFlashbangColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "auto_mode"
+                    text: Translation.tr("Dynamic automatic")
+                    checked: HyprlandComfortView.automatic
+                    onCheckedChanged: {
+                        HyprlandComfortView.toggleAutomatic(checked);
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Automatically enables Comfort View based on schedule.")
+                    }
+                }
 
-        ConfigSwitch {
-            anchors {
-                left: parent.left
-                right: parent.right
+                WindowDialogSlider {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    text: Translation.tr("Effect intensity")
+                    from: 0
+                    to: 100
+                    value: HyprlandComfortView.intensity
+                    onMoved: HyprlandComfortView.setIntensity(value)
+                    tooltipContent: `${Math.round(value)}%`
+                }
             }
-            iconSize: Appearance.font.pixelSize.larger
-            buttonIcon: "filter"
-            text: Translation.tr("Content adjustment")
-            checked: HyprlandAntiFlashbangShader.enabled
-            onCheckedChanged: {
-                if (checked) HyprlandAntiFlashbangShader.enable()
-                else HyprlandAntiFlashbangShader.disable()
+
+            WindowDialogSectionHeader {
+                text: Translation.tr("Anti-flashbang (experimental)")
             }
-            StyledToolTip {
-                text: Translation.tr("<b>Dims screen content</b> as needed.<br><br>Pros: Immediately responsive<br>Cons: Expensive and can hurt color accuracy<br><br><i>Uses a Hyprland screen shader</i>")
+
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
             }
-        }
 
-        ConfigSwitch {
-            anchors {
-                left: parent.left
-                right: parent.right
+            Column {
+                id: antiFlashbangColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "filter"
+                    text: Translation.tr("Content adjustment")
+                    checked: HyprlandAntiFlashbangShader.enabled
+                    onCheckedChanged: {
+                        if (checked) HyprlandAntiFlashbangShader.enable()
+                        else HyprlandAntiFlashbangShader.disable()
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("<b>Dims screen content</b> as needed.<br><br>Pros: Immediately responsive<br>Cons: Expensive and can hurt color accuracy<br><br><i>Uses a Hyprland screen shader</i>")
+                    }
+                }
+
+                ConfigSwitch {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                    }
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "light_mode"
+                    text: Translation.tr("Brightness adjustment")
+                    checked: Config.options.light.antiFlashbang.enable
+                    onCheckedChanged: {
+                        Config.options.light.antiFlashbang.enable = checked;
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Adapts the <b>display (physical screen) brightness</b><br><br>Pros: Less expensive, retains colors<br>Cons: Not immediately responsive<br><br><i>Adjusts display brightness after each Hyprland IPC event</i>")
+                    }
+                }
             }
-            iconSize: Appearance.font.pixelSize.larger
-            buttonIcon: "light_mode"
-            text: Translation.tr("Brightness adjustment")
-            checked: Config.options.light.antiFlashbang.enable
-            onCheckedChanged: {
-                Config.options.light.antiFlashbang.enable = checked;
+
+            WindowDialogSectionHeader {
+                text: Translation.tr("Brightness")
             }
-            StyledToolTip {
-                text: Translation.tr("Adapts the <b>display (physical screen) brightness</b><br><br>Pros: Less expensive, retains colors<br>Cons: Not immediately responsive<br><br><i>Adjusts display brightness after each Hyprland IPC event</i>")
+
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
             }
-        }
-    }
 
-    WindowDialogSectionHeader {
-        text: Translation.tr("Brightness")
-    }
+            Column {
+                id: brightnessColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
 
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
-
-    Column {
-        id: brightnessColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
-
-        WindowDialogSlider {
-            anchors {
-                left: parent.left
-                right: parent.right
-                leftMargin: 4
-                rightMargin: 4
+                WindowDialogSlider {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    value: root.brightnessMonitor.brightness
+                    onMoved: root.brightnessMonitor.setBrightness(value)
+                }
             }
-            value: root.brightnessMonitor.brightness
-            onMoved: root.brightnessMonitor.setBrightness(value)
-        }
-    }
 
-    WindowDialogSectionHeader {
-        text: Translation.tr("Gamma")
-    }
-
-    WindowDialogSeparator {
-        Layout.topMargin: -22
-        Layout.leftMargin: 0
-        Layout.rightMargin: 0
-    }
-
-    Column {
-        id: gammaColumn
-        Layout.topMargin: -16
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-
-        WindowDialogSlider {
-            anchors {
-                left: parent.left
-                right: parent.right
-                leftMargin: 4
-                rightMargin: 4
+            WindowDialogSectionHeader {
+                text: Translation.tr("Gamma")
             }
-            from: Hyprsunset.gammaLowerLimit / 100
-            value: Hyprsunset.gamma / 100
-            onMoved: Hyprsunset.setGamma(value * 100)
-            tooltipContent: `${Math.round(value * 100)}%`
-        }
-    }
+
+            WindowDialogSeparator {
+                Layout.topMargin: -22
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
+            }
+
+            Column {
+                id: gammaColumn
+                Layout.topMargin: -16
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                WindowDialogSlider {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 4
+                        rightMargin: 4
+                    }
+                    from: Hyprsunset.gammaLowerLimit / 100
+                    value: Hyprsunset.gamma / 100
+                    onMoved: Hyprsunset.setGamma(value * 100)
+                    tooltipContent: `${Math.round(value * 100)}%`
+                }
+            }
     
+
+        }
+    }
     WindowDialogButtonRow {
         Layout.fillWidth: true
 

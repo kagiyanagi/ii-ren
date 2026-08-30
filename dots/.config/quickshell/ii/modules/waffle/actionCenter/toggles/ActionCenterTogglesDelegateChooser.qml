@@ -151,4 +151,15 @@ DelegateChooser {
             icon: "cut"
         }
     }
+
+    DelegateChoice {
+        roleValue: "comfortView"
+        ActionCenterToggleButton {
+            toggleModel: ComfortViewToggle {}
+            icon: toggleModel.icon
+            menu: Component {
+                NightLightControl {}
+            }
+        }
+    }
 }
