@@ -31,18 +31,27 @@ Scope {
         }
 
         color: "transparent"
-        implicitWidth: Appearance.sizes.notificationPopupWidth
+
+        // Slide inwards so a right sidebar can have the corner.
+        // The window is made wide enough for both positions, and the list moves inside it.
+        readonly property real sidebarInset: GlobalStates.effectiveRightOpen ? Appearance.sizes.sidebarWidth : 0
+        implicitWidth: Appearance.sizes.notificationPopupWidth + Appearance.sizes.sidebarWidth
 
         NotificationListView {
             id: listview
             anchors {
                 top: parent.top
                 bottom: parent.bottom
-                right: parent.right
-                rightMargin: 4
                 topMargin: 4
             }
-            implicitWidth: parent.width - Appearance.sizes.elevationMargin * 2
+            
+            x: root.width - width - 4 - root.sidebarInset
+            width: Appearance.sizes.notificationPopupWidth - Appearance.sizes.elevationMargin * 2
+            
+            Behavior on x {
+                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+            }
+            
             popup: true
         }
 
