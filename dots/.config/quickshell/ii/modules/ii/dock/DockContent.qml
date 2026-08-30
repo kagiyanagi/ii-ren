@@ -59,6 +59,9 @@ Item {
     readonly property var activePlayer: MprisController.activePlayer
     readonly property string rawTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || ""
     readonly property bool hasRealData: activePlayer !== null && rawTitle !== ""
+    
+    readonly property bool hasApps: root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFolders.length > 0 || root.processedFiles.length > 0
+    readonly property bool hasMedia: root.mediaWidgetEnabled && root.showMusicPlayer && rawTitle !== ""
     property bool showMusicPlayer: hasRealData
 
     onHasRealDataChanged: {
@@ -353,7 +356,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.showPinButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFolders.length > 0 || root.processedFiles.length > 0)
+            show: root.showPinButton && (root.hasApps || root.hasMedia || root.showAppsButton)
         }
 
         Flickable {
@@ -503,7 +506,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.mediaWidgetEnabled && root.showMusicPlayer
+            show: root.hasApps && (root.hasMedia || root.showAppsButton)
         }
 
         Item {
@@ -541,7 +544,7 @@ Item {
         }
 
         SectionSeparator {
-            show: root.showAppsButton && (root.processedPinnedApps.length > 0 || root.processedRunningApps.length > 0 || root.processedFolders.length > 0 || root.processedFiles.length > 0)
+            show: root.hasMedia && root.showAppsButton
         }
 
         Item {
