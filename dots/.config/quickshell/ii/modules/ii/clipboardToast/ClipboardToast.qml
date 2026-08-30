@@ -29,6 +29,18 @@ Scope {
     readonly property bool atTop: root.corner.startsWith("top")
     readonly property bool atRight: root.corner.endsWith("right")
 
+    Binding {
+        target: GlobalStates
+        property: "clipboardToastCorner"
+        value: root.corner
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "clipboardToastHeight"
+        value: toastWindow.visible ? card.height + toastWindow.gutter : 0
+    }
+
     // The newest cliphist id the card has already shown. Deleting or wiping
     // entries refreshes the list too, and that is not a copy.
     property int lastEntryId: -1
@@ -175,6 +187,13 @@ Scope {
             return Math.max(0, Math.min(GlobalStates.notificationPopupHeight, room));
         }
 
+        readonly property real fastPairInset: {
+            if (GlobalStates.fastPairPopupCorner !== root.corner || GlobalStates.fastPairPopupHeight <= 0)
+                return 0;
+            const room = toastWindow.height - card.height - toastWindow.gutter * 2 - toastWindow.notificationInset;
+            return Math.max(0, Math.min(GlobalStates.fastPairPopupHeight, room));
+        }
+
         // Gutter to the screen edge, elevationMargin of slack on the far side for
         // the shadow, plus the room the card needs to dodge a sidebar.
         implicitWidth: card.width + toastWindow.gutter + Appearance.sizes.elevationMargin + Appearance.sizes.sidebarWidth
@@ -217,7 +236,7 @@ Scope {
             // undefined to it, so switching corners at runtime left the card
             // anchored to both sides at once and stretched it.
             x: root.atRight ? toastWindow.width - card.width - toastWindow.gutter - toastWindow.sidebarInset : toastWindow.gutter + toastWindow.sidebarInset
-            y: root.atTop ? toastWindow.gutter + toastWindow.notificationInset : toastWindow.height - card.height - toastWindow.gutter
+            y: root.atTop ? toastWindow.gutter + toastWindow.notificationInset + toastWindow.fastPairInset : toastWindow.height - card.height - toastWindow.gutter - toastWindow.fastPairInset
 
             // Glides out of the way when a sidebar opens or a notification lands,
             // rather than jumping. Position, so a spatial spec.

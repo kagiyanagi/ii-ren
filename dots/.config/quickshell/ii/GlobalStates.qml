@@ -54,6 +54,16 @@ Singleton {
     // sharing that corner can move out of their way. 0 when none are showing.
     property real notificationPopupHeight: 0
 
+    // Configurable popup heights and corners so they can stack if they share a corner
+    property real fastPairPopupHeight: 0
+    property string fastPairPopupCorner: ""
+    
+    property real clipboardToastHeight: 0
+    property string clipboardToastCorner: ""
+    
+    property real screenshotPreviewHeight: 0
+    property string screenshotPreviewCorner: ""
+
     // Desktop right-click menu, positioned at the click.
     property bool desktopMenuOpen: false
     property var desktopMenuScreen: null

@@ -20,8 +20,21 @@ Scope {
     property bool shown: false
 
     // Which corner the card lives in, straight from the setting.
-    readonly property bool atRight: Config.options.screenSnip.previewCorner.endsWith("right")
-    readonly property bool atBottom: Config.options.screenSnip.previewCorner.startsWith("bottom")
+    readonly property string corner: Config.options.screenSnip.previewCorner
+    readonly property bool atRight: previewPopup.corner.endsWith("right")
+    readonly property bool atBottom: previewPopup.corner.startsWith("bottom")
+
+    Binding {
+        target: GlobalStates
+        property: "screenshotPreviewCorner"
+        value: previewPopup.corner
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "screenshotPreviewHeight"
+        value: root.visible ? card.height + card.gutter : 0
+    }
 
     signal save()
     signal edit()
@@ -70,6 +83,20 @@ Scope {
             return Math.max(0, Math.min(GlobalStates.notificationPopupHeight, room));
         }
 
+        readonly property real fastPairInset: {
+            if (GlobalStates.fastPairPopupCorner !== previewPopup.corner || GlobalStates.fastPairPopupHeight <= 0)
+                return 0;
+            const room = root.height - card.height - card.gutter * 2 - root.notificationInset;
+            return Math.max(0, Math.min(GlobalStates.fastPairPopupHeight, room));
+        }
+
+        readonly property real clipboardInset: {
+            if (GlobalStates.clipboardToastCorner !== previewPopup.corner || GlobalStates.clipboardToastHeight <= 0)
+                return 0;
+            const room = root.height - card.height - card.gutter * 2 - root.notificationInset - root.fastPairInset;
+            return Math.max(0, Math.min(GlobalStates.clipboardToastHeight, room));
+        }
+
         // Gutter to the screen edge, elevationMargin of slack on the far side
         // for the shadow, plus the room the card needs to dodge a sidebar.
         implicitWidth: card.width + card.gutter + Appearance.sizes.elevationMargin + Appearance.sizes.sidebarWidth
@@ -91,8 +118,8 @@ Scope {
             readonly property bool onScreen: previewPopup.atRight ? (x < root.width) : (x > -width)
 
             y: previewPopup.atBottom
-                ? root.height - card.height - card.gutter
-                : card.gutter + root.notificationInset
+                ? root.height - card.height - card.gutter - root.fastPairInset - root.clipboardInset
+                : card.gutter + root.notificationInset + root.fastPairInset + root.clipboardInset
             // Slides out past the nearest screen edge, so there is nothing to clip.
             x: previewPopup.shown
                 ? (previewPopup.atRight

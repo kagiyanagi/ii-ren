@@ -17,6 +17,18 @@ Scope {
     readonly property bool atTop: fastPairPopup.corner.startsWith("top")
     readonly property bool atRight: fastPairPopup.corner.endsWith("right")
 
+    Binding {
+        target: GlobalStates
+        property: "fastPairPopupCorner"
+        value: fastPairPopup.corner
+    }
+
+    Binding {
+        target: GlobalStates
+        property: "fastPairPopupHeight"
+        value: root.visible ? card.height + card.gutter : 0
+    }
+
     PanelWindow {
         id: root
 
