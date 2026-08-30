@@ -23,9 +23,11 @@ Item {
         readonly property real currentMargin: Math.round((root.isVertical 
             ? root.width : root.height) * root.marginScale)
 
+        readonly property real thickness: 3
+
         anchors.centerIn: parent
-        width: root.isVertical ? root.width - currentMargin * 2 : 2
-        height: root.isVertical ? 2 : root.height - currentMargin * 2
+        width: root.isVertical ? root.width - currentMargin * 2 : thickness
+        height: root.isVertical ? thickness : root.height - currentMargin * 2
         radius: Appearance.rounding.full
         color: root.color
     }

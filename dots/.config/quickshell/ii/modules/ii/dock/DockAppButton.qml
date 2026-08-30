@@ -219,6 +219,23 @@ DockButton {
             && !(dockContent?.suppressHover ?? false)
     }
 
-    DockAppIcon {}
+    // Resting elevation on the icon, lifted a touch on hover so the Launcher3
+    // hover scale reads as the icon coming toward you.
+    StyledDropShadow {
+        target: appIcon
+        radius: root.hovered ? 10 : 5
+        verticalOffset: root.hovered ? 3 : 1
+
+        Behavior on radius {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
+        Behavior on verticalOffset {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
+    }
+
+    DockAppIcon {
+        id: appIcon
+    }
     DockAppIndicator {}
 }

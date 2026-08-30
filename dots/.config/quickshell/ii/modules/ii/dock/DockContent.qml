@@ -557,6 +557,7 @@ Item {
                 id: unpinButton
                 anchors.centerIn: parent
                 symbolName: "app_search.svg"
+                symbolSize: Math.round(buttonSize * 0.58)
                 accented: true
                 showBackground: Config.options?.dock?.showAppsButtonBackground ?? true
                 normalShapeName: Config.options.dock.appsButtonShape
