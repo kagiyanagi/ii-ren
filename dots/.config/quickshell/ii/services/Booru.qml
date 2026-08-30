@@ -11,7 +11,6 @@ import QtQuick;
  */
 Singleton {
     id: root
-    property Component booruResponseDataComponent: BooruResponseData {}
 
     signal tagSuggestion(string query, var suggestions)
     signal responseFinished()
@@ -280,13 +279,13 @@ Singleton {
     }
 
     function addSystemMessage(message) {
-        responses = [...responses, root.booruResponseDataComponent.createObject(null, {
+        responses = [...responses, {
             "provider": "system",
             "tags": [],
             "page": -1,
             "images": [],
             "message": `${message}`
-        })]
+        }]
     }
 
     function constructRequestUrl(tags, nsfw=true, limit=20, page=1) {
@@ -344,13 +343,13 @@ Singleton {
         var url = constructRequestUrl(tags, nsfw, limit, page)
         console.log("[Booru] Making request to " + url)
 
-        const newResponse = root.booruResponseDataComponent.createObject(null, {
+        const newResponse = {
             "provider": currentProvider,
             "tags": tags,
             "page": page,
             "images": [],
             "message": ""
-        })
+        }
 
         var xhr = new XMLHttpRequest()
         xhr.open("GET", url)

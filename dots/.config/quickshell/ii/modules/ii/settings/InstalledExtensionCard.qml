@@ -23,8 +23,8 @@ Item {
         return ExtensionAudit.getExtensionAuditState(ext.id)
     }
 
-    property real topRadius: CF.LayoutUtils.listCardTopRadius(index, listCount, Appearance.rounding.large)
-    property real bottomRadius: CF.LayoutUtils.listCardBottomRadius(index, listCount, Appearance.rounding.large)
+    property real topRadius: (listCount == 1 || index == 0) ? Appearance.rounding.large : Appearance.rounding.verysmall
+    property real bottomRadius: (listCount == 1 || index == listCount - 1) ? Appearance.rounding.large : Appearance.rounding.verysmall
 
     Layout.fillWidth: true
     implicitHeight: 80 + panelArea.implicitHeight

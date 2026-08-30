@@ -250,12 +250,7 @@ Singleton {
      * @returns { boolean }
      */
     function stringListContainsSubstring(str, substrings) {
-        for (let i = 0; i < substrings.length; ++i) {
-            if (str.includes(substrings[i])) {
-                return true;
-            }
-        }
-        return false;
+        return substrings.some(sub => str.includes(sub));
     }
 
     /**
@@ -265,10 +260,7 @@ Singleton {
      * @returns { string }
      */
     function cleanPrefix(str, prefix) {
-        if (str.startsWith(prefix)) {
-            return str.slice(prefix.length);
-        }
-        return str;
+        return str.startsWith(prefix) ? str.slice(prefix.length) : str;
     }
 
     /**
@@ -278,12 +270,8 @@ Singleton {
      * @returns { string }
      */
     function cleanOnePrefix(str, prefixes) {
-        for (let i = 0; i < prefixes.length; ++i) {
-            if (str.startsWith(prefixes[i])) {
-                return str.slice(prefixes[i].length);
-            }
-        }
-        return str;
+        const match = prefixes.find(prefix => str.startsWith(prefix));
+        return match ? str.slice(match.length) : str;
     }
 
     function toTitleCase(str) {
