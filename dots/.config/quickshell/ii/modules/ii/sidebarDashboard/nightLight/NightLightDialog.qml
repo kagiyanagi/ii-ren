@@ -31,21 +31,14 @@ WindowDialog {
         ColumnLayout {
             id: scrollColumn
             width: parent.width
-            spacing: 16
+            spacing: 8
     
             WindowDialogSectionHeader {
                 text: Translation.tr("Night Light")
             }
 
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
-            }
-
             Column {
                 id: nightLightColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
 
                 ConfigSwitch {
@@ -94,18 +87,12 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                Layout.topMargin: 8
                 text: Translation.tr("Comfort View")
-            }
-
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
             }
 
             Column {
                 id: comfortViewColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
 
                 ConfigSwitch {
@@ -159,19 +146,12 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                Layout.topMargin: 8
                 text: Translation.tr("Reading Mode")
-            }
-
-            // design-ok: matches existing NightLightDialog section separator pattern
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
             }
 
             Column {
                 id: readingModeColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
 
                 ConfigSwitch {
@@ -242,18 +222,12 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                Layout.topMargin: 8
                 text: Translation.tr("Anti-flashbang (experimental)")
-            }
-
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
             }
 
             Column {
                 id: antiFlashbangColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
 
                 ConfigSwitch {
@@ -293,18 +267,12 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                Layout.topMargin: 8
                 text: Translation.tr("Brightness")
-            }
-
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
             }
 
             Column {
                 id: brightnessColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
 
                 WindowDialogSlider {
@@ -320,18 +288,12 @@ WindowDialog {
             }
 
             WindowDialogSectionHeader {
+                Layout.topMargin: 8
                 text: Translation.tr("Gamma")
-            }
-
-            WindowDialogSeparator {
-                Layout.topMargin: -22
-                Layout.leftMargin: 0
-                Layout.rightMargin: 0
             }
 
             Column {
                 id: gammaColumn
-                Layout.topMargin: -16
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
