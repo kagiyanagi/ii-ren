@@ -1552,7 +1552,32 @@ Singleton {
             }
 
             property JsonObject osd: JsonObject {
-                property int timeout: 2500
+                property bool enable: true
+                property string style: "minimalist"
+                property string position: "right"
+                // AOSP volume dialog height: 2 * background_margin + 2 * button_size
+                // + 2 * components_spacing + volume_dialog_slider_height (254).
+                property int height: 418
+                property int timeout: 3000
+                property bool showValues: false
+                property bool hideWhenFullscreen: true
+
+                // Per-indicator popups. Turning one off keeps that OSD from showing
+                // on its own; the master `enable` switch above still wins over all.
+                property JsonObject indicators: JsonObject {
+                    property bool volume: true
+                    property bool brightness: true
+                    property bool keyboardBrightness: true
+                    property bool playerVolume: true
+                    property bool gamma: true
+                }
+                
+                property JsonObject material: JsonObject {
+                    property bool minimal: false
+                    property bool shapedValues: true
+                    property bool circledShapes: false
+                    property bool rotateShape: false
+                }
             }
 
             property JsonObject languageSwitcher: JsonObject {
@@ -2006,6 +2031,29 @@ Singleton {
         if (found) {
             root.options.background.activeWidgets = cloned;
         }
+    }
+
+    function osdIndicatorEnabled(indicatorId): bool {
+        if (!root.ready || !root.options.osd)
+            return true;
+        if (!root.options.osd.enable)
+            return false;
+        const indicators = root.options.osd.indicators;
+        if (!indicators)
+            return true;
+        switch (indicatorId) {
+        case "volume":
+            return indicators.volume;
+        case "brightness":
+            return indicators.brightness;
+        case "keyboardBrightness":
+            return indicators.keyboardBrightness;
+        case "playerVolume":
+            return indicators.playerVolume;
+        case "gamma":
+            return indicators.gamma;
+        }
+        return true;
     }
 
     function migrateWidgetLockBehavior() {

@@ -153,7 +153,7 @@ LazyLoader {
     }
 
     function _queueReopenFromTarget() {
-        if (!_isClosing)
+        if (!_isClosing || root.forceClick)
             return;
 
         _timers.grace.stop();
@@ -171,12 +171,16 @@ LazyLoader {
             _reopenPending = false;
         }
 
-        if (Config.options.bar.tooltips.clickToShow || forceClick) {
-            if (_targetHovered && !root._clickActive && !root._isClosing) {
-                root._clickActive = true;
+        // forceClick popups are opened and closed by their own onClicked. Hover must not touch
+        // them: _clickActive has no unhover path, so a hover-open never closed again.
+        if (!root.forceClick) {
+            if (Config.options.bar.tooltips.clickToShow) {
+                if (_targetHovered && !root._clickActive && !root._isClosing) {
+                    root._clickActive = true;
+                }
+            } else {
+                _evaluateStickyState();
             }
-        } else {
-            _evaluateStickyState();
         }
     }
 

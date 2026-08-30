@@ -25,10 +25,11 @@ Slider {
 
     property var configuration: StyledVerticalSlider.Configuration.S
 
-    property real handleDefaultHeight: 5
-    property real handlePressedHeight: 3
+    // M3E handle: 4dp, narrowing to 2dp while pressed.
+    property real handleDefaultHeight: 4
+    property real handlePressedHeight: 2
     property real rawValue: value
-    property bool showValueLabel: true
+    property bool showValueLabel: Config.options.osd.showValues
     property color highlightColor: rawValue > to ? Appearance.colors.colErrorContainer : Appearance.colors.colPrimary
     property color trackColor: Appearance.colors.colSecondaryContainer
     property color handleColor: rawValue > to ? Appearance.colors.colError : Appearance.colors.colPrimary
@@ -40,13 +41,13 @@ Slider {
     readonly property bool sharpMode: Config.options.appearance.sharpMode
     property real trackRadius: sharpMode ? 0 : trackWidth >= StyledVerticalSlider.Configuration.XL ? 21
         : trackWidth >= StyledVerticalSlider.Configuration.L ? 12
-        : trackWidth >= StyledVerticalSlider.Configuration.M ? 9
+        : trackWidth >= StyledVerticalSlider.Configuration.M ? 12
         : trackWidth >= StyledVerticalSlider.Configuration.S ? 6
         : width / 2
         
-    property real handleWidth: (configuration === StyledVerticalSlider.Configuration.Wavy) ? 24 : (configuration === StyledVerticalSlider.Configuration.X0) ? 14 : Math.max(33, trackWidth + 9)
+    property real handleWidth: (configuration === StyledVerticalSlider.Configuration.Wavy) ? 24 : (configuration === StyledVerticalSlider.Configuration.X0) ? 14 : Math.max(33, trackWidth + 12)
     property real handleHeight: root.pressed ? handlePressedHeight : handleDefaultHeight
-    property real handleMargins: 4
+    property real handleMargins: 6
     property real dividerMargins: 2
     property real trackDotSize: 3
     property bool usePercentTooltip: true
@@ -54,6 +55,14 @@ Slider {
 
     // Icon properties
     property string materialSymbol: ""
+    // Icon slot, per AOSP: a track-width square at the top of the inactive track, dropping to
+    // the top of the active track once the inactive segment is shorter than the slot
+    // (VolumeDialogSliderTrack.kt, Contents.Active/Inactive).
+    readonly property real inactiveTrackHeight: visualPosition * effectiveDraggingHeight
+        + topPadding - handleMargins - handleHeight / 2
+    readonly property bool iconOnInactiveTrack: inactiveTrackHeight > trackWidth
+    readonly property real iconSlotY: iconOnInactiveTrack ? 0
+        : topPadding + handleMargins + handleHeight / 2 + visualPosition * effectiveDraggingHeight
     property var shape: MaterialShape.Shape.Circle
 
     topPadding: handleMargins
@@ -183,32 +192,23 @@ Slider {
         }
     }
 
-    // Built-in icon support
+    // Stream icon, in the slot above.
     MaterialSymbol {
         id: icon
         visible: root.materialSymbol.length > 0
-        property bool nearBottom: root.visualPosition >= 0.82
-        anchors {
-            horizontalCenter: root.horizontalCenter
-            bottom: nearBottom ? root.handle.bottom : root.bottom
-            bottomMargin: nearBottom ? 10 : 8
-        }
+        anchors.horizontalCenter: root.horizontalCenter
+        y: root.iconSlotY + (root.trackWidth - height) / 2
         iconSize: 20
         text: root.materialSymbol
         fill: 1.0
 
-
         color: {
             if (root.rawValue > root.to) return Appearance.colors.colOnErrorContainer;
-            if (root.value < 0.12) return Appearance.colors.colOnSecondaryContainer;
-            return Appearance.colors.colOnPrimary;
+            return root.iconOnInactiveTrack ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnPrimary;
         }
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(icon)
-        }
-        Behavior on anchors.bottomMargin {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(icon)
         }
     }
 

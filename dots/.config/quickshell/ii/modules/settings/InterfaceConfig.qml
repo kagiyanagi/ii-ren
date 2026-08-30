@@ -6,6 +6,7 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import "configs/widgets"
 
 ContentPage {
     id: page
@@ -1395,6 +1396,15 @@ ContentPage {
         icon: "voting_chip"
         title: Translation.tr("On-screen display")
 
+        ConfigSwitch {
+            buttonIcon: "visibility"
+            text: Translation.tr("Enable OSD")
+            checked: Config.options.osd.enable
+            onCheckedChanged: {
+                Config.options.osd.enable = checked;
+            }
+        }
+
         ConfigSpinBox {
             icon: "av_timer"
             text: Translation.tr("Timeout (ms)")
@@ -1407,6 +1417,95 @@ ContentPage {
             }
         }
 
+        ContentSubsection {
+            title: Translation.tr("OSD Position")
+            Layout.fillWidth: true
+            visible: (Config.options.osd.style ?? "default") === "default"
+
+            OsdPositionPicker {
+                Layout.fillWidth: true
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("OSD Style")
+            Layout.fillWidth: true
+
+            ConfigSelectionArray {
+                currentValue: Config.options.osd.style ?? "default"
+                onSelected: (newValue) => {
+                    Config.options.osd.style = newValue;
+                    GlobalStates.osdVolumeOpen = true;
+                    GlobalStates.osdInteraction();
+                }
+                options: [{
+                    "displayName": Translation.tr("Android"),
+                    "icon": "smartphone",
+                    "tooltip": Translation.tr("Edge vertical slider bar"),
+                    "value": "default"
+                }, {
+                    "displayName": Translation.tr("Minimal"),
+                    "icon": "horizontal_rule",
+                    "tooltip": Translation.tr("Compact horizontal floating pill"),
+                    "value": "minimalist"
+                }, {
+                    "displayName": Translation.tr("Material"),
+                    "icon": "interests",
+                    "tooltip": Translation.tr("Themed geometric slider card"),
+                    "value": "material"
+                }]
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Material Style Options")
+            Layout.fillWidth: true
+            visible: Config.options.osd.style === "material"
+
+            ConfigSwitch {
+                buttonIcon: "compress"
+                text: Translation.tr("Minimal variant")
+                checked: Config.options.osd.material.minimal
+                onCheckedChanged: {
+                    Config.options.osd.material.minimal = checked;
+                    GlobalStates.osdVolumeOpen = true;
+                    GlobalStates.osdInteraction();
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "shapes"
+                text: Translation.tr("Shaped value labels")
+                checked: Config.options.osd.material.shapedValues
+                onCheckedChanged: {
+                    Config.options.osd.material.shapedValues = checked;
+                    GlobalStates.osdVolumeOpen = true;
+                    GlobalStates.osdInteraction();
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "circle"
+                text: Translation.tr("Circled shapes")
+                checked: Config.options.osd.material.circledShapes
+                onCheckedChanged: {
+                    Config.options.osd.material.circledShapes = checked;
+                    GlobalStates.osdVolumeOpen = true;
+                    GlobalStates.osdInteraction();
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "rotate_right"
+                text: Translation.tr("Rotate shapes when changing values")
+                checked: Config.options.osd.material.rotateShape
+                onCheckedChanged: {
+                    Config.options.osd.material.rotateShape = checked;
+                    GlobalStates.osdVolumeOpen = true;
+                    GlobalStates.osdInteraction();
+                }
+            }
+        }
     }
 
     ContentSection {

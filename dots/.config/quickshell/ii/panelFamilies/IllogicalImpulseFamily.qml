@@ -15,6 +15,7 @@ import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
 import qs.modules.ii.onScreenDisplay
+import qs.modules.ii.onScreenDisplay.minimalist
 import qs.modules.ii.onScreenKeyboard
 import qs.modules.ii.overview
 import qs.modules.ii.polkit
@@ -59,7 +60,8 @@ Scope {
     PanelLoader { component: Lock {} }
     PanelLoader { component: MediaControls {} }
     PanelLoader { component: NotificationPopup {} }
-    PanelLoader { component: OnScreenDisplay {} }
+    PanelLoader { extraCondition: !(Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material")); component: OnScreenDisplay {} }
+    PanelLoader { extraCondition: Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material"); component: MinimalistOsd {} }
     PanelLoader { component: OnScreenKeyboard {} }
     PanelLoader { component: Overlay {} }
     PanelLoader { component: Overview {} }

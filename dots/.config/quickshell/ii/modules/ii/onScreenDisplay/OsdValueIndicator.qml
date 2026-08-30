@@ -10,8 +10,11 @@ Item {
     required property string icon
     required property string name
     property var shape
-    property bool showProgressBar: true
+    property bool rotateIcon: false
+    property bool scaleIcon: false
+    property real maxLimit: 1.0
     property alias from: valueProgressBar.from
+    property alias to: valueProgressBar.to
 
     property real valueIndicatorVerticalPadding: 9
     property real valueIndicatorLeftPadding: 15
@@ -50,11 +53,34 @@ Item {
                 Layout.bottomMargin: valueIndicatorVerticalPadding
 
                 MaterialShapeWrappedMaterialSymbol {
+                    id: symbolWrapper
                     rotation: root.value * 360
                     anchors.centerIn: parent
                     iconSize: Appearance.font.pixelSize.huge
                     shape: root.shape
                     text: root.icon
+
+                    Behavior on rotation {
+                        NumberAnimation {
+                            duration: 350
+                            easing.type: Easing.OutBack
+                            easing.overshoot: 1.5
+                        }
+                    }
+
+                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
+                    colSymbol: root.value > root.maxLimit ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colOnSecondaryContainer
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+                    }
+                    Behavior on colSymbol {
+                        ColorAnimation {
+                            duration: 150
+                        }
+                    }
                 }
             }
             ColumnLayout { // Stuff
@@ -71,6 +97,8 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.small
                         Layout.fillWidth: true
                         text: root.name
+                        elide: Text.ElideRight
+                        wrapMode: Text.NoWrap
                     }
 
                     StyledText {
@@ -79,14 +107,13 @@ Item {
                         Layout.fillWidth: false
                         Layout.preferredWidth: 30
                         horizontalAlignment: Text.AlignRight
-                        visible: root.showProgressBar
                         text: Math.round(root.value * 100)
+                        wrapMode: Text.NoWrap
                     }
                 }
-                
+
                 StyledProgressBar {
                     id: valueProgressBar
-                    visible: root.showProgressBar
                     Layout.fillWidth: true
                     value: root.value
                 }
