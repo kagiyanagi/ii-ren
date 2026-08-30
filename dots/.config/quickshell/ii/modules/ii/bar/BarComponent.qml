@@ -39,6 +39,9 @@ Item {
         if (section?.[originalIndex]) section[originalIndex].visible = visibility;
     }
 
+    property bool isolated: false
+    property var customHighlightColor: null
+
     function toggleHighlight(highlight) {
         rootItem.highlighted = highlight
     }
@@ -65,29 +68,31 @@ Item {
     })
 
     property real startRadius: {
+        if (rootItem.isolated) return Appearance.rounding.full
         if (barSection === 0) {
             if (originalIndex == 0) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 2) {
-            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false)
+            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
             return hasVisibleLeft ? Appearance.rounding.verysmall : Appearance.rounding.full
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
-            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false)
+            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
             return hasVisibleLeft ? Appearance.rounding.verysmall : Appearance.rounding.full
         }
     }
 
     property real endRadius: {
+        if (rootItem.isolated) return Appearance.rounding.full
         if (barSection === 2) {
             if (originalIndex == list.length - 1) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 0) {
-            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false)
+            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
             return hasVisibleRight ? Appearance.rounding.verysmall : Appearance.rounding.full
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
-            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false)
+            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
             return hasVisibleRight ? Appearance.rounding.verysmall : Appearance.rounding.full
         }
     }
@@ -99,7 +104,7 @@ Item {
                                    (barGroupStyle == 1) ? Appearance.m3colors.m3surfaceContainerLow :
                                    "transparent";
     
-    property color colBackgroundHighlight: Appearance.colors.colPrimary
+    property color colBackgroundHighlight: rootItem.customHighlightColor ?? Appearance.colors.colPrimary
 
     BarGroup {
         id: wrapper

@@ -201,6 +201,11 @@ Singleton {
         property color colErrorContainerHover: ColorUtils.mix(m3colors.m3errorContainer, m3colors.m3onErrorContainer, 0.90)
         property color colErrorContainerActive: ColorUtils.mix(m3colors.m3errorContainer, m3colors.m3onErrorContainer, 0.70)
         property color colOnErrorContainer: m3colors.m3onErrorContainer
+        // Canonical Android status chips (fixed system colors, not themed by wallpaper)
+        property color colRecordChip: "#C5221F"
+        property color colRecordChipHover: "#D93025"
+        property color colRecordChipActive: "#B3261E"
+        property color colOnRecordChip: "#FFFFFF"
     }
 
     rounding: QtObject {

@@ -1006,7 +1006,7 @@
                 "showUnreadCount": false
             },
             "record": {
-                "minimal": true
+                "minimal": false
             }
         },
         "layouts": {

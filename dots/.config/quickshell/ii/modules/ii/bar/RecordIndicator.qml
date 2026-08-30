@@ -7,112 +7,125 @@ import Quickshell
 import "./cards"
 
 
-MouseArea {
+Item {
     id: indicator
     property bool vertical: false
 
     property bool minimal: Config.options.bar.indicators.record.minimal
     property bool activelyRecording: Persistent.states.screenRecord.active
-    property color colText: Appearance.colors.colOnPrimary
 
-    hoverEnabled: true
-    implicitWidth: vertical ? 20 : minimal ? 50 : 80 // NOTE: Why do we have to enter a fixed size to make it dull?
-    implicitHeight: vertical ? 50 : 20
+    readonly property color colBackgroundNormal: Appearance.colors.colRecordChip
+    readonly property color colBackgroundHover: Appearance.colors.colRecordChipHover
+    readonly property color colBackgroundActive: Appearance.colors.colRecordChipActive
+    readonly property color colBackground: button.down ? colBackgroundActive : button.hovered ? colBackgroundHover : colBackgroundNormal
+    readonly property color colText: Appearance.colors.colOnRecordChip
+
+    implicitWidth: vertical ? 20 : (minimal ? (recordIcon.implicitWidth + 10) : (contentRow.implicitWidth + 10))
+    implicitHeight: vertical ? (minimal ? (recordIconVert.implicitHeight + 0) : (contentCol.implicitHeight + 0)) : 20
 
     Component.onCompleted: {
-        rootItem.toggleHighlight(true)
-        updateVisibility()
+        if (typeof rootItem !== "undefined") {
+            rootItem.isolated = true;
+            rootItem.customHighlightColor = indicator.colBackground;
+            rootItem.toggleHighlight(true);
+        }
+        updateVisibility();
     }
+
+    onColBackgroundChanged: {
+        if (typeof rootItem !== "undefined") {
+            rootItem.customHighlightColor = indicator.colBackground;
+        }
+    }
+
     onActivelyRecordingChanged: updateVisibility()
 
     function updateVisibility() {
-        rootItem.toggleVisible(activelyRecording)
+        if (typeof rootItem !== "undefined") {
+            rootItem.toggleVisible(activelyRecording);
+        }
     }
 
     function formatTime(totalSeconds) {
-        let mins = Math.floor(totalSeconds / 60);
+        let hrs = Math.floor(totalSeconds / 3600);
+        let mins = Math.floor((totalSeconds % 3600) / 60);
         let secs = totalSeconds % 60;
+        if (hrs > 0) {
+            return String(hrs).padStart(2, '0') + ":" + String(mins).padStart(2, '0') + ":" + String(secs).padStart(2, '0');
+        }
         return String(mins).padStart(2, '0') + ":" + String(secs).padStart(2, '0');
     }
 
     RippleButton {
-        anchors.centerIn: parent
-        implicitWidth: indicator.vertical ? 20 : parent.implicitWidth
-        implicitHeight: indicator.vertical ? parent.implicitHeight : 20
+        id: button
+        anchors.fill: parent
+        buttonRadius: Appearance.rounding.full
+        colBackground: "transparent"
         colBackgroundHover: "transparent"
-        colRipple: "transparent"
+        colBackgroundActive: "transparent"
+        colRipple: Qt.rgba(1, 1, 1, 0.25)
         
         onClicked: {
             Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
         }
         StyledPopup {
-            hoverTarget: indicator
+            hoverTarget: button
             animate: false
             stickyHover: true // The action buttons need the popup to survive the pointer leaving the bar
             contentItem: PopupContent {}
         }
     }
 
-    Loader {
-        active: !indicator.vertical
+    RowLayout {
+        id: contentRow
+        visible: !indicator.vertical
         anchors.centerIn: parent
-        sourceComponent: RowLayout {
-            id: contentLayout
-            anchors.centerIn: parent
-            spacing: 4
+        spacing: 4
 
-            MaterialSymbol {
-                text: "screen_record"
-                color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignVCenter
-            }
+        MaterialSymbol {
+            id: recordIcon
+            text: "screen_record"
+            fill: 1
+            color: indicator.colText
+            iconSize: Appearance.font.pixelSize.normal
+            horizontalAlignment: Text.AlignVCenter
+            verticalAlignment: Text.AlignVCenter
+        }
 
-            MaterialSymbol {
-                text: "stop"
-                fill: 1
-                visible: minimal
-                color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignVCenter
-            }
-            
-            StyledText {
-                id: textIndicator                
-                Layout.topMargin: 2
-                visible: !minimal
-
-                text: indicator.formatTime(Persistent.states.screenRecord.seconds)
-                color: indicator.colText
-            }
+        StyledText {
+            id: textIndicator
+            visible: !indicator.minimal
+            text: indicator.formatTime(Persistent.states.screenRecord.seconds)
+            color: indicator.colText
+            font.pixelSize: Appearance.font.pixelSize.small
+            font.weight: Font.DemiBold
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
         }
     }
 
-    Loader {
-        active: indicator.vertical
+    ColumnLayout {
+        id: contentCol
+        visible: indicator.vertical
         anchors.centerIn: parent
-        sourceComponent: ColumnLayout {
-            id: contentLayout
-            anchors.centerIn: parent
-            spacing: 4
+        spacing: 4
 
-            MaterialSymbol {
-                Layout.topMargin: parent.spacing
-                Layout.alignment: Text.AlignHCenter
-                text: "screen_record"
-                color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignHCenter
-            }
+        MaterialSymbol {
+            id: recordIconVert
+            text: "screen_record"
+            fill: 1
+            color: indicator.colText
+            iconSize: Appearance.font.pixelSize.small
+            Layout.alignment: Qt.AlignHCenter
+        }
 
-            MaterialSymbol {
-                Layout.alignment: Text.AlignHCenter
-                text: "stop"
-                fill: 1
-                color: indicator.colText
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignHCenter
-            }
+        StyledText {
+            visible: !indicator.minimal
+            text: indicator.formatTime(Persistent.states.screenRecord.seconds)
+            color: indicator.colText
+            font.pixelSize: Appearance.font.pixelSize.smallest
+            font.weight: Font.DemiBold
+            Layout.alignment: Qt.AlignHCenter
         }
     }
     
