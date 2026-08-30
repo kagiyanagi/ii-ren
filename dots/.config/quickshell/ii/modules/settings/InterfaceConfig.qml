@@ -744,6 +744,19 @@ ContentPage {
         }
 
         ConfigSwitch {
+            buttonIcon: "notifications_paused"
+            text: Translation.tr("Notification cooldown")
+            checked: Config.options.notifications.cooldown
+            onCheckedChanged: {
+                Config.options.notifications.cooldown = checked;
+            }
+
+            StyledToolTip {
+                text: Translation.tr("Automatically suppress popups for rapid, consecutive alerts from the same app")
+            }
+        }
+
+        ConfigSwitch {
             buttonIcon: "monitor"
             text: Translation.tr("Force specific monitor")
             checked: Config.options.notifications.forceMonitor.enable

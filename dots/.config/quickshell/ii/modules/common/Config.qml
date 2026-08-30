@@ -1542,6 +1542,8 @@ Singleton {
                 // Phone notifications relayed by KDE Connect live on the
                 // Continuity page; turn this on to get them here as well.
                 property bool phoneOnDesktop: false
+                // Android-like notification cooldown: suppress rapid notifications from the same app
+                property bool cooldown: true
                 property JsonObject monitor: JsonObject {
                     property bool enable: false
                     property string name: "" // Name of the monitor to show notifications on, like "eDP-1". Find out with 'hyprctl monitors' command

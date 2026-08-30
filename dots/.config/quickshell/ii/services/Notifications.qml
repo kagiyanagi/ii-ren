@@ -170,6 +170,17 @@ Singleton {
         onNotification: (notification) => {
             if (notifServer.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
             notification.tracked = true
+
+            let cooledDown = false;
+            if (Config.options.notifications.cooldown) {
+                const now = Date.now();
+                const lastTime = root.latestTimeForApp[notification.appName] || 0;
+                if (now - lastTime < 5000) {
+                    cooledDown = true;
+                    console.log("[Notifications] Cooled down notification from " + notification.appName);
+                }
+            }
+
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,
                 "notification": notification,
@@ -179,12 +190,14 @@ Singleton {
 
             // Popup
             if (!root.popupInhibited) {
-                newNotifObject.popup = true;
-                if (notification.expireTimeout != 0) {
-                    newNotifObject.timer = notifTimerComponent.createObject(root, {
-                        "notificationId": newNotifObject.notificationId,
-                        "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
-                    });
+                if (!cooledDown) {
+                    newNotifObject.popup = true;
+                    if (notification.expireTimeout != 0) {
+                        newNotifObject.timer = notifTimerComponent.createObject(root, {
+                            "notificationId": newNotifObject.notificationId,
+                            "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
+                        });
+                    }
                 }
                 root.unread++;
             }
