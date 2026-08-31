@@ -107,6 +107,7 @@ Scope {
             Quickshell.execDetached(["bash", "-c", "pidof hyprlock || hyprlock"]);
             return;
         }
+        if (GlobalStates.screenLocked) return; // already locked/locking, avoid re-triggering WlSessionLock
         GlobalStates.screenLocked = true;
     }
 
