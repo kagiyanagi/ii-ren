@@ -23,7 +23,7 @@ MouseArea { // Notification group area
     property real padding: 16 // Android's content inset
     readonly property bool urgent: notifications.some(n => n.urgency === NotificationUrgency.Critical.toString())
     implicitHeight: background.implicitHeight
-
+    acceptedButtons: Qt.NoButton
     hoverEnabled: true
     onContainsMouseChanged: {
         if (!root.popup) return;
@@ -130,6 +130,7 @@ MouseArea { // Notification group area
                     // when the header runs out of room.
                     id: appNameText
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     Layout.maximumWidth: appNameMetrics.width
                     elide: Text.ElideRight
                     text: root.notificationGroup?.appName || ""

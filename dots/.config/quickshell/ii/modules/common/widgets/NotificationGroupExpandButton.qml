@@ -10,8 +10,8 @@ RippleButton { // Expand button
     required property bool expanded
     property real fontSize: Appearance?.font.pixelSize.small ?? 12
     property real iconSize: Appearance?.font.pixelSize.normal ?? 16
-    implicitHeight: fontSize + 4 * 2
-    implicitWidth: Math.max(contentItem.implicitWidth + 5 * 2, 30)
+    implicitHeight: Math.max(32, fontSize + 8 * 2)
+    implicitWidth: Math.max(contentItem.implicitWidth + 8 * 2, 32)
     Layout.alignment: Qt.AlignVCenter
     Layout.fillHeight: false
 

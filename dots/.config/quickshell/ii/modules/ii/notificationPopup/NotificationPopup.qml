@@ -27,7 +27,15 @@ Scope {
         }
 
         mask: Region {
-            item: listview.contentItem
+            item: popupBounds
+        }
+
+        Item {
+            id: popupBounds
+            x: listview.x
+            y: listview.y
+            width: listview.width
+            height: Math.min(listview.contentHeight, listview.height)
         }
 
         color: "transparent"
