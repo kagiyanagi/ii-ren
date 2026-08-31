@@ -34,7 +34,7 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
 > fix them later. Expect bugs. Use at your own risk.
 
 <div align="center">
-    <h2> what this fork adds </h2>
+    <h2> what this fork adds (outdated: can't keepup) </h2>
 </div>
 
 - **Conduit** — an agent CLI (Claude Code or Antigravity) as a first-class sidebar
@@ -114,21 +114,6 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
   off the anchor solver: about 22 points of main thread back on a battery-clocked
   TigerLake.
 - **~7.7k lines lighter** — a repo-wide over-engineering audit, applied.
-
-<div align="center">
-    <h2> on the list </h2>
-</div>
-
-Not built yet. No dates.
-
-- **VPN management** — on rightbar
-- **Icon and cursor themes** — pick them from Settings, like everything else.
-- **Lock screen customization** — layout, clock and widgets (also notificaions history like andorid).
-- **Floating window management** — tiling for the windows that aren't tiled.
-- **Lyrics** — word-by-word synced, in the media surfaces.
-- **Depth wallpaper** — the one ROM effect the shader set left out; it needs ML
-  subject segmentation.
-- **More desktop widgets.**
 
 <div align="center">
     <h2> installation </h2>
