@@ -10,6 +10,11 @@ import Qt5Compat.GraphicalEffects
  */
 ProgressBar {
     id: root
+    padding: 0
+    topPadding: 0
+    bottomPadding: 0
+    leftPadding: 0
+    rightPadding: 0
     property bool vertical: false
     property real valueBarWidth: 30
     property real valueBarHeight: 18

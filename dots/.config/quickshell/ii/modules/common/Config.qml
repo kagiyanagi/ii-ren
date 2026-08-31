@@ -1347,6 +1347,13 @@ Singleton {
                     property int width: 46 // vertical mode
                 }
 
+                property JsonObject battery: JsonObject {
+                    property string style: "filled" // "circle", "dotted", "landscape", "portrait", "filled", "text"
+                    property int showPercentage: 1 // 0: hidden, 1: inside, 2: outside
+                    property bool showChargingIndicator: true
+                    property bool showPercentSign: true
+                }
+
                 property JsonObject networkSpeed: JsonObject {
                     property int displayMode: 0 // 0: total, 1: download, 2: upload, 3: both, 4: icon
                     property bool showIcons: true

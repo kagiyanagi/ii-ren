@@ -995,6 +995,12 @@
         },
         "barBackgroundStyle": 1,
         "barGroupStyle": 0,
+        "battery": {
+            "showChargingIndicator": true,
+            "showPercentSign": true,
+            "showPercentage": 1,
+            "style": "filled"
+        },
         "bottom": false,
         "clock": {
             "showSeconds": false
