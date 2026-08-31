@@ -1259,6 +1259,7 @@ Singleton {
                     property string city: "" // When 'enableGPS' is false
                     property bool useUSCS: false // Instead of metric (SI) units
                     property int fetchInterval: 10 // minutes
+                    property bool dynamicIcon: true // Use dynamic weather condition icon
                 }
                 property JsonObject indicators: JsonObject {
                     property JsonObject notifications: JsonObject {

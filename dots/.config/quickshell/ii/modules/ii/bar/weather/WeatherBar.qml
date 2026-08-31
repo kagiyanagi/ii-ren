@@ -37,12 +37,10 @@ MouseArea {
         columns: root.vertical ? 1 : 2
         rows: root.vertical ? 2 : 1
 
-        MaterialSymbol {
-            fill: 0
-            text: WeatherIcons.getMaterialSymbol(Weather.data.wCode)
-            iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
+        Loader {
+            id: iconLoader
             Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+            sourceComponent: (Config.options.bar.weather.dynamicIcon ?? true) ? dynamicIconComp : symbolIconComp
         }
 
         StyledText {
@@ -51,6 +49,30 @@ MouseArea {
             color: Appearance.colors.colOnLayer1
             text: Weather.data?.temp ?? "--°"
             Layout.alignment: root.vertical ? Qt.AlignHCenter : Qt.AlignVCenter
+        }
+    }
+
+    Component {
+        id: dynamicIconComp
+
+        Image {
+            width: 20
+            height: 20
+            source: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, Weather.isNight)
+            sourceSize: Qt.size(40, 40)
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+        }
+    }
+
+    Component {
+        id: symbolIconComp
+
+        MaterialSymbol {
+            fill: 0
+            text: WeatherIcons.getMaterialSymbol(Weather.data?.wCode ?? 113)
+            iconSize: Appearance.font.pixelSize.large
+            color: Appearance.colors.colOnLayer1
         }
     }
 

@@ -880,6 +880,19 @@ ContentPage {
                 }
             }
         }
+        ConfigRow {
+            ConfigSwitch {
+                buttonIcon: "image"
+                text: Translation.tr("Dynamic weather icon")
+                checked: Config.options.bar.weather.dynamicIcon ?? true
+                onCheckedChanged: {
+                    Config.options.bar.weather.dynamicIcon = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Show condition icon in top bar")
+                }
+            }
+        }
         
         MaterialTextArea {
             Layout.fillWidth: true

@@ -78,7 +78,19 @@ Singleton {
         temp: "0°C",
         tempFeelsLike: "0°C",
         lastRefresh: "00:00",
+        isDay: 1,
     })
+
+    readonly property bool isNight: {
+        if (root.data && root.data.isDay !== undefined) {
+            return root.data.isDay === 0;
+        }
+        if (DateTime.clock && DateTime.clock.date) {
+            const hour = DateTime.clock.date.getHours();
+            return hour >= 18 || hour < 6;
+        }
+        return false;
+    }
 
     // Forecast data properties consumed by popup/cards
     property var forecastData: []
@@ -182,6 +194,7 @@ Singleton {
         temp.wCode = wmoToWwo(current.weather_code);
         temp.wDesc = getWeatherDescription(temp.wCode);
         temp.city = cityName;
+        temp.isDay = current.is_day !== undefined ? current.is_day : 1;
         
         if (root.useUSCS) {
             temp.wind = Math.round(current.wind_speed_10m * 0.621371) + " mph";
@@ -236,7 +249,8 @@ Singleton {
                         time: (hourOfDay * 100).toString(),
                         tempC: Math.round(tempC).toString(),
                         tempF: Math.round(tempF).toString(),
-                        code: wmoToWwo(hourly.weather_code[i]).toString()
+                        code: wmoToWwo(hourly.weather_code[i]).toString(),
+                        isNight: (hourly.is_day && hourly.is_day[i] !== undefined) ? hourly.is_day[i] === 0 : (hourOfDay >= 18 || hourOfDay < 6)
                     });
                 }
             }
@@ -319,7 +333,7 @@ Singleton {
 
     function fetchWeather(lat, lon, cityName) {
         root.forecastLoading = true;
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,uv_index,visibility&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code&hourly=temperature_2m,weather_code&timezone=auto`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,uv_index,visibility,is_day&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code&hourly=temperature_2m,weather_code,is_day&timezone=auto`;
         
         const xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {

@@ -125,7 +125,7 @@ SectionCard {
                             Image {
                                 id: weatherIcon
                                 Layout.alignment: Qt.AlignHCenter
-                                source: WeatherIcons.getWeatherIcon(modelData.code ?? 113, false)
+                                source: WeatherIcons.getWeatherIcon(modelData.code ?? 113, modelData.isNight ?? false)
                                 sourceSize: Qt.size(Appearance.font.pixelSize.large, Appearance.font.pixelSize.large)
                                 opacity: barItem.barOpacity
                                 scale: barItem.barScale

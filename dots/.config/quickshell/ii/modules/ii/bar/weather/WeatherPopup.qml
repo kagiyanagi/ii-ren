@@ -175,7 +175,7 @@ StyledPopup {
             Layout.minimumWidth: 320
             margins: 20
             iconSize: 100
-            iconUrl: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, false)
+            iconUrl: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, Weather.isNight)
             pillText: Weather.data.city || "--"
             pillIcon: Weather.data.city ? "location_on" : ""
             title: Weather.data.temp
