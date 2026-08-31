@@ -120,4 +120,32 @@ QtObject {
         const keys = Object.keys(input);
         return keys.length > 0 ? `${keys[0]}: ${String(input[keys[0]]).split("\n")[0].slice(0, 160)}` : "";
     }
+
+    /**
+     * Complete, un-truncated arguments or command string for inspection and copying.
+     */
+    function fullToolInput(name, input): string {
+        if (!input) return "";
+        if (typeof input === "string") return input;
+
+        const cmdKeys = ["CommandLine", "command", "cmd", "script"];
+        for (const key of cmdKeys) {
+            if (input[key] !== undefined && input[key] !== null) {
+                return String(input[key]);
+            }
+        }
+
+        const primaryKeys = ["query", "Query", "prompt", "Prompt", "url", "Url"];
+        for (const key of primaryKeys) {
+            if (input[key] !== undefined && input[key] !== null && Object.keys(input).length <= 2) {
+                return String(input[key]);
+            }
+        }
+
+        try {
+            return JSON.stringify(input, null, 2);
+        } catch (e) {
+            return String(input);
+        }
+    }
 }

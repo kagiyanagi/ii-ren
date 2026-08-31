@@ -21,6 +21,7 @@ QtObject {
     property string toolId
     property string toolName
     property string toolInput      // Pretty one-line summary of the arguments
+    property string toolFullInput  // Full command or arguments
     property string toolResult
     property bool toolFailed: false
     property bool toolRunning: true

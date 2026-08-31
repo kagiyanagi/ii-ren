@@ -1189,6 +1189,7 @@ exit 0
                     }
                     part.toolName = call.name;
                     part.toolInput = call.input;
+                    if (call.fullInput !== undefined) part.toolFullInput = call.fullInput;
                 }
 
                 for (const toolResult of result.toolResults ?? []) {
@@ -1326,6 +1327,7 @@ exit 0
                     "toolId": part.toolId,
                     "toolName": part.toolName,
                     "toolInput": part.toolInput,
+                    "toolFullInput": part.toolFullInput,
                     "toolResult": part.toolResult,
                     "toolFailed": part.toolFailed
                 }))
@@ -1406,6 +1408,7 @@ exit 0
                 "toolId": part.toolId ?? "",
                 "toolName": part.toolName ?? "",
                 "toolInput": part.toolInput ?? "",
+                "toolFullInput": part.toolFullInput ?? part.toolInput ?? "",
                 "toolResult": part.toolResult ?? "",
                 "toolFailed": part.toolFailed === true,
                 "toolRunning": false // whatever it was doing finished long ago

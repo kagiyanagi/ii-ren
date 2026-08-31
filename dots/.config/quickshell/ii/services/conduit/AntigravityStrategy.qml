@@ -280,15 +280,23 @@ ProviderStrategy {
             if (step.state === "ACTIVE") {
                 // Unlike the Anthropic stream, arguments are complete on the first
                 // frame, so the row never has to be filled in afterwards.
-                result.toolCalls = [{ "id": id, "name": name, "input": root.summarizeToolInput(name, info.parameters) }];
+                result.toolCalls = [{
+                    "id": id,
+                    "name": name,
+                    "input": root.summarizeToolInput(name, info.parameters),
+                    "fullInput": root.fullToolInput(name, info.parameters)
+                }];
                 return result;
             }
 
-            // agy sends no tool output, so a successful call has nothing to expand.
             const failed = step.state === "ERROR" || info.error !== undefined;
+            const output = info.output !== undefined
+                ? (typeof info.output === "string" ? info.output : JSON.stringify(info.output, null, 2))
+                : (info.result !== undefined ? (typeof info.result === "string" ? info.result : JSON.stringify(info.result, null, 2)) : "");
+            const content = failed ? String(info.error?.message ?? info.error ?? (output || "Tool failed.")) : output;
             result.toolResults = [{
                 "id": id,
-                "content": failed ? String(info.error?.message ?? info.error ?? "Tool failed.") : "",
+                "content": content,
                 "failed": failed
             }];
             return result;

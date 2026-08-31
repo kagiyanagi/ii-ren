@@ -160,7 +160,8 @@ ProviderStrategy {
                 calls.push({
                     "id": block.id,
                     "name": block.name,
-                    "input": root.summarizeToolInput(block.name, block.input)
+                    "input": root.summarizeToolInput(block.name, block.input),
+                    "fullInput": root.fullToolInput(block.name, block.input)
                 });
             }
             return calls.length > 0 ? { "toolCalls": calls } : {};
