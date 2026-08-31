@@ -10,6 +10,7 @@ import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell
+import Quickshell.Widgets
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
@@ -20,42 +21,39 @@ WindowDialog {
     WindowDialogTitle {
         text: Translation.tr("Bluetooth devices")
     }
-    WindowDialogSeparator {
-        visible: !(Bluetooth.defaultAdapter?.discovering ?? false)
-    }
     StyledIndeterminateProgressBar {
         visible: Bluetooth.defaultAdapter?.discovering ?? false
         Layout.fillWidth: true
-        Layout.topMargin: -8
         Layout.bottomMargin: -8
-        Layout.leftMargin: -Appearance.rounding.large
-        Layout.rightMargin: -Appearance.rounding.large
     }
-    StyledListView {
-        Layout.fillHeight: true
+    // ClippingRectangle, not a plain Rectangle: `clip` only clips to the
+    // bounding box, so a row's hover fill would square off the card's corners.
+    ClippingRectangle {
         Layout.fillWidth: true
-        Layout.topMargin: -15
-        Layout.bottomMargin: -16
-        Layout.leftMargin: -Appearance.rounding.large
-        Layout.rightMargin: -Appearance.rounding.large
+        Layout.fillHeight: true
+        radius: Appearance.rounding.large
+        color: Appearance.colors.colSurfaceContainerHigh
 
-        clip: true
-        spacing: 0
-        animateAppearance: false
+        StyledListView {
+            anchors.fill: parent
+            topMargin: 8
+            bottomMargin: 8
+            spacing: 0
+            animateAppearance: false
 
-        model: ScriptModel {
-            values: BluetoothStatus.friendlyDeviceList
-        }
-        delegate: BluetoothDeviceItem {
-            required property BluetoothDevice modelData
-            device: modelData
-            anchors {
-                left: parent?.left
-                right: parent?.right
+            model: ScriptModel {
+                values: BluetoothStatus.friendlyDeviceList
+            }
+            delegate: BluetoothDeviceItem {
+                required property BluetoothDevice modelData
+                device: modelData
+                anchors {
+                    left: parent?.left
+                    right: parent?.right
+                }
             }
         }
     }
-    WindowDialogSeparator {}
     WindowDialogButtonRow {
         DialogButton {
             buttonText: Translation.tr("Details")

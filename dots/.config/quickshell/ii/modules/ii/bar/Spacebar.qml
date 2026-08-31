@@ -43,14 +43,9 @@ Item {
 
     Item {
         id: visualContainer
-        anchors {
-            left: root.vertical ? parent.left : undefined
-            right: root.vertical ? parent.right : undefined
-            top: root.vertical ? undefined : parent.top
-            bottom: root.vertical ? undefined : parent.bottom
-            verticalCenter: root.vertical ? undefined : parent.verticalCenter
-            horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
-        }
+        // Both edges plus the centre plus an explicit size over-constrained the
+        // item, so which binding won decided where the pipe landed and it
+        // drifted with orientation. x/y/size alone place it exactly.
         x: root.vertical ? 0 : root.leftPadding
         y: root.vertical ? root.leftPadding : 0
         width: root.vertical ? root.width : root.contentSpan

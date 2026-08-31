@@ -5,6 +5,7 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Widgets
 import Quickshell.Services.Pipewire
 
 ColumnLayout {
@@ -15,26 +16,38 @@ ColumnLayout {
     readonly property bool hasApps: appPwNodes.length > 0
     spacing: 16
 
-    DialogSectionListView {
+    // ClippingRectangle, not a plain Rectangle: `clip` only clips to the
+    // bounding box, so a row's hover fill would square off the card's corners.
+    ClippingRectangle {
+        Layout.fillWidth: true
         Layout.fillHeight: true
-        topMargin: 14
+        radius: Appearance.rounding.large
+        color: Appearance.colors.colSurfaceContainerHigh
 
-        model: ScriptModel {
-            values: root.appPwNodes
-        }
-        delegate: VolumeMixerEntry {
-            anchors {
-                left: parent?.left
-                right: parent?.right
+        DialogSectionListView {
+            anchors.fill: parent
+            topMargin: 12
+            bottomMargin: 12
+            leftMargin: 12
+            rightMargin: 12
+
+            model: ScriptModel {
+                values: root.appPwNodes
             }
-            required property var modelData
-            node: modelData
-        }
-        PagePlaceholder {
-            icon: "widgets"
-            title: Translation.tr("No applications")
-            shown: !root.hasApps
-            shape: MaterialShape.Shape.Cookie7Sided
+            delegate: VolumeMixerEntry {
+                anchors {
+                    left: parent?.left
+                    right: parent?.right
+                }
+                required property var modelData
+                node: modelData
+            }
+            PagePlaceholder {
+                icon: "widgets"
+                title: Translation.tr("No applications")
+                shown: !root.hasApps
+                shape: MaterialShape.Shape.Cookie7Sided
+            }
         }
     }
 
@@ -68,16 +81,6 @@ ColumnLayout {
     }
 
     component DialogSectionListView: StyledListView {
-        Layout.fillWidth: true
-        Layout.topMargin: -22
-        Layout.bottomMargin: -16
-        Layout.leftMargin: -Appearance.rounding.large
-        Layout.rightMargin: -Appearance.rounding.large
-        topMargin: 12
-        bottomMargin: 12
-        leftMargin: 20
-        rightMargin: 20
-
         clip: true
         spacing: 4
         animateAppearance: false

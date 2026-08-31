@@ -74,95 +74,92 @@ WindowDialog {
             width: parent.width
             spacing: 16
 
-            WindowDialogSectionHeader {
-                text: Translation.tr("Status")
-            }
+            ContentSubsection {
+                title: Translation.tr("Status")
 
-            ConfigSwitch {
-                Layout.fillWidth: true
-                buttonRadius: Appearance.rounding.large
-                iconSize: Appearance.font.pixelSize.larger
-                buttonIcon: "wifi_tethering"
-                text: Translation.tr("Enable hotspot")
-                checked: Network.hotspotToggled
-                enabled: Network.hotspotSupported
-                onCheckedChanged: {
-                    if (checked !== Network.hotspotToggled) {
-                        Network.enableHotspot(checked);
+                ConfigSwitch {
+                    iconSize: Appearance.font.pixelSize.larger
+                    buttonIcon: "wifi_tethering"
+                    text: Translation.tr("Enable hotspot")
+                    checked: Network.hotspotToggled
+                    enabled: Network.hotspotSupported
+                    onCheckedChanged: {
+                        if (checked !== Network.hotspotToggled) {
+                            Network.enableHotspot(checked);
+                        }
                     }
                 }
             }
 
-            WindowDialogSectionHeader {
-                text: Translation.tr("Activity & Usage")
-            }
+            ContentSubsection {
+                title: Translation.tr("Activity & Usage")
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                Rectangle {
+                RowLayout {
                     Layout.fillWidth: true
-                    implicitHeight: 64
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colLayer2
+                    spacing: 8
 
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 64
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colors.colLayer2
 
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                            text: Translation.tr("Connected Devices")
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: Translation.tr("Connected Devices")
+                            }
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.larger
+                                font.weight: Font.Bold
+                                color: Appearance.colors.colOnLayer2
+                                text: Network.hotspotToggled ? String(Network.hotspotClientCount) : "--"
+                            }
                         }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            font.pixelSize: Appearance.font.pixelSize.larger
-                            font.weight: Font.Bold
-                            color: Appearance.colors.colOnLayer2
-                            text: Network.hotspotToggled ? String(Network.hotspotClientCount) : "--"
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 64
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colors.colLayer2
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: 4
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: Translation.tr("Data Transferred")
+                            }
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                font.weight: Font.Bold
+                                color: Appearance.colors.colOnLayer2
+                                text: Network.hotspotToggled
+                                    ? `↓ ${root.formatBytes(Network.hotspotRxBytes)}  ↑ ${root.formatBytes(Network.hotspotTxBytes)}`
+                                    : "--"
+                            }
                         }
                     }
                 }
+            }
 
-                Rectangle {
+            ContentSubsection {
+                title: Translation.tr("Network Settings")
+
+                ColumnLayout {
                     Layout.fillWidth: true
-                    implicitHeight: 64
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colLayer2
-
-                    ColumnLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
-
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                            text: Translation.tr("Data Transferred")
-                        }
-                        StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.weight: Font.Bold
-                            color: Appearance.colors.colOnLayer2
-                            text: Network.hotspotToggled
-                                ? `↓ ${root.formatBytes(Network.hotspotRxBytes)}  ↑ ${root.formatBytes(Network.hotspotTxBytes)}`
-                                : "--"
-                        }
-                    }
-                }
-            }
-
-            WindowDialogSectionHeader {
-                text: Translation.tr("Network Settings")
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 12
+                    spacing: 12
 
                 // SSID Field
                 ColumnLayout {
@@ -278,6 +275,7 @@ WindowDialog {
                         ]
                         currentIndex: Math.max(0, model.findIndex(item => item.value === Network.hotspotConfigSecurity))
                     }
+                }
                 }
             }
         }

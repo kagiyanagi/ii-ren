@@ -31,21 +31,12 @@ WindowDialog {
         ColumnLayout {
             id: scrollColumn
             width: parent.width
-            spacing: 8
-    
-            WindowDialogSectionHeader {
-                text: Translation.tr("Night Light")
-            }
+            spacing: 12
 
-            Column {
-                id: nightLightColumn
-                Layout.fillWidth: true
+            ContentSubsection {
+                title: Translation.tr("Night Light")
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "check"
                     text: Translation.tr("Enable now")
@@ -56,10 +47,6 @@ WindowDialog {
                 }
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "night_sight_auto"
                     text: Translation.tr("Automatic")
@@ -69,37 +56,22 @@ WindowDialog {
                     }
                 }
 
-                WindowDialogSlider {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                ConfigSlider {
                     text: Translation.tr("Intensity")
                     from: 6500
                     to: 1200
                     stopIndicatorValues: [5000, to]
+                    usePercentTooltip: false
                     value: Config.options.light.night.colorTemperature
                     onMoved: Config.options.light.night.colorTemperature = value
                     tooltipContent: `${Math.round(value)}K`
                 }
             }
 
-            WindowDialogSectionHeader {
-                Layout.topMargin: 8
-                text: Translation.tr("Comfort View")
-            }
-
-            Column {
-                id: comfortViewColumn
-                Layout.fillWidth: true
+            ContentSubsection {
+                title: Translation.tr("Comfort View")
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "visibility"
                     text: Translation.tr("Enable now")
@@ -113,10 +85,6 @@ WindowDialog {
                 }
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "auto_mode"
                     text: Translation.tr("Dynamic automatic")
@@ -129,13 +97,7 @@ WindowDialog {
                     }
                 }
 
-                WindowDialogSlider {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                ConfigSlider {
                     text: Translation.tr("Effect intensity")
                     from: 0
                     to: 100
@@ -145,20 +107,10 @@ WindowDialog {
                 }
             }
 
-            WindowDialogSectionHeader {
-                Layout.topMargin: 8
-                text: Translation.tr("Reading Mode")
-            }
-
-            Column {
-                id: readingModeColumn
-                Layout.fillWidth: true
+            ContentSubsection {
+                title: Translation.tr("Reading Mode")
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "menu_book"
                     text: Translation.tr("Enable now")
@@ -172,10 +124,6 @@ WindowDialog {
                 }
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "auto_mode"
                     text: Translation.tr("Dynamic automatic")
@@ -189,10 +137,6 @@ WindowDialog {
                 }
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "history_edu"
                     text: Translation.tr("Paper warmth tone")
@@ -205,13 +149,7 @@ WindowDialog {
                     }
                 }
 
-                WindowDialogSlider {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                ConfigSlider {
                     text: Translation.tr("Grayscale intensity")
                     from: 0
                     to: 100
@@ -221,20 +159,10 @@ WindowDialog {
                 }
             }
 
-            WindowDialogSectionHeader {
-                Layout.topMargin: 8
-                text: Translation.tr("Anti-flashbang (experimental)")
-            }
-
-            Column {
-                id: antiFlashbangColumn
-                Layout.fillWidth: true
+            ContentSubsection {
+                title: Translation.tr("Anti-flashbang (experimental)")
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "filter"
                     text: Translation.tr("Content adjustment")
@@ -249,10 +177,6 @@ WindowDialog {
                 }
 
                 ConfigSwitch {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                    }
                     iconSize: Appearance.font.pixelSize.larger
                     buttonIcon: "light_mode"
                     text: Translation.tr("Brightness adjustment")
@@ -266,52 +190,26 @@ WindowDialog {
                 }
             }
 
-            WindowDialogSectionHeader {
-                Layout.topMargin: 8
-                text: Translation.tr("Brightness")
-            }
+            ContentSubsection {
+                title: Translation.tr("Brightness")
 
-            Column {
-                id: brightnessColumn
-                Layout.fillWidth: true
-
-                WindowDialogSlider {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                ConfigSlider {
                     value: root.brightnessMonitor.brightness
                     onMoved: root.brightnessMonitor.setBrightness(value)
                 }
             }
 
-            WindowDialogSectionHeader {
-                Layout.topMargin: 8
-                text: Translation.tr("Gamma")
-            }
+            ContentSubsection {
+                title: Translation.tr("Gamma")
+                Layout.bottomMargin: 8
 
-            Column {
-                id: gammaColumn
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                WindowDialogSlider {
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        leftMargin: 4
-                        rightMargin: 4
-                    }
+                ConfigSlider {
                     from: Hyprsunset.gammaLowerLimit / 100
                     value: Hyprsunset.gamma / 100
                     onMoved: Hyprsunset.setGamma(value * 100)
                     tooltipContent: `${Math.round(value * 100)}%`
                 }
             }
-    
-
         }
     }
     WindowDialogButtonRow {

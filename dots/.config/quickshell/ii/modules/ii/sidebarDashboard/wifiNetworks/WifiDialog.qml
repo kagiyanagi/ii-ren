@@ -6,6 +6,7 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Widgets
 
 WindowDialog {
     id: root
@@ -14,38 +15,35 @@ WindowDialog {
     WindowDialogTitle {
         text: Translation.tr("Connect to Wi-Fi")
     }
-    WindowDialogSeparator {
-        visible: !Network.wifiScanning
-    }
     StyledIndeterminateProgressBar {
         visible: Network.wifiScanning
         Layout.fillWidth: true
-        Layout.topMargin: -8
         Layout.bottomMargin: -8
-        Layout.leftMargin: -Appearance.rounding.large
-        Layout.rightMargin: -Appearance.rounding.large
     }
-    ListView {
-        Layout.fillHeight: true
+    // ClippingRectangle, not a plain Rectangle: `clip` only clips to the
+    // bounding box, so a row's hover fill would square off the card's corners.
+    ClippingRectangle {
         Layout.fillWidth: true
-        Layout.topMargin: -15
-        Layout.bottomMargin: -16
-        Layout.leftMargin: -Appearance.rounding.large
-        Layout.rightMargin: -Appearance.rounding.large
+        Layout.fillHeight: true
+        radius: Appearance.rounding.large
+        color: Appearance.colors.colSurfaceContainerHigh
 
-        clip: true
-        spacing: 0
+        ListView {
+            anchors.fill: parent
+            topMargin: 8
+            bottomMargin: 8
+            spacing: 0
 
-        model: ScriptModel {
-            values: Network.friendlyWifiNetworks
-        }
-        delegate: WifiNetworkItem {
-            required property WifiAccessPoint modelData
-            wifiNetwork: modelData
-            width: ListView.view.width
+            model: ScriptModel {
+                values: Network.friendlyWifiNetworks
+            }
+            delegate: WifiNetworkItem {
+                required property WifiAccessPoint modelData
+                wifiNetwork: modelData
+                width: ListView.view.width
+            }
         }
     }
-    WindowDialogSeparator {}
     WindowDialogButtonRow {
         DialogButton {
             buttonText: Translation.tr("Details")
