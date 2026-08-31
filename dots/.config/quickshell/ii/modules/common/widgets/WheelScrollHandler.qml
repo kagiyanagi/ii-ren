@@ -31,6 +31,13 @@ MouseArea {
     visible: Config?.options.interactions.scrolling.fasterTouchpadScroll
     anchors.fill: parent
     acceptedButtons: Qt.NoButton
+    // Behind the content, not over it. Every MouseArea registers an ArrowCursor
+    // in its constructor whether or not cursorShape is set, and Qt resolves the
+    // pointer shape from the topmost cursor-bearing item -- so at z 0 this sheet
+    // overrode every pointing hand and I-beam in the list it scrolls. Wheel
+    // events still arrive: delivery tries everything under the point until one
+    // accepts, and the content above never accepts a wheel.
+    z: -1
 
     // Keep target synced when not animating (e.g., drag/flick or programmatic changes)
     function syncTarget() {

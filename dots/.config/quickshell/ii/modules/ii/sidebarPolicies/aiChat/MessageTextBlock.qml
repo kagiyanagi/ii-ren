@@ -16,9 +16,13 @@ ColumnLayout {
     // These are needed on the parent loader
     property bool editing: false
     property bool renderMarkdown: true
-    property bool enableMouseSelection: false
+    // On by default: no call site ever set this, so reply text could not be
+    // selected at all and copying meant taking the whole message.
+    property bool enableMouseSelection: true
     property var segmentContent: ({})
-    property var messageData: {}
+    // `{}` here is an empty block, not an empty object, so this was undefined --
+    // which is what logged a TypeError per chunk on every message rendered.
+    property var messageData: null
     property bool done: true
     property bool forceDisableChunkSplitting: false
 
@@ -117,7 +121,7 @@ ColumnLayout {
             values: root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g).filter(line => line.trim() !== "") : [root.shownText]
             onValuesChanged: {
                 while (textLinesRepeater.textLineOpacities.length < values.length) {
-                    textLinesRepeater.textLineOpacities.push(root.messageData.done ? 1 : 0);
+                    textLinesRepeater.textLineOpacities.push(root.messageData?.done ? 1 : 0);
                 }
             }
         }
@@ -128,11 +132,11 @@ ColumnLayout {
 
             // Fade in animation
             visible: opacity > 0
-            opacity: fadeChunkSplitting ? (textLinesRepeater.textLineOpacities[index] ?? (root.messageData.done ? 1 : 0)) : 1
+            opacity: fadeChunkSplitting ? (textLinesRepeater.textLineOpacities[index] ?? (root.messageData?.done ? 1 : 0)) : 1
             Connections {
-                target: root.messageData
+                target: root.messageData ?? null
                 function onDoneChanged() {
-                    if (root.messageData.done) {
+                    if (root.messageData?.done) {
                         textLinesRepeater.textLineOpacities[textArea.index] = 1
                     }
                 }

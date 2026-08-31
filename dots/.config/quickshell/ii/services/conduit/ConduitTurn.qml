@@ -119,12 +119,23 @@ Item {
                 }
             }
 
-            StyledText { // User turns: plain text, no markdown pipeline needed
+            StyledTextArea { // User turns: plain text, no markdown pipeline needed
                 id: userText
                 visible: root.isUser
                 Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                textFormat: Text.PlainText
+                // A read-only text area rather than a label, so a phrase can be
+                // selected and copied out of your own message too. Padding and
+                // background are dropped so the bubble still measures the text
+                // alone -- `bubble.width` is derived from implicitWidth.
+                readOnly: true
+                // Not left to the default: TextEdit derives its own cursor from
+                // `readOnly && !selectByMouse`, so this is what decides between an
+                // I-beam and a plain arrow over the text.
+                selectByMouse: true
+                padding: 0
+                background: null
+                wrapMode: TextEdit.Wrap
+                textFormat: TextEdit.PlainText
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnSecondaryContainer
                 text: root.isUser ? (root.messageData?.content ?? "") : ""
@@ -140,6 +151,8 @@ Item {
                 color: Appearance.colors.colSubtext
                 onLinkActivated: link => Qt.openUrlExternally(link)
                 text: root.isInterface ? (root.messageData?.content ?? "") : ""
+
+                PointingHandLinkHover {} // Links here had no hover cursor at all
             }
 
             MaterialLoadingIndicator { // Waiting for the first token

@@ -8,7 +8,6 @@ import qs.modules.ii.sidebarPolicies.aiChat
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
 
@@ -297,14 +296,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             // Messages
             Layout.fillWidth: true
             Layout.fillHeight: true
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: swipeView.width
-                    height: swipeView.height
-                    radius: Appearance.rounding.small
-                }
-            }
+            // See Conduit.qml: a layer here costs every cursor inside the transcript,
+            // and SidebarPoliciesContent already rounds and clips the SwipeView.
 
             StyledRectangularShadow {
                 z: 1

@@ -7,7 +7,6 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs.services.conduit
 
@@ -324,14 +323,12 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: columnLayout.width
-                    height: columnLayout.height
-                    radius: Appearance.rounding.small
-                }
-            }
+            // No layer here. `layer.enabled` ref-hides the source item, and Qt's cursor
+            // walk skips over that (findCursorItemAndHandler tests `culled`) while hover
+            // delivery does not -- so every button in the transcript highlighted on hover
+            // but kept the plain arrow, and text never showed an I-beam. The rounding this
+            // was masking for is already applied one level up, where SidebarPoliciesContent
+            // clips the whole SwipeView to the same Appearance.rounding.small.
 
             ScrollEdgeFade {
                 z: 1
@@ -431,9 +428,9 @@ Item {
                     Qt.callLater(messageListView.followAgain); // Again once layout settles
                 }
 
-                // Appending a turn replaces the whole model array (root.messageIDs is a
-                // fresh `.filter()` result each time), so the view re-populates and leaves
-                // contentY wherever that lands — in practice, the top. Re-pin once settled.
+                // Only fires when the model object itself is swapped, which with a
+                // ScriptModel is just the initial assignment. Turns arriving and whole
+                // chats being loaded come through onCountChanged instead.
                 onModelChanged: if (messageListView.followBottom) Qt.callLater(messageListView.jumpToBottom)
 
                 /**
@@ -486,6 +483,11 @@ Item {
                 MouseArea { // Observes the wheel; the list still does the scrolling.
                     anchors.fill: parent
                     acceptedButtons: Qt.NoButton
+                    // Same as WheelScrollHandler: a MouseArea carries an ArrowCursor
+                    // even with no cursorShape set, so at z 0 this sheet was what kept
+                    // every button and text in the transcript on the plain arrow. The
+                    // wheel still reaches it here -- nothing above accepts one.
+                    z: -1
                     onWheel: wheel => {
                         messageListView.markWheel();
                         wheel.accepted = false;
@@ -497,13 +499,29 @@ Item {
                     messageListView.followBottom = messageListView.distanceFromBottom() <= messageListView.followThreshold;
                     messageListView.lastBottomY = messageListView.bottomY;
                 }
-                onMovementEnded: messageListView.followBottom = messageListView.distanceFromBottom() <= messageListView.followThreshold
+                // Same rule as onContentYChanged, which this was missing: a bounds
+                // fixup after the content resizes ends a "movement" nobody asked for,
+                // and reading followBottom off that latched following permanently off.
+                onMovementEnded: {
+                    if (!messageListView.userDriven) return;
+                    messageListView.followBottom = messageListView.distanceFromBottom() <= messageListView.followThreshold;
+                }
 
                 onContentHeightChanged: messageListView.follow()
                 onCountChanged: messageListView.follow()
                 onHeightChanged: messageListView.follow()
 
-                model: root.messageIDs
+                // ScriptModel, not the bare array. `root.messageIDs` is a fresh
+                // `.filter()` result every time, and assigning a new array to `model`
+                // resets the whole view: every ConduitTurn is destroyed and rebuilt,
+                // contentHeight collapses to near nothing for the frames that takes,
+                // and the view lands at the top -- which is the jump you see when a
+                // message is sent. ScriptModel diffs the ids and emits a single insert,
+                // so nothing is torn down and the viewport never moves.
+                model: ScriptModel {
+                    values: root.messageIDs
+                }
+
                 delegate: ConduitTurn {
                     required property var modelData
                     width: messageListView.width
@@ -679,6 +697,10 @@ Item {
                 ConfigSelectionArray {
                     id: providerSelector
                     Layout.alignment: Qt.AlignHCenter
+                    // Not inside a ContentGroup here, so the card-bleed padding
+                    // this widget normally carries just reads as dead space.
+                    topPadding: 0
+                    bottomPadding: 0
                     currentValue: root.service?.currentProviderId ?? "claude-cli"
                     onSelected: newValue => root.service?.setProvider(newValue)
                     options: [

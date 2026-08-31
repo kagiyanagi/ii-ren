@@ -7,6 +7,7 @@ import qs.services.conduit
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.overlay
+import Quickshell // ScriptModel
 
 /**
  * Conduit as a floating overlay: ask about whatever is already on screen without
@@ -55,7 +56,13 @@ OverlayBackground {
             Layout.fillHeight: true
             clip: true
             spacing: 4
-            model: root.messageIDs
+            // ScriptModel, not the bare array: `root.messageIDs` is a fresh
+            // `.filter()` result every time, and assigning a new array to `model`
+            // tears down and rebuilds every ConduitTurn on each turn. Same reason
+            // as Conduit.qml -- diff the ids and insert, don't reset the view.
+            model: ScriptModel {
+                values: root.messageIDs
+            }
 
             onCountChanged: Qt.callLater(transcript.positionViewAtEnd)
             onContentHeightChanged: if (transcript.atYEnd || root.responding) Qt.callLater(transcript.positionViewAtEnd)
