@@ -1266,18 +1266,6 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Resources")
-            ConfigSwitch {
-                buttonIcon: "swap_horiz"
-                text: Translation.tr("Show Swap")
-                Layout.fillWidth: true
-                checked: Config.options.bar.tooltips.showSwap
-                onCheckedChanged: {
-                    Config.options.bar.tooltips.showSwap = checked;
-                }
-            }
-        }
     }
 
     

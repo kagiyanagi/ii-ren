@@ -499,6 +499,53 @@ groups. Separator lines clutter dialog surfaces, fight with container rounding,
 and frequently lead to brittle negative-margin hacks (e.g. `topMargin: -22`) to
 close the gap. Let whitespace and background layer cards do the work.
 
+This applies to **dialogs too**, not just settings pages. A `WindowDialog`
+groups its content with `ContentSubsection` (header + card run) exactly like a
+settings page, and a dialog whose body is a list puts that list inside one
+`colSurfaceContainerHigh` card with `radius: rounding.large` and `clip: true`,
+rather than bleeding the rows to the dialog edges between separator lines. The
+quick-settings popups (Wi-Fi, Bluetooth, audio, Eye protection, Hotspot) are
+the worked examples.
+
+### 5.6 Grouped rows: the card owns the row's geometry
+
+`ContentGroup` (via `ContentSection` / `ContentSubsection`) draws a card behind
+each row that opts in with `wantsCard: true`. Rules that fall out of that:
+
+- **Run ends get `rounding.large`, seams get `rounding.verysmall`.** A run is a
+  stretch of adjacent carded rows; a bare row ends the run. Never `rounding.full`
+  for a run end — a pill radius looks fine on a collapsed row and turns into a
+  giant arc that eats the content the moment the row is tall or expands
+  (`ConfigListViewEntry` shipped this bug).
+- **The card is wider than its row** (`horizontalBleed`, 8 each side). Any row
+  that paints its own background — hover, pressed, checked — must therefore take
+  *both* the card's corner radii and its per-side bleed, or its fill stops short
+  of the card's edges and squares off corners the card rounds. `ContentGroup`
+  hands these over automatically; build the row on `RippleButton` (which exposes
+  `topLeftRadius`…`bottomRightRadius`, `backgroundBleedLeft`/`Right`) and it
+  works with no per-row code.
+- **Only the outermost tile of a row touches an edge.** In a `ConfigRow` the
+  card spans the whole row, so the first child takes the left corners and left
+  bleed, the last takes the right, and anything between keeps `innerRadius` and
+  no bleed. Edge position is judged against the row's full child list, so a
+  switch followed by a button group fills leftwards while the buttons stay
+  pills.
+- **Propagation must reach through containers.** A row can be a container
+  (`ConfigRow`) whose *children* are the things that paint. A fix applied only
+  to `ContentGroup`'s direct children silently misses every wrapped row.
+
+### 5.7 Labels next to controls
+
+- **A fixed-width label cell must elide.** Text longer than its cell keeps
+  drawing past it, and the neighbouring control paints over the overflow —
+  `elide: Text.ElideRight` plus `Layout.minimumWidth: 0`, always.
+- **A slider gets its own line.** Label (and icon) above, track below at full
+  width. Side by side, the track only gets whatever the label leaves over, and
+  a long label squeezes it to a stub. `ConfigSlider` is a column for this reason.
+- **Never `spacing: 0` between a label group and its control.** 8 minimum, with
+  the label group on `Layout.fillWidth` so the control right-aligns like every
+  other row instead of hugging the text.
+
 ---
 
 ## 6. Colour, layers, elevation
@@ -643,7 +690,8 @@ under a header. Empty state is `PagePlaceholder`, not blank space.
 
 **Switch / slider** — `StyledSwitch`, `StyledSlider`, `ConfigSlider`. Thumb on
 fast spatial, track colour on default effects. M3 Expressive sliders squeeze the
-thumb on press; keep the value text tabular (`font.family.numbers`).
+thumb on press; keep the value text tabular (`font.family.numbers`). In a
+settings row the label sits *above* a full-width track, never beside it (5.7).
 
 **FAB** — `FloatingActionButton`. `full` radius, `fabShadowRadius` 5 at rest and
 `fabHoveredShadowRadius` 7 on hover, animated on an effects spec.
@@ -687,6 +735,19 @@ Each of these has actually shipped and had to be reverted.
 11. An effect inside a repeated delegate.
 12. Adding a second `MouseArea` over a `RippleButton` instead of using its
     action properties.
+13. A row painting its own background at a different radius or width than the
+    card behind it — hover then reads as a slab floating inside the card, or as
+    corners poking past it (see 5.6).
+14. Anchoring opposite edges *and* the centre while also setting an explicit
+    size. That is an over-constraint; placement then depends on which binding
+    wins and drifts with orientation. Position with `x`/`y` and a size, or with
+    anchors — not both.
+15. `Binding { target: obj; someProperty: value }`. `Binding` takes
+    `property:` + `value:` (or a fully qualified `obj.someProperty:` form);
+    the invalid one fails at load and takes the whole config down with it.
+16. A settings control bound to a config key nothing reads. Before adding a
+    toggle, grep the key; before keeping one, grep it again.
+17. Text in a fixed-width cell without `elide`.
 
 ---
 
@@ -698,6 +759,9 @@ Each of these has actually shipped and had to be reverted.
 - [ ] Enter **and** exit both specified, exit faster.
 - [ ] Transform origin set on anything that scales.
 - [ ] Hover, focus, pressed and disabled all render.
+- [ ] Hover fills its card edge to edge and matches its corners — checked on a
+      lone row, on the first and last of a run, and inside a `ConfigRow`.
+- [ ] Every label that can outgrow its cell elides.
 - [ ] Hit area ≥ 32px; pointing-hand cursor on clickables.
 - [ ] Radii from `Appearance.rounding`, nested smaller than the parent, sharp
       mode still correct.

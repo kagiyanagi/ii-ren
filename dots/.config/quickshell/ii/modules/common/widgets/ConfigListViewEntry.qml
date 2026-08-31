@@ -64,13 +64,16 @@ Item {
         root.updated(arr)
     }
 
+    // Run ends get the card radius, not `full`: a pill radius is fine on a
+    // collapsed row but turns an expanded entry's corner into a huge arc that
+    // eats into its own content.
     property real bottomRadius: {
-        if (listModel.length == 1 || visualIndex == listModel.length - 1) return Appearance.rounding.full
+        if (listModel.length == 1 || visualIndex == listModel.length - 1) return Appearance.rounding.large
         return Appearance.rounding.verysmall
     }
 
     property real topRadius: {
-        if (listModel.length == 1 || visualIndex == 0) return Appearance.rounding.full
+        if (listModel.length == 1 || visualIndex == 0) return Appearance.rounding.large
         return Appearance.rounding.verysmall
     }
 

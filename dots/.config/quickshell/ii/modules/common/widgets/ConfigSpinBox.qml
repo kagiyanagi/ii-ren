@@ -49,10 +49,11 @@ Item {
             leftMargin: 8
             rightMargin: 8
         }
-        spacing: 0
+        spacing: 8
 
         RowLayout {
             Layout.alignment: Qt.AlignVCenter
+            Layout.fillWidth: true
             spacing: 10
             OptionalMaterialSymbol {
                 icon: root.icon
@@ -61,6 +62,8 @@ Item {
             StyledText {
                 id: labelWidget
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
                 text: root.text
                 color: Appearance.colors.colOnSecondaryContainer
                 opacity: root.enabled ? 1 : 0.4

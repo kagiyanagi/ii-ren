@@ -26,6 +26,13 @@ Button {
     property var altAction // When right clicking
     property var middleClickAction // When middle clicking
 
+    // How far the background reaches past the button. Tiles inside a
+    // ContentGroup use it to fill their card, which is wider than the tile -
+    // per side, since only the outermost tile of a row touches each edge.
+    property real backgroundBleed: 0
+    property real backgroundBleedLeft: backgroundBleed
+    property real backgroundBleedRight: backgroundBleed
+
     property real topLeftRadius: buttonEffectiveRadius
     property real topRightRadius: buttonEffectiveRadius
     property real bottomLeftRadius: buttonEffectiveRadius
@@ -152,6 +159,8 @@ Button {
 
     background: Rectangle {
         id: buttonBackground
+        x: -root.backgroundBleedLeft
+        width: root.width + root.backgroundBleedLeft + root.backgroundBleedRight
         topLeftRadius: root.topLeftRadius
         topRightRadius: root.topRightRadius
         bottomLeftRadius: root.bottomLeftRadius
