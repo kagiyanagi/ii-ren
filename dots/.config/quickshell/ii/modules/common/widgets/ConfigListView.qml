@@ -153,9 +153,12 @@ Rectangle {
             
             onClicked: {
                 let available = root.availableComps
-                if (available[root.selectedCompIndex] == null) return
+                let idx = (componentSelector.currentIndex >= 0 && componentSelector.currentIndex < available.length)
+                    ? componentSelector.currentIndex
+                    : (root.selectedCompIndex >= 0 && root.selectedCompIndex < available.length ? root.selectedCompIndex : 0)
+                if (available[idx] == null) return
 
-                let newComp = initilizateComponent(available[root.selectedCompIndex]);
+                let newComp = initilizateComponent(available[idx]);
                 listModel.push(newComp);
 
                 root.updated(listModel);

@@ -135,7 +135,7 @@ Item { // Bar content region
                     vertical: true
                     list: Config.options.bar.layouts.center
                     barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id) // we have to recalculate the index because repeater.model has changed
+                    originalIndex: index
                 }
             }
         }
@@ -152,7 +152,7 @@ Item { // Bar content region
                     vertical: true
                     list: Config.options.bar.layouts.center
                     barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
+                    originalIndex: root.leftList.length + index
                 }
             }
         }
@@ -170,7 +170,7 @@ Item { // Bar content region
                     vertical: true
                     list: Config.options.bar.layouts.center
                     barSection: 1
-                    originalIndex: Config.options.bar.layouts.center.findIndex(e => e.id === modelData.id)
+                    originalIndex: root.leftList.length + root.centerList.length + index
                 }
             }
         }

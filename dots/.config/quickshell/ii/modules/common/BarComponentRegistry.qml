@@ -24,7 +24,7 @@ Singleton {
         { id: "utility_buttons", icon: "build", title: "Utility buttons" },
         { id: "network_speed", icon: "speed", title: "Network speed" },
         { id: "privacy_indicator", icon: "privacy_tip", title: "Privacy indicators" },
-        { id: "visualizer", icon: "graphic_eq", title: "Visualizer" },
+        { id: "visualizer", icon: "graphic_eq", title: "Visualizer", allowMultiple: true },
     ]
 
     property var extensionComponents: []
@@ -65,7 +65,8 @@ Singleton {
                 id: id,
                 icon: c.icon || "extension",
                 title: c.title || id,
-                extensionId: c.extensionId || ""
+                extensionId: c.extensionId || "",
+                allowMultiple: !!c.allowMultiple
             })
 
             let horizComp = ExtensionManager.loadExtensionQmlComponent(c.fullPath)
@@ -106,6 +107,6 @@ Singleton {
     }
 
     function getAvailableComponents(usedIds) {
-        return root.allComponents.filter(c => !usedIds.includes(c.id))
+        return root.allComponents.filter(c => c.allowMultiple || !usedIds.includes(c.id))
     }
 }
