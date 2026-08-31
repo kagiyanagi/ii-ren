@@ -206,6 +206,11 @@ Singleton {
         property color colRecordChipHover: "#D93025"
         property color colRecordChipActive: "#B3261E"
         property color colOnRecordChip: "#FFFFFF"
+        // Samsung One UI timer/stopwatch status chip
+        property color colTimerChip: "#4b4db6" // design-ok: Samsung One UI live pill color
+        property color colTimerChipHover: ColorUtils.mix(colTimerChip, "#FFFFFF", 0.92)
+        property color colTimerChipActive: ColorUtils.mix(colTimerChip, "#FFFFFF", 0.90)
+        property color colOnTimerChip: "#FFFFFF"
     }
 
     rounding: QtObject {

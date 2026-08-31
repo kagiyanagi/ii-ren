@@ -13,6 +13,8 @@ ContentPage {
     property bool register: parent.register ?? false
 
     property var componentMap: ({
+        "clock": clockSection,
+        "system_monitor": resourcesSection,
         "active_window": activeWindow,
         "music_player": musicPlayer,
         "utility_buttons": utilityButtons,
@@ -269,6 +271,112 @@ ContentPage {
         }
     }
     
+    ContentSection {
+        id: clockSection
+        icon: "schedule"
+        title: Translation.tr("Clock")
+
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "calendar_today"
+                text: Translation.tr("Show date")
+                checked: Config.options.bar.clock.showDate ?? true
+                onCheckedChanged: {
+                    Config.options.bar.clock.showDate = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "timer"
+                text: Translation.tr("Show seconds")
+                checked: Config.options.bar.clock.showSeconds ?? false
+                onCheckedChanged: {
+                    Config.options.bar.clock.showSeconds = checked;
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Time format")
+            tooltip: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.clock.timeFormat || Config.options.time.format || "hh:mm"
+                onSelected: newValue => {
+                    Config.options.bar.clock.timeFormat = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("24h (hh:mm)"), value: "hh:mm" },
+                    { displayName: Translation.tr("12h (h:mm ap)"), value: "h:mm ap" },
+                    { displayName: Translation.tr("12h (h:mm AP)"), value: "h:mm AP" },
+                    { displayName: Translation.tr("With seconds (hh:mm:ss)"), value: "hh:mm:ss" }
+                ]
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialTextField {
+                    id: barCustomTimeFormatInput
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
+                    text: Config.options.bar.clock.timeFormat || Config.options.time.format || ""
+                    onEditingFinished: {
+                        Config.options.bar.clock.timeFormat = text.trim();
+                    }
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, barCustomTimeFormatInput.text.trim() || Config.options.bar.clock.timeFormat || Config.options.time.format || "hh:mm")
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Date format")
+            tooltip: Translation.tr("Custom format tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || "ddd, dd/MM"
+                onSelected: newValue => {
+                    Config.options.bar.clock.dateFormat = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Date First (ddd, dd/MM)"), value: "ddd, dd/MM" },
+                    { displayName: Translation.tr("Month First (ddd, MM/dd)"), value: "ddd, MM/dd" },
+                    { displayName: Translation.tr("Full (dddd, MMMM dd)"), value: "dddd, MMMM dd" },
+                    { displayName: Translation.tr("ISO (yyyy-MM-dd)"), value: "yyyy-MM-dd" }
+                ]
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialTextField {
+                    id: barCustomDateFormatInput
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
+                    text: Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || ""
+                    onEditingFinished: {
+                        Config.options.bar.clock.dateFormat = text.trim();
+                    }
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, barCustomDateFormatInput.text.trim() || Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || "ddd, dd/MM")
+                }
+            }
+        }
+    }
+
     ContentSection {
         id: activeWindow
         icon: "ad"
@@ -598,6 +706,214 @@ ContentPage {
                     }
                 }
             }
+    }
+
+    ContentSection {
+        id: resourcesSection
+        icon: "memory"
+        title: Translation.tr("Resource monitor")
+
+        ContentSubsection {
+            title: Translation.tr("Visible statistics")
+            tooltip: Translation.tr("Choose which resource monitors to display on the bar")
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "planner_review"
+                    text: Translation.tr("CPU usage")
+                    checked: Config.options.bar.resources.showCpu ?? true
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showCpu = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "memory"
+                    text: Translation.tr("RAM usage")
+                    checked: Config.options.bar.resources.showRam ?? true
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showRam = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "thermostat"
+                    text: Translation.tr("Temperature")
+                    checked: Config.options.bar.resources.showTemp ?? true
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showTemp = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "swap_vert"
+                    text: Translation.tr("Network load")
+                    checked: Config.options.bar.resources.showNetwork ?? false
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showNetwork = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "swap_horiz"
+                    text: Translation.tr("Swap usage")
+                    checked: Config.options.bar.resources.showSwap ?? false
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showSwap = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "videogame_asset"
+                    text: Translation.tr("GPU usage")
+                    checked: Config.options.bar.resources.showGpu ?? false
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showGpu = checked;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    buttonIcon: "hard_drive"
+                    text: Translation.tr("Disk usage")
+                    checked: Config.options.bar.resources.showDisk ?? false
+                    onCheckedChanged: {
+                        Config.options.bar.resources.showDisk = checked;
+                    }
+                }
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Formatting & units")
+
+            ConfigSwitch {
+                buttonIcon: "percent"
+                text: Translation.tr("Show unit symbols (% / °C)")
+                checked: Config.options.bar.resources.showSymbols ?? false
+                onCheckedChanged: {
+                    Config.options.bar.resources.showSymbols = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Displays unit symbols after numbers (e.g. 20%, 51°C, 3.8G)")
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("RAM & Swap measurement unit")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.bar.resources.ramUnit ?? "percent"
+                    onSelected: newValue => {
+                        Config.options.bar.resources.ramUnit = newValue;
+                    }
+                    options: [
+                        { displayName: Translation.tr("Percentage (%)"), icon: "percent", value: "percent" },
+                        { displayName: Translation.tr("Gigabytes (GB)"), icon: "database", value: "gb" },
+                        { displayName: Translation.tr("Megabytes (MB)"), icon: "memory", value: "mb" }
+                    ]
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Network load settings")
+            visible: Config.options.bar.resources.showNetwork ?? false
+
+            ConfigSpinBox {
+                icon: "speed"
+                text: Translation.tr("Max bandwidth reference (Mbps)")
+                value: Config.options.bar.resources.networkMaxSpeed ?? 100
+                from: 10
+                to: 10000
+                stepSize: 50
+                onValueChanged: {
+                    Config.options.bar.resources.networkMaxSpeed = value;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Speed corresponding to 100% network load on the progress ring")
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Display value")
+                ConfigSelectionArray {
+                    currentValue: Config.options.bar.resources.networkUnit ?? "percent"
+                    onSelected: newValue => {
+                        Config.options.bar.resources.networkUnit = newValue;
+                    }
+                    options: [
+                        { displayName: Translation.tr("Load percentage (%)"), icon: "percent", value: "percent" },
+                        { displayName: Translation.tr("Speed value (e.g. 1.2M)"), icon: "speed", value: "speed" }
+                    ]
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Warning thresholds")
+
+            ConfigRow {
+                uniform: true
+                ConfigSpinBox {
+                    icon: "planner_review"
+                    text: Translation.tr("CPU threshold (%)")
+                    value: Config.options.bar.resources.cpuWarningThreshold ?? 90
+                    from: 50
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.bar.resources.cpuWarningThreshold = value;
+                    }
+                }
+                ConfigSpinBox {
+                    icon: "memory"
+                    text: Translation.tr("RAM threshold (%)")
+                    value: Config.options.bar.resources.memoryWarningThreshold ?? 95
+                    from: 50
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.bar.resources.memoryWarningThreshold = value;
+                    }
+                }
+            }
+
+            ConfigRow {
+                uniform: true
+                ConfigSpinBox {
+                    icon: "thermostat"
+                    text: Translation.tr("Temperature threshold (°C)")
+                    value: Config.options.bar.resources.tempWarningThreshold ?? 85
+                    from: 40
+                    to: 110
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.bar.resources.tempWarningThreshold = value;
+                    }
+                }
+                ConfigSpinBox {
+                    icon: "swap_horiz"
+                    text: Translation.tr("Swap threshold (%)")
+                    value: Config.options.bar.resources.swapWarningThreshold ?? 85
+                    from: 50
+                    to: 100
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.bar.resources.swapWarningThreshold = value;
+                    }
+                }
+            }
+        }
     }
 
     ContentSection {

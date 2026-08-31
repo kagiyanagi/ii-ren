@@ -1173,6 +1173,9 @@ Singleton {
             property JsonObject bar: JsonObject {
                 property JsonObject clock: JsonObject {
                     property bool showSeconds: false
+                    property bool showDate: true
+                    property string timeFormat: "" // Empty falls back to Config.options.time.format
+                    property string dateFormat: "" // Empty falls back to Config.options.time.dateFormat
                 }
                 property JsonObject activeWindow: JsonObject {
                     property bool fixedSize: false
@@ -1222,6 +1225,18 @@ Singleton {
                     property bool showDocker: false
                     property int swapWarningThreshold: 85
                     property int cpuWarningThreshold: 90
+                    property int tempWarningThreshold: 85
+                    property bool showCpu: true
+                    property bool showRam: true
+                    property bool showTemp: true
+                    property bool showNetwork: false
+                    property bool showSwap: false
+                    property bool showDisk: false
+                    property bool showGpu: false
+                    property int networkMaxSpeed: 100 // Mbps, for percentage calculation
+                    property string networkUnit: "percent" // Options: percent, speed
+                    property bool showSymbols: false
+                    property string ramUnit: "percent" // Options: percent, gb, mb
                 }
                 property list<string> screenList: [] // List of names, like "eDP-1", find out with 'hyprctl monitors' command
 

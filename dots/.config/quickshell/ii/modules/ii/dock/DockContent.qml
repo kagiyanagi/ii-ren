@@ -31,6 +31,7 @@ Item {
 
     readonly property real padH: Config.options?.dock?.paddingHorizontal ?? 0
     readonly property real padV: Config.options?.dock?.paddingVertical ?? 0
+    property real appsButtonVerticalOffset: 0 // Button container is centered; optical centering handled in SVG viewBox
 
     readonly property real visualWidth: isVertical ? Appearance.sizes.dockButtonSize + dotMargin * 2 + padH * 2 : mainLayout.implicitWidth + padH * 2
     readonly property real visualHeight: isVertical ? mainLayout.implicitHeight + padV * 2 : Appearance.sizes.dockButtonSize + dotMargin * 2 + padV * 2
@@ -556,6 +557,7 @@ Item {
             DockActionButton {
                 id: unpinButton
                 anchors.centerIn: parent
+                anchors.verticalCenterOffset: root.isVertical ? 0 : root.appsButtonVerticalOffset
                 symbolName: "app_search.svg"
                 symbolSize: Math.round(buttonSize * 0.58)
                 accented: true

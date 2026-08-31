@@ -19,21 +19,24 @@ MouseArea {
             Layout.alignment: Qt.AlignHCenter
             iconName: "memory"
             percentage: ResourceUsage.memoryUsedPercentage
-            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
+            shown: Config.options.bar.resources.showRam ?? true
+            warningThreshold: Config.options.bar.resources.memoryWarningThreshold ?? 95
         }
 
         Resource {
             Layout.alignment: Qt.AlignHCenter
             iconName: "swap_horiz"
             percentage: ResourceUsage.swapUsedPercentage
-            warningThreshold: Config.options.bar.resources.swapWarningThreshold
+            shown: Config.options.bar.resources.showSwap ?? false
+            warningThreshold: Config.options.bar.resources.swapWarningThreshold ?? 85
         }
 
         Resource {
             Layout.alignment: Qt.AlignHCenter
             iconName: "planner_review"
             percentage: ResourceUsage.cpuUsage
-            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
+            shown: Config.options.bar.resources.showCpu ?? true
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold ?? 90
         }
 
     }

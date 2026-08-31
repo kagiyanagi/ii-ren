@@ -10,91 +10,165 @@ Item {
 
     readonly property bool pRunning: TimerService.pomodoroRunning ?? false
     readonly property bool sRunning: TimerService.stopwatchRunning ?? false
-    readonly property bool hasStop: TimerService.stopwatchTime > 0
+    readonly property bool hasStop: TimerService.stopwatchTime > 0 || sRunning
     readonly property bool hasPomo: TimerService.pomodoroSecondsLeft > 0 && (TimerService.pomodoroSecondsLeft < TimerService.focusTime || pRunning)
 
     property bool showPomodoro: Config.options.bar.timers.showPomodoro
     property bool showStopwatch: Config.options.bar.timers.showStopwatch
 
-    implicitWidth: rowLayout.implicitWidth + rowLayout.spacing * 5
-    implicitHeight: Appearance.sizes.barHeight
+    readonly property bool stopwatchActive: hasStop && showStopwatch
+    readonly property bool timerActive: hasPomo && showPomodoro
+    property bool compVisible: stopwatchActive || timerActive
 
-    property bool compVisible: ((hasStop || sRunning) && root.showStopwatch) || ((pRunning || hasPomo) && root.showPomodoro)
+    // Customizable pill metrics:
+    property int pillHeight: 26        // Height of the capsule pill
+    property int pillPadding: 10       // Horizontal padding on both outer ends
+    property int itemSpacing: 10       // Spacing between Stopwatch and Timer when merged
+    property int iconSize: Appearance.font.pixelSize.normal // Icon size (16px)
 
-    onCompVisibleChanged: rootItem.toggleVisible(compVisible)
+    implicitWidth: pillContainer.implicitWidth
+    implicitHeight: root.pillHeight
+
+    onCompVisibleChanged: {
+        if (typeof rootItem !== "undefined") {
+            rootItem.toggleVisible(compVisible);
+        }
+    }
+
     Component.onCompleted: {
-        rootItem.toggleHighlight(true)
-        rootItem.toggleVisible(compVisible)
+        if (typeof rootItem !== "undefined") {
+            rootItem.isolated = true;
+            rootItem.customHighlightColor = "transparent";
+            rootItem.toggleHighlight(true);
+            rootItem.toggleVisible(compVisible);
+        }
     }
 
     Behavior on implicitWidth {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
-    RowLayout {
-        id: rowLayout
+    Rectangle {
+        id: pillContainer
         anchors.centerIn: parent
-        spacing: 4
+        height: root.pillHeight
+        implicitWidth: contentRow.implicitWidth + (root.pillPadding * 2)
+        implicitHeight: root.pillHeight
+        radius: Appearance.rounding.full
+        color: Appearance.colors.colTimerChip
 
-        Loader {
-            active: hasStop && showStopwatch
-            visible: active
-            Layout.preferredWidth: 90 // we have to enter a fixed size or else it will jitter as the time changes
-            sourceComponent: RowLayout {
-                MaterialSymbol {
-                    text: root.sRunning ? "timer" : "timer_pause"
-                    color: Appearance.colors.colOnPrimary
-                    iconSize: Appearance.font.pixelSize.large
+        RowLayout {
+            id: contentRow
+            anchors.centerIn: parent
+            spacing: (root.stopwatchActive && root.timerActive) ? root.itemSpacing : 0
+
+            Item {
+                id: stopwatchItem
+                visible: root.stopwatchActive
+                implicitWidth: visible ? stopwatchRow.implicitWidth + 6 : 0
+                implicitHeight: root.pillHeight - 2
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Appearance.rounding.full
+                    color: stopwatchMouse.pressed ? Appearance.colors.colTimerChipActive : (stopwatchMouse.containsMouse ? Appearance.colors.colTimerChipHover : "transparent")
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
                 }
 
-                StyledText {
-                    Layout.topMargin: 3
-                    text: Duration.format10ms(TimerService.stopwatchTime, true)
-                    color: Appearance.colors.colOnPrimary
-                }
-            }  
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    TimerService.toggleStopwatch()
-                }
-            } 
-        }
+                RowLayout {
+                    id: stopwatchRow
+                    anchors.centerIn: parent
+                    spacing: 4
 
-        Item {
-            visible: hasStop && hasPomo
-            Layout.preferredWidth: hasStop && hasPomo ? 2 : 0
-        }
+                    MaterialSymbol {
+                        text: root.sRunning ? "timer" : "timer_pause"
+                        fill: 1
+                        color: Appearance.colors.colOnTimerChip
+                        iconSize: root.iconSize
+                    }
 
-        Loader {
-            active: hasPomo && showPomodoro
-            visible: active
-            Layout.preferredWidth: 60
-            Layout.rightMargin: 5
-            sourceComponent: RowLayout {
-                MaterialSymbol {
-                    text: root.pRunning ? "search_activity" : "pause_circle"
-                    color: Appearance.colors.colOnPrimary
-                    iconSize: Appearance.font.pixelSize.large
+                    StyledText {
+                        text: Duration.format10ms(TimerService.stopwatchTime, false)
+                        color: Appearance.colors.colOnTimerChip
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        font.family: Appearance.font.family.numbers
+                        font.features: ({ "tnum": 1 })
+                        verticalAlignment: Text.AlignVCenter
+                    }
                 }
 
-                StyledText {
-                    Layout.topMargin: 3
-                    text: Duration.format(TimerService.pomodoroSecondsLeft)
-                    color: Appearance.colors.colOnPrimary
+                MouseArea {
+                    id: stopwatchMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) {
+                            TimerService.stopwatchReset();
+                        } else {
+                            TimerService.toggleStopwatch();
+                        }
+                    }
                 }
             }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    TimerService.togglePomodoro()
-                }
-            } 
-        }
 
+            Item {
+                id: timerItem
+                visible: root.timerActive
+                implicitWidth: visible ? timerRow.implicitWidth + 6 : 0
+                implicitHeight: root.pillHeight - 2
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: Appearance.rounding.full
+                    color: timerMouse.pressed ? Appearance.colors.colTimerChipActive : (timerMouse.containsMouse ? Appearance.colors.colTimerChipHover : "transparent")
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+                }
+
+                RowLayout {
+                    id: timerRow
+                    anchors.centerIn: parent
+                    spacing: 4
+
+                    MaterialSymbol {
+                        text: root.pRunning ? "hourglass_bottom" : "hourglass_empty"
+                        fill: 1
+                        color: Appearance.colors.colOnTimerChip
+                        iconSize: root.iconSize
+                    }
+
+                    StyledText {
+                        text: Duration.format(TimerService.pomodoroSecondsLeft)
+                        color: Appearance.colors.colOnTimerChip
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        font.family: Appearance.font.family.numbers
+                        font.features: ({ "tnum": 1 })
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                MouseArea {
+                    id: timerMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.RightButton) {
+                            TimerService.resetPomodoro();
+                        } else {
+                            TimerService.togglePomodoro();
+                        }
+                    }
+                }
+            }
+        }
     }
 }

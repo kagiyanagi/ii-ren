@@ -381,10 +381,9 @@ ContentPage {
                 text: Translation.tr("Enable if you want clocks to show seconds accurately")  
             }  
         }  
-  
-        ContentSubsection {  
+         ContentSubsection {  
             title: Translation.tr("Format")  
-            tooltip: ""  
+            tooltip: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")  
   
             ConfigSelectionArray {  
                 currentValue: Config.options.time.format  
@@ -394,7 +393,7 @@ ContentPage {
                     } else {  
                         Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME\\b/TIME12/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);  
                     }  
-  
+   
                     Config.options.time.format = newValue;  
                 }  
                 options: [  
@@ -411,7 +410,37 @@ ContentPage {
                         value: "h:mm AP"  
                     },  
                 ]  
-            }  
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialTextField {
+                    id: genCustomTimeFormatInput
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
+                    text: Config.options.time.format ?? ""
+                    onEditingFinished: {
+                        const trimmed = text.trim();
+                        if (trimmed.length > 0) {
+                            if (!trimmed.toLowerCase().includes("ap") && !trimmed.toLowerCase().includes("a")) {
+                                Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME12\\b/TIME/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
+                            } else {
+                                Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME\\b/TIME12/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
+                            }
+                            Config.options.time.format = trimmed;
+                        }
+                    }
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, genCustomTimeFormatInput.text.trim() || Config.options.time.format || "hh:mm")
+                }
+            }
         }  
     }  
 
@@ -421,7 +450,7 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Format")
-            tooltip: Translation.tr("Changes the date format in the bar")
+            tooltip: Translation.tr("Changes the date format in the bar. Tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
 
             ConfigSelectionArray {
                 currentValue: Config.options.time.dateFormat
@@ -436,8 +465,41 @@ ContentPage {
                     {
                         displayName: Translation.tr("Month First MM/dd"),
                         value: "ddd MM/dd"
+                    },
+                    {
+                        displayName: Translation.tr("Full (dddd, MMMM dd)"),
+                        value: "dddd, MMMM dd"
+                    },
+                    {
+                        displayName: Translation.tr("ISO (yyyy-MM-dd)"),
+                        value: "yyyy-MM-dd"
                     }
                 ]
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialTextField {
+                    id: genCustomDateFormatInput
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
+                    text: Config.options.time.dateFormat ?? ""
+                    onEditingFinished: {
+                        const trimmed = text.trim();
+                        if (trimmed.length > 0) {
+                            Config.options.time.dateFormat = trimmed;
+                        }
+                    }
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, genCustomDateFormatInput.text.trim() || Config.options.time.dateFormat || "ddd, dd/MM")
+                }
             }
         }
     }

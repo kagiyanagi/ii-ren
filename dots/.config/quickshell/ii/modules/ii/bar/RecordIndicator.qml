@@ -14,28 +14,27 @@ Item {
     property bool minimal: Config.options.bar.indicators.record.minimal
     property bool activelyRecording: Persistent.states.screenRecord.active
 
+    // Customizable pill metrics (matching TimerWidget):
+    property int pillHeight: 26        // Height of the capsule pill
+    property int pillPadding: 10       // Horizontal padding on both outer ends
+    property int iconSize: Appearance.font.pixelSize.normal // Icon size (16px)
+
     readonly property color colBackgroundNormal: Appearance.colors.colRecordChip
     readonly property color colBackgroundHover: Appearance.colors.colRecordChipHover
     readonly property color colBackgroundActive: Appearance.colors.colRecordChipActive
     readonly property color colBackground: button.down ? colBackgroundActive : button.hovered ? colBackgroundHover : colBackgroundNormal
     readonly property color colText: Appearance.colors.colOnRecordChip
 
-    implicitWidth: vertical ? 20 : (minimal ? (recordIcon.implicitWidth + 10) : (contentRow.implicitWidth + 10))
-    implicitHeight: vertical ? (minimal ? (recordIconVert.implicitHeight + 0) : (contentCol.implicitHeight + 0)) : 20
+    implicitWidth: pillContainer.implicitWidth
+    implicitHeight: indicator.vertical ? pillContainer.implicitHeight : indicator.pillHeight
 
     Component.onCompleted: {
         if (typeof rootItem !== "undefined") {
             rootItem.isolated = true;
-            rootItem.customHighlightColor = indicator.colBackground;
+            rootItem.customHighlightColor = "transparent";
             rootItem.toggleHighlight(true);
         }
         updateVisibility();
-    }
-
-    onColBackgroundChanged: {
-        if (typeof rootItem !== "undefined") {
-            rootItem.customHighlightColor = indicator.colBackground;
-        }
     }
 
     onActivelyRecordingChanged: updateVisibility()
@@ -56,76 +55,95 @@ Item {
         return String(mins).padStart(2, '0') + ":" + String(secs).padStart(2, '0');
     }
 
-    RippleButton {
-        id: button
-        anchors.fill: parent
-        buttonRadius: Appearance.rounding.full
-        colBackground: "transparent"
-        colBackgroundHover: "transparent"
-        colBackgroundActive: "transparent"
-        colRipple: Qt.rgba(1, 1, 1, 0.25)
-        
-        onClicked: {
-            Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
-        }
-        StyledPopup {
-            hoverTarget: button
-            animate: false
-            stickyHover: true // The action buttons need the popup to survive the pointer leaving the bar
-            contentItem: PopupContent {}
-        }
-    }
-
-    RowLayout {
-        id: contentRow
-        visible: !indicator.vertical
+    Rectangle {
+        id: pillContainer
         anchors.centerIn: parent
-        spacing: 4
+        height: indicator.vertical ? implicitHeight : indicator.pillHeight
+        width: indicator.vertical ? indicator.pillHeight : implicitWidth
+        implicitWidth: indicator.vertical ? indicator.pillHeight : (indicator.minimal ? (recordIcon.implicitWidth + indicator.pillPadding * 2) : (contentRow.implicitWidth + indicator.pillPadding * 2))
+        implicitHeight: indicator.vertical ? (indicator.minimal ? (recordIconVert.implicitHeight + indicator.pillPadding * 2) : (contentCol.implicitHeight + indicator.pillPadding * 2)) : indicator.pillHeight
+        radius: Appearance.rounding.full
+        color: indicator.colBackground
 
-        MaterialSymbol {
-            id: recordIcon
-            text: "screen_record"
-            fill: 1
-            color: indicator.colText
-            iconSize: Appearance.font.pixelSize.normal
-            horizontalAlignment: Text.AlignVCenter
-            verticalAlignment: Text.AlignVCenter
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        StyledText {
-            id: textIndicator
-            visible: !indicator.minimal
-            text: indicator.formatTime(Persistent.states.screenRecord.seconds)
-            color: indicator.colText
-            font.pixelSize: Appearance.font.pixelSize.small
-            font.weight: Font.DemiBold
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
-
-    ColumnLayout {
-        id: contentCol
-        visible: indicator.vertical
-        anchors.centerIn: parent
-        spacing: 4
-
-        MaterialSymbol {
-            id: recordIconVert
-            text: "screen_record"
-            fill: 1
-            color: indicator.colText
-            iconSize: Appearance.font.pixelSize.small
-            Layout.alignment: Qt.AlignHCenter
+        RippleButton {
+            id: button
+            anchors.fill: parent
+            buttonRadius: Appearance.rounding.full
+            colBackground: "transparent"
+            colBackgroundHover: "transparent"
+            colBackgroundActive: "transparent"
+            colRipple: Qt.rgba(1, 1, 1, 0.25)
+            
+            onClicked: {
+                Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
+            }
+            StyledPopup {
+                hoverTarget: button
+                animate: false
+                stickyHover: true // The action buttons need the popup to survive the pointer leaving the bar
+                contentItem: PopupContent {}
+            }
         }
 
-        StyledText {
-            visible: !indicator.minimal
-            text: indicator.formatTime(Persistent.states.screenRecord.seconds)
-            color: indicator.colText
-            font.pixelSize: Appearance.font.pixelSize.smallest
-            font.weight: Font.DemiBold
-            Layout.alignment: Qt.AlignHCenter
+        RowLayout {
+            id: contentRow
+            visible: !indicator.vertical
+            anchors.centerIn: parent
+            spacing: 4
+
+            MaterialSymbol {
+                id: recordIcon
+                text: "screen_record"
+                fill: 1
+                color: indicator.colText
+                iconSize: indicator.iconSize
+                horizontalAlignment: Text.AlignVCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            StyledText {
+                id: textIndicator
+                visible: !indicator.minimal
+                text: indicator.formatTime(Persistent.states.screenRecord.seconds)
+                color: indicator.colText
+                font.pixelSize: Appearance.font.pixelSize.small
+                font.weight: Font.DemiBold
+                font.family: Appearance.font.family.numbers
+                font.features: ({ "tnum": 1 })
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+        }
+
+        ColumnLayout {
+            id: contentCol
+            visible: indicator.vertical
+            anchors.centerIn: parent
+            spacing: 4
+
+            MaterialSymbol {
+                id: recordIconVert
+                text: "screen_record"
+                fill: 1
+                color: indicator.colText
+                iconSize: indicator.iconSize
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            StyledText {
+                visible: !indicator.minimal
+                text: indicator.formatTime(Persistent.states.screenRecord.seconds)
+                color: indicator.colText
+                font.pixelSize: Appearance.font.pixelSize.small
+                font.weight: Font.DemiBold
+                font.family: Appearance.font.family.numbers
+                font.features: ({ "tnum": 1 })
+                Layout.alignment: Qt.AlignHCenter
+            }
         }
     }
     

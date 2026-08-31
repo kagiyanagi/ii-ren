@@ -13,6 +13,7 @@ Item {
     visible: width > 0 && height > 0
     implicitWidth: resourceRowLayout.x < 0 ? 0 : resourceRowLayout.implicitWidth
     implicitHeight: Appearance.sizes.barHeight
+    property string customText: ""
     property bool warning: percentage * 100 >= warningThreshold
 
     RowLayout {
@@ -51,7 +52,7 @@ Item {
 
         Item {
             Layout.alignment: Qt.AlignVCenter
-            implicitWidth: fullPercentageTextMetrics.width
+            implicitWidth: Math.max(fullPercentageTextMetrics.width, currentTextMetrics.width)
             implicitHeight: percentageText.implicitHeight
 
             TextMetrics {
@@ -60,12 +61,18 @@ Item {
                 font.pixelSize: Appearance.font.pixelSize.small
             }
 
+            TextMetrics {
+                id: currentTextMetrics
+                text: root.customText.length > 0 ? root.customText : `${Math.round(percentage * 100).toString()}`
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+
             StyledText {
                 id: percentageText
                 anchors.centerIn: parent
                 color: Appearance.colors.colOnLayer1
                 font.pixelSize: Appearance.font.pixelSize.small
-                text: `${Math.round(percentage * 100).toString()}`
+                text: root.customText.length > 0 ? root.customText : `${Math.round(percentage * 100).toString()}`
             }
         }
 
