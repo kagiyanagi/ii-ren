@@ -54,33 +54,60 @@ Rectangle {
             model: [
                 // Android's brightness slider swaps the sun between hollow, half
                 // and full as the level moves, rather than sitting on one glyph.
-                { show: showBrightness, getIcon: () => {
-                    const val = root.brightnessMonitor?.brightness ?? 0;
-                    if (val <= 0.33) return "brightness_low";
-                    if (val <= 0.66) return "brightness_medium";
+                { show: showBrightness, getIcon: (val) => {
+                    const v = (val !== undefined) ? val : (root.brightnessMonitor?.brightness ?? 0);
+                    if (v <= 0.33) return "brightness_low";
+                    if (v <= 0.66) return "brightness_medium";
                     return "brightness_high";
                 },
-                getVal: () => root.brightnessMonitor.brightness, 
-                setVal: (v) => root.brightnessMonitor.setBrightness(v) },
-                { show: showVolume, icon: "volume_up", 
-                getVal: () => Audio.sink.audio.volume, 
-                setVal: (v) => { Audio.sink.audio.volume = v } },
-                { show: showMic, icon: "mic", 
-                getVal: () => Audio.source.audio.volume, 
-                setVal: (v) => { Audio.source.audio.volume = v } },
+                getVal: () => root.brightnessMonitor?.brightness ?? 0, 
+                setVal: (v) => root.brightnessMonitor?.setBrightness(v) },
+                { show: showVolume, getIcon: (val) => {
+                    const muted = Audio.sink?.audio?.muted ?? false;
+                    const v = (val !== undefined) ? val : (Audio.sink?.audio?.volume ?? 0);
+                    if (muted) return "volume_off";
+                    if (v <= 0.0) return "volume_mute";
+                    if (v <= 0.33) return "volume_mute";
+                    if (v <= 0.66) return "volume_down";
+                    return "volume_up";
+                }, 
+                getVal: () => Audio.sink?.audio?.volume ?? 0, 
+                setVal: (v) => {
+                    if (Audio.sink?.audio) {
+                        Audio.sink.audio.volume = v;
+                        if (Audio.sink.audio.muted && v > 0) {
+                            Audio.sink.audio.muted = false;
+                        }
+                    }
+                } },
+                { show: showMic, getIcon: (val) => {
+                    const muted = Audio.source?.audio?.muted ?? false;
+                    const v = (val !== undefined) ? val : (Audio.source?.audio?.volume ?? 0);
+                    if (muted || v <= 0.0) return "mic_off";
+                    return "mic";
+                }, 
+                getVal: () => Audio.source?.audio?.volume ?? 0, 
+                setVal: (v) => {
+                    if (Audio.source?.audio) {
+                        Audio.source.audio.volume = v;
+                        if (Audio.source.audio.muted && v > 0) {
+                            Audio.source.audio.muted = false;
+                        }
+                    }
+                } },
                 { show: showGamma, icon: "light_mode",  secondaryIcon: "wb_twilight",
-                getVal: () => Hyprsunset.gamma === 100 ? 0.3 + root.brightnessMonitor?.brightness * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,
+                getVal: () => Hyprsunset.gamma === 100 ? 0.3 + (root.brightnessMonitor?.brightness ?? 0) * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,
                 setVal: (v) => {
                     if (v >= 0.3) {
                         // 0.3 - 1.0 brightness
-                        root.brightnessMonitor.setBrightness((v - 0.3) / 0.7);
+                        root.brightnessMonitor?.setBrightness((v - 0.3) / 0.7);
                         if (Hyprsunset.gamma !== 100) {
                             Hyprsunset.setGamma(100);
                         }
                     } else {
                         // 0 - 0.3 gamma
-                        if (root.brightnessMonitor.brightness !== 0) {
-                            root.brightnessMonitor.setBrightness(0);
+                        if ((root.brightnessMonitor?.brightness ?? 0) !== 0) {
+                            root.brightnessMonitor?.setBrightness(0);
                         }
                         Hyprsunset.setGamma((v / 0.3 * (100 - Hyprsunset.gammaLowerLimit) + Hyprsunset.gammaLowerLimit));
                     }
@@ -88,10 +115,11 @@ Rectangle {
             ]
 
             QuickSlider {
+                id: quickSlider
                 required property var modelData
                 Layout.fillWidth: true
                 visible: modelData.show
-                materialSymbol: modelData.getIcon ? modelData.getIcon() : modelData.icon
+                materialSymbol: modelData.getIcon ? modelData.getIcon(quickSlider.value) : (modelData.icon ?? "")
                 secondaryMaterialSymbol: modelData?.secondaryIcon ?? "" 
                 value: modelData.getVal()
                 onMoved: modelData.setVal(value)
