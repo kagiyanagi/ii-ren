@@ -47,9 +47,7 @@ Loader {
             maxLimit: (Config.options.audio && Config.options.audio.protection) ? Config.options.audio.protection.maxAllowed / 100 : 1.0
 
             onMoved: function(newValue) {
-                if (Audio.sink && Audio.sink.audio) {
-                    Audio.sink.audio.volume = newValue;
-                }
+                Audio.setVolume(newValue);
             }
         }
     }

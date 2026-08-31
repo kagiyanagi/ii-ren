@@ -69,6 +69,7 @@ Slider {
     to: 1
 
     Behavior on value { // This makes the adjusted value (like volume) shift smoothly
+        enabled: !root.pressed
         SmoothedAnimation {
             velocity: Appearance.animation.elementMoveFast.velocity
         }
@@ -105,16 +106,17 @@ Slider {
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.width
         implicitHeight: trackWidth
-        property var normalized: root.dividerValues.map(v => (v - root.from) / (root.to - root.from))
-        property var filtered: normalized.filter(v => Math.abs(v - root.visualPosition) * effectiveDraggingWidth > handleMargins + handleWidth / 2 - dividerMargins)
-        property var leftValues: [0, ...filtered.filter(v => v < root.visualPosition), root.visualPosition]
-        property var rightValues: [root.visualPosition, ...filtered.filter(v => v > root.visualPosition), 1]
-        property var leftWidths: leftValues.map((v, i, a) => a[i + 1] - v).slice(0, -1)
-        property var rightWidths: rightValues.map((v, i, a) => a[i + 1] - v).slice(0, -1)
+        readonly property bool hasDividers: root.dividerValues.length > 0
+        property var normalized: hasDividers ? root.dividerValues.map(v => (v - root.from) / (root.to - root.from)) : []
+        property var filtered: hasDividers ? normalized.filter(v => Math.abs(v - root.visualPosition) * effectiveDraggingWidth > handleMargins + handleWidth / 2 - dividerMargins) : []
+        property var leftValues: (hasDividers && filtered.length > 0) ? [0, ...filtered.filter(v => v < root.visualPosition), root.visualPosition] : [0, root.visualPosition]
+        property var rightValues: (hasDividers && filtered.length > 0) ? [root.visualPosition, ...filtered.filter(v => v > root.visualPosition), 1] : [root.visualPosition, 1]
+        property var leftWidths: (hasDividers && filtered.length > 0) ? leftValues.map((v, i, a) => a[i + 1] - v).slice(0, -1) : [root.visualPosition]
+        property var rightWidths: (hasDividers && filtered.length > 0) ? rightValues.map((v, i, a) => a[i + 1] - v).slice(0, -1) : [1 - root.visualPosition]
 
         // Fill left
         Repeater {
-            model: background.leftWidths.length
+            model: !root.wavy ? background.leftWidths.length : 0
 
             Loader {
                 required property real index
@@ -136,7 +138,7 @@ Slider {
         }
 
         Repeater {
-            model: background.leftWidths.length
+            model: root.wavy ? background.leftWidths.length : 0
 
             Loader {
                 required property int index

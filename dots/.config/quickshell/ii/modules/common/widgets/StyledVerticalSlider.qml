@@ -76,7 +76,7 @@ Slider {
     property int valueAnimationDuration: 0
 
     Behavior on value {
-        enabled: root.valueAnimationDuration > 0
+        enabled: root.valueAnimationDuration > 0 && !root.pressed
         NumberAnimation {
             duration: root.valueAnimationDuration
             easing.type: Easing.OutCubic

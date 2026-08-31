@@ -241,7 +241,11 @@ Item {
                 configuration: StyledSlider.Configuration.M
                 stopIndicatorValues: []
                 dividerValues: root.secondaryMaterialSymbol.length > 0 ? [secondaryIcon.iconLocation] : []
-                value: root.currentSliderValue
+                Binding on value {
+                    when: !quickSliderHorizontal.pressed
+                    value: root.currentSliderValue
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
                 onMoved: {
                     root._activeValueAnimDuration = 0;
                     root.moved(value);
@@ -324,7 +328,12 @@ Item {
                 configuration: 48
                 showValueLabel: false
                 stopIndicatorValues: []
-                value: root.currentSliderValue
+                valueAnimationDuration: root._activeValueAnimDuration
+                Binding on value {
+                    when: !quickSliderVertical.pressed
+                    value: root.currentSliderValue
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
                 onMoved: {
                     root._activeValueAnimDuration = 0;
                     root.moved(value);

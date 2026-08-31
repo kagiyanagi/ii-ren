@@ -17,8 +17,6 @@ AndroidSliderWidgetBase {
     }
     sliderValue: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.volume : 0
     onMoved: function(value) {
-        if (Audio.sink && Audio.sink.audio) {
-            Audio.sink.audio.volume = value;
-        }
+        Audio.setVolume(value);
     }
 }

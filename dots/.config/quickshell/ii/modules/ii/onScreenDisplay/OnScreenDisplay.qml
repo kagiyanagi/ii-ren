@@ -118,12 +118,7 @@ Scope {
 
     function updateIndicatorValue(newValue) {
         if (currentIndicator === "volume") {
-            if (Audio.sink && Audio.sink.audio) {
-                Audio.sink.audio.volume = newValue;
-                if (Audio.sink.audio.muted && newValue > 0) {
-                    Audio.sink.audio.muted = false;
-                }
-            }
+            Audio.setVolume(newValue);
         } else if (currentIndicator === "brightness") {
             let brightnessMonitor = Brightness.getTargetMonitor();
             if (brightnessMonitor) {

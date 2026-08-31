@@ -73,12 +73,7 @@ Rectangle {
                 }, 
                 getVal: () => Audio.sink?.audio?.volume ?? 0, 
                 setVal: (v) => {
-                    if (Audio.sink?.audio) {
-                        Audio.sink.audio.volume = v;
-                        if (Audio.sink.audio.muted && v > 0) {
-                            Audio.sink.audio.muted = false;
-                        }
-                    }
+                    Audio.setVolume(v);
                 } },
                 { show: showMic, getIcon: (val) => {
                     const muted = Audio.source?.audio?.muted ?? false;
@@ -88,12 +83,7 @@ Rectangle {
                 }, 
                 getVal: () => Audio.source?.audio?.volume ?? 0, 
                 setVal: (v) => {
-                    if (Audio.source?.audio) {
-                        Audio.source.audio.volume = v;
-                        if (Audio.source.audio.muted && v > 0) {
-                            Audio.source.audio.muted = false;
-                        }
-                    }
+                    Audio.setSourceVolume(v);
                 } },
                 { show: showGamma, icon: "light_mode",  secondaryIcon: "wb_twilight",
                 getVal: () => Hyprsunset.gamma === 100 ? 0.3 + (root.brightnessMonitor?.brightness ?? 0) * 0.7 : (Hyprsunset.gamma - Hyprsunset.gammaLowerLimit) / (100 - Hyprsunset.gammaLowerLimit) * 0.3,

@@ -14,11 +14,6 @@ AndroidSliderWidgetBase {
     }
     sliderValue: (Audio.source && Audio.source.audio) ? Audio.source.audio.volume : 0
     onMoved: function(value) {
-        if (Audio.source && Audio.source.audio) {
-            Audio.source.audio.volume = value;
-            if (Audio.source.audio.muted && value > 0) {
-                Audio.source.audio.muted = false;
-            }
-        }
+        Audio.setSourceVolume(value);
     }
 }

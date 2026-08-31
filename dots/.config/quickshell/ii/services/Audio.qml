@@ -53,6 +53,27 @@ Singleton {
     signal sinkProtectionTriggered(string reason);
 
     // Controls
+    function setVolume(v) {
+        if (!sink?.audio) return;
+        const maxAllowed = (Config.options.audio?.protection?.enable ? Config.options.audio.protection.maxAllowed / 100 : root.hardMaxValue);
+        const target = Math.max(0, Math.min(maxAllowed, v));
+        volumeProtection.lastUserSetTime = Date.now();
+        volumeProtection.lastVolume = target;
+        sink.audio.volume = target;
+        if (sink.audio.muted && target > 0) {
+            sink.audio.muted = false;
+        }
+    }
+
+    function setSourceVolume(v) {
+        if (!source?.audio) return;
+        const target = Math.max(0, Math.min(1, v));
+        source.audio.volume = target;
+        if (source.audio.muted && target > 0) {
+            source.audio.muted = false;
+        }
+    }
+
     function toggleMute() {
         Audio.sink.audio.muted = !Audio.sink.audio.muted
     }
@@ -64,13 +85,13 @@ Singleton {
     function incrementVolume() {
         const currentVolume = Audio.value;
         const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume = Math.min(1, Audio.sink.audio.volume + step);
+        root.setVolume(currentVolume + step);
     }
     
     function decrementVolume() {
         const currentVolume = Audio.value;
         const step = currentVolume < 0.1 ? 0.01 : 0.02 || 0.2;
-        Audio.sink.audio.volume -= step;
+        root.setVolume(currentVolume - step);
     }
 
     function setDefaultSink(node) {
@@ -79,6 +100,34 @@ Singleton {
 
     function setDefaultSource(node) {
         Pipewire.preferredDefaultAudioSource = node;
+    }
+
+    IpcHandler {
+        target: "audio"
+
+        function setVolume(v: real): void {
+            root.setVolume(v);
+        }
+
+        function setSourceVolume(v: real): void {
+            root.setSourceVolume(v);
+        }
+
+        function toggleMute(): void {
+            root.toggleMute();
+        }
+
+        function toggleMicMute(): void {
+            root.toggleMicMute();
+        }
+
+        function incrementVolume(): void {
+            root.incrementVolume();
+        }
+
+        function decrementVolume(): void {
+            root.decrementVolume();
+        }
     }
 
     // Playing to (or recording from) several devices at once. The member list is
@@ -240,6 +289,7 @@ Singleton {
         target: sink?.audio ?? null
         property bool lastReady: false
         property real lastVolume: 0
+        property real lastUserSetTime: 0
         function onVolumeChanged() {
             if (!Config.options.audio.protection.enable) return;
             const newVolume = sink.audio.volume;
@@ -257,7 +307,9 @@ Singleton {
             const maxAllowedIncrease = Config.options.audio.protection.maxAllowedIncrease / 100; 
             const maxAllowed = Config.options.audio.protection.maxAllowed / 100;
 
-            if (newVolume - lastVolume > maxAllowedIncrease) {
+            const isRecentUserChange = (Date.now() - lastUserSetTime < 600);
+
+            if (!isRecentUserChange && (newVolume - lastVolume > maxAllowedIncrease)) {
                 sink.audio.volume = lastVolume;
                 root.sinkProtectionTriggered(Translation.tr("Illegal increment"));
             } else if (newVolume > maxAllowed || newVolume > root.hardMaxValue) {
