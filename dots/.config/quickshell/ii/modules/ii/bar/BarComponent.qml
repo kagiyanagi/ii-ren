@@ -65,41 +65,57 @@ Item {
         "network_speed": [networkSpeedComp, networkSpeedComp],
         "privacy_indicator": [privacyIndicatorComp, privacyIndicatorComp],
         "visualizer": [visualizerComp, visualizerComp],
+        "sacebar": [spacebarComp, spacebarComp],
+        "spacebar": [spacebarComp, spacebarComp],
     })
 
+    readonly property bool isSpacer: modelData?.id === "sacebar" || modelData?.id === "spacebar"
+
     property real startRadius: {
-        if (rootItem.isolated) return Appearance.rounding.full
+        if (rootItem.isolated || rootItem.isSpacer) return Appearance.rounding.full
         if (barSection === 0) {
             if (originalIndex == 0) return Appearance.rounding.full
+            let prevList = list.slice(0, originalIndex).reverse()
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (prevVisible && (prevVisible.id === "sacebar" || prevVisible.id === "spacebar")) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 2) {
-            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
-            return hasVisibleLeft ? Appearance.rounding.verysmall : Appearance.rounding.full
+            let prevList = list.slice(0, originalIndex).reverse()
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (!prevVisible || prevVisible.id === "sacebar" || prevVisible.id === "spacebar") return Appearance.rounding.full
+            return Appearance.rounding.verysmall
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
-            let hasVisibleLeft = list.slice(0, originalIndex).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
-            return hasVisibleLeft ? Appearance.rounding.verysmall : Appearance.rounding.full
+            let prevList = list.slice(0, originalIndex).reverse()
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (!prevVisible || prevVisible.id === "sacebar" || prevVisible.id === "spacebar") return Appearance.rounding.full
+            return Appearance.rounding.verysmall
         }
     }
 
     property real endRadius: {
-        if (rootItem.isolated) return Appearance.rounding.full
+        if (rootItem.isolated || rootItem.isSpacer) return Appearance.rounding.full
         if (barSection === 2) {
             if (originalIndex == list.length - 1) return Appearance.rounding.full
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (nextVisible && (nextVisible.id === "sacebar" || nextVisible.id === "spacebar")) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 0) {
-            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
-            return hasVisibleRight ? Appearance.rounding.verysmall : Appearance.rounding.full
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (!nextVisible || nextVisible.id === "sacebar" || nextVisible.id === "spacebar") return Appearance.rounding.full
+            return Appearance.rounding.verysmall
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
-            let hasVisibleRight = list.slice(originalIndex + 1).some(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
-            return hasVisibleRight ? Appearance.rounding.verysmall : Appearance.rounding.full
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            if (!nextVisible || nextVisible.id === "sacebar" || nextVisible.id === "spacebar") return Appearance.rounding.full
+            return Appearance.rounding.verysmall
         }
     }
 
     readonly property int barGroupStyle: Config.options.bar.barGroupStyle
     readonly property int barBackgroundStyle: Config.options.bar.barBackgroundStyle
-    property color colBackground: barGroupStyle == 0 ? Appearance.colors.colLayer1 :
+    property color colBackground: isSpacer ? "transparent" :
+                                   barGroupStyle == 0 ? Appearance.colors.colLayer1 :
                                    (barGroupStyle == 1 && barBackgroundStyle == 1) ? Appearance.colors.colLayer1 :
                                    (barGroupStyle == 1) ? Appearance.m3colors.m3surfaceContainerLow :
                                    "transparent";
@@ -109,6 +125,7 @@ Item {
     BarGroup {
         id: wrapper
         vertical: rootItem.vertical
+        padding: rootItem.isSpacer ? 0 : 5
         anchors {
             verticalCenter: root.vertical ? rootItem.verticalCenter : undefined
             horizontalCenter: root.vertical ? undefined : rootItem.horizontalCenter
@@ -186,5 +203,6 @@ Item {
     Component { id: dashboardPanelButton; DashboardPanelButton {} }
     Component { id: networkSpeedComp; NetworkSpeed { vertical: rootItem.vertical } }
     Component { id: visualizerComp; Visualizer { vertical: rootItem.vertical } }
+    Component { id: spacebarComp; Spacebar { vertical: rootItem.vertical; modelData: rootItem.modelData } }
     Component { id: dashboardPanelButtonVert; DashboardPanelButton { vertical: true } }
 }

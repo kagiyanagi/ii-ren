@@ -25,6 +25,7 @@ Singleton {
         { id: "network_speed", icon: "speed", title: "Network speed" },
         { id: "privacy_indicator", icon: "privacy_tip", title: "Privacy indicators" },
         { id: "visualizer", icon: "graphic_eq", title: "Visualizer", allowMultiple: true },
+        { id: "sacebar", icon: "space_bar", title: "Spacebar", allowMultiple: true },
     ]
 
     property var extensionComponents: []
@@ -96,6 +97,7 @@ Singleton {
     }
 
     function getComponent(id) {
+        if (id === "spacebar") return root.allComponents.find(c => c.id === "sacebar") || null
         return root.allComponents.find(c => c.id === id) || null
     }
 

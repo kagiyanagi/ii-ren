@@ -14,8 +14,7 @@ Rectangle {
     Layout.fillWidth: true
     readonly property bool wantsCard: true
     
-    // short version of -> height: listModel.length * 40 + (listModel.length - 1) * 4 + listModel.length * 4 + 20 (component height + space between them + component margin + listView padding)
-    implicitHeight: listModel.length * 48 + componentSelector.height + 16 + 6
+    implicitHeight: Math.max(0, view.contentHeight) + componentSelectRow.implicitHeight + 28
 
     color: "transparent"
     radius: Appearance.rounding.large
@@ -59,11 +58,64 @@ Rectangle {
     }
 
     function initilizateComponent(comp) {
-        return {
+        let base = {
             id: comp.id,
             centered: comp.centered !== undefined ? comp.centered : false,
             visible: comp.visible !== undefined ? comp.visible : true
         }
+        if (comp.id === "sacebar" || comp.id === "spacebar") {
+            base.style = comp.style !== undefined ? comp.style : "pipe"
+            base.leftPadding = comp.leftPadding !== undefined ? comp.leftPadding : 4
+            base.rightPadding = comp.rightPadding !== undefined ? comp.rightPadding : 4
+        }
+        return Object.assign({}, comp, base)
+    }
+
+    property var expandedMap: ({})
+
+    function isEntryExpanded(idx) {
+        return !!root.expandedMap[idx]
+    }
+
+    function toggleEntryExpanded(idx) {
+        let map = Object.assign({}, root.expandedMap)
+        if (map[idx]) {
+            delete map[idx]
+        } else {
+            map[idx] = true
+        }
+        root.expandedMap = map
+    }
+
+    function moveExpanded(fromIndex, toIndex) {
+        let map = {}
+        for (let k in root.expandedMap) {
+            let i = parseInt(k)
+            if (i === fromIndex) {
+                map[toIndex] = true
+            } else if (fromIndex < toIndex && i > fromIndex && i <= toIndex) {
+                map[i - 1] = true
+            } else if (fromIndex > toIndex && i >= toIndex && i < fromIndex) {
+                map[i + 1] = true
+            } else {
+                map[i] = true
+            }
+        }
+        root.expandedMap = map
+    }
+
+    function removeExpanded(idx) {
+        let map = {}
+        for (let k in root.expandedMap) {
+            let i = parseInt(k)
+            if (i === idx) continue
+            if (i > idx) {
+                map[i - 1] = true
+            } else {
+                map[i] = true
+            }
+        }
+        root.expandedMap = map
     }
 
     function toggleCenter(idx, currentList) {
@@ -95,8 +147,12 @@ Rectangle {
 
         interactive: false
         anchors {
-            fill: parent
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            bottom: componentSelectRow.top
             margins: 10
+            bottomMargin: 8
         }
 
         add: null
