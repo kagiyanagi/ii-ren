@@ -15,7 +15,9 @@ ColumnLayout {
     // These are needed on the parent loader
     property bool editing: false
     property bool renderMarkdown: true
-    property bool enableMouseSelection: false
+    // On by default: no call site ever set this, so nothing in a reply was
+    // selectable and the only way to copy anything was the whole-block button.
+    property bool enableMouseSelection: true
     property var segmentContent: ({})
     property var segmentLang: "txt"
     property var messageData: {}
@@ -172,21 +174,30 @@ ColumnLayout {
                 id: codeColumnLayout
                 anchors.fill: parent
                 spacing: 0
-                ScrollView {
-                    id: codeScrollView
+                // Deliberately a bare Flickable and not a ScrollView. ScrollView is a
+                // Control, and QQuickControl::wheelEvent accepts every wheel event that
+                // lands on it whenever `wheelEnabled` is set -- which ScrollView does in
+                // its own constructor -- whether or not it has anywhere to scroll. A code
+                // block therefore ate the entire scroll gesture and the transcript behind
+                // it never moved. Measured on a 41-line block: a two-finger scroll that
+                // moves the message list 324px anywhere else moved it 0px over the block.
+                //
+                // A Flickable is not a Control, and one locked to a single axis ignores a
+                // wheel on the other axis, so the vertical scroll reaches the list. Neither
+                // `interactive: false`, `flickableDirection` nor `wheelEnabled: false` on
+                // the ScrollView fixes it; only not being a Control does.
+                Flickable {
+                    id: codeFlickable
                     Layout.fillWidth: true
-                    // Layout.fillHeight: true
-                    implicitWidth: parent.width
-                    implicitHeight: codeTextArea.implicitHeight + 1
-                    contentWidth: codeTextArea.width - 1
-                    // contentHeight: codeTextArea.contentHeight
+                    implicitHeight: codeTextArea.implicitHeight
+                    contentWidth: codeTextArea.width
+                    contentHeight: codeTextArea.implicitHeight
+                    flickableDirection: Flickable.HorizontalFlick
                     clip: true
-                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-                    
+
+                    // No anchors: attached to a Flickable directly, the bar lays itself
+                    // out along the bottom edge, and anchoring it fights that.
                     ScrollBar.horizontal: ScrollBar {
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.right: parent.right
                         padding: 5
                         policy: ScrollBar.AsNeeded
                         opacity: visualSize == 1 ? 0 : 1
@@ -209,7 +220,6 @@ ColumnLayout {
 
                     TextArea { // Code
                         id: codeTextArea
-                        Layout.fillWidth: true
                         readOnly: !editing
                         selectByMouse: enableMouseSelection || editing
                         renderType: Text.NativeRendering
@@ -237,6 +247,16 @@ ColumnLayout {
                                 codeTextArea.copy();
                                 event.accepted = true;
                             }
+                        }
+
+                        MouseArea { // Cursor only -- presses and the wheel pass through
+                            // Spelled out rather than left to TextEdit, which sets the
+                            // cursor itself from `readOnly && !selectByMouse` and so was
+                            // actively forcing an arrow over the code.
+                            anchors.fill: parent
+                            acceptedButtons: Qt.NoButton
+                            hoverEnabled: true
+                            cursorShape: (root.enableMouseSelection || root.editing) ? Qt.IBeamCursor : Qt.ArrowCursor
                         }
 
                         SyntaxHighlighter {
@@ -279,16 +299,6 @@ ColumnLayout {
                 }
             }
 
-            // MouseArea to block scrolling
-            // MouseArea {
-            //     id: codeBlockMouseArea
-            //     anchors.fill: parent
-            //     acceptedButtons: editing ? Qt.NoButton : Qt.LeftButton
-            //     cursorShape: (enableMouseSelection || editing) ? Qt.IBeamCursor : Qt.ArrowCursor
-            //     onWheel: (event) => {
-            //         event.accepted = false
-            //     }
-            // }
         }
     }
 }

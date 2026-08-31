@@ -6,14 +6,13 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
     // These are needed on the parent loader
     property bool editing: false
     property bool renderMarkdown: true
-    property bool enableMouseSelection: false
+    property bool enableMouseSelection: true
     property var segmentContent: ({})
     property var messageData: {}
     property bool done: true
@@ -29,14 +28,11 @@ Item {
 
     Layout.fillWidth: true
     implicitHeight: collapsed ? header.implicitHeight : columnLayout.implicitHeight
-    layer.enabled: true
-    layer.effect: OpacityMask {
-        maskSource: Rectangle {
-            width: root.width
-            height: root.height
-            radius: thinkBlockBackgroundRounding
-        }
-    }
+    // No layer/OpacityMask. A layered item is skipped by Qt's cursor walk while
+    // still receiving hover, so the reveal header and expand button highlighted
+    // but never showed a pointing hand. The corners are rounded on the header
+    // and content rectangles themselves instead, like MessageCodeBlock, and the
+    // collapse crop was already done by `clip: true` on the content item.
 
     Behavior on implicitHeight {
         enabled: root.completed ?? false
@@ -57,6 +53,10 @@ Item {
         Rectangle { // Header background
             id: header
             color: Appearance.colors.colSurfaceContainerHighest
+            topLeftRadius: thinkBlockBackgroundRounding
+            topRightRadius: thinkBlockBackgroundRounding
+            bottomLeftRadius: Appearance.rounding.unsharpen
+            bottomRightRadius: Appearance.rounding.unsharpen
             Layout.fillWidth: true
             implicitHeight: thinkBlockTitleBarRowLayout.implicitHeight + thinkBlockHeaderPaddingVertical * 2
 
@@ -151,20 +151,27 @@ Item {
                 anchors.bottom: parent.bottom
                 implicitHeight: messageTextBlock.implicitHeight
                 color: Appearance.colors.colLayer2
+                topLeftRadius: Appearance.rounding.unsharpen
+                topRightRadius: Appearance.rounding.unsharpen
+                bottomLeftRadius: thinkBlockBackgroundRounding
+                bottomRightRadius: thinkBlockBackgroundRounding
 
-                // Load data for the message at the correct scope
-                property bool editing: root.editing
-                property bool renderMarkdown: root.renderMarkdown
-                property bool enableMouseSelection: root.enableMouseSelection
-                property var messageData: root.messageData
-                property bool done: root.done
-
+                // Set on the block itself, not as same-named properties out here:
+                // bindings inside MessageTextBlock.qml resolve in that file's own
+                // scope, so declaring them on this Rectangle forwarded nothing and
+                // the inner text ran with `messageData: {}` -- which is what logged
+                // "Cannot read property 'done' of undefined" on every think block.
                 MessageTextBlock {
                     id: messageTextBlock
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     segmentContent: root.segmentContent
+                    editing: root.editing
+                    renderMarkdown: root.renderMarkdown
+                    enableMouseSelection: root.enableMouseSelection
+                    messageData: root.messageData
+                    done: root.done
                 }
             }
         }

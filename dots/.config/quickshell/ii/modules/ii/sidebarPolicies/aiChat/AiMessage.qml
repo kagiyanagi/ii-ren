@@ -16,7 +16,7 @@ Rectangle {
     property real messagePadding: 7
     property real contentSpacing: 3
 
-    property bool enableMouseSelection: false
+    property bool enableMouseSelection: true
     property bool renderMarkdown: true
     property bool editing: false
 
