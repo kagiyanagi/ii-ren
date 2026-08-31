@@ -16,6 +16,7 @@ import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
 import qs.modules.ii.onScreenDisplay
 import qs.modules.ii.onScreenDisplay.minimalist
+import qs.modules.ii.keypressDisplay
 import qs.modules.ii.onScreenKeyboard
 import qs.modules.ii.overview
 import qs.modules.ii.polkit
@@ -62,6 +63,12 @@ Scope {
     PanelLoader { component: NotificationPopup {} }
     PanelLoader { extraCondition: !(Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material")); component: OnScreenDisplay {} }
     PanelLoader { extraCondition: Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material"); component: MinimalistOsd {} }
+    PanelLoader {
+        // Kept loaded rather than gated on the service: the windows are empty
+        // and invisible until a recording or the quick toggle asks for them.
+        extraCondition: Config.ready
+        component: KeypressDisplay {}
+    }
     PanelLoader { component: OnScreenKeyboard {} }
     PanelLoader { component: Overlay {} }
     PanelLoader { component: Overview {} }

@@ -19,6 +19,7 @@ var TOGGLE_TYPES = {
     screenSnip: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     colorPicker: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     onScreenKeyboard: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    keypressDisplay: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     keyboardBacklight: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     mic: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     audio: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },

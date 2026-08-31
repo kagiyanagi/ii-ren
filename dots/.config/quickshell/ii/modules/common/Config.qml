@@ -1817,6 +1817,22 @@ Singleton {
                 property string audioSource: root.screenRecordDefaults.audioSource
                 property string audioCodec: root.screenRecordDefaults.audioCodec
                 property string extraArgs: root.screenRecordDefaults.extraArgs
+
+                property JsonObject keypress: JsonObject {
+                    // The persistent default applied to every new recording; the
+                    // recording indicator can override it for one clip.
+                    property bool showWhileRecording: false
+                    // "top" | "topLeft" | "topRight" | "bottom" | "bottomLeft" | "bottomRight"
+                    property string position: "bottom"
+                    property int marginH: 32
+                    property int marginV: 96
+                    property int hideDelayMs: 2500
+                    property int maxKeys: 5
+                    property real scale: 1.0
+                    property bool showMouseButtons: false
+                    property bool onlyShortcuts: false
+                    property bool mergeTyping: true
+                }
             }
 
             property JsonObject screenSnip: JsonObject {

@@ -160,6 +160,10 @@ Tips:
     pack per language you want it to recognise, e.g. `tesseract-data-jpn`,
     `tesseract-data-chi_sim`, `tesseract-data-kor`. Only English ships by default:
     tesseract gets slower and less accurate the more languages it is given at once.
+- `python-evdev`
+  - Used in Quickshell config for reading kernel input devices for on-screen keystrokes during recordings/demos.
+- `python-xkbcommon`
+  - Used in Quickshell config for translating kernel keycodes through the active Hyprland keyboard layout.
 - `wf-recorder`
   - Used in Quickshell config.
 

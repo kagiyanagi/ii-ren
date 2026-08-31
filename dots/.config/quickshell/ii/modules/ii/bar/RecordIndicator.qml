@@ -166,6 +166,43 @@ Item {
             Layout.fillWidth: true
             spacing: 8
 
+            // Keystroke display, for this recording only. It is re-seeded
+            // from the persistent setting whenever a recording starts, so
+            // switching it on here never carries over to the next one.
+            RippleButton {
+                id: keysBtn
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                buttonRadius: Appearance.rounding.full
+
+                readonly property bool showingKeys: KeypressService.recordingEnabled
+
+                toggled: keysBtn.showingKeys
+                colBackground: keysBtn.showingKeys ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
+                colBackgroundHover: keysBtn.showingKeys ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
+
+                onClicked: KeypressService.toggleForRecording()
+
+                contentItem: Item {
+                    implicitWidth: keysIcon.implicitWidth
+                    implicitHeight: keysIcon.implicitHeight
+
+                    MaterialSymbol {
+                        id: keysIcon
+                        anchors.centerIn: parent
+                        text: keysBtn.showingKeys ? "keyboard" : "keyboard_off"
+                        iconSize: 18
+                        color: keysBtn.showingKeys ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                    }
+                }
+
+                StyledToolTip {
+                    text: keysBtn.showingKeys
+                        ? Translation.tr("Stop showing keystrokes on screen")
+                        : Translation.tr("Show keystrokes on screen for this recording")
+                }
+            }
+
             RippleButton {
                 Layout.fillWidth: true
                 implicitHeight: 44
