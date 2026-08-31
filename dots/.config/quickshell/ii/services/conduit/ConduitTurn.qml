@@ -34,6 +34,38 @@ Item {
     readonly property bool isUser: root.messageData?.role === "user"
     readonly property bool isInterface: root.messageData?.role === "interface"
     readonly property bool hasError: (root.messageData?.error ?? "").length > 0
+    // Regenerating replays from the last user message onward, so it only makes sense
+    // on the reply that is actually last — not some earlier turn still in view.
+    readonly property bool isLastMessage: (root.service?.messageIDs?.length ?? 0) > 0
+        && root.service.messageIDs[root.service.messageIDs.length - 1] === root.messageId
+
+    // Pages the model actually opened while answering. Matched on the shape of the call
+    // rather than a tool name, because the name is the one thing that is not portable:
+    // the claude CLI calls it WebFetch, agy calls it read_url_content / open_browser_url.
+    // So: a web-ish tool whose arguments carry a URL. A search tool passes the name test
+    // and then drops out on its own, since its arguments are a query and never a URL —
+    // which is what we want, as running a search is not visiting anything. run_command
+    // fails the name test, so a `curl https://…` is never mistaken for a source.
+    //
+    // The URL is matched out of the arguments rather than read from a field: fullToolInput()
+    // checks "prompt" before "url", so for WebFetch({url, prompt}) it hands back the
+    // question instead of the page. Deduped — the same page fetched twice is one source.
+    readonly property var sources: {
+        const pattern = /https?:\/\/[^\s"'<>)\]},]+/;
+        const seen = new Set();
+        let out = [];
+        for (const part of root.messageData?.parts ?? []) {
+            if (part.kind !== "tool") continue;
+            if (!/fetch|web|url|browse/i.test(part.toolName ?? "")) continue;
+            const found = String(part.toolInput ?? "").match(pattern)
+                ?? String(part.toolFullInput ?? "").match(pattern);
+            if (!found || seen.has(found[0])) continue;
+            seen.add(found[0]);
+            out.push(found[0]);
+        }
+        return out;
+    }
+    property bool sourcesShown: false
 
     // User turns hug their text; assistant turns use the full column so code
     // blocks and tool rows have room to breathe.
@@ -235,14 +267,12 @@ Item {
                 text: root.messageData?.error ?? ""
             }
 
-            RowLayout { // Reply actions, bottom-right like a messaging app
+            RowLayout { // Reply actions, bottom-left like a messaging app
                 visible: !root.isUser && !root.isInterface
                     && (root.messageData?.done ?? false)
                     && (root.messageData?.content ?? "").length > 0
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-
-                Item { Layout.fillWidth: true }
 
                 ButtonGroup {
                     spacing: 4
@@ -279,6 +309,47 @@ Item {
                         StyledToolTip {
                             text: speakButton.working ? "Recording the memo…" : "Read this out loud"
                         }
+                    }
+
+                    AiMessageControlButton {
+                        id: sourcesButton
+                        // Only offered when a page was actually opened; a search on its own
+                        // visited nothing and leaves this hidden.
+                        visible: root.sources.length > 0
+                        activated: root.sourcesShown
+                        buttonIcon: "link"
+                        onClicked: root.sourcesShown = !root.sourcesShown
+
+                        StyledToolTip { text: root.sourcesShown ? "Hide sources" : "View sources" }
+                    }
+
+                    AiMessageControlButton {
+                        id: regenerateButton
+                        // Regenerating replays from the last user message onward, so it
+                        // only makes sense offered on the reply that is actually last.
+                        visible: root.isLastMessage
+                        enabled: !(root.service?.responding ?? false)
+                        buttonIcon: "refresh"
+                        onClicked: root.service?.regenerate()
+
+                        StyledToolTip { text: "Regenerate response" }
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
+            Flow { // Pages fetched while answering, same pill as the built-in chat's citations
+                visible: root.sourcesShown && root.sources.length > 0
+                spacing: 5
+                Layout.fillWidth: true
+
+                Repeater {
+                    model: root.sources
+                    delegate: AnnotationSourceButton {
+                        required property string modelData
+                        displayText: StringUtils.getDomain(modelData) ?? modelData
+                        url: modelData
                     }
                 }
             }

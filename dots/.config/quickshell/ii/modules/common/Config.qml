@@ -167,6 +167,7 @@ Singleton {
                 property bool enable: true
                 property string provider: "claude-cli" // claude-cli | antigravity
                 property string model: "claude-sonnet-5"
+                property string effort: "" // low | medium | high | xhigh | max — empty: provider default
                 property string systemPrompt: "You are answering from a desktop shell sidebar. Keep replies concise and use markdown when it helps."
                 property bool enableTools: true
                 property bool desktopControl: true // Hands the agent the screen, pointer and keyboard over MCP

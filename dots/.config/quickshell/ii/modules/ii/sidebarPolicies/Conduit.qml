@@ -78,6 +78,7 @@ Item {
         { name: "cwd", description: "Set the directory tools may touch" },
         { name: "provider", description: "Switch provider", args: "providers" },
         { name: "model", description: "Switch model", args: "models" },
+        { name: "effort", description: "Set reasoning effort (Claude Code only)", args: "efforts" },
         { name: "prompt", description: "Set the system prompt" },
         { name: "retry", description: "Regenerate the last response" },
         { name: "new", description: "Start a new conversation" },
@@ -107,6 +108,10 @@ Item {
                 value: model.value,
                 description: `${model.title} — ${model.description}`
             }));
+        case "efforts":
+            return root.service?.supportsEffortLevels
+                ? root.service.effortLevels.map(level => ({ value: level.value, description: `${level.title} — ${level.description}` }))
+                : [];
         }
         return [];
     }
@@ -146,6 +151,17 @@ Item {
                 description: option.description,
                 replacement: `${root.commandPrefix}${name} ${option.value}`
             }));
+    }
+
+    /**
+     * Prefills the input with a bare command and shows its own argument chips — the same
+     * picker typing the command by hand gets, reused instead of dumping the option list
+     * as a wall of markdown.
+     */
+    function showArgumentsFor(commandName) {
+        messageInputField.text = `${root.commandPrefix}${commandName} `;
+        messageInputField.cursorPosition = messageInputField.text.length;
+        messageInputField.forceActiveFocus();
     }
 
     function handleInput(text) {
@@ -188,20 +204,23 @@ Item {
             break;
         case "provider":
             if (args.length === 0) {
-                root.service.addInterfaceMessage(`Available providers: ${root.service.providerIds.join(", ")}`);
+                root.showArgumentsFor("provider");
             } else {
                 root.service.setProvider(args[0]);
             }
             break;
         case "model":
             if (args.length === 0) {
-                const models = root.service.currentProvider.models.map(model => `- \`${model.value}\` — ${model.description}`).join("\n");
-                const extra = root.service.supportsCustomModels
-                    ? `\n\nAny id from \`${root.service.currentProvider.command} models\` also works.`
-                    : "";
-                root.service.addInterfaceMessage(`Models for ${root.service.currentProvider.name}:\n\n${models}${extra}`);
+                root.showArgumentsFor("model");
             } else {
                 root.service.setModel(args[0]);
+            }
+            break;
+        case "effort":
+            if (args.length === 0) {
+                root.showArgumentsFor("effort");
+            } else {
+                root.service.setEffort(args[0]);
             }
             break;
         case "prompt":
@@ -412,18 +431,24 @@ Item {
                     Qt.callLater(messageListView.followAgain); // Again once layout settles
                 }
 
-                // Content grew (or the viewport changed). Follow only if the view was
-                // sitting at the *previous* bottom.
+                // Appending a turn replaces the whole model array (root.messageIDs is a
+                // fresh `.filter()` result each time), so the view re-populates and leaves
+                // contentY wherever that lands — in practice, the top. Re-pin once settled.
+                onModelChanged: if (messageListView.followBottom) Qt.callLater(messageListView.jumpToBottom)
+
+                /**
+                 * Content grew, or the viewport changed. None of that is the user moving the
+                 * view, so this must not touch `followBottom`: that flag is the user's intent,
+                 * and only a real gesture may clear it (see onContentYChanged / onMovementEnded,
+                 * which already refuse to read a contentY the user did not cause).
+                 *
+                 * Re-deriving it from contentY here is what broke sending a message: appending
+                 * the turn re-populates the view and leaves contentY at the top, which reads
+                 * exactly like "the user scrolled away" and latched following off for good.
+                 */
                 function follow() {
-                    // Sitting at the bottom *is* following, so the two are never allowed
-                    // to disagree. Keeping that invariant makes the state self-healing
-                    // rather than dependent on bookkeeping surviving every clamp and
-                    // relayout along the way.
-                    const wasAtBottom = ((messageListView.lastBottomY - messageListView.contentY) <= messageListView.followThreshold)
-                        || (messageListView.distanceFromBottom() <= messageListView.followThreshold);
                     messageListView.lastBottomY = messageListView.bottomY;
-                    messageListView.followBottom = wasAtBottom;
-                    if (!wasAtBottom) return;
+                    if (!messageListView.followBottom) return;
                     messageListView.pinToBottom();
                     Qt.callLater(messageListView.followAgain);
                 }
@@ -437,14 +462,25 @@ Item {
                 // Follow state changes only on a real gesture. A bare "contentY moved"
                 // test cannot distinguish the user from ListView re-laying itself out.
                 property bool wheelActive: false
+                // Dragging the scrollbar moves contentY without the Flickable ever reporting
+                // `dragging`, so it needs saying separately or a scroll away by the bar reads
+                // as no gesture at all.
                 readonly property bool userDriven: wheelActive || dragging || flicking
+                    || (ScrollBar.vertical?.pressed ?? false)
 
+                // Held for the whole scroll animation rather than a single tick: the wheel
+                // moves contentY through a Behavior, so the frames that actually carry the
+                // user off the bottom land long after the event that started them. Clearing
+                // on the next tick meant those frames counted as nobody's doing, and the
+                // scroll-up never registered.
+                Timer {
+                    id: wheelCooldown
+                    interval: Appearance.animation.scroll.duration
+                    onTriggered: messageListView.wheelActive = false
+                }
                 function markWheel() {
                     messageListView.wheelActive = true;
-                    Qt.callLater(messageListView.clearWheel);
-                }
-                function clearWheel() {
-                    messageListView.wheelActive = false;
+                    wheelCooldown.restart();
                 }
 
                 MouseArea { // Observes the wheel; the list still does the scrolling.
@@ -700,7 +736,9 @@ Item {
                 messageInputField.text = replacement + " ";
                 messageInputField.cursorPosition = messageInputField.text.length;
                 messageInputField.forceActiveFocus();
-                root.suggestionList = [];
+                // onTextChanged (fired by the assignment above) already recomputed
+                // suggestionList for the new text — e.g. a command's own argument list
+                // right after picking the command name. Don't stomp that.
             }
 
             function acceptSelected() {

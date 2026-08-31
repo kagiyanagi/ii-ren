@@ -55,7 +55,10 @@ Singleton {
                 "cost": true,
                 "toolsOffSwitch": true,
                 "customModels": false,
-                "persistentProcess": false
+                "persistentProcess": false,
+                // The CLI takes reasoning effort as its own `--effort` flag rather than
+                // baking it into the model name the way Antigravity's list does.
+                "effortLevels": true
             },
             "models": [
                 { "value": "claude-sonnet-5", "title": "Claude Sonnet 5", "description": "Balanced default." },
@@ -79,7 +82,9 @@ Singleton {
                 // `agy models` moves independently of the list below.
                 "customModels": true,
                 // One process serves the whole conversation; see supportsPersistentProcess.
-                "persistentProcess": true
+                "persistentProcess": true,
+                // Effort is a model variant here (gemini-3.1-pro-high vs -low), not a flag.
+                "effortLevels": false
             },
             "models": [
                 { "value": "gemini-3.7-flash-high", "title": "Gemini 3.7 Flash (High)", "description": "Balanced default: newest Flash, full reasoning." },
@@ -126,10 +131,23 @@ Singleton {
      * pays it. Follow-ups land in under two seconds.
      */
     readonly property bool supportsPersistentProcess: root.capabilities.persistentProcess === true
+    readonly property bool supportsEffortLevels: root.capabilities.effortLevels === true
+
+    // Reasoning effort for providers whose CLI takes it as its own flag (claude-cli's
+    // `--effort`) rather than baking it into the model name (Antigravity's `-high`/`-low`
+    // model suffixes already do that, so it has no use for this).
+    readonly property var effortLevels: [
+        { "value": "low", "title": "Low", "description": "Fastest, least reasoning." },
+        { "value": "medium", "title": "Medium", "description": "Balanced." },
+        { "value": "high", "title": "High", "description": "Deeper reasoning." },
+        { "value": "xhigh", "title": "Extra high", "description": "More thorough than high." },
+        { "value": "max", "title": "Max", "description": "Most thorough, slowest." }
+    ]
+    readonly property string effort: Config.options.conduit.effort
 
     // A live process was launched with these baked in, so any change replaces it.
     readonly property string requestKey: JSON.stringify([root.currentProviderId, root.currentModelId,
-        root.workingDir, root.enableTools, root.permissionMode, root.disallowedTools])
+        root.workingDir, root.enableTools, root.permissionMode, root.disallowedTools, root.effort])
 
     /* ---------- Config-backed state ---------------------------------------- */
 
@@ -857,6 +875,21 @@ Singleton {
             : `Model set to ${modelId}, which the picker does not list. Run \`${root.currentProvider.command} models\` to see the current names — a wrong one fails on the next message.`);
     }
 
+    function setEffort(level) {
+        if (!root.supportsEffortLevels) {
+            root.addInterfaceMessage(`\`${root.currentProvider.command}\` has no effort flag — pick a model variant instead (see \`/model\`).`);
+            return;
+        }
+        const value = (level ?? "").trim().toLowerCase();
+        if (!root.effortLevels.some(entry => entry.value === value)) {
+            root.addInterfaceMessage(`Unknown effort level "${level}". Try: ${root.effortLevels.map(entry => entry.value).join(", ")}.`);
+            return;
+        }
+        Config.options.conduit.effort = value;
+        root.resetSession(); // A resumed CLI session keeps its original effort
+        root.addInterfaceMessage(`Effort set to **${value}**.`);
+    }
+
     function setSystemPrompt(prompt) {
         const trimmed = (prompt ?? "").trim();
         if (trimmed.length === 0) {
@@ -953,6 +986,7 @@ exit 0
             "workingDir": root.workingDir,
             "attachDir": usesAttachments ? root.attachDir : "",
             "sessionId": root.cliSessionId,
+            "effort": root.supportsEffortLevels ? root.effort : "",
             "enableTools": root.enableTools,
             "desktopMcp": (root.enableTools && root.desktopControl) ? root.desktopMcpPath : "",
             "permissionMode": root.permissionMode,
@@ -1168,6 +1202,16 @@ exit 0
                         root.currentTextPart(message).text += "\n\n</think>\n\n";
                     }
                     root.currentTextPart(message).text += result.textDelta;
+                }
+
+                // A tool call ends reasoning just as plainly as text does — without this,
+                // every thinking block that leads into a tool call (rather than straight
+                // into the reply) is left with its <think> tag never closed, so
+                // splitMarkdownBlocks() treats it as still-streaming and it never becomes
+                // expandable in the UI.
+                if ((result.toolStart || (result.toolCalls ?? []).length > 0) && requester.reasoningOpen) {
+                    requester.reasoningOpen = false;
+                    root.currentTextPart(message).text += "\n\n</think>\n\n";
                 }
 
                 // Announced with an empty input; arguments arrive in the assistant frame.

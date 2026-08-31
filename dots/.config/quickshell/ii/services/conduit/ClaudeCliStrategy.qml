@@ -20,7 +20,9 @@ import QtQuick
  *   ANTHROPIC_API_KEY and that OAuth is never read, which would defeat the point.
  * - The prompt is read from a file, never interpolated into the command line.
  *
- * Limitations: the CLI exposes no temperature or max-tokens flag.
+ * Limitations: the CLI exposes no temperature or max-tokens flag. It does take
+ * `--effort <low|medium|high|xhigh|max>`, unlike Antigravity, which bakes effort
+ * into the model name instead (gemini-3.1-pro-high vs -low).
  */
 ProviderStrategy {
     id: root
@@ -34,6 +36,9 @@ ProviderStrategy {
         if (prompt.length === 0) return { "error": "Nothing to send." };
 
         let args = ["--print", "--output-format stream-json", "--include-partial-messages", "--verbose", `--model ${root.shellQuote(request.modelId)}`];
+        if ((request.effort ?? "").length > 0) {
+            args.push(`--effort ${root.shellQuote(request.effort)}`);
+        }
         let systemPrompt = request.systemPrompt ?? "";
 
         if (request.enableTools) {
