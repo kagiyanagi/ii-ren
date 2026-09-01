@@ -24,12 +24,7 @@ Item {
         }
     }
     
-    Component.onCompleted: {
-        if (root.pendingSectionHighlight && root.pendingSectionHighlight.endsWith(".qml")) {
-            widgetsConfigRoot.activeSubPage = Qt.resolvedUrl(root.pendingSectionHighlight);
-            root.pendingSectionHighlight = "";
-        }
-    }
+
 
 
     // Every gallery card re-runs mapToItem() when this changes. Quantising the
@@ -139,7 +134,13 @@ Item {
         onTriggered: widgetsConfigRoot.colorSchemeActive = true
     }
 
-    Component.onCompleted: colorSchemeLoadTimer.start()
+    Component.onCompleted: {
+        colorSchemeLoadTimer.start();
+        if (root.pendingSectionHighlight && root.pendingSectionHighlight.endsWith(".qml")) {
+            widgetsConfigRoot.activeSubPage = Qt.resolvedUrl(root.pendingSectionHighlight);
+            root.pendingSectionHighlight = "";
+        }
+    }
 
     ContentPage {
         id: page
