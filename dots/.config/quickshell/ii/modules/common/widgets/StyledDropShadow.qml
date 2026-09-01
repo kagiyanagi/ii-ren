@@ -12,6 +12,8 @@ RectangularShadow {
     property real verticalOffset: 1.0
     property real horizontalOffset: 0.0
     property real samples: 9
+    property bool transparentBorder: true
+    property bool fast: false
 
     radius: (target && target.radius !== undefined) ? target.radius : 8
     blur: 0.9 * Appearance.sizes.elevationMargin
