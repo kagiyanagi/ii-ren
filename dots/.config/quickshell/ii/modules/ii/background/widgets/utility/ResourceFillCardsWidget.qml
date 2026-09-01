@@ -15,6 +15,10 @@ AbstractBackgroundWidget {
 
     configEntryName: "resource_fill_cards"
 
+    visibleWhenLocked: root.lockBehavior === "keep"
+                    || root.lockBehavior === "center"
+                    || root.lockBehavior === "lockOnly"
+
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

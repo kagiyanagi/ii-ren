@@ -244,34 +244,205 @@ Singleton {
         }
     })
 
-    // `schemes` is a binding, so it re-evaluates whenever any Appearance color
-    // changes — reading through it stays live, nothing freezes at startup.
-    // An unknown scheme id falls back to "default", whose entry is what every
-    // getter used as its final fallback anyway.
-    function _pick(scheme, key) {
-        return (root.schemes[scheme] ?? root.schemes["default"])[key];
+    // Funções auxiliares para calcular dinamicamente sem congelar no mapa inicial do JS
+    function getCardBgColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colPrimaryContainer;
+        if (scheme === "expressive_secondary") return Appearance.colors.colSecondaryContainer;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colTertiaryContainer;
+        if (scheme === "hero_primary") return Appearance.colors.colPrimary;
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.4);
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainerLow;
+        if (scheme === "secondary_fixed") return Appearance.m3colors.m3secondaryFixed;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colTertiaryContainer;
+        if (scheme === "error_alert") return Appearance.colors.colErrorContainer;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseSurface;
+        if (scheme === "tri_blend") return Appearance.m3colors.m3surfaceContainerHigh;
+        return Appearance.m3colors.m3surfaceContainerHigh;
     }
 
-    function getCardBgColor(scheme) { return root._pick(scheme, "cardBgColor"); }
-    function getTextColorOnBg(scheme) { return root._pick(scheme, "textColorOnBg"); }
-    function getAccentColor(scheme) { return root._pick(scheme, "accentColor"); }
-    function getOnAccentColor(scheme) { return root._pick(scheme, "onAccentColor"); }
-    function getPillBgColor(scheme) { return root._pick(scheme, "pillBgColor"); }
-    function getPillFillColor(scheme) { return root._pick(scheme, "pillFillColor"); }
-    function getInnerShapeColor(scheme) { return root._pick(scheme, "innerShapeColor"); }
-    function getHighlightCircleColor(scheme) { return root._pick(scheme, "highlightCircleColor"); }
-    function getHighlightTextColor(scheme) { return root._pick(scheme, "highlightTextColor"); }
-    function getSuccessColor(scheme) { return root._pick(scheme, "successColor"); }
-    function getWarningColor(scheme) { return root._pick(scheme, "warningColor"); }
-    function getOutlineColor(scheme) { return root._pick(scheme, "outlineColor"); }
-    function getSurfaceVariantColor(scheme) { return root._pick(scheme, "surfaceVariantColor"); }
+    function getTextColorOnBg(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colOnPrimaryContainer;
+        if (scheme === "expressive_secondary") return Appearance.colors.colOnSecondaryContainer;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colOnTertiaryContainer;
+        if (scheme === "hero_primary") return Appearance.colors.colOnPrimary;
+        if (scheme === "vibrant_mix") return Appearance.colors.colOnPrimaryContainer;
+        if (scheme === "muted_surface") return Appearance.colors.colOnSurface;
+        if (scheme === "secondary_fixed") return Appearance.m3colors.m3onSecondaryFixed;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colOnTertiaryContainer;
+        if (scheme === "error_alert") return Appearance.colors.colOnErrorContainer;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseOnSurface;
+        if (scheme === "tri_blend") return Appearance.colors.colOnPrimaryContainer;
+        return Appearance.colors.colOnSurfaceVariant;
+    }
 
-    // Not a map lookup on purpose: the map's per-scheme subtext alphas
-    // (0.6–0.75) are not what the live property uses — this uniform 0.7 over the
-    // scheme's text color is. Kept as-is so nothing shifts shade.
+    function getAccentColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colPrimary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colSecondary;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colTertiary;
+        if (scheme === "hero_primary") return Appearance.colors.colPrimaryContainer;
+        if (scheme === "vibrant_mix") return Appearance.colors.colTertiary;
+        if (scheme === "muted_surface") return Appearance.colors.colSecondary;
+        if (scheme === "secondary_fixed") return Appearance.colors.colSecondary;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colTertiary;
+        if (scheme === "error_alert") return Appearance.colors.colError;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inversePrimary;
+        if (scheme === "tri_blend") return Appearance.colors.colSecondary;
+        return Appearance.colors.colPrimary;
+    }
+
+    function getOnAccentColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colOnPrimary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colOnSecondary;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colOnTertiary;
+        if (scheme === "hero_primary") return Appearance.colors.colOnPrimaryContainer;
+        if (scheme === "vibrant_mix") return Appearance.colors.colOnTertiary;
+        if (scheme === "muted_surface") return Appearance.colors.colOnSecondary;
+        if (scheme === "secondary_fixed") return Appearance.colors.colOnSecondary;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colOnTertiary;
+        if (scheme === "error_alert") return Appearance.colors.colOnError;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseOnSurface;
+        if (scheme === "tri_blend") return Appearance.colors.colOnSecondary;
+        return Appearance.colors.colOnPrimary;
+    }
+
+    function getPillBgColor(scheme) {
+        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colPrimaryContainer, 0.25);
+        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colSecondary, Appearance.colors.colSecondaryContainer, 0.25);
+        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.25);
+        if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colOnPrimary, Appearance.colors.colPrimary, 0.2);
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.3);
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainerHigh;
+        if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.colors.colSecondary, 0.25);
+        if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.2);
+        if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.25);
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inversePrimary, 0.3);
+        if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colSecondary, Appearance.colors.colTertiaryContainer, 0.35);
+        return Appearance.m3colors.m3surfaceContainerHighest;
+    }
+
+    function getPillFillColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colPrimary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colSecondary;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colTertiary;
+        if (scheme === "hero_primary") return Appearance.colors.colPrimaryContainer;
+        if (scheme === "vibrant_mix") return Appearance.colors.colTertiary;
+        if (scheme === "muted_surface") return Appearance.colors.colSecondaryContainer;
+        if (scheme === "secondary_fixed") return Appearance.colors.colSecondaryContainer;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colPrimary;
+        if (scheme === "error_alert") return Appearance.colors.colError;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inversePrimary;
+        if (scheme === "tri_blend") return Appearance.colors.colTertiary;
+        return Appearance.colors.colSecondaryContainer;
+    }
+
     function getSubtextColorOnBg(scheme) {
         let textCol = getTextColorOnBg(scheme);
         return Qt.rgba(textCol.r, textCol.g, textCol.b, 0.7);
+    }
+
+    function getInnerShapeColor(scheme) {
+        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colPrimaryContainer, 0.35);
+        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colSecondary, Appearance.colors.colSecondaryContainer, 0.35);
+        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.35);
+        if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colOnPrimary, Appearance.colors.colPrimary, 0.25);
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.6);
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceContainer;
+        if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.colors.colSecondary, 0.3);
+        if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.3);
+        if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.35);
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inverseOnSurface, 0.2);
+        if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.25);
+        return Appearance.m3colors.m3surfaceContainerHighest;
+    }
+
+    function getHighlightCircleColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colPrimary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colSecondary;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colTertiary;
+        if (scheme === "hero_primary") return Appearance.colors.colOnPrimary;
+        if (scheme === "vibrant_mix") return Appearance.colors.colTertiary;
+        if (scheme === "muted_surface") return Appearance.colors.colSecondary;
+        if (scheme === "secondary_fixed") return Appearance.colors.colSecondary;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colPrimary;
+        if (scheme === "error_alert") return Appearance.colors.colError;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inversePrimary;
+        if (scheme === "tri_blend") return Appearance.colors.colTertiary;
+        return Appearance.colors.colOnSurfaceVariant;
+    }
+
+    function getHighlightTextColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colOnPrimary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colOnSecondary;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colOnTertiary;
+        if (scheme === "hero_primary") return Appearance.colors.colPrimary;
+        if (scheme === "vibrant_mix") return Appearance.colors.colOnTertiary;
+        if (scheme === "muted_surface") return Appearance.colors.colOnSecondary;
+        if (scheme === "secondary_fixed") return Appearance.m3colors.m3onSecondaryFixed;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colOnPrimary;
+        if (scheme === "error_alert") return Appearance.colors.colOnError;
+        if (scheme === "inverse_surface") return Appearance.m3colors.m3inverseOnSurface;
+        if (scheme === "tri_blend") return Appearance.colors.colOnTertiary;
+        return Appearance.m3colors.m3surfaceContainerHigh;
+    }
+
+    function getSuccessColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colTertiary;
+        if (scheme === "expressive_secondary") return Appearance.colors.colPrimary;
+        if (scheme === "expressive_tertiary") return Appearance.m3colors.m3successContainer;
+        if (scheme === "hero_primary") return Appearance.colors.colSecondaryContainer;
+        if (scheme === "vibrant_mix") return Appearance.colors.colPrimary;
+        if (scheme === "muted_surface") return Appearance.colors.colTertiary;
+        if (scheme === "secondary_fixed") return Appearance.m3colors.m3success;
+        if (scheme === "tertiary_showcase") return Appearance.colors.colSecondary;
+        if (scheme === "error_alert") return Appearance.m3colors.m3success;
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3success, Appearance.m3colors.m3inverseSurface, 0.3);
+        if (scheme === "tri_blend") return Appearance.colors.colPrimary;
+        return Appearance.m3colors.m3success;
+    }
+
+    function getWarningColor(scheme) {
+        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colPrimary, 0.3);
+        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colSecondary, 0.3);
+        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colTertiary, 0.3);
+        if (scheme === "hero_primary") return Appearance.colors.colErrorContainer;
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colTertiary, 0.4);
+        if (scheme === "muted_surface") return Appearance.colors.colError;
+        if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colSecondary, 0.2);
+        if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colPrimary, 0.25);
+        if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.m3colors.m3onErrorContainer, 0.5);
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.colors.colError, Appearance.m3colors.m3inversePrimary, 0.3);
+        if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colSecondary, 0.4);
+        return Appearance.colors.colError;
+    }
+
+    function getOutlineColor(scheme) {
+        if (scheme === "expressive_primary") return Appearance.colors.colPrimaryContainer;
+        if (scheme === "expressive_secondary") return Appearance.colors.colSecondaryContainer;
+        if (scheme === "expressive_tertiary") return Appearance.colors.colTertiaryContainer;
+        if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colOnPrimary, 0.4);
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.5);
+        if (scheme === "muted_surface") return Appearance.colors.colOutline;
+        if (scheme === "secondary_fixed") return Appearance.m3colors.m3onSecondaryFixedVariant;
+        if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colTertiary, Appearance.colors.colTertiaryContainer, 0.4);
+        if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.5);
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseOnSurface, Appearance.m3colors.m3inverseSurface, 0.4);
+        if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colSecondary, 0.5);
+        return Appearance.colors.colOutline;
+    }
+
+    function getSurfaceVariantColor(scheme) {
+        if (scheme === "expressive_primary") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
+        if (scheme === "expressive_secondary") return ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
+        if (scheme === "expressive_tertiary") return ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5);
+        if (scheme === "hero_primary") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colOnPrimary, 0.2);
+        if (scheme === "vibrant_mix") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.2);
+        if (scheme === "muted_surface") return Appearance.m3colors.m3surfaceVariant;
+        if (scheme === "secondary_fixed") return ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.m3colors.m3onSecondaryFixed, 0.15);
+        if (scheme === "tertiary_showcase") return ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.2);
+        if (scheme === "error_alert") return ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.2);
+        if (scheme === "inverse_surface") return ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inverseOnSurface, 0.15);
+        if (scheme === "tri_blend") return ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.3);
+        return Appearance.m3colors.m3surfaceVariant;
     }
 
     // Dynamic reactive color properties

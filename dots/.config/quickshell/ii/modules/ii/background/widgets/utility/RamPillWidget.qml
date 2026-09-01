@@ -17,6 +17,10 @@ AbstractBackgroundWidget {
 
     configEntryName: "resource_ram_pill"
 
+    visibleWhenLocked: root.lockBehavior === "keep"
+                    || root.lockBehavior === "center"
+                    || root.lockBehavior === "lockOnly"
+
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

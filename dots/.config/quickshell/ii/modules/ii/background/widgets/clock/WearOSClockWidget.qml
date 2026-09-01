@@ -574,7 +574,7 @@ AbstractBackgroundWidget {
                     text: KdeConnectService.activeReachable ? "mobile" : "mobile_off"
                     fill: 1
                     iconSize: 22
-                    color: KdeConnectService.activeReachable ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSecondaryContainer
+                    color: KdeConnectService.activeReachable ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colSecondaryOnContainer
                     anchors.centerIn: parent
                 }
             }

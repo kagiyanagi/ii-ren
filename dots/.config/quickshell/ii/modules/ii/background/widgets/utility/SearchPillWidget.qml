@@ -116,7 +116,10 @@ AbstractBackgroundWidget {
         } else if (key === "music_rec") {
             SongRec.toggleRunning();
         } else if (key === "ai_chat") {
-            GlobalStates.openRightSidebar();
+            Ai.surfaceRouter.open({
+                surface: "sidebar",
+                focusIntent: "composer"
+            });
         } else if (key === "translator") {
             Persistent.states.sidebar.policies.tab = 1;
             GlobalStates.sidebarLeftOpen = true;

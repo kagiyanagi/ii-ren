@@ -24,6 +24,12 @@ Singleton {
     // log "Task created." whatever came back, including an expired token.
     property string lastError: ""
 
+    /** Emitted with the id TickTick assigned, so a caller can point at it. */
+    signal taskCreated(string taskId, string title)
+    signal requestFailed(string operation, string reason)
+    /** Correlated provider contract used by the AI adapter. */
+    signal aiOperationFinished(string operationId, string operation, bool ok, var data, string error)
+
     // ── Credentials (loaded from .env) ────────────────────────────
     property string clientId: ""
     property string clientSecret: ""
@@ -76,6 +82,97 @@ Singleton {
     function fetchTasksFromInbox() {
         if (!root.send(fetchTasksProcess, { op: "list" }))
             root.syncing = false;
+    }
+
+    function createTask(title, extra = null) {
+        return root.send(createTaskProcess, Object.assign({
+            op: "create",
+            title: String(title ?? "")
+        }, extra ?? ({})));
+    }
+
+    function setTaskDone(task, done) {
+        if (!task || !task.id)
+            return;
+
+        if (done) {
+            root.completeTask(task.id, task.containerId || task.projectId);
+            return;
+        }
+
+        root.refresh();
+    }
+
+    function completeTask(taskId, projectId) {
+        return root.send(completeTaskProcess, {
+            op: "complete",
+            taskId: String(taskId ?? ""),
+            projectId: projectId || root.inboxProjectId
+        });
+    }
+
+    function deleteTask(taskOrId, projectId) {
+        const taskId = typeof taskOrId === "object" ? taskOrId?.id : taskOrId;
+        const resolvedProjectId = (typeof taskOrId === "object"
+            ? (taskOrId?.containerId || taskOrId?.projectId)
+            : projectId) || root.inboxProjectId;
+        if (!taskId)
+            return false;
+        return root.send(deleteTaskProcess, {
+            op: "delete",
+            taskId: String(taskId ?? ""),
+            projectId: resolvedProjectId
+        });
+    }
+
+    function aiListTasks(operationId, projectId) {
+        return root.aiRequest(operationId, "list", { projectId: projectId || root.inboxProjectId });
+    }
+
+    function aiCreateTask(operationId, input) {
+        return root.aiRequest(operationId, "create", {
+            projectId: input?.listId || root.inboxProjectId,
+            title: String(input?.title ?? ""),
+            content: String(input?.notes ?? ""),
+            dueDate: input?.dueDate ?? null,
+            priority: input?.priority
+        });
+    }
+
+    function aiUpdateTask(operationId, ref, changes) {
+        return root.aiRequest(operationId, "update", {
+            projectId: ref?.listId || root.inboxProjectId,
+            taskId: String(ref?.taskId ?? ref?.id ?? ""),
+            title: changes?.title ?? changes?.content,
+            content: changes?.notes ?? changes?.contentText,
+            dueDate: changes?.dueDate,
+            priority: changes?.priority
+        });
+    }
+
+    function aiCompleteTask(operationId, ref) {
+        return root.aiRequest(operationId, "complete", {
+            projectId: ref?.listId || root.inboxProjectId,
+            taskId: String(ref?.taskId ?? ref?.id ?? "")
+        });
+    }
+
+    function aiDeleteTask(operationId, ref) {
+        return root.aiRequest(operationId, "delete", {
+            projectId: ref?.listId || root.inboxProjectId,
+            taskId: String(ref?.taskId ?? ref?.id ?? "")
+        });
+    }
+
+    function aiRequest(operationId, operation, payload) {
+        if (!root.send(aiProcess, Object.assign({
+            op: operation,
+            callId: String(operationId ?? "")
+        }, payload ?? ({}))))
+            return false;
+        aiProcess.operationId = String(operationId ?? "");
+        aiProcess.operation = String(operation ?? "");
+        return true;
     }
 
     /** Turns one helper reply into either an error or its payload. */
@@ -212,8 +309,10 @@ Singleton {
             onStreamFinished: {
                 const reply = root.readReply(text, "list");
                 root.syncing = false;
-                if (!reply)
+                if (!reply) {
+                    root.requestFailed("list", root.lastError);
                     return;
+                }
                 const data = reply.data ?? ({});
                 const rawTasks = data.tasks || [];
                 const parsed = [];
@@ -232,6 +331,91 @@ Singleton {
                 }
                 root.tasks = parsed;
                 console.log("[TickTick] Fetched " + parsed.length + " tasks.");
+            }
+        }
+    }
+
+    // Create task
+    Process {
+        id: createTaskProcess
+        command: ["python3", root.helperPath]
+        stdinEnabled: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const reply = root.readReply(text, "create");
+                if (!reply) {
+                    root.requestFailed("create", root.lastError);
+                    return;
+                }
+                // The id TickTick assigned, rather than the assumption that
+                // something was created because the process exited.
+                const created = reply.data ?? ({});
+                root.taskCreated(String(created.id ?? ""), String(created.title ?? ""));
+                console.log("[TickTick] Task created:", created.id ?? "(no id)");
+                root.refresh();
+            }
+        }
+    }
+
+    // Complete task
+    Process {
+        id: completeTaskProcess
+        command: ["python3", root.helperPath]
+        stdinEnabled: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.readReply(text, "complete")) {
+                    root.requestFailed("complete", root.lastError);
+                    return;
+                }
+                console.log("[TickTick] Task completed. Refreshing...");
+                root.refresh();
+            }
+        }
+    }
+
+    // Delete task
+    Process {
+        id: deleteTaskProcess
+        command: ["python3", root.helperPath]
+        stdinEnabled: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.readReply(text, "delete")) {
+                    root.requestFailed("delete", root.lastError);
+                    return;
+                }
+                console.log("[TickTick] Task deleted. Refreshing...");
+                root.refresh();
+            }
+        }
+    }
+    // One correlated request for the AI provider contract. The broker keeps
+    // mutations serial, so one process is sufficient and late replies retain
+    // their operation id instead of being guessed from the active UI task.
+    Process {
+        id: aiProcess
+        command: ["python3", root.helperPath]
+        stdinEnabled: true
+        property string operationId: ""
+        property string operation: ""
+        stdout: StdioCollector {
+            id: aiCollector
+            onStreamFinished: {
+                let reply = null;
+                try {
+                    reply = JSON.parse(String(aiCollector.text ?? ""));
+                } catch (error) {
+                    root.aiOperationFinished(aiProcess.operationId, aiProcess.operation, false, null, qsTr("TickTick sent an unreadable response."));
+                    return;
+                }
+                if (!reply.ok) {
+                    root.lastError = String(reply.error ?? qsTr("The TickTick request failed."));
+                    root.aiOperationFinished(aiProcess.operationId, aiProcess.operation, false, null, root.lastError);
+                    return;
+                }
+                root.lastError = "";
+                root.aiOperationFinished(aiProcess.operationId, aiProcess.operation, true, reply.data ?? ({}), "");
             }
         }
     }

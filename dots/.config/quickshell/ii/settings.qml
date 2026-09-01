@@ -38,21 +38,6 @@ ApplicationWindow {
     property int resultsCount: 0
     property string pendingSectionHighlight: Quickshell.env("II_SETTINGS_HIGHLIGHT") || ""
 
-    IpcHandler {
-        target: "settings"
-        
-        function openPage(pageId, subPagePath) {
-            root.Window.window.requestActivate();
-            const idx = root.pages.findIndex(p => p.id === pageId);
-            if (idx !== -1) {
-                root.currentPage = idx;
-            }
-            if (subPagePath) {
-                root.pendingSectionHighlight = subPagePath;
-            }
-        }
-    }
-
 
     property var pages: [
         {

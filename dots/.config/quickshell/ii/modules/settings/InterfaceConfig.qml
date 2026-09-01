@@ -760,9 +760,9 @@ ContentPage {
         ConfigSwitch {
             buttonIcon: "monitor"
             text: Translation.tr("Force specific monitor")
-            checked: Config.options.notifications.forceMonitor.enable
+            checked: Config.options.notifications.monitor.enable
             onCheckedChanged: {
-                Config.options.notifications.forceMonitor.enable = checked;
+                Config.options.notifications.monitor.enable = checked;
             }
 
             StyledToolTip {
@@ -772,15 +772,15 @@ ContentPage {
         }
 
         ConfigRow {
-            enabled: Config.options.notifications.forceMonitor.enable
+            enabled: Config.options.notifications.monitor.enable
 
             MaterialTextArea {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Monitor name to show notifications on (e.g., eDP-1)")
-                text: Config.options.notifications.forceMonitor.name
+                text: Config.options.notifications.monitor.name
                 wrapMode: TextEdit.Wrap
                 onTextChanged: {
-                    Config.options.notifications.forceMonitor.name = text;
+                    Config.options.notifications.monitor.name = text;
                 }
             }
 

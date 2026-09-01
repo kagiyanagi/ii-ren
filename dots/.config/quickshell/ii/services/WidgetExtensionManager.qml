@@ -7,7 +7,7 @@ import qs.modules.common
 import qs.modules.common.functions
 
 // WidgetExtensionManager — manages third-party desktop widget extensions.
-// Handles install / uninstall / local-path installs.
+// Handles install / uninstall / update / local-path installs.
 // Persistence lives in widget_extensions.json (separate from config.json to
 // avoid the property-var-inside-JsonObject segfault bug).
 //
@@ -28,8 +28,15 @@ Singleton {
     property bool loading: false
     property string lastError: ""
 
+    // Community discover results: list of { name, fullName, description, stars,
+    //   author, avatarUrl, repoUrl, cloneUrl, updatedAt }
+    property var communityWidgets: []
+    property bool discoverLoading: false
+    property string discoverError: ""
+
     // Emitted when any installed/config/enable state changes — consumers re-read.
     signal extensionsChanged
+    signal discoverFinished
 
     // ── Internal state ───────────────────────────────────────────────────────
 
@@ -162,11 +169,38 @@ Singleton {
         root.extensionsChanged();
     }
 
+    function updateWidget(extId) {
+        let entry = root.installedWidgets[extId];
+        if (!entry || entry.isLocal)
+            return;
+        root.loading = true;
+        // Step 1: backup, then git pull
+        backupProc.extId = extId;
+        backupProc.sourcePath = entry.installedPath;
+        backupProc.running = false;
+        backupProc.running = true;
+    }
+
     function reloadLocalWidget(extId) {
         let entry = root.installedWidgets[extId];
         if (!entry || !entry.isLocal)
             return;
         _readWidgetJson(extId, entry.installedPath);
+    }
+
+    function getWidgetConfig(extId, key, defaultValue) {
+        let cfg = root.widgetConfigs[extId];
+        if (!cfg)
+            return defaultValue;
+        return cfg[key] !== undefined ? cfg[key] : defaultValue;
+    }
+
+    function setWidgetConfig(extId, key, value) {
+        let clone = Object.assign({}, root.widgetConfigs);
+        clone[extId] = Object.assign({}, clone[extId] || {});
+        clone[extId][key] = value;
+        root.widgetConfigs = clone;
+        _save();
     }
 
     // Returns list of enabled installedWidgets entries ready for WidgetsRegistry.
@@ -198,6 +232,35 @@ Singleton {
     // Returns true if extId is installed (for Background placeholder logic).
     function isWidgetInstalled(extId) {
         return root.installedWidgets[extId] !== undefined;
+    }
+
+    // Fetch community widgets from GitHub by topic ii-desktop-widget.
+    function discoverWidgets() {
+        if (root.discoverLoading)
+            return;
+        root.discoverLoading = true;
+        root.discoverError = "";
+        discoverProc.running = false;
+        discoverProc.running = true;
+    }
+
+    // Load a widget QML component dynamically.
+    // Returns null if entry not found; caller must check component.status.
+    function loadWidgetComponent(extId) {
+        let entry = root.installedWidgets[extId];
+        if (!entry)
+            return null;
+        let wj = entry.widgetJson || {};
+        let qmlFile = root._getComponent(wj);
+        let fullPath = entry.installedPath + "/" + qmlFile;
+        // Plain file:// URL — no query string (Qt rejects them for local files)
+        let url = "file://" + fullPath;
+        let comp = Qt.createComponent(url);
+        if (comp.status === Component.Error) {
+            console.error("[WidgetExtensionManager] component error for", extId, comp.errorString());
+            return null;
+        }
+        return comp;
     }
 
     // ── Internal helpers ─────────────────────────────────────────────────────
@@ -329,6 +392,73 @@ Singleton {
         }
     }
 
+    // Backup process — runs before every git update (non-fatal on failure)
+    Process {
+        id: backupProc
+        property string extId: ""
+        property string sourcePath: ""
+
+        command: ["python3", Directories.scriptPath + "/widget_extensions.py", "backup", extId, sourcePath, Directories.widgetBackupsPath]
+
+        stdout: SplitParser {
+            onRead: data => {
+                let s = data.trim();
+                if (!s)
+                    return;
+                try {
+                    let r = JSON.parse(s);
+                    if (r.status !== "ok") {
+                        console.warn("[WidgetExtensionManager] backup warning:", r.error);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        onRunningChanged: {
+            if (!running && extId !== "") {
+                // Backup done (or skipped) — proceed with git pull
+                let entry = root.installedWidgets[extId];
+                if (entry) {
+                    updateProc.extId = extId;
+                    updateProc.targetPath = entry.installedPath;
+                    updateProc.running = false;
+                    updateProc.running = true;
+                } else {
+                    root.loading = false;
+                }
+                extId = "";
+                sourcePath = "";
+            }
+        }
+    }
+
+    // Update process — git pull --ff-only (triggered by backupProc)
+    Process {
+        id: updateProc
+        property string extId: ""
+        property string targetPath: ""
+
+        command: ["git", "-C", targetPath, "pull", "--ff-only"]
+
+        onRunningChanged: {
+            if (!running && extId !== "") {
+                // Re-read widget.json after pull
+                let entry = root.installedWidgets[extId];
+                if (entry) {
+                    root._readWidgetJson(extId, entry.installedPath, entry.repoUrl, false);
+                }
+                root.loading = false;
+                extId = "";
+            }
+        }
+        stderr: SplitParser {
+            onRead: data => {
+                if (data.trim())
+                    console.warn("[WidgetExtensionManager] update:", data);
+            }
+        }
+    }
+
     // Read widget.json after install or reload
     FileView {
         id: widgetJsonReader
@@ -355,6 +485,48 @@ Singleton {
             console.error("[WidgetExtensionManager] widget.json missing for", extId, error);
             root.lastError = "widget.json not found in " + installedPath;
             root.loading = false;
+        }
+    }
+
+    // Discover process — runs widget_extensions.py discover
+    Process {
+        id: discoverProc
+
+        command: ["python3", Directories.scriptPath + "/widget_extensions.py", "discover", "30"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                let s = data.trim();
+                if (!s)
+                    return;
+                try {
+                    let result = JSON.parse(s);
+                    if (result.status === "ok") {
+                        root.communityWidgets = result.results || [];
+                    } else {
+                        root.discoverError = result.error || "Discover failed";
+                    }
+                } catch (e) {
+                    root.discoverError = "Parse error: " + e.message;
+                }
+                root.discoverLoading = false;
+                root.discoverFinished();
+            }
+        }
+        stderr: SplitParser {
+            onRead: data => {
+                if (data.trim())
+                    console.warn("[WidgetExtensionManager] discover:", data);
+            }
+        }
+        onRunningChanged: {
+            if (!running && root.discoverLoading) {
+                // Process ended without stdout (e.g. crash)
+                root.discoverLoading = false;
+                if (root.discoverError === "")
+                    root.discoverError = "Discover process exited unexpectedly";
+                root.discoverFinished();
+            }
         }
     }
 

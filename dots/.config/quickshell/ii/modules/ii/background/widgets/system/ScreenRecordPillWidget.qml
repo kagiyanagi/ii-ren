@@ -52,8 +52,7 @@ AbstractBackgroundWidget {
             colBackgroundHover: Qt.rgba(root.contentColor.r, root.contentColor.g, root.contentColor.b, 0.15)
             colRipple: Qt.rgba(root.contentColor.r, root.contentColor.g, root.contentColor.b, 0.3)
             onClicked: {
-                // The pill only stops; it never has to guess whether to start
-                Quickshell.execDetached([Directories.recordScriptPath, "--stop"]);
+                Quickshell.execDetached([Directories.recordScriptPath]);
             }
 
             MaterialSymbol {

@@ -391,6 +391,7 @@ AbstractBackgroundWidget {
                                 id: notesContentComp
                                 anchors.fill: parent
                                 radius: Appearance.rounding.normal
+                                isClickthrough: false
                             }
                         }
                     }

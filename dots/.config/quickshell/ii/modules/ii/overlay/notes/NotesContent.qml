@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
-import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -13,28 +11,36 @@ OverlayBackground {
     id: root
 
     property alias content: textInput.text
-    property bool pendingReload: false
     property var copyListEntries: []
     property string lastParsedCopylistText: ""
     property var parsedCopylistLines: []
+    property bool isClickthrough: false
     property real maxCopyButtonSize: 20
     property int currentTabIndex: Persistent.states.overlay.notes.tabIndex
     property bool tabEditModeEnabled: false
-
     Component.onCompleted: {
-        noteFile.reload();
+        root.tabsData = NotesService.tabsData;
+        root.loadTabContent(root.currentTabIndex);
         updateCopyListEntries();
     }
 
-    property var tabsData: ({
-        tabs: root.defaultTabs
-    })
+    Component.onDestruction: {
+        // The debounce timer dies with this widget; commit whatever it was still holding.
+        if (saveDebounce.running) {
+            saveDebounce.stop();
+            root.saveToFile();
+        }
+    }
 
-    property list<var> defaultTabs: [
-        { title: "Tab 1", icon: "article", content: "" },
-        { title: "Tab 2", icon: "article", content: "" },
-        { title: "Tab 3", icon: "article", content: "" }
-    ]
+    Connections {
+        target: NotesService
+        function onDataChanged() {
+            root.tabsData = NotesService.tabsData;
+            root.loadTabContent(root.currentTabIndex);
+        }
+    }
+
+    property var tabsData: NotesService.tabsData
 
     property var tabOptions: root.tabsData.tabs.map((tab, index) => ({
         displayName: tab.title,
@@ -46,12 +52,7 @@ OverlayBackground {
         if (!textInput)
             return;
         
-        if (currentTabIndex >= 0 && currentTabIndex < tabsData.tabs.length) {
-            tabsData.tabs[currentTabIndex].content = root.content;
-        }
-        
-        const jsonString = JSON.stringify(tabsData, null, 2);
-        noteFile.setText(jsonString);
+        NotesService.updateTab(currentTabIndex, root.content);
     }
 
     function loadTabContent(tabIndex) {
@@ -76,11 +77,8 @@ OverlayBackground {
         let newTabs = root.tabsData.tabs.slice();
         newTabs.push(newTab);
         
-        root.tabsData = {
-            tabs: newTabs
-        };
-        
-        saveToFile();
+        root.tabsData = { tabs: newTabs };
+        NotesService.replaceTabs(root.tabsData);
         
         root.changeCurrentTab(newTabIndex);
         Qt.callLater(() => {
@@ -90,22 +88,34 @@ OverlayBackground {
     }
 
     function deleteCurrentTab() {
-        if (root.tabsData.tabs.length <= 1) { // not deleting the last tab
+        if (root.tabsData.tabs.length <= 1) {
+            let newTabs = [{
+                title: "Tab 1",
+                icon: "article",
+                content: ""
+            }];
+            root.tabsData = { tabs: newTabs };
+            Persistent.states.overlay.notes.tabIndex = 0;
+            root.content = "";
+            NotesService.replaceTabs(root.tabsData);
+            Qt.callLater(() => {
+                updateCopyListEntries();
+            });
             return;
         }
-        
+
         const deletedIndex = currentTabIndex;
         let newTabs = root.tabsData.tabs.slice();
         newTabs.splice(deletedIndex, 1);
-        
+
         const newIndex = Math.min(deletedIndex, newTabs.length - 1);
-        
+
         root.tabsData = { tabs: newTabs };
         Persistent.states.overlay.notes.tabIndex = newIndex;
         root.content = newTabs[newIndex].content || "";
-        
-        saveToFile();
-        
+
+        NotesService.replaceTabs(root.tabsData);
+
         Qt.callLater(() => {
             updateCopyListEntries();
         });
@@ -135,7 +145,7 @@ OverlayBackground {
         if (!textInput)
             return;
         if (immediate) {
-            copyListDebounce?.stop();
+            if (copyListDebounce) copyListDebounce.stop();
             updateCopyListEntries();
         } else {
             copyListDebounce.restart();
@@ -289,6 +299,12 @@ OverlayBackground {
                             icon: "add",
                             value: 1,
                             releaseAction: (() => root.addNewTab())
+                        },
+                        {
+                            displayName: "",
+                            icon: "delete",
+                            value: 2,
+                            releaseAction: (() => root.deleteCurrentTab())
                         }
                     ]
                 }
@@ -311,6 +327,12 @@ OverlayBackground {
                     }
                     onLoaded: item.height = 50
                 }
+            }
+        }
+        
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_Delete && event.modifiers & Qt.ShiftModifier) {
+                root.deleteCurrentTab();
             }
         }
 
@@ -338,9 +360,7 @@ OverlayBackground {
                 padding: 12
 
                 onTextChanged: {
-                    if (textInput.activeFocus) {
-                        saveDebounce.restart();
-                    }
+                    saveDebounce.restart();
                     root.scheduleCopylistUpdate(true);
                 }
 
@@ -416,7 +436,9 @@ OverlayBackground {
             Layout.fillWidth: true
             Layout.margins: 16
             horizontalAlignment: Text.AlignRight
-            text: saveDebounce.running ? Translation.tr("Saving...") : Translation.tr("Saved    ")
+            text: saveDebounce.running || NotesService.writing || NotesService.pendingData !== null
+                ? Translation.tr("Saving...")
+                : Translation.tr("Saved    ")
             color: Appearance.colors.colSubtext
         }
     }
@@ -433,55 +455,6 @@ OverlayBackground {
         interval: 100
         repeat: false
         onTriggered: updateCopylistPositions()
-    }
-
-    FileView {
-        id: noteFile
-        path: Qt.resolvedUrl(Directories.notesPath)
-        onLoaded: {
-            try {
-                const jsonText = noteFile.text();
-                const parsed = JSON.parse(jsonText);
-                
-                if (parsed && parsed.tabs && Array.isArray(parsed.tabs)) {
-                    root.tabsData = parsed;
-                } else {
-                    root.tabsData = {
-                        tabs: root.defaultTabs
-                    };
-                }
-            } catch (e) {
-                console.log("[Overlay Notes] JSON parse error: " + e);
-                root.tabsData = {
-                    tabs: root.defaultTabs
-                };
-            }
-            
-            loadTabContent(root.currentTabIndex);
-            
-            if (pendingReload) {
-                pendingReload = false;
-                Qt.callLater(root.focusAtEnd);
-            }
-            Qt.callLater(root.updateCopyListEntries);
-        }
-        onLoadFailed: error => {
-            if (error === FileViewError.FileNotFound) {
-                root.tabsData = {
-                    tabs: root.defaultTabs
-                };
-                root.content = "";
-                saveToFile();
-                
-                if (pendingReload) {
-                    pendingReload = false;
-                    Qt.callLater(root.focusAtEnd);
-                }
-                Qt.callLater(root.updateCopyListEntries);
-            } else {
-                console.log("[Overlay Notes] Error loading file: " + error);
-            }
-        }
     }
 
     component TitleEditComp: Row {
@@ -505,8 +478,7 @@ OverlayBackground {
             if (disableEditMode) root.tabEditModeEnabled = false;
 
             root.tabsData = { tabs: newTabs };
-            
-            saveToFile();
+            NotesService.updateTabMetadata(currentTabIndex, newTabs[currentTabIndex].title, newTabs[currentTabIndex].icon);
         }
 
         Behavior on height {

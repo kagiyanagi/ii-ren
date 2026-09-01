@@ -80,7 +80,7 @@ AbstractBackgroundWidget {
         if (paths.length === 0) return;
 
         if (LocalSend.available) {
-            for (let k = 0; k < paths.length; k++) LocalSend.addDroppedFile(paths[k]);
+            LocalSend.sendFiles(paths);
         } else if (KdeConnectService.available && KdeConnectService.activeDevice) {
             for (let j = 0; j < paths.length; j++) {
                 KdeConnectService.shareFile(KdeConnectService.activeDeviceId, paths[j]);

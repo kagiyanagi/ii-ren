@@ -140,7 +140,10 @@ AbstractBackgroundWidget {
                     }
 
                     onClicked: {
-                        GlobalStates.openRightSidebar();
+                        Ai.surfaceRouter.open({
+                            surface: "sidebar",
+                            focusIntent: "composer"
+                        });
                     }
                 }
             }
