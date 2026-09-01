@@ -38,6 +38,10 @@ Canvas {
     property int currentSecond: DateTime.clock.seconds
 
     contextType: "2d"
+    renderTarget: Canvas.FramebufferObject
+    renderStrategy: Canvas.Immediate
+    antialiasing: true
+    smooth: true
 
     Connections {
         target: DateTime.clock

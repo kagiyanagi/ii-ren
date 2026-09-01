@@ -60,23 +60,81 @@ AbstractBackgroundWidget {
             }
         }
 
-        // Center: quote text
-        StyledText {
-            id: quoteText
+        // Top-right: refresh button when random online quotes are enabled
+        RippleButton {
+            id: refreshButton
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 12
+            implicitWidth: 32
+            implicitHeight: 32
+            visible: Config.options?.background?.widgets?.quote?.fetchRandom ?? false
+            topLeftRadius: Appearance.rounding.full
+            topRightRadius: Appearance.rounding.full
+            bottomLeftRadius: Appearance.rounding.full
+            bottomRightRadius: Appearance.rounding.full
+            colBackground: "transparent"
+            colBackgroundHover: Appearance.colors.colLayer1Hover
+            colRipple: Appearance.colors.colLayer1Active
+
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: "refresh"
+                iconSize: 18
+                color: root.iconColor
+                RotationAnimation on rotation {
+                    running: QuoteService.loading
+                    from: 0
+                    to: 360
+                    loops: Animation.Infinite
+                    duration: Appearance.animation.elementMoveDuration * 4
+                }
+            }
+
+            onClicked: QuoteService.fetchRandomQuote()
+        }
+
+        // Center: quote and author container
+        ColumnLayout {
             anchors.centerIn: parent
             width: parent.width - 64
-            height: parent.height - 96
-            text: Config.options.background.widgets.quote.quoteText || Translation.tr("Add your favorite quote in settings.")
-            font.pixelSize: Config.options.background.widgets.quote.fontSize || Appearance.font.pixelSize.normal
-            font.italic: true
-            font.variableAxes: ({ "wght": 500, "wdth": 125 })
-            color: root.textColorOnBg
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            wrapMode: Text.Wrap
-            elide: Text.ElideRight
-            maximumLineCount: 6
-            lineHeight: 1.3
+            spacing: 8
+
+            StyledText {
+                id: quoteText
+                Layout.fillWidth: true
+                text: {
+                    if (Config.options?.background?.widgets?.quote?.fetchRandom) {
+                        if (QuoteService.currentQuote && QuoteService.currentQuote.length > 0)
+                            return `"${QuoteService.currentQuote}"`;
+                        if (QuoteService.loading)
+                            return Translation.tr("Fetching quote…");
+                    }
+                    return Config.options.background.widgets.quote.quoteText || Translation.tr("Add your favorite quote in settings.");
+                }
+                font.pixelSize: Config.options.background.widgets.quote.fontSize || Appearance.font.pixelSize.normal
+                font.italic: true
+                font.variableAxes: ({ "wght": 500, "wdth": 125 })
+                color: root.textColorOnBg
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.Wrap
+                elide: Text.ElideRight
+                maximumLineCount: 6
+                lineHeight: 1.3
+            }
+
+            StyledText {
+                id: authorText
+                Layout.fillWidth: true
+                visible: (Config.options?.background?.widgets?.quote?.fetchRandom ?? false) && QuoteService.currentAuthor.length > 0
+                text: "— " + QuoteService.currentAuthor
+                font.pixelSize: Math.max(10, (Config.options.background.widgets.quote.fontSize || Appearance.font.pixelSize.normal) - 3)
+                font.weight: Font.Medium
+                color: root.iconColor
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
         }
 
         // Bottom-right: closing quote (normal orientation)

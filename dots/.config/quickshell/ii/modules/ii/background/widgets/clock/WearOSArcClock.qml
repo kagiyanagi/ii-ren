@@ -126,7 +126,7 @@ Item {
                 const currentMonth = today.getMonth();
                 const currentYear = today.getFullYear();
                 let todayEvts = [];
-                if (CalendarService.khalAvailable && CalendarService.events) {
+                if (CalendarService.events) {
                     for (let i = 0; i < CalendarService.events.length; i++) {
                         let evt = CalendarService.events[i];
                         let taskDate = new Date(evt.startDate);
@@ -215,6 +215,10 @@ Item {
             anchors.fill: parent
             z: 1
             contextType: "2d"
+            renderTarget: Canvas.FramebufferObject
+            renderStrategy: Canvas.Immediate
+            antialiasing: true
+            smooth: true
 
             onPaint: {
                 var ctx = getContext("2d");

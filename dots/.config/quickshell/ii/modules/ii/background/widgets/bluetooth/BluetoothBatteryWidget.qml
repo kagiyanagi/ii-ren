@@ -40,17 +40,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        // Perfect rounded-corner mask for all content inside the card (preventing any blur/text bleed)
-        layer.enabled: true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             id: container

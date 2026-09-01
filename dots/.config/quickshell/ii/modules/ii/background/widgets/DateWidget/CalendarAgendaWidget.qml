@@ -32,7 +32,7 @@ AbstractBackgroundWidget {
     readonly property int currYear: currDate.getFullYear()
 
     readonly property var todayEvents: {
-        if (!CalendarService.khalAvailable || !CalendarService.events) return [];
+        if (!CalendarService.events) return [];
         let list = [];
         let today = root.currDate;
         if (!today) today = new Date();
@@ -64,7 +64,7 @@ AbstractBackgroundWidget {
             let d = new Date(monday);
             d.setDate(monday.getDate() + i);
             let hasEvts = false;
-            if (CalendarService.khalAvailable && CalendarService.events) {
+            if (CalendarService.events) {
                 for (let j = 0; j < CalendarService.events.length; j++) {
                     let evt = CalendarService.events[j];
                     let taskDate = new Date(evt.startDate);
@@ -96,16 +96,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             anchors.fill: parent

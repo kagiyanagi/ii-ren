@@ -41,7 +41,7 @@ AbstractBackgroundWidget {
 
     // Chronologically sorted today events
     readonly property var todayEvents: {
-        if (!CalendarService.khalAvailable || !CalendarService.events) return [];
+        if (!CalendarService.events) return [];
         let list = [];
         let today = root.currDate;
         if (!today) today = new Date();
@@ -104,16 +104,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             anchors.fill: parent

@@ -110,6 +110,10 @@ AbstractBackgroundWidget {
                 anchors.fill: parent
                 z: 1
                 contextType: "2d"
+                renderTarget: Canvas.FramebufferObject
+                renderStrategy: Canvas.Immediate
+                antialiasing: true
+                smooth: true
 
                 onPaint: {
                     var ctx = getContext("2d");

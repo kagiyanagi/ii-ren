@@ -33,16 +33,7 @@ AbstractBackgroundWidget {
         radius: Appearance.rounding.full
         color: root.cardBgColor
 
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: mainContainer.width
-                height: mainContainer.height
-                radius: mainContainer.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         RowLayout {
             anchors.fill: parent

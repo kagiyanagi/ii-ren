@@ -627,31 +627,6 @@ Singleton {
                         property string backgroundShape: "Cookie9Sided"
                         property string imagePath: ""
                     }
-                    property JsonObject android_search_bar: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 400
-                        property real y: 100
-                        property int widgetSize: 100
-                        property string aspectRatio: "0.5x2"
-                        property string action1: "music_rec"
-                        property string action2: "ai_chat"
-                        property string action3: "search"
-                    }
-                    property JsonObject search_pill: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 400
-                        property real y: 100
-                        property int widgetSize: 100
-                        property string aspectRatio: "0.5x2"
-                        property string action1: "ai_chat"
-                        property string action2: "music_rec"
-                        property string action3: "search"
-                        property string aiLogo: "gemini"
-                        property string outerLeftIcon: "spark"
-                        property bool useMaterialSymbolForOuterLeftIcon: false
-                    }
                     property JsonObject resource_cpu_pill: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
@@ -689,13 +664,6 @@ Singleton {
                         property bool enableCpu: true
                         property bool enableRam: true
                         property bool enableDisk: true
-                    }
-                    property JsonObject grid_card_clock: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 400
-                        property real y: 100
-                        property int widgetSize: 100
                     }
                     property JsonObject at_a_glance: JsonObject {
                         property bool enable: false
@@ -999,20 +967,6 @@ Singleton {
                         property real y: 200
                         property bool expressiveColors: false
                     }
-                    property JsonObject email_inbox: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool expressiveColors: false
-                    }
-                    property JsonObject email_inbox_2x1: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool expressiveColors: false
-                    }
                     property JsonObject quote: JsonObject {
                         property bool enable: false
                         property string placementStrategy: "free"
@@ -1021,22 +975,11 @@ Singleton {
                         property bool expressiveColors: false
                         property string quoteText: ""
                         property real fontSize: 16
-                    }
-                    property JsonObject quick_actions: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool expressiveColors: false
-                        property string bottomButton1: "translator"
-                        property string bottomButton2: "phone"
-                    }
-                    property JsonObject ai_chat: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool expressiveColors: false
+                        property bool fetchRandom: false
+                        property bool animeOnly: false
+                        property string cachedRandomQuote: ""
+                        property string cachedRandomAuthor: ""
+                        property int updateIntervalHours: 4
                     }
                     property JsonObject notes_widget: JsonObject {
                         property bool enable: false
@@ -1637,6 +1580,18 @@ Singleton {
                     property bool showSlider: true
                     property int lyricSize: Appearance.font.pixelSize.larger
                 }
+                property JsonObject todo: JsonObject {
+                    property bool enable: false
+                    property string placementStrategy: "free"
+                    property real x: 200
+                    property real y: 200
+                }
+                property JsonObject images: JsonObject {
+                    property bool enable: false
+                    property string placementStrategy: "free"
+                    property real x: 200
+                    property real y: 200
+                }
             }
 
             property JsonObject overview: JsonObject {
@@ -2085,6 +2040,22 @@ Singleton {
         for (let i = 0; i < cloned.length; i++) {
             if (cloned[i].id === instanceId) {
                 cloned[i].lockBehavior = newLockBehavior;
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            root.options.background.activeWidgets = cloned;
+        }
+    }
+
+    function updateWidgetConfig(instanceId, key, value) {
+        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
+        let found = false;
+        for (let i = 0; i < cloned.length; i++) {
+            if (cloned[i].id === instanceId) {
+                if (!cloned[i].config) cloned[i].config = {};
+                cloned[i].config[key] = value;
                 found = true;
                 break;
             }

@@ -97,6 +97,7 @@ QtObject {
                     "lockBehavior": configItem.lockBehavior || "hide",
                     "staggerDelay": addCount * 60,
                     "scale": configItem.scale ?? 1.0,
+                    "widgetConfig": configItem.config || {},
                     "exiting": false
                 });
                 addCount++;
@@ -122,6 +123,7 @@ QtObject {
                 if (Math.abs((modelItem.scale ?? 1.0) - (configItem.scale ?? 1.0)) > 0.001) {
                     modelItem.scale = configItem.scale ?? 1.0;
                 }
+                modelItem.widgetConfig = configItem.config || {};
                 if (moveCount > 0 || addCount > 0) {
                     modelItem.staggerDelay = j * 60;
                 }

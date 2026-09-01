@@ -23,9 +23,6 @@ Item {
             }
         }
     }
-    
-
-
 
     // Every gallery card re-runs mapToItem() when this changes. Quantising the
     // scroll position keeps that off the per-pixel path: the load/unload
@@ -69,17 +66,65 @@ Item {
     readonly property var resourceWidgets: widgetCategories.Resources
     readonly property var systemWidgets: widgetCategories.System
 
-    // Accordion collapse state per category. Default: all categories collapsed.
-    // When collapsed, widget preview Loaders are not active → no GPU/memory cost.
-    property bool clockExpanded: false
-    property bool mediaExpanded: false
-    property bool weatherExpanded: false
-    property bool dateExpanded: false
-    property bool photoExpanded: false
-    property bool bluetoothExpanded: false
-    property bool utilityExpanded: false
-    property bool resourceExpanded: false
-    property bool systemExpanded: false
+    readonly property var categoriesList: [
+        { id: "clock", title: Translation.tr("Clocks"), icon: "schedule", widgets: widgetCategories.Clock },
+        { id: "media", title: Translation.tr("Media Players"), icon: "play_circle", widgets: widgetCategories.Media },
+        { id: "weather", title: Translation.tr("Weather"), icon: "cloud", widgets: widgetCategories.Weather },
+        { id: "date", title: Translation.tr("Date & Calendar"), icon: "calendar_today", widgets: widgetCategories.Date },
+        { id: "photo", title: Translation.tr("Photo"), icon: "image", widgets: widgetCategories.Photo },
+        { id: "bluetooth", title: Translation.tr("Devices & Bluetooth"), icon: "devices", widgets: widgetCategories.Bluetooth },
+        { id: "utility", title: Translation.tr("Utility"), icon: "build", widgets: widgetCategories.Utility },
+        { id: "system", title: Translation.tr("System"), icon: "tune", widgets: widgetCategories.System },
+        { id: "resource", title: Translation.tr("Resources"), icon: "monitor_heart", widgets: widgetCategories.Resources }
+    ]
+
+    property var expandedCategories: ({
+        "clock": false,
+        "media": false,
+        "weather": false,
+        "date": false,
+        "photo": false,
+        "bluetooth": false,
+        "utility": false,
+        "system": false,
+        "resource": false
+    })
+
+    function toggleCategory(catId) {
+        let updated = Object.assign({}, expandedCategories);
+        updated[catId] = !updated[catId];
+        expandedCategories = updated;
+    }
+
+    function countActiveWidgets(categoryWidgetList) {
+        if (!categoryWidgetList || categoryWidgetList.length === 0)
+            return 0;
+        let activeList = Config.options.background.activeWidgets || [];
+        if (activeList.length === 0)
+            return 0;
+        let count = 0;
+        for (let i = 0; i < categoryWidgetList.length; i++) {
+            let wid = categoryWidgetList[i].widgetId;
+            for (let j = 0; j < activeList.length; j++) {
+                if (activeList[j].widgetId === wid) {
+                    count++;
+                    break;
+                }
+            }
+        }
+        return count;
+    }
+
+    // Backward compatibility getters
+    property bool clockExpanded: expandedCategories["clock"] ?? false
+    property bool mediaExpanded: expandedCategories["media"] ?? false
+    property bool weatherExpanded: expandedCategories["weather"] ?? false
+    property bool dateExpanded: expandedCategories["date"] ?? false
+    property bool photoExpanded: expandedCategories["photo"] ?? false
+    property bool bluetoothExpanded: expandedCategories["bluetooth"] ?? false
+    property bool utilityExpanded: expandedCategories["utility"] ?? false
+    property bool resourceExpanded: expandedCategories["resource"] ?? false
+    property bool systemExpanded: expandedCategories["system"] ?? false
 
     // Rich catalog sections are opt-in. This keeps the first page pass limited
     // to the small Desktop Widgets controls and avoids starting network work.
@@ -146,9 +191,12 @@ Item {
         id: page
         anchors.fill: parent
         forceWidth: true
+        readonly property int index: 4
+        property bool register: parent.register ?? false
         opacity: subPageOverlay.slideProgress
         visible: opacity > 0
 
+        // ── 1. Desktop Widgets Configuration ─────────────────────────────────
         ContentSection {
             title: Translation.tr("Desktop Widgets")
             icon: "widgets"
@@ -161,177 +209,169 @@ Item {
                 materialIcon: "lock"
             }
 
-            ColumnLayout {
+            ConfigSwitch {
+                buttonIcon: "grid_on"
+                text: Translation.tr("Enable alignment grid (10px)")
+                checked: Config.options.background.widgets.enableGrid ?? false
+                onCheckedChanged: {
+                    Config.options.background.widgets.enableGrid = checked;
+                }
+            }
+
+            ConfigSwitch {
+                buttonIcon: "align_horizontal_center"
+                text: Translation.tr("Enable layout snap alignment")
+                checked: Config.options.background.widgets.enableSnap ?? false
+                onCheckedChanged: {
+                    Config.options.background.widgets.enableSnap = checked;
+                }
+            }
+
+            NoticeBox {
+                color: "transparent"
+                textColor: Appearance.colors.colOnLayer0
                 Layout.fillWidth: true
-                spacing: 4
+                materialIcon: "info"
+                text: Translation.tr("Hold Ctrl while dragging a widget to temporarily disable the alignment grid and snap for pixel-perfect placement")
+            }
 
-                ConfigSwitch {
-                    Layout.fillWidth: true
-                    buttonIcon: "grid_on"
-                    text: Translation.tr("Enable alignment grid (10px)")
-                    checked: Config.options.background.widgets.enableGrid ?? false
-                    onCheckedChanged: {
-                        Config.options.background.widgets.enableGrid = checked;
-                    }
+            ConfigSlider {
+                buttonIcon: "photo_size_select_small"
+                text: Translation.tr("Global widget scale")
+                value: Config.options.background.widgets.widgetsScale ?? 1.0
+                from: 0.5
+                to: 2.0
+                onMoved: val => {
+                    Config.options.background.widgets.widgetsScale = val;
                 }
+            }
 
-                ConfigSwitch {
-                    Layout.fillWidth: true
-                    buttonIcon: "align_horizontal_center"
-                    text: Translation.tr("Enable layout snap alignment")
-                    checked: Config.options.background.widgets.enableSnap ?? false
-                    onCheckedChanged: {
-                        Config.options.background.widgets.enableSnap = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "lock"
+                text: Translation.tr("Lock widget positions")
+                checked: Config.options.background.widgets.lockWidgetPositions ?? false
+                onCheckedChanged: {
+                    Config.options.background.widgets.lockWidgetPositions = checked;
                 }
+            }
 
-                NoticeBox {
-                    Layout.fillWidth: true
-                    materialIcon: "info"
-                    text: Translation.tr("Hold Ctrl while dragging a widget to temporarily disable the alignment grid and snap for pixel-perfect placement")
+            ConfigSwitch {
+                buttonIcon: "desktop_windows"
+                text: Translation.tr("Show widgets only in one monitor")
+                checked: Config.options.background.widgets.showOnlyOnSingleMonitor ?? false
+                onCheckedChanged: {
+                    Config.options.background.widgets.showOnlyOnSingleMonitor = checked;
                 }
+            }
 
-                ConfigSlider {
-                    Layout.fillWidth: true
-                    text: Translation.tr("Global widget scale")
-                    value: Config.options.background.widgets.widgetsScale ?? 1.0
-                    from: 0.5
-                    to: 2.0
-                    onMoved: val => {
-                        Config.options.background.widgets.widgetsScale = val;
-                    }
+            MonitorPicker {
+                visible: Config.options.background.widgets.showOnlyOnSingleMonitor ?? false
+                currentValue: Config.options.background.widgets.targetMonitor ?? ""
+                onSelected: newValue => {
+                    Config.options.background.widgets.targetMonitor = newValue;
                 }
+            }
 
-                ConfigSwitch {
+            Loader {
+                Layout.fillWidth: true
+                Layout.preferredHeight: item ? item.implicitHeight : 0
+                active: widgetsConfigRoot.colorSchemeActive
+                asynchronous: true
+                sourceComponent: ContentSubsection {
+                    title: Translation.tr("Widget Color Scheme")
                     Layout.fillWidth: true
-                    buttonIcon: "lock"
-                    text: Translation.tr("Lock widget positions")
-                    checked: Config.options.background.widgets.lockWidgetPositions ?? false
-                    onCheckedChanged: {
-                        Config.options.background.widgets.lockWidgetPositions = checked;
-                    }
-                }
 
-                ConfigSwitch {
-                    Layout.fillWidth: true
-                    buttonIcon: "desktop_windows"
-                    text: Translation.tr("Show widgets only in one monitor")
-                    checked: Config.options.background.widgets.showOnlyOnSingleMonitor ?? false
-                    onCheckedChanged: {
-                        Config.options.background.widgets.showOnlyOnSingleMonitor = checked;
-                    }
-                }
-
-                MonitorPicker {
-                    Layout.fillWidth: true
-                    visible: Config.options.background.widgets.showOnlyOnSingleMonitor ?? false
-                    currentValue: Config.options.background.widgets.targetMonitor ?? ""
-                    onSelected: newValue => {
-                        Config.options.background.widgets.targetMonitor = newValue;
-                    }
-                }
-
-                Loader {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: item ? item.implicitHeight : 0
-                    active: widgetsConfigRoot.colorSchemeActive
-                    asynchronous: true
-                    sourceComponent: ContentSubsection {
-                        title: Translation.tr("Widget Color Scheme")
+                    Rectangle {
                         Layout.fillWidth: true
+                        implicitHeight: schemeGrid.implicitHeight + 24
+                        color: Appearance.colors.colLayer1
+                        radius: Appearance.rounding.normal
+                        border.color: Appearance.colors.colLayer0Border
+                        border.width: 1
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: schemeGrid.implicitHeight + 24
-                            color: Appearance.colors.colLayer1
-                            radius: Appearance.rounding.normal
-                            border.color: Appearance.colors.colLayer0Border
-                            border.width: 1
+                        GridLayout {
+                            id: schemeGrid
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            columns: 3
+                            rowSpacing: 8
+                            columnSpacing: 8
 
-                            GridLayout {
-                                id: schemeGrid
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                columns: 3
-                                rowSpacing: 8
-                                columnSpacing: 8
+                            Repeater {
+                                model: WidgetColorScheme.availableSchemes
 
-                                Repeater {
-                                    model: WidgetColorScheme.availableSchemes
+                                delegate: RippleButton {
+                                    required property var modelData
 
-                                    delegate: RippleButton {
-                                        required property var modelData
+                                    Layout.fillWidth: true
+                                    implicitHeight: 64
 
-                                        Layout.fillWidth: true
-                                        implicitHeight: 64
+                                    readonly property bool toggled: Config.options.background.widgets.colorScheme === modelData
+                                    readonly property bool sharpMode: Config.options.appearance.sharpMode
 
-                                        readonly property bool toggled: Config.options.background.widgets.colorScheme === modelData
-                                        readonly property bool sharpMode: Config.options.appearance.sharpMode
+                                    colBackground: toggled ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
+                                    colBackgroundHover: toggled ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer2Hover
+                                    colRipple: toggled ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer2Active
 
-                                        colBackground: toggled ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
-                                        colBackgroundHover: toggled ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colLayer2Hover
-                                        colRipple: toggled ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer2Active
+                                    buttonRadius: Appearance.rounding.small
+                                    
+                                    onClicked: Config.options.background.widgets.colorScheme = modelData
+                                    
+                                    StyledToolTip {
+                                        text: WidgetColorScheme.schemes[modelData] ? WidgetColorScheme.schemes[modelData].name : modelData
+                                    }
 
-                                        buttonRadius: Appearance.rounding.small
-                                        
-                                        onClicked: Config.options.background.widgets.colorScheme = modelData
-                                        
-                                        StyledToolTip {
-                                            text: WidgetColorScheme.schemes[modelData] ? WidgetColorScheme.schemes[modelData].name : modelData
-                                        }
+                                    Item {
+                                        anchors.fill: parent
 
-                                        Item {
-                                            anchors.fill: parent
+                                        Canvas {
+                                            id: myCanvas
+                                            anchors.centerIn: parent
+                                            anchors.margins: 8
 
-                                            Canvas {
-                                                id: myCanvas
-                                                anchors.centerIn: parent
-                                                anchors.margins: 8
+                                            implicitWidth: parent.height - 16
+                                            implicitHeight: parent.height - 16
+                                            antialiasing: true
 
-                                                implicitWidth: parent.height - 16
-                                                implicitHeight: parent.height - 16
-                                                antialiasing: true
+                                            onPaint: {
+                                                var ctx = getContext("2d");
+                                                var centerX = width / 2;
+                                                var centerY = height / 2;
+                                                var radius = width / 2;
 
-                                                onPaint: {
-                                                    var ctx = getContext("2d");
-                                                    var centerX = width / 2;
-                                                    var centerY = height / 2;
-                                                    var radius = width / 2;
-                                                    
-                                                    var primaryColor = WidgetColorScheme.getCardBgColor(modelData);
-                                                    var secondaryColor = WidgetColorScheme.getTextColorOnBg(modelData);
-                                                    var tertiaryColor = WidgetColorScheme.getAccentColor(modelData);
+                                                var primaryColor = WidgetColorScheme.getCardBgColor(modelData);
+                                                var secondaryColor = WidgetColorScheme.getTextColorOnBg(modelData);
+                                                var tertiaryColor = WidgetColorScheme.getAccentColor(modelData);
 
-                                                    ctx.reset();
+                                                ctx.reset();
 
-                                                    if (sharpMode) {
-                                                        ctx.fillStyle = primaryColor;
-                                                        ctx.fillRect(0, 0, width, centerY);
+                                                if (sharpMode) {
+                                                    ctx.fillStyle = primaryColor;
+                                                    ctx.fillRect(0, 0, width, centerY);
 
-                                                        ctx.fillStyle = secondaryColor;
-                                                        ctx.fillRect(centerX, centerY, centerX, centerY);
+                                                    ctx.fillStyle = secondaryColor;
+                                                    ctx.fillRect(centerX, centerY, centerX, centerY);
 
-                                                        ctx.fillStyle = tertiaryColor;
-                                                        ctx.fillRect(0, centerY, centerX, centerY);
-                                                    } else {
-                                                        ctx.beginPath();
-                                                        ctx.fillStyle = primaryColor;
-                                                        ctx.moveTo(centerX, centerY);
-                                                        ctx.arc(centerX, centerY, radius, Math.PI, 0, false);
-                                                        ctx.fill();
+                                                    ctx.fillStyle = tertiaryColor;
+                                                    ctx.fillRect(0, centerY, centerX, centerY);
+                                                } else {
+                                                    ctx.beginPath();
+                                                    ctx.fillStyle = primaryColor;
+                                                    ctx.moveTo(centerX, centerY);
+                                                    ctx.arc(centerX, centerY, radius, Math.PI, 0, false);
+                                                    ctx.fill();
 
-                                                        ctx.beginPath();
-                                                        ctx.fillStyle = secondaryColor;
-                                                        ctx.moveTo(centerX, centerY);
-                                                        ctx.arc(centerX, centerY, radius, 0, Math.PI / 2, false);
-                                                        ctx.fill();
+                                                    ctx.beginPath();
+                                                    ctx.fillStyle = secondaryColor;
+                                                    ctx.moveTo(centerX, centerY);
+                                                    ctx.arc(centerX, centerY, radius, 0, Math.PI / 2, false);
+                                                    ctx.fill();
 
-                                                        ctx.beginPath();
-                                                        ctx.fillStyle = tertiaryColor;
-                                                        ctx.moveTo(centerX, centerY);
-                                                        ctx.arc(centerX, centerY, radius, Math.PI / 2, Math.PI, false);
-                                                        ctx.fill();
-                                                    }
+                                                    ctx.beginPath();
+                                                    ctx.fillStyle = tertiaryColor;
+                                                    ctx.moveTo(centerX, centerY);
+                                                    ctx.arc(centerX, centerY, radius, Math.PI / 2, Math.PI, false);
+                                                    ctx.fill();
                                                 }
                                             }
                                         }
@@ -342,217 +382,26 @@ Item {
                     }
                 }
             }
+        }
 
-            ContentSubsection {
-                title: Translation.tr("Clocks")
-                icon: "schedule"
+        // ── 2. Widget Catalog (Categorized Gallery) ──────────────────────────
+        ContentSection {
+            title: Translation.tr("Widget Catalog")
+            icon: "dashboard_customize"
+            tooltip: Translation.tr("Browse, preview, and configure widgets across all categories")
+
+            ColumnLayout {
                 Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.clockExpanded
-                onExpandedChanged: widgetsConfigRoot.clockExpanded = expanded
+                spacing: 8
 
-                // GPU: Loader prevents Flow+Repeater+cards from being created when collapsed
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.clockExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.clockWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Media Players")
-                icon: "play_circle"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.mediaExpanded
-                onExpandedChanged: widgetsConfigRoot.mediaExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.mediaExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.mediaWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Weather")
-                icon: "cloud"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.weatherExpanded
-                onExpandedChanged: widgetsConfigRoot.weatherExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.weatherExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.weatherWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Date & Calendar")
-                icon: "calendar_today"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.dateExpanded
-                onExpandedChanged: widgetsConfigRoot.dateExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.dateExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.dateWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Photo")
-                icon: "image"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.photoExpanded
-                onExpandedChanged: widgetsConfigRoot.photoExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.photoExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.photoWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Devices & Bluetooth")
-                icon: "earbuds"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.bluetoothExpanded
-                onExpandedChanged: widgetsConfigRoot.bluetoothExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.bluetoothExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.bluetoothWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Utility")
-                icon: "build"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.utilityExpanded
-                onExpandedChanged: widgetsConfigRoot.utilityExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.utilityExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.utilityWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("System")
-                icon: "tune"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.systemExpanded
-                onExpandedChanged: widgetsConfigRoot.systemExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.systemExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.systemWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Resources")
-                icon: "monitor_heart"
-                Layout.fillWidth: true
-                collapsible: true
-                expanded: widgetsConfigRoot.resourceExpanded
-                onExpandedChanged: widgetsConfigRoot.resourceExpanded = expanded
-
-                Loader {
-                    Layout.fillWidth: true
-                    active: widgetsConfigRoot.resourceExpanded
-                    asynchronous: true
-                    sourceComponent: Flow {
-                        Layout.fillWidth: true
-                        spacing: 12
-                        Repeater {
-                            model: widgetsConfigRoot.resourceWidgets
-                            delegate: widgetCardComponent
-                        }
-                    }
+                Repeater {
+                    model: widgetsConfigRoot.categoriesList
+                    delegate: categorySectionComponent
                 }
             }
         }
 
-        // ── Widget Extensions ────────────────────────────────────────────────
+        // ── 3. Widget Extensions ─────────────────────────────────────────────
         ContentSection {
             title: Translation.tr("Widget Extensions")
             icon: "extension"
@@ -577,6 +426,7 @@ Item {
             }
         }
 
+        // ── 4. Browse Community Widgets ──────────────────────────────────────
         ContentSection {
             title: Translation.tr("Browse Community Widgets")
             icon: "travel_explore"
@@ -593,23 +443,186 @@ Item {
             }
         }
     }
+
+    // ── Category Section Component ───────────────────────────────────────────
+    Component {
+        id: categorySectionComponent
+
+        Rectangle {
+            id: catCard
+            required property var modelData
+            required property int index
+
+            Layout.fillWidth: true
+            implicitHeight: catCol.implicitHeight
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer1
+            border.color: isExpanded ? Appearance.colors.colPrimary : Appearance.colors.colLayer0Border
+            border.width: 1
+
+            Behavior on border.color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
+            readonly property string catId: modelData.id
+            readonly property var catWidgets: modelData.widgets || []
+            readonly property bool isExpanded: widgetsConfigRoot.expandedCategories[catId] ?? false
+            readonly property int activeCount: widgetsConfigRoot.countActiveWidgets(catWidgets)
+
+            ColumnLayout {
+                id: catCol
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+                spacing: 0
+
+                RippleButton {
+                    id: headerBtn
+                    Layout.fillWidth: true
+                    implicitHeight: 52
+                    buttonRadius: Appearance.rounding.normal
+                    colBackground: "transparent"
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    colRipple: Appearance.colors.colLayer1Active
+                    onClicked: widgetsConfigRoot.toggleCategory(catCard.catId)
+
+                    RowLayout {
+                        anchors {
+                            fill: parent
+                            leftMargin: 12
+                            rightMargin: 16
+                        }
+                        spacing: 12
+
+                        Rectangle {
+                            implicitWidth: 32
+                            implicitHeight: 32
+                            radius: Appearance.rounding.small
+                            color: catCard.isExpanded ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
+
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
+
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                text: catCard.modelData.icon
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: catCard.isExpanded ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer2
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: catCard.modelData.title
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnLayer1
+                        }
+
+                        // Active count badge
+                        Rectangle {
+                            visible: catCard.activeCount > 0
+                            implicitWidth: activeBadgeRow.implicitWidth + 12
+                            implicitHeight: 22
+                            radius: Appearance.rounding.full
+                            color: Appearance.colors.colPrimaryContainer
+
+                            RowLayout {
+                                id: activeBadgeRow
+                                anchors.centerIn: parent
+                                spacing: 4
+                                MaterialSymbol {
+                                    text: "check"
+                                    iconSize: Appearance.font.pixelSize.smallest
+                                    color: Appearance.colors.colOnPrimaryContainer
+                                }
+                                StyledText {
+                                    text: catCard.activeCount + " " + Translation.tr("active")
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    font.weight: Font.DemiBold
+                                    color: Appearance.colors.colOnPrimaryContainer
+                                }
+                            }
+                        }
+
+                        // Total count chip
+                        StyledText {
+                            text: catCard.catWidgets.length + " " + Translation.tr("widgets")
+                            font.pixelSize: Appearance.font.pixelSize.smallie
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        MaterialSymbol {
+                            text: "keyboard_arrow_down"
+                            iconSize: Appearance.font.pixelSize.large
+                            color: Appearance.colors.colOnLayer1
+                            rotation: catCard.isExpanded ? 180 : 0
+                            Behavior on rotation {
+                                NumberAnimation {
+                                    duration: Appearance.animation.elementMoveFast.duration
+                                    easing.type: Appearance.animation.elementMoveFast.type
+                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    implicitHeight: catCard.isExpanded && catLoader.item ? catLoader.item.implicitHeight + 16 : 0
+                    visible: implicitHeight > 0
+                    clip: true
+
+                    Loader {
+                        id: catLoader
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                            top: parent.top
+                            margins: 12
+                        }
+                        active: catCard.isExpanded
+                        asynchronous: true
+                        sourceComponent: Flow {
+                            id: flowContainer
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            readonly property int minColWidth: 200
+                            readonly property int columns: Math.max(1, Math.floor((width + spacing) / (minColWidth + spacing)))
+                            readonly property real cardWidth: Math.floor((width - (columns - 1) * spacing) / columns)
+
+                            Repeater {
+                                model: catCard.catWidgets
+                                delegate: widgetCardComponent
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Widget Card Component ────────────────────────────────────────────────
     Component {
         id: widgetCardComponent
 
         Item {
             id: cardItem
-            width: 220
-            implicitHeight: mainColumn.implicitHeight + 12
+            width: parent && parent.cardWidth ? parent.cardWidth : 220
+            implicitHeight: cardBackground.implicitHeight
 
             property bool _previewActive: false
             property bool _previewQueued: false
-            property bool hovered: cardMouseArea.containsMouse
 
             // How far outside the viewport this card sits, in pixels; 0 while
             // any part of it is on screen. One mapToItem() feeds both the load
             // and the unload decision.
             readonly property real viewportDistance: {
-                // Explicit dependencies: mapToItem is not reactive in QML.
                 widgetsConfigRoot.scrollStep;
                 widgetsConfigRoot.width;
                 widgetsConfigRoot.height;
@@ -630,8 +643,6 @@ Item {
 
             readonly property real previewLoadMargin: Math.max(cardItem.height, widgetsConfigRoot.height * 0.25)
             readonly property bool previewNearViewport: cardItem.viewportDistance < cardItem.previewLoadMargin
-            // Unloading uses a wider margin than loading so a card sitting near
-            // the edge cannot thrash between the two states while scrolling.
             readonly property bool previewFarFromViewport: cardItem.viewportDistance > widgetsConfigRoot.height * 1.5
 
             function requestPreviewIfVisible() {
@@ -639,9 +650,6 @@ Item {
                     widgetsConfigRoot._enqueuePreview(cardItem);
             }
 
-            // A preview is a live instance of the real widget. Without this the
-            // gallery kept every card the user ever scrolled past running for
-            // the rest of the session.
             function releasePreview() {
                 widgetsConfigRoot._removePreview(cardItem);
                 cardItem._previewQueued = false;
@@ -675,339 +683,264 @@ Item {
                 return "hide";
             }
 
-            MouseArea {
-                id: cardMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                z: 0
-            }
-
             Rectangle {
-                id: backgroundRect
-                anchors.fill: parent
-                color: cardItem.hovered ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2
+                id: cardBackground
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+                implicitHeight: mainColumn.implicitHeight + 16
+                color: cardMouseArea.containsMouse ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2
                 radius: Appearance.rounding.large
+                border.color: cardItem.isActive ? Appearance.colors.colPrimary : Appearance.colors.colLayer0Border
+                border.width: cardItem.isActive ? 2 : 1
 
                 Behavior on color {
-                    ColorAnimation {
-                        duration: 150
-                    }
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
+                Behavior on border.color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                 }
 
-                Canvas {
-                    id: dashedBorderCanvas
+                MouseArea {
+                    id: cardMouseArea
                     anchors.fill: parent
-                    visible: cardItem.isActive
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.reset();
-                        ctx.strokeStyle = Appearance.colors.colPrimary;
-                        ctx.lineWidth = 2;
-                        ctx.setLineDash([6, 4]);
-                        var r = Appearance.rounding.large;
-                        var w = width;
-                        var h = height;
-                        ctx.beginPath();
-                        ctx.moveTo(r, 0);
-                        ctx.lineTo(w - r, 0);
-                        ctx.arcTo(w, 0, w, r, r);
-                        ctx.lineTo(w, h - r);
-                        ctx.arcTo(w, h, w - r, h, r);
-                        ctx.lineTo(r, h);
-                        ctx.arcTo(0, h, 0, h - r, r);
-                        ctx.lineTo(0, r);
-                        ctx.arcTo(0, 0, r, 0, r);
-                        ctx.closePath();
-                        ctx.stroke();
-                    }
-                    Component.onCompleted: requestPaint()
-                    Connections {
-                        target: cardItem
-                        function onIsActiveChanged() {
-                            dashedBorderCanvas.requestPaint();
-                        }
-                    }
+                    hoverEnabled: true
                 }
-            }
 
-            ColumnLayout {
-                id: mainColumn
-                anchors.top: parent.top
-                anchors.topMargin: 6
-                anchors.left: parent.left
-                anchors.right: parent.right
-                spacing: 6
-
-                Item {
-                    id: previewContainer
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 155
-                    Layout.leftMargin: 6
-                    Layout.rightMargin: 6
-                    clip: true
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: Appearance.colors.colLayer0
-                        radius: Appearance.rounding.normal
+                ColumnLayout {
+                    id: mainColumn
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        margins: 8
                     }
+                    spacing: 8
 
+                    // Preview container with fallback watermark
                     Item {
-                        id: previewScaler
-                        width: widgetPreviewLoader.item ? Math.max(100, widgetPreviewLoader.item.implicitWidth || widgetPreviewLoader.item.width) : 200
-                        height: widgetPreviewLoader.item ? Math.max(100, widgetPreviewLoader.item.implicitHeight || widgetPreviewLoader.item.height) : 200
-                        scale: Math.min((previewContainer.width - 8) / width, (previewContainer.height - 8) / height)
-                        transformOrigin: Item.Center
-                        anchors.centerIn: parent
-
-                        Loader {
-                            id: widgetPreviewLoader
-                            anchors.fill: parent
-                            active: cardItem._previewActive
-                            asynchronous: true
-                            source: cardItem._previewActive ? cardItem.widgetData.qmlPath : ""
-
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "isPreview"
-                                value: true
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "screenWidth"
-                                value: 1920
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "screenHeight"
-                                value: 1080
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "scaledScreenWidth"
-                                value: 1920
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "scaledScreenHeight"
-                                value: 1080
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "wallpaperScale"
-                                value: 1.0
-                            }
-                            Binding {
-                                target: widgetPreviewLoader.item
-                                property: "styleOverride"
-                                value: cardItem.widgetData.styleOverride || ""
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: addBtn
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 6
-                    Layout.rightMargin: 6
-                    Layout.preferredHeight: 30
-                    radius: Appearance.rounding.full
-                    color: addBtnMouse.containsMouse ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colPrimaryContainer
-                    visible: !cardItem.isActive
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 100
-                        }
-                    }
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            text: "add"
-                            iconSize: 14
-                            color: Appearance.colors.colOnPrimaryContainer
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        StyledText {
-                            text: Translation.tr("Add to Desktop")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.bold: true
-                            color: Appearance.colors.colOnPrimaryContainer
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: addBtnMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            Config.addWidgetToDesktop(cardItem.widgetData.widgetId);
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: removeBtn
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 6
-                    Layout.rightMargin: 6
-                    Layout.preferredHeight: 30
-                    radius: Appearance.rounding.full
-                    color: removeBtnMouse.containsMouse ? Appearance.colors.colErrorContainerHover : Appearance.colors.colErrorContainer
-                    visible: cardItem.isActive
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 100
-                        }
-                    }
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 4
-                        MaterialSymbol {
-                            text: "delete"
-                            iconSize: 14
-                            color: Appearance.colors.colOnErrorContainer
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        StyledText {
-                            text: Translation.tr("Remove from Desktop")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.bold: true
-                            color: Appearance.colors.colOnErrorContainer
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: removeBtnMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            Config.removeWidgetFromDesktop(cardItem.widgetData.widgetId);
-                        }
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 10
-                    Layout.rightMargin: 10
-                    spacing: 6
-
-                    StyledText {
+                        id: previewContainer
                         Layout.fillWidth: true
-                        text: cardItem.widgetData.name
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.bold: true
-                        color: Appearance.colors.colOnLayer2
-                        elide: Text.ElideRight
-                    }
+                        Layout.preferredHeight: 140
+                        clip: true
 
-                    Rectangle {
-                        id: settingsBtn
-                        visible: cardItem.widgetData.configPage !== undefined && cardItem.widgetData.configPage !== ""
-                        width: 26
-                        height: 26
-                        radius: Appearance.rounding.full
-                        color: settingsBtnMouse.containsMouse ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Appearance.colors.colLayer0
+                            radius: Appearance.rounding.normal
+                            border.color: Appearance.colors.colLayer0Border
+                            border.width: 1
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: 100
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+                                opacity: (!widgetPreviewLoader.item || widgetPreviewLoader.status !== Loader.Ready) ? 0.6 : 0.2
+
+                                MaterialSymbol {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: cardItem.widgetData.icon || "widgets"
+                                    iconSize: Appearance.font.pixelSize.hugeass * 2
+                                    color: Appearance.colors.colSubtext
+                                }
+
+                                StyledText {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    text: cardItem.widgetData.name
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    color: Appearance.colors.colSubtext
+                                    visible: !widgetPreviewLoader.item
+                                }
                             }
                         }
 
-                        MaterialSymbol {
+                        Item {
+                            id: previewScaler
+                            width: widgetPreviewLoader.item ? Math.max(100, widgetPreviewLoader.item.implicitWidth || widgetPreviewLoader.item.width) : 200
+                            height: widgetPreviewLoader.item ? Math.max(100, widgetPreviewLoader.item.implicitHeight || widgetPreviewLoader.item.height) : 200
+                            scale: Math.min((previewContainer.width - 12) / width, (previewContainer.height - 12) / height)
+                            transformOrigin: Item.Center
                             anchors.centerIn: parent
-                            text: "settings"
-                            iconSize: 13
-                            color: Appearance.colors.colOnSecondaryContainer
+
+                            Loader {
+                                id: widgetPreviewLoader
+                                anchors.fill: parent
+                                active: cardItem._previewActive
+                                asynchronous: true
+                                source: cardItem._previewActive ? cardItem.widgetData.qmlPath : ""
+
+                                Binding { target: widgetPreviewLoader.item; property: "isPreview"; value: true }
+                                Binding { target: widgetPreviewLoader.item; property: "screenWidth"; value: 1920 }
+                                Binding { target: widgetPreviewLoader.item; property: "screenHeight"; value: 1080 }
+                                Binding { target: widgetPreviewLoader.item; property: "scaledScreenWidth"; value: 1920 }
+                                Binding { target: widgetPreviewLoader.item; property: "scaledScreenHeight"; value: 1080 }
+                                Binding { target: widgetPreviewLoader.item; property: "wallpaperScale"; value: 1.0 }
+                                Binding { target: widgetPreviewLoader.item; property: "styleOverride"; value: cardItem.widgetData.styleOverride || "" }
+                            }
                         }
 
-                        MouseArea {
-                            id: settingsBtnMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                        // Active status badge
+                        Rectangle {
+                            visible: cardItem.isActive
+                            anchors {
+                                top: parent.top
+                                right: parent.right
+                                margins: 6
+                            }
+                            implicitWidth: activeBadgeInner.implicitWidth + 10
+                            implicitHeight: 20
+                            radius: Appearance.rounding.full
+                            color: Appearance.colors.colPrimary
+
+                            RowLayout {
+                                id: activeBadgeInner
+                                anchors.centerIn: parent
+                                spacing: 2
+                                MaterialSymbol {
+                                    text: "check"
+                                    iconSize: Appearance.font.pixelSize.smallest
+                                    color: Appearance.colors.colOnPrimary
+                                }
+                                StyledText {
+                                    text: Translation.tr("Active")
+                                    font.pixelSize: Appearance.font.pixelSize.smallest
+                                    font.weight: Font.Bold
+                                    color: Appearance.colors.colOnPrimary
+                                }
+                            }
+                        }
+                    }
+
+                    // Title & Settings Button
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 4
+                        Layout.rightMargin: 4
+                        spacing: 6
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: cardItem.widgetData.name
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnLayer2
+                            elide: Text.ElideRight
+                        }
+
+                        RippleButton {
+                            visible: cardItem.widgetData.configPage !== undefined && cardItem.widgetData.configPage !== ""
+                            implicitWidth: 28
+                            implicitHeight: 28
+                            buttonRadius: Appearance.rounding.full
+                            colBackground: Appearance.colors.colSecondaryContainer
+                            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                            colRipple: Appearance.colors.colSecondaryContainerActive
                             onClicked: {
                                 widgetsConfigRoot.activeSubPage = Qt.resolvedUrl(cardItem.widgetData.configPage);
-                            }
-                        }
-                    }
-                }
-
-                Row {
-                    id: lockBehaviorRow
-                    Layout.alignment: Qt.AlignHCenter
-                    spacing: 3
-                    visible: cardItem.isActive
-
-                    readonly property string currentBehavior: cardItem.currentLockBehavior
-
-                    Repeater {
-                        model: [
-                            {
-                                value: "hide",
-                                icon: "visibility_off",
-                                tooltip: "Hidden on lock"
-                            },
-                            {
-                                value: "keep",
-                                icon: "visibility",
-                                tooltip: "Show fixed on lock"
-                            },
-                            {
-                                value: "center",
-                                icon: "center_focus_strong",
-                                tooltip: "Center on lock"
-                            },
-                            {
-                                value: "lockOnly",
-                                icon: "lock",
-                                tooltip: "Lock only"
-                            }
-                        ]
-
-                        delegate: Rectangle {
-                            width: 26
-                            height: 26
-                            radius: Appearance.rounding.small
-                            color: lockBehaviorRow.currentBehavior === modelData.value ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerLow
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: 150
-                                }
                             }
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
-                                text: modelData.icon
-                                iconSize: 13
-                                color: lockBehaviorRow.currentBehavior === modelData.value ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
-                            }
-
-                            MouseArea {
-                                id: lockBtnMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    Config.setWidgetLockBehavior(cardItem.widgetData.widgetId, modelData.value);
-                                }
+                                text: "settings"
+                                iconSize: Appearance.font.pixelSize.smallie
+                                color: Appearance.colors.colOnSecondaryContainer
                             }
 
                             StyledToolTip {
-                                text: modelData.tooltip
-                                visible: lockBtnMouse.containsMouse
+                                text: Translation.tr("Configure widget")
+                            }
+                        }
+                    }
+
+                    // Primary Add/Remove Action Button
+                    RippleButton {
+                        Layout.fillWidth: true
+                        implicitHeight: 34
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: cardItem.isActive ? Appearance.colors.colErrorContainer : Appearance.colors.colPrimaryContainer
+                        colBackgroundHover: cardItem.isActive ? Appearance.colors.colErrorContainerHover : Appearance.colors.colPrimaryContainerHover
+                        colRipple: cardItem.isActive ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimaryContainerActive
+                        onClicked: {
+                            if (cardItem.isActive) {
+                                Config.removeWidgetFromDesktop(cardItem.widgetData.widgetId);
+                            } else {
+                                Config.addWidgetToDesktop(cardItem.widgetData.widgetId);
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: 6
+                            MaterialSymbol {
+                                text: cardItem.isActive ? "delete" : "add"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: cardItem.isActive ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
+                            }
+                            StyledText {
+                                text: cardItem.isActive ? Translation.tr("Remove from Desktop") : Translation.tr("Add to Desktop")
+                                font.pixelSize: Appearance.font.pixelSize.smallie
+                                font.weight: Font.DemiBold
+                                color: cardItem.isActive ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
+                            }
+                        }
+                    }
+
+                    // Lock Behavior Segmented Controls (Visible when active)
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignHCenter
+                        spacing: 4
+                        visible: cardItem.isActive
+
+                        Repeater {
+                            model: [
+                                {
+                                    value: "hide",
+                                    icon: "visibility_off",
+                                    tooltip: Translation.tr("Hidden on lock")
+                                },
+                                {
+                                    value: "keep",
+                                    icon: "visibility",
+                                    tooltip: Translation.tr("Show fixed on lock")
+                                },
+                                {
+                                    value: "center",
+                                    icon: "center_focus_strong",
+                                    tooltip: Translation.tr("Center on lock")
+                                },
+                                {
+                                    value: "lockOnly",
+                                    icon: "lock",
+                                    tooltip: Translation.tr("Lock screen only")
+                                }
+                            ]
+
+                            delegate: RippleButton {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                implicitHeight: 28
+                                buttonRadius: Appearance.rounding.small
+                                readonly property bool isCurrent: cardItem.currentLockBehavior === modelData.value
+
+                                colBackground: isCurrent ? Appearance.colors.colPrimary : Appearance.colors.colLayer1
+                                colBackgroundHover: isCurrent ? Appearance.colors.colPrimaryHover : Appearance.colors.colLayer1Hover
+                                colRipple: isCurrent ? Appearance.colors.colPrimaryActive : Appearance.colors.colLayer1Active
+                                onClicked: {
+                                    Config.setWidgetLockBehavior(cardItem.widgetData.widgetId, modelData.value);
+                                }
+
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    text: modelData.icon
+                                    iconSize: Appearance.font.pixelSize.smallie
+                                    color: isCurrent ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                }
+
+                                StyledToolTip {
+                                    text: modelData.tooltip
+                                }
                             }
                         }
                     }

@@ -67,16 +67,7 @@ AbstractBackgroundWidget {
         color: root.expressive ? Appearance.colors.colPrimaryContainer : Appearance.m3colors.m3surfaceContainerLow
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: outerCardBg.width
-                height: outerCardBg.height
-                radius: outerCardBg.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         RowLayout {
             anchors.fill: parent

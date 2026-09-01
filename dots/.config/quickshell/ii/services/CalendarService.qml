@@ -203,6 +203,21 @@ Singleton {
         onTriggered: getEventsProcess.running = true
     }
 
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready && (Config.options?.calendar?.icsUrls ?? []).length > 0) {
+                root.fetchIcsFeeds();
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        if (Config.ready && (Config.options?.calendar?.icsUrls ?? []).length > 0) {
+            root.fetchIcsFeeds();
+        }
+    }
+
     // Google Calendar via "secret address in iCal format" feeds
     Timer {
         id: icsInterval
@@ -214,25 +229,36 @@ Singleton {
     }
 
     function fetchIcsFeeds() {
+        const urls = Config.options?.calendar?.icsUrls ?? [];
+        if (urls.length === 0) return;
         const winStart = new Date();
         winStart.setMonth(winStart.getMonth() - 3);
         const winEnd = new Date();
         winEnd.setMonth(winEnd.getMonth() + 3);
-        (Config.options?.calendar?.icsUrls ?? []).forEach(url => {
+        urls.forEach(url => {
+            if (!url) return;
             const xhr = new XMLHttpRequest();
             xhr.onreadystatechange = () => {
-                if (xhr.readyState !== XMLHttpRequest.DONE || xhr.status !== 200)
+                if (xhr.readyState !== XMLHttpRequest.DONE)
                     return;
-                root.icsEventsByUrl[url] = Ics.parseEvents(xhr.responseText, winStart, winEnd).map(ev => ({
-                    "content": ev.title,
-                    "startDate": ev.start,
-                    "endDate": ev.end,
-                    "color": ColorUtils.stringToColor(ev.title),
-                    "description": ev.description
-                }));
-                root.icsEvents = Object.values(root.icsEventsByUrl)
-                    .reduce((acc, list) => acc.concat(list), []);
-                root.eventsInWeek = root.getEventsInWeek();
+                if (xhr.status !== 200 && xhr.status !== 0)
+                    return;
+                try {
+                    root.icsEventsByUrl[url] = Ics.parseEvents(xhr.responseText, winStart, winEnd).map(ev => ({
+                        "content": ev.title,
+                        "startDate": ev.start,
+                        "endDate": ev.end,
+                        "allDay": !!ev.allDay,
+                        "color": ColorUtils.stringToColor(ev.title),
+                        "description": ev.description || ""
+                    }));
+                    root.icsEvents = Object.values(root.icsEventsByUrl)
+                        .reduce((acc, list) => acc.concat(list), []);
+                    root.events = root.khalEvents.concat(root.icsEvents);
+                    root.eventsInWeek = root.getEventsInWeek();
+                } catch (e) {
+                    console.warn("[CalendarService] Failed to parse ICS from:", url, e);
+                }
             };
             xhr.open("GET", url);
             xhr.send();

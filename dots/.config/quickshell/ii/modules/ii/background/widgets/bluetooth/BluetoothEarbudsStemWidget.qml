@@ -77,16 +77,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: cardBg.width
-                height: cardBg.height
-                radius: cardBg.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             anchors.fill: parent

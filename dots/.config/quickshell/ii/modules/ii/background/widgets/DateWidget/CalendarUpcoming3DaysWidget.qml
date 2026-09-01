@@ -35,7 +35,7 @@ AbstractBackgroundWidget {
 
     // Statically helper function for date filtering
     function getEventsForDate(targetDate) {
-        if (!CalendarService.khalAvailable || !CalendarService.events) return [];
+        if (!CalendarService.events) return [];
         let list = [];
         let currentDay = targetDate.getDate();
         let currentMonth = targetDate.getMonth();
@@ -86,16 +86,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             anchors.left: parent.left

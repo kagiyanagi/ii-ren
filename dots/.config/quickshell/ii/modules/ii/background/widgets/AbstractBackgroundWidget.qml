@@ -374,16 +374,16 @@ AbstractWidget {
     // whose contentScale actually derives from the key follow the slider path;
     // everyone else uses the per-instance Item scale.
     readonly property var _widgetSizeConsumers: ({
-        "android_search_bar": true, "at_a_glance": true,
+        "at_a_glance": true,
         "circle_pointer_clock": true, "circular_media": true,
         "clock_expressive_card": true, "clock_flex": true,
         "clock_hori": true, "compact_media": true, "concentric_clock": true,
-        "grid_card_clock": true, "media_cd": true, "month_clock": true,
+        "media_cd": true, "month_clock": true,
         "photo_1x1": true, "resource_cpu_pill": true, "resource_disk_pill": true,
         "resource_fill_cards": true, "resource_nothing_cpu": true,
         "resource_nothing_disk": true, "resource_nothing_ram": true,
         "resource_ram_pill": true, "scallop_dot_clock": true,
-        "scallop_number_clock": true, "search_pill": true,
+        "scallop_number_clock": true,
         "triple_ring_clock": true, "wearos_arc_clock": true
     })
     readonly property bool _usesWidgetSizeKey: _scaleSection !== null && _scaleSection.widgetSize !== undefined && _widgetSizeConsumers[configEntryName] === true
@@ -461,23 +461,20 @@ AbstractWidget {
         const canvas = findCanvas(root.parent);
         const frame = canvas ?? root;
         const p = resizeHandle.mapToItem(frame, mouse.x, mouse.y);
-        const centre = frame === root ? Qt.point(width / 2, height / 2) : root.mapToItem(frame, width / 2, height / 2);
-        // Measure the pointer against the widget centre in SCREEN space: both
-        // are frozen at press (the physical centre is invariant under the
-        // centre-origin scale), so no live geometry can feed back into the
-        // ratio. The centre's screen offset comes from the press event itself,
-        // which keeps this multi-monitor safe.
+        // Anchor at top-left corner of the widget in frame space so dragging
+        // the bottom-right corner expands downwards and rightwards without shifting the top-left.
+        const anchor = frame === root ? Qt.point(0, 0) : root.mapToItem(frame, 0, 0);
         const hasGlobal = mouse.globalPosition !== undefined;
         _resizeUsesGlobal = hasGlobal;
         if (hasGlobal) {
             const gp = mouse.globalPosition;
             _resizeStartGlobal = Qt.point(gp.x, gp.y);
-            _resizeCentreGlobal = Qt.point(centre.x + (gp.x - p.x), centre.y + (gp.y - p.y));
+            _resizeCentreGlobal = Qt.point(anchor.x + (gp.x - p.x), anchor.y + (gp.y - p.y));
         } else {
             _resizeStartGlobal = Qt.point(p.x, p.y);
-            _resizeCentreGlobal = Qt.point(centre.x, centre.y);
+            _resizeCentreGlobal = Qt.point(anchor.x, anchor.y);
         }
-        _resizeStartDist = Math.max(1, Math.hypot(p.x - centre.x, p.y - centre.y));
+        _resizeStartDist = Math.max(1, Math.hypot(p.x - anchor.x, p.y - anchor.y));
         _resizeStartScale = _currentScaleFactor();
         _resizeMinScale = 0.5;
         if (_usesWidgetSizeKey) {
@@ -522,19 +519,22 @@ AbstractWidget {
         applyLiveResize();
     }
 
-    // Live, but visual only. `widgetSize` is the widget's own layout input so
-    // there is no way to preview that path without writing it; the Item.scale
-    // path has an override precisely so it does not have to.
+    // Live, but visual only. Keep top-left anchored so the widget expands
+    // down and right towards the bottom-right handle.
     function applyLiveResize() {
         if (_usesWidgetSizeKey) {
             if (_scaleSection === null || _scaleSection.widgetSize === undefined)
                 return;
             _scaleSection.widgetSize = Math.round(_resizePreviewScale * 100);
-            // Keep the centre pinned while the implicit size changes.
-            x = WidgetDragMath.clamp(_resizeStartX - (width - _resizeStartW) / 2, dragMinimumX(), dragMaximumX());
-            y = WidgetDragMath.clamp(_resizeStartY - (height - _resizeStartH) / 2, dragMinimumY(), dragMaximumY());
+            // Keep top-left pinned while implicit size changes:
+            x = WidgetDragMath.clamp(_resizeStartX, dragMinimumX(), dragMaximumX());
+            y = WidgetDragMath.clamp(_resizeStartY, dragMinimumY(), dragMaximumY());
         } else {
             _liveScaleOverride = _resizePreviewScale;
+            // Keep top-left pinned while Item.scale (around center) changes:
+            const dScale = _resizePreviewScale - _resizeStartScale;
+            x = WidgetDragMath.clamp(_resizeStartX + _resizeStartW * dScale / 2, dragMinimumX(), dragMaximumX());
+            y = WidgetDragMath.clamp(_resizeStartY + _resizeStartH * dScale / 2, dragMinimumY(), dragMaximumY());
         }
     }
 
@@ -544,12 +544,10 @@ AbstractWidget {
         if (_usesWidgetSizeKey) {
             if (_scaleSection === null || _scaleSection.widgetSize === undefined)
                 return;
-            const widthBefore = width;
-            const heightBefore = height;
             _scaleSection.widgetSize = Math.round(target * 100);
-            // Keep the centre where the user left it while the box changes.
-            x = WidgetDragMath.clamp(x - (width - widthBefore) / 2, dragMinimumX(), dragMaximumX());
-            y = WidgetDragMath.clamp(y - (height - heightBefore) / 2, dragMinimumY(), dragMaximumY());
+            // Keep top-left pinned while implicit size changes:
+            x = WidgetDragMath.clamp(_resizeStartX, dragMinimumX(), dragMaximumX());
+            y = WidgetDragMath.clamp(_resizeStartY, dragMinimumY(), dragMaximumY());
         } else {
             if (isPreview || widgetInstance === null)
                 return;
@@ -559,8 +557,9 @@ AbstractWidget {
             // even if the config resync hiccups.
             if ((widgetInstance.scale ?? -1) !== rounded)
                 widgetInstance.scale = rounded;
-            x = WidgetDragMath.clamp(x, dragMinimumX(), dragMaximumX());
-            y = WidgetDragMath.clamp(y, dragMinimumY(), dragMaximumY());
+            const dScale = rounded - _resizeStartScale;
+            x = WidgetDragMath.clamp(_resizeStartX + _resizeStartW * dScale / 2, dragMinimumX(), dragMaximumX());
+            y = WidgetDragMath.clamp(_resizeStartY + _resizeStartH * dScale / 2, dragMinimumY(), dragMaximumY());
         }
         if (!isPreview) {
             if (widgetInstance !== null)
@@ -575,6 +574,11 @@ AbstractWidget {
     function resetScaleFromHandle() {
         _resizeActive = false;
         _resizePreviewScale = 0;
+        _resizeStartX = x;
+        _resizeStartY = y;
+        _resizeStartW = width;
+        _resizeStartH = height;
+        _resizeStartScale = _currentScaleFactor();
         commitResizeScale(1.0);
         // Cleared only after the commit, so the scale binding never falls back
         // to the stale pre-resize value for a frame.

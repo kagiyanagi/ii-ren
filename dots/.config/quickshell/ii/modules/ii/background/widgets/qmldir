@@ -6,3 +6,4 @@ WidgetDelegate 1.0 WidgetDelegate.qml
 singleton WidgetsRegistry 1.0 WidgetsRegistry.qml
 WidgetStateManager 1.0 WidgetStateManager.qml
 Supersampled 1.0 Supersampled.qml
+TodoWidget 1.0 todo/TodoWidget.qml

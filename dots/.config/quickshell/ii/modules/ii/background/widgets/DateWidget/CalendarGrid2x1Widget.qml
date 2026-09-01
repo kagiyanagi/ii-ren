@@ -38,16 +38,7 @@ AbstractBackgroundWidget {
         color: root.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         Item {
             anchors.fill: parent
@@ -180,6 +171,17 @@ AbstractBackgroundWidget {
                         height: gridScope.cellHeight
                         visible: isValidDay
 
+                        readonly property bool hasEvents: {
+                            if (!isValidDay || !CalendarService.events || CalendarService.events.length === 0) return false;
+                            let y = gridScope.currYear;
+                            let m = gridScope.currMonth;
+                            for (let i = 0; i < CalendarService.events.length; i++) {
+                                let d = new Date(CalendarService.events[i].startDate);
+                                if (d.getDate() === dayNumber && d.getMonth() === m && d.getFullYear() === y) return true;
+                            }
+                            return false;
+                        }
+
                         Rectangle {
                             anchors.centerIn: parent
                             width: Math.min(parent.width, parent.height) * 0.85
@@ -198,6 +200,18 @@ AbstractBackgroundWidget {
                                 family: Appearance.font.family.main
                             }
                             color: isToday ? root.highlightTextColor : root.dateNumberColor
+                        }
+
+                        // Event Indicator Dot below non-today days with calendar events
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 2
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 4
+                            height: 4
+                            radius: Appearance.rounding.full
+                            color: root.highlightCircleColor
+                            visible: isValidDay && !isToday && hasEvents
                         }
                     }
                 }

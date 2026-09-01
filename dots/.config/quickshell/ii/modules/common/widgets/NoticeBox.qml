@@ -7,6 +7,7 @@ Rectangle {
     id: root
     property alias materialIcon: icon.text
     property alias text: noticeText.text
+    property alias textColor: noticeText.color
     default property alias boxData: buttonRow.data
 
     readonly property int itemIndex: {

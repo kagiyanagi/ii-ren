@@ -12,6 +12,42 @@ Singleton {
     // List of built-in widgets
     readonly property var builtinWidgets: [
         {
+            "widgetId": "todo",
+            "name": Translation.tr("To-Do List"),
+            "category": "Utility",
+            "qmlPath": Qt.resolvedUrl("todo/TodoWidget.qml"),
+            "icon": "checklist",
+            "description": Translation.tr("Manage your daily tasks directly from the desktop."),
+            "configPage": ""
+        },
+        {
+            "widgetId": "pc_notes",
+            "name": Translation.tr("Legacy Notes (PC)"),
+            "category": "Utility",
+            "qmlPath": Qt.resolvedUrl("pc_widgets/notes/NotesWidget.qml"),
+            "icon": "edit_note",
+            "description": Translation.tr("Legacy end4-pC Notes"),
+            "configPage": ""
+        },
+        {
+            "widgetId": "pc_resources",
+            "name": Translation.tr("Legacy Resources (PC)"),
+            "category": "System",
+            "qmlPath": Qt.resolvedUrl("pc_widgets/resources/ResourcesWidget.qml"),
+            "icon": "memory",
+            "description": Translation.tr("Legacy end4-pC Resources"),
+            "configPage": ""
+        },
+        {
+            "widgetId": "pc_media",
+            "name": Translation.tr("Legacy Media (PC)"),
+            "category": "Media",
+            "qmlPath": Qt.resolvedUrl("pc_widgets/media/MediaWidget.qml"),
+            "icon": "play_circle",
+            "description": Translation.tr("Legacy end4-pC Media"),
+            "configPage": ""
+        },
+        {
             "widgetId": "clock_cookie",
             "name": Translation.tr("Cookie Clock"),
             "category": "Clock",
@@ -19,15 +55,6 @@ Singleton {
             "icon": "schedule",
             "description": Translation.tr("A beautiful analog clock with Material You shapes and customization."),
             "configPage": "widgets/DesktopClockWidgetConfig.qml"
-        },
-        {
-            "widgetId": "clock_digital",
-            "name": Translation.tr("Digital Clock"),
-            "category": "Clock",
-            "qmlPath": Qt.resolvedUrl("clock/DigitalClockWidget.qml"),
-            "icon": "schedule",
-            "description": Translation.tr("A modern, resizable digital clock with date and adaptive alignment."),
-            "configPage": "widgets/DesktopDigitalClockConfig.qml"
         },
         {
             "widgetId": "clock_nagasaki",
@@ -172,14 +199,6 @@ Singleton {
             "icon": "schedule",
             "description": Translation.tr("A concentric disc clock face with three rotating rings for hours, minutes, and seconds, and a fixed 3 o'clock readout pointer arrow."),
             "configPage": "widgets/DesktopTripleRingClockConfig.qml"
-        },
-        {
-            "widgetId": "grid_card_clock",
-            "name": Translation.tr("Grid Card Clock"),
-            "category": "Clock",
-            "qmlPath": Qt.resolvedUrl("clock/GridCardClockWidget.qml"),
-            "icon": "schedule",
-            "description": Translation.tr("A stylized background clock with vertically stretched typography based on Material 3 cards.")
         },
         {
             "widgetId": "clock_expressive_card",
@@ -507,33 +526,6 @@ Singleton {
             "configPage": "widgets/DesktopBluetoothBatteryConfig.qml"
         },
         {
-            "widgetId": "bluetooth_headphone",
-            "name": Translation.tr("Bluetooth Headphone 1x2"),
-            "category": "Devices",
-            "qmlPath": Qt.resolvedUrl("bluetooth/BluetoothHeadphoneWidget.qml"),
-            "icon": "headphones",
-            "description": Translation.tr("1x2 vertical widget displaying full-bleed Bluetooth headphone visual and battery percentage."),
-            "configPage": "widgets/DesktopBluetoothHeadphoneConfig.qml"
-        },
-        {
-            "widgetId": "mobile_battery",
-            "name": Translation.tr("Mobile Phone Battery"),
-            "category": "Devices",
-            "qmlPath": Qt.resolvedUrl("bluetooth/MobileBatteryWidget.qml"),
-            "icon": "smartphone",
-            "description": Translation.tr("1x1 widget displaying KDE Connect mobile phone battery percentage and 3D device visual."),
-            "configPage": "widgets/DesktopMobileBatteryConfig.qml"
-        },
-        {
-            "widgetId": "bluetooth_headphone_cookie",
-            "name": Translation.tr("Bluetooth Headphone Cookie"),
-            "category": "Devices",
-            "qmlPath": Qt.resolvedUrl("bluetooth/BluetoothHeadphoneCookieWidget.qml"),
-            "icon": "headphones",
-            "description": Translation.tr("1x1 Material Shape Cookie widget displaying Bluetooth headphone depth layered visual and battery percentage."),
-            "configPage": "widgets/DesktopBluetoothHeadphoneCookieConfig.qml"
-        },
-        {
             "widgetId": "bluetooth_fill_cards",
             "name": Translation.tr("Bluetooth Fill Cards"),
             "category": "Devices",
@@ -588,33 +580,6 @@ Singleton {
             "configPage": "widgets/DesktopBluetoothEarbudsStemConfig.qml"
         },
         {
-            "widgetId": "email_inbox",
-            "name": Translation.tr("Email Inbox (1x1)"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/EmailWidget.qml"),
-            "icon": "mail",
-            "description": Translation.tr("1x1 email inbox widget displaying latest received emails and quick action button."),
-            "configPage": "widgets/DesktopEmailWidgetConfig.qml"
-        },
-        {
-            "widgetId": "email_inbox_2x1",
-            "name": Translation.tr("Email Inbox (2x1)"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/EmailWidget2x1.qml"),
-            "icon": "mail",
-            "description": Translation.tr("2x1 wide email inbox widget displaying latest received emails and quick action button."),
-            "configPage": "widgets/DesktopEmailWidgetConfig.qml"
-        },
-        {
-            "widgetId": "ai_chat",
-            "name": Translation.tr("AI Chat"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/AiChatWidget.qml"),
-            "icon": "auto_awesome",
-            "description": Translation.tr("1x1 AI assistant widget with spark icon and quick access to AI chat sidebar."),
-            "configPage": "widgets/DesktopAiChatConfig.qml"
-        },
-        {
             "widgetId": "notes_widget",
             "name": Translation.tr("Notes (1x1)"),
             "category": "Utility",
@@ -640,33 +605,6 @@ Singleton {
             "icon": "graphic_eq",
             "description": Translation.tr("Minimal 2x1 media widget with three colored sections: track title, play/pause, and skip next."),
             "configPage": "widgets/DesktopCompactMediaConfig.qml"
-        },
-        {
-            "widgetId": "quick_actions",
-            "name": Translation.tr("Quick Actions"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/QuickActionsWidget.qml"),
-            "icon": "widgets",
-            "description": Translation.tr("1x1 quick launch widget with configurable module shortcuts. Bottom buttons are customizable."),
-            "configPage": "widgets/DesktopQuickActionsConfig.qml"
-        },
-        {
-            "widgetId": "android_search_bar",
-            "name": Translation.tr("Android Search Bar"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/AndroidSearchBarWidget.qml"),
-            "icon": "search",
-            "description": Translation.tr("0.5x2 Android Pixel search bar with Google logo, inner search pill, and customizable filled action buttons."),
-            "configPage": "widgets/DesktopAndroidSearchBarConfig.qml"
-        },
-        {
-            "widgetId": "search_pill",
-            "name": Translation.tr("Search Pill"),
-            "category": "Utility",
-            "qmlPath": Qt.resolvedUrl("utility/SearchPillWidget.qml"),
-            "icon": "auto_awesome",
-            "description": Translation.tr("Wide search pill with a dynamic sparkle action and three configurable provider buttons."),
-            "configPage": "widgets/DesktopSearchPillConfig.qml"
         },
         {
             "widgetId": "quote",

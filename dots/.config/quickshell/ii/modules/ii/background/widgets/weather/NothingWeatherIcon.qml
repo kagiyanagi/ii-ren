@@ -421,7 +421,10 @@ Item {
         id: canvas
 
         anchors.fill: parent
-        renderTarget: Canvas.Image
+        renderTarget: Canvas.FramebufferObject
+        renderStrategy: Canvas.Immediate
+        antialiasing: true
+        smooth: true
         onPaint: {
             const ctx = getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);

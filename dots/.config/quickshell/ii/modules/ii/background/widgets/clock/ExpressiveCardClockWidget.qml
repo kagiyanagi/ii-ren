@@ -60,7 +60,7 @@ AbstractBackgroundWidget {
         // Content Column Layout fitting 240x240
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: root.width * 0.06
+            anchors.margins: Math.round(root.width * 0.075)
             spacing: 0
 
             // Row 1: Location header (only shown if location is non-empty)
@@ -71,13 +71,13 @@ AbstractBackgroundWidget {
 
                 MaterialSymbol {
                     text: "location_on"
-                    iconSize: root.height * 0.075
+                    iconSize: Math.round(root.height * 0.075)
                     color: root.subTextColor
                 }
 
                 StyledText {
                     text: root.locationName
-                    font.pixelSize: root.height * 0.068
+                    font.pixelSize: Math.round(root.height * 0.068)
                     font.weight: Font.Medium
                     color: root.subTextColor
                     elide: Text.ElideRight
@@ -90,7 +90,7 @@ AbstractBackgroundWidget {
             // Row 2: Big Time (HH:MM)
             StyledText {
                 text: root.formattedTime
-                font.pixelSize: root.height * 0.25
+                font.pixelSize: Math.round(root.height * 0.23)
                 font.weight: 900
                 font.bold: true
                 font.family: Appearance.font.family.title
@@ -102,12 +102,12 @@ AbstractBackgroundWidget {
 
             // Row 3: Month / Day + Weekday badge (MEI/19 SEL)
             RowLayout {
-                spacing: root.width * 0.02
+                spacing: Math.round(root.width * 0.02)
                 Layout.alignment: Qt.AlignLeft
 
                 StyledText {
                     text: root.monthName
-                    font.pixelSize: root.height * 0.20
+                    font.pixelSize: Math.round(root.height * 0.155)
                     font.weight: 900
                     font.bold: true
                     font.family: Appearance.font.family.title
@@ -116,14 +116,14 @@ AbstractBackgroundWidget {
 
                 StyledText {
                     text: "/"
-                    font.pixelSize: root.height * 0.20
+                    font.pixelSize: Math.round(root.height * 0.155)
                     font.weight: 900
                     color: ColorUtils.mix(root.mainTextColor, root.bgColor, 0.4)
                 }
 
                 StyledText {
                     text: root.dayNum
-                    font.pixelSize: root.height * 0.20
+                    font.pixelSize: Math.round(root.height * 0.155)
                     font.weight: 900
                     font.bold: true
                     font.family: Appearance.font.family.title
@@ -132,7 +132,7 @@ AbstractBackgroundWidget {
 
                 StyledText {
                     text: root.weekDayShort
-                    font.pixelSize: root.height * 0.07
+                    font.pixelSize: Math.round(root.height * 0.065)
                     font.weight: Font.Bold
                     font.family: Appearance.font.family.title
                     color: ColorUtils.mix(root.mainTextColor, root.bgColor, 0.3)
@@ -144,14 +144,14 @@ AbstractBackgroundWidget {
 
             // Row 4: Temperature + Official Weather SVG Icon
             RowLayout {
-                spacing: root.width * 0.03
+                spacing: Math.round(root.width * 0.03)
                 Layout.alignment: Qt.AlignLeft
 
                 Row {
                     spacing: 1
                     StyledText {
                         text: root.tempStr
-                        font.pixelSize: root.height * 0.22
+                        font.pixelSize: Math.round(root.height * 0.20)
                         font.weight: 900
                         font.bold: true
                         font.family: Appearance.font.family.title
@@ -159,7 +159,7 @@ AbstractBackgroundWidget {
                     }
                     StyledText {
                         text: "°"
-                        font.pixelSize: root.height * 0.15
+                        font.pixelSize: Math.round(root.height * 0.14)
                         font.weight: 900
                         color: root.mainTextColor
                     }
@@ -167,7 +167,7 @@ AbstractBackgroundWidget {
 
                 Image {
                     source: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, false)
-                    sourceSize: Qt.size(root.height * 0.16, root.height * 0.16)
+                    sourceSize: Qt.size(Math.round(root.height * 0.16), Math.round(root.height * 0.16))
                     Layout.alignment: Qt.AlignVCenter
                 }
             }

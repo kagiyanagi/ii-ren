@@ -31,17 +31,7 @@ AbstractBackgroundWidget {
         color: WidgetColorScheme.cardBgColor
         radius: Appearance.rounding.windowRounding
 
-        // Recorte da camada ativado apenas se a sombra interna estiver ligada
-        layer.enabled: Config.options.background.widgets.enableInnerShadow ?? true
-        layer.smooth: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: bgRect.width
-                height: bgRect.height
-                radius: bgRect.radius
-                antialiasing: true
-            }
-        }
+        clip: true
 
         ColumnLayout {
             anchors.fill: parent

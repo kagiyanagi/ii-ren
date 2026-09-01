@@ -634,6 +634,32 @@ Scope {
                         colBackground: Appearance.colors.colSurfaceContainerHigh
                         colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
                         colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        symbolName: "flip_to_back"
+                        labelText: Translation.tr("Move to lower layer")
+                        onTriggered: {
+                            menuWindow.dismiss();
+                            let cloned = JSON.parse(JSON.stringify(Config.options.background.activeWidgets || []));
+                            const index = cloned.findIndex(w => w.id === GlobalStates.desktopMenuWidgetId);
+                            if (index >= 0) {
+                                const item = cloned.splice(index, 1)[0];
+                                cloned.unshift(item);
+                                Config.options.background.activeWidgets = cloned;
+                            }
+                        }
+                    }
+
+                    DockMenuButton {
+                        Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId !== null
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "settings"
                         labelText: Translation.tr("Config")
                         onTriggered: {

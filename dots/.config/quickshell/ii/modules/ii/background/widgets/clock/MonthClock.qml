@@ -50,6 +50,10 @@ Canvas {
     readonly property var weekdayInitials: ["S", "M", "T", "W", "T", "F", "S"]
 
     contextType: "2d"
+    renderTarget: Canvas.FramebufferObject
+    renderStrategy: Canvas.Immediate
+    antialiasing: true
+    smooth: true
 
     Connections {
         target: DateTime.clock
