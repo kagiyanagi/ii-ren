@@ -1089,6 +1089,23 @@ Singleton {
                         property int waviness: 0         // % rib bending, for rain/chevron
                     }
                 }
+                // Subject depth. The wallpaper's foreground subject is cut out
+                // and drawn back on top of the desktop widgets, so a clock can
+                // sit behind someone's shoulder - the same effect Iconify and
+                // the depth-wallpaper ROMs get from ML Kit's subject
+                // segmentation, and iOS from its lock screen depth effect.
+                // Which side of the subject a given widget sits on is per
+                // instance, stored as `aboveSubject` on its activeWidgets entry
+                // and set from its right-click menu. Behind is the default:
+                // that is the effect.
+                property JsonObject depth: JsonObject {
+                    property bool enable: false
+                    // Wallpapers whose bake the user cancelled. A cancel is a
+                    // decision, not a pause: these are never cut again on their
+                    // own, however often the wallpaper is reselected or the
+                    // shell restarts. Only the rebake button clears one.
+                    property list<string> declined: []
+                }
                 property JsonObject parallax: JsonObject {
                     property bool vertical: true
                     property bool autoVertical: false

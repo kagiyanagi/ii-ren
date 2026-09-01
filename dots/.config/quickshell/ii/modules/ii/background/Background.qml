@@ -64,6 +64,9 @@ Variants {
         // Wallpaper
         property bool wallpaperIsVideo: Config.options.background.wallpaperPath.endsWith(".mp4") || Config.options.background.wallpaperPath.endsWith(".webm") || Config.options.background.wallpaperPath.endsWith(".mkv") || Config.options.background.wallpaperPath.endsWith(".avi") || Config.options.background.wallpaperPath.endsWith(".mov")
         property string wallpaperPath: wallpaperIsVideo ? Config.options.background.thumbnailPath : Config.options.background.wallpaperPath
+        // Subject depth on a video means we play it here, packed with its matte,
+        // instead of letting mpvpaper have it.
+        readonly property bool depthVideo: WallpaperSubject.packedVideo.length > 0
         property bool wallpaperSafetyTriggered: {
             const enabled = Config.options.workSafety.enable.wallpaper;
             const sensitiveWallpaper = (CF.StringUtils.stringListContainsSubstring(wallpaperPath.toLowerCase(), Config.options.workSafety.triggerCondition.fileKeywords));
@@ -468,7 +471,10 @@ Variants {
             Item {
                 id: wallpaper
                 visible: !blurLoader.active
-                opacity: (bgRoot.wallpaperIsVideo && !wallpaperEffects.takesOver && !blurLoader.active) ? 0 : 1
+                // The packed video is double height, and the bottom half is the
+                // matte. Without this it paints over the lower desktop.
+                clip: bgRoot.depthVideo
+                opacity: (bgRoot.wallpaperIsVideo && !bgRoot.depthVideo && !wallpaperEffects.takesOver && !blurLoader.active) ? 0 : 1
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
                 property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
@@ -536,7 +542,18 @@ Variants {
 
                 MediaPlayer {
                     id: videoPlayer
-                    source: (bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered && (wallpaperEffects.takesOver || blurLoader.active)) ? "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath) : ""
+                    source: {
+                        if (bgRoot.wallpaperSafetyTriggered)
+                            return "";
+                        // The packed copy stands in for the original wholesale:
+                        // its top half is the same frames, so everything
+                        // downstream - effects, lock blur - sees a wallpaper.
+                        if (bgRoot.depthVideo)
+                            return WallpaperSubject.packedVideo;
+                        if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || blurLoader.active))
+                            return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
+                        return "";
+                    }
                     audioOutput: AudioOutput { muted: true }
                     videoOutput: vidOutput
                     loops: MediaPlayer.Infinite
@@ -545,7 +562,13 @@ Variants {
 
                 VideoOutput {
                     id: vidOutput
-                    anchors.fill: parent
+                    // Anchored on three sides with an explicit height, never a
+                    // fourth anchor: the packed video is twice as tall as the
+                    // wallpaper, and only its top half belongs on screen.
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: bgRoot.depthVideo ? parent.height * 2 : parent.height
                     visible: bgRoot.wallpaperIsVideo
                     fillMode: VideoOutput.PreserveAspectCrop
                 }
@@ -656,11 +679,96 @@ Variants {
                     }
                 }
 
+                // Subject depth. The wallpaper's foreground subject, drawn back
+                // over the widget plane so a clock can sit behind a shoulder -
+                // the effect Iconify and the depth-wallpaper ROMs build on ML
+                // Kit's subject segmentation.
+                //
+                // It lives inside the widget canvas so that one `z` per widget
+                // decides which side of the subject that widget lands on. But
+                // the canvas parallaxes at its own rate and squares up when the
+                // screen locks, while the cutout has to stay welded to the
+                // pixels it was cut from - so the canvas transform is undone
+                // here and the layer tracks `wallpaper` exactly instead.
+                Item {
+                    id: subjectLayer
+                    z: 1
+
+                    // The maths below assumes both this item and the canvas
+                    // scale about their centres, which is the default. Setting
+                    // transformOrigin here silently slides the subject off the
+                    // wallpaper.
+                    readonly property real canvasScale: widgetCanvas.scale
+                    width: wallpaper.width
+                    height: wallpaper.height
+                    scale: 1 / canvasScale
+                    x: (wallpaper.x - widgetCanvas.x + (width - widgetCanvas.width) / 2) / canvasScale
+                        + (widgetCanvas.width - width) / 2
+                    y: (wallpaper.y - widgetCanvas.y + (height - widgetCanvas.height) / 2) / canvasScale
+                        + (widgetCanvas.height - height) / 2
+
+                    // A still cutout waits on its pixels; a video waits on the
+                    // first frame reaching the output. Either way the fade runs
+                    // over something real rather than over an empty item, which
+                    // is why this is not the usual FadeLoader.
+                    readonly property bool showing: bgRoot.depthVideo
+                        ? (videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo)
+                        : (stillCutout.status === Image.Ready)
+
+                    // Opacity is an effect, so both directions take the effects
+                    // curve and neither may overshoot. They are not the same
+                    // speed: this is a screen-sized surface arriving, which is
+                    // slow effects, against fast effects on the way out.
+                    visible: opacity > 0
+                    opacity: showing ? 1 : 0
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: subjectLayer.showing
+                                ? Appearance.animationCurves.expressiveSlowEffectsDuration
+                                : Appearance.animation.elementMoveExit.duration
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                        }
+                    }
+
+                    Image {
+                        id: stillCutout
+                        anchors.fill: parent
+                        visible: !bgRoot.depthVideo
+                        source: bgRoot.wallpaperSafetyTriggered ? "" : WallpaperSubject.source
+                        // Same rect, same aspect and same fill rule as the
+                        // wallpaper underneath: that is what registers the
+                        // subject to the pixels it was cut from.
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        // Read from disk every time the path is set. The cutout
+                        // is rewritten in place whenever it is regenerated, and
+                        // a cached pixmap would keep showing the previous
+                        // wallpaper's subject forever.
+                        cache: false
+                        mipmap: false
+                    }
+
+                    // The video subject comes out of the same decoder as the
+                    // wallpaper below it, so it is registered by construction -
+                    // there is no clock for it to drift against.
+                    Loader {
+                        anchors.fill: parent
+                        active: bgRoot.depthVideo
+                        sourceComponent: SubjectMatte {
+                            source: vidOutput
+                        }
+                    }
+                }
+
                 // Desktop widgets, placed from the registry.
                 // Instances live in Config.options.background.activeWidgets.
                 Repeater {
                     model: backgroundScope.widgetStateManager.model
                     delegate: WidgetDelegate {
+                        // Behind the subject unless the widget's own menu says
+                        // otherwise. Behind is the point of the effect.
+                        z: aboveSubject ? 2 : 0
                         widgetListModel: backgroundScope.widgetStateManager.model
                         widgetSizes: backgroundScope.widgetStateManager.widgetSizes
                         widgetSizesVersion: backgroundScope.widgetStateManager.widgetSizesVersion

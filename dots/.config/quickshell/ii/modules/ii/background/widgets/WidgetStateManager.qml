@@ -95,6 +95,7 @@ QtObject {
                     "widgetY": configItem.y,
                     "placementStrategy": configItem.placementStrategy || "free",
                     "lockBehavior": configItem.lockBehavior || "hide",
+                    "aboveSubject": configItem.aboveSubject ?? false,
                     "staggerDelay": addCount * 60,
                     "scale": configItem.scale ?? 1.0,
                     "widgetConfig": configItem.config || {},
@@ -119,6 +120,9 @@ QtObject {
                 }
                 if (modelItem.lockBehavior !== (configItem.lockBehavior || "hide")) {
                     modelItem.lockBehavior = configItem.lockBehavior || "hide";
+                }
+                if (modelItem.aboveSubject !== (configItem.aboveSubject ?? false)) {
+                    modelItem.aboveSubject = configItem.aboveSubject ?? false;
                 }
                 if (Math.abs((modelItem.scale ?? 1.0) - (configItem.scale ?? 1.0)) > 0.001) {
                     modelItem.scale = configItem.scale ?? 1.0;

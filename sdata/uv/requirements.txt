@@ -12,6 +12,8 @@ click==8.2.1
     # via -r requirements.in
 dbus-python==1.4.0
     # via kde-material-you-colors
+flatbuffers==25.12.19
+    # via onnxruntime
 idna==3.11
     # via requests
 kde-material-you-colors==1.10.1
@@ -31,18 +33,24 @@ numpy==2.2.2
     #   -r requirements.in
     #   kde-material-you-colors
     #   material-color-utilities
+    #   onnxruntime
     #   opencv-contrib-python
+onnxruntime==1.29.0
+    # via -r requirements.in
 opencv-contrib-python==4.12.0.88
     # via -r requirements.in
 packaging==24.2
     # via
     #   build
+    #   onnxruntime
     #   setuptools-scm
 pillow==11.1.0
     # via
     #   -r requirements.in
     #   kde-material-you-colors
     #   material-color-utilities
+protobuf==7.36.1
+    # via onnxruntime
 psutil==6.1.1
     # via -r requirements.in
 pycairo==1.28.0

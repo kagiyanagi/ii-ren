@@ -648,6 +648,51 @@ Scope {
                         }
                     }
 
+                    // Which side of the wallpaper's subject this widget sits
+                    // on. Only worth offering once there is a subject to sit
+                    // behind, so it hides itself the rest of the time.
+                    DockMenuButton {
+                        id: depthButton
+                        Layout.fillWidth: true
+
+                        readonly property bool above: {
+                            const widgets = Config.options.background.activeWidgets || [];
+                            const entry = widgets.find(w => w.id === GlobalStates.desktopMenuWidgetId);
+                            return entry?.aboveSubject ?? false;
+                        }
+
+                        visible: GlobalStates.desktopMenuWidgetId !== null
+                            && Config.options.background.depth.enable
+                            && WallpaperSubject.hasSubject
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        // Depth of field, which is what the effect is: the
+                        // widget either sits in the sharp foreground or falls
+                        // in behind it. Both glyphs are old enough to be in
+                        // every Material Symbols build in the wild, which the
+                        // newer format_image_front/back pair is not.
+                        symbolName: depthButton.above ? "center_focus_weak" : "center_focus_strong"
+                        labelText: depthButton.above
+                            ? Translation.tr("Move behind subject")
+                            : Translation.tr("Move in front of subject")
+                        onTriggered: {
+                            menuWindow.dismiss();
+                            let cloned = JSON.parse(JSON.stringify(Config.options.background.activeWidgets || []));
+                            const index = cloned.findIndex(w => w.id === GlobalStates.desktopMenuWidgetId);
+                            if (index >= 0) {
+                                cloned[index].aboveSubject = !depthButton.above;
+                                Config.options.background.activeWidgets = cloned;
+                            }
+                        }
+                    }
+
                     DockMenuButton {
                         Layout.fillWidth: true
                         visible: GlobalStates.desktopMenuWidgetId !== null

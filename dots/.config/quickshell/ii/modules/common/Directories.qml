@@ -64,6 +64,13 @@ Singleton {
     property string recordScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/videos/record.sh`)
     property string extractColorsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/wallpapers/extract-colors.sh`)
     property string colorCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/wallpapers/colors.json`)
+    // Subject-depth cutouts, one PNG per wallpaper. Survives restarts on
+    // purpose: regenerating one costs a couple of seconds of CPU.
+    property string wallpaperSubjects: FileUtils.trimFileProtocol(`${Directories.cache}/wallpapers/subjects`)
+    property string subjectCutoutScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/images/subject-cutout-venv.sh`)
+    // switchwall.sh regenerates this whenever a video wallpaper is applied; it
+    // is how mpvpaper gets put back after the shell has taken playback over.
+    property string videoWallpaperRestoreScript: FileUtils.trimFileProtocol(`${Directories.config}/hypr/custom/scripts/__restore_video_wallpaper.sh`)
     property string userAvatarPathAccountsService: FileUtils.trimFileProtocol(`/var/lib/AccountsService/icons/${SystemInfo.username}`)
     property string userAvatarPathRicersAndWeirdSystems: FileUtils.trimFileProtocol(`${Directories.home}.face`)
     property string userAvatarPathRicersAndWeirdSystems2: FileUtils.trimFileProtocol(`${Directories.home}.face.icon`)
@@ -89,6 +96,7 @@ Singleton {
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", `${shellConfig}`])
         Quickshell.execDetached(["mkdir", "-p", `${favicons}`])
+        Quickshell.execDetached(["mkdir", "-p", `${wallpaperSubjects}`])
         Quickshell.execDetached(["bash", "-c", `mkdir -p '${coverArt}'; find '${coverArt}' -type f -mtime +30 -delete`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${booruPreviews}'; mkdir -p '${booruPreviews}'`])
         Quickshell.execDetached(["bash", "-c", `rm -rf '${latexOutput}'; mkdir -p '${latexOutput}'`])

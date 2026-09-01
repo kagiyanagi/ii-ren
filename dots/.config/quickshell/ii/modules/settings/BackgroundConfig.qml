@@ -265,6 +265,116 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "filter_center_focus"
+        title: Translation.tr("Subject depth")
+        tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the desktop widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nEach widget picks its own side from its right-click menu; behind is the default.")
+
+        ConfigSwitch {
+            buttonIcon: "filter_center_focus"
+            text: Translation.tr("Layer widgets into the wallpaper")
+            checked: Config.options.background.depth.enable
+            onCheckedChanged: {
+                Config.options.background.depth.enable = checked;
+            }
+        }
+
+        ContentSubsection {
+            visible: Config.options.background.depth.enable
+            title: Translation.tr("Subject")
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                StyledText {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: Appearance.colors.colSubtext
+                    text: {
+                        if (!WallpaperSubject.wallpaperUsable)
+                            return Translation.tr("No wallpaper to cut a subject out of yet.");
+                        if (WallpaperSubject.declined)
+                            return Translation.tr("Cancelled for this wallpaper. It stays uncut - reselecting it or restarting the shell will not start it again.");
+                        if (WallpaperSubject.working && WallpaperSubject.wallpaperIsVideo) {
+                            if (WallpaperSubject.progressTotal === 0)
+                                return Translation.tr("Reading the video…");
+                            // How long this takes is set by how much the video
+                            // moves, not its length: a near-still loop reuses
+                            // one matte for a dozen frames, one that really
+                            // moves is recut every frame. Minutes either way,
+                            // so the count and the estimate are the difference
+                            // between working and hung.
+                            const left = WallpaperSubject.etaSeconds;
+                            const when = left > 90
+                                ? Translation.tr("about %1 minutes left").arg(Math.round(left / 60))
+                                : Translation.tr("nearly done");
+                            return Translation.tr("Matting frame %1 of %2, %3. Runs once per wallpaper at lowest priority; the desktop stays usable, and closing this window will not stop it.")
+                                .arg(WallpaperSubject.progressFrames)
+                                .arg(WallpaperSubject.progressTotal)
+                                .arg(when);
+                        }
+                        if (WallpaperSubject.working)
+                            return Translation.tr("Looking for the subject…");
+                        if (WallpaperSubject.error.length > 0)
+                            return WallpaperSubject.error;
+                        if (WallpaperSubject.hasSubject && WallpaperSubject.wallpaperIsVideo)
+                            return Translation.tr("Subject matted through the video, covering %1% of a typical frame. The shell plays the wallpaper itself while this is on, in place of mpvpaper.")
+                                .arg(Math.round(WallpaperSubject.coverage * 100));
+                        if (WallpaperSubject.hasSubject)
+                            return Translation.tr("Subject found, covering %1% of the wallpaper.")
+                                .arg(Math.round(WallpaperSubject.coverage * 100));
+                        if (WallpaperSubject.wallpaperIsVideo)
+                            return Translation.tr("Nothing stands out from the background in this video, so the widgets stay flat.");
+                        return Translation.tr("No subject stands out in this wallpaper, so the widgets stay flat.");
+                    }
+                }
+
+                // Shown the moment a run starts, before there is any frame
+                // count to report: a bake can be minutes, and the first of them
+                // are the ones you are most likely to want back.
+                RippleButtonWithIcon {
+                    visible: WallpaperSubject.working
+                    materialIcon: "close"
+                    mainText: Translation.tr("Cancel")
+                    onClicked: WallpaperSubject.cancel()
+                }
+
+                // Only a failed run is worth retrying on its own. A wallpaper
+                // the model simply found nothing in will find nothing again.
+                RippleButtonWithIcon {
+                    visible: WallpaperSubject.error.length > 0 && !WallpaperSubject.working
+                    materialIcon: "refresh"
+                    mainText: Translation.tr("Try again")
+                    onClicked: WallpaperSubject.generate()
+                }
+
+                // The way back from a cancel, and the way to redo a cutout you
+                // are not happy with.
+                RippleButtonWithIcon {
+                    visible: !WallpaperSubject.working
+                        && (WallpaperSubject.declined || WallpaperSubject.hasSubject)
+                    materialIcon: "restart_alt"
+                    mainText: Translation.tr("Rebake")
+                    onClicked: WallpaperSubject.rebake()
+                }
+            }
+
+            // Every window watching this wallpaper reads the same status file,
+            // so this fills whether or not this window is the one doing the
+            // work. Wavy because it is the M3 Expressive in-progress
+            // indicator, and this is very much in progress.
+            StyledProgressBar {
+                Layout.fillWidth: true
+                visible: WallpaperSubject.working && WallpaperSubject.progressTotal > 0
+                wavy: true
+                from: 0
+                to: Math.max(1, WallpaperSubject.progressTotal)
+                value: WallpaperSubject.progressFrames
+            }
+        }
+    }
+
+    ContentSection {
         icon: "auto_fix"
         title: Translation.tr("Wallpaper effects")
         tooltip: Translation.tr("Applied to the wallpaper image only - widgets, panels and the dock are untouched.\nA video wallpaper cannot be filtered.\nEach effect is a GPU pass over the whole wallpaper, so stacking several costs frames on weak hardware.")

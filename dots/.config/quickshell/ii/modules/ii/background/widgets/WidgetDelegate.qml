@@ -28,6 +28,10 @@ Item {
     required property real widgetY
     required property string placementStrategy
     required property string lockBehavior
+    // Which side of the depth-subject cutout this widget draws on. Read as `z`
+    // by whoever places the delegate, so it does nothing unless subject depth
+    // is on.
+    required property bool aboveSubject
     required property var widgetConfig
     required property var widgetListModel
     // External inputs
