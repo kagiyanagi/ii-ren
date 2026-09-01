@@ -1,5 +1,3 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Layouts
 import qs.services
@@ -10,18 +8,21 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack()
+    signal goBack
 
     RowLayout {
-        spacing: Appearance.rounding.small
+        spacing: 12
 
         RippleButton {
             implicitWidth: implicitHeight
             implicitHeight: 40
-            buttonRadius: Appearance.rounding.full
-            colBackground: Appearance.colors.colSecondaryContainer
+            topLeftRadius:    Appearance.rounding.full
+            topRightRadius:   Appearance.rounding.full
+            bottomLeftRadius: Appearance.rounding.full
+            bottomRightRadius:Appearance.rounding.full
+            colBackground:      Appearance.colors.colSecondaryContainer
             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple: Appearance.colors.colSecondaryContainerActive
+            colRipple:          Appearance.colors.colSecondaryContainerActive
             MaterialSymbol {
                 anchors.centerIn: parent
                 text: "arrow_back"
@@ -34,92 +35,88 @@ ContentPage {
         StyledText {
             text: Translation.tr("Scallop Dot Clock Options")
             font.pixelSize: Appearance.font.pixelSize.large
-            font.family: Appearance.font.family.title
+            font.family:    Appearance.font.family.title
             color: Appearance.colors.colOnLayer0
         }
     }
 
-    Item {
-        Layout.fillWidth: true
-        implicitHeight: 250
-        visible: !Config.isWidgetActive("scallop_dot_clock")
-
-        PagePlaceholder {
-            anchors.fill: parent
-            icon: "schedule"
-            shape: MaterialShape.Shape.Circle
-            title: Translation.tr("Scallop Dot Clock disabled")
-            description: Translation.tr("Enable the Scallop Dot Clock in Desktop Widgets settings to use this page.")
-        }
-    }
-
     ContentSection {
-        visible: Config.isWidgetActive("scallop_dot_clock")
-        icon: "visibility"
-        title: Translation.tr("Display Elements")
+        title: Translation.tr("Clock Settings")
+        icon: "schedule"
 
-        ConfigSwitch {
-            buttonIcon: "schedule"
-            text: Translation.tr("Hour Bubble & Hand")
-            checked: Config.options.background.widgets.scallop_dot_clock.showHourHand ?? true
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showHourHand = checked
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: 250
+            visible: !Config.isWidgetActive("scallop_dot_clock")
+
+            PagePlaceholder {
+                anchors.fill: parent
+                icon:    "schedule"
+                shape:   MaterialShape.Shape.Circle
+                title:       Translation.tr("Scallop Dot Clock disabled")
+                description: Translation.tr("Enable the Scallop Dot Clock in Desktop Widgets settings to use this page.")
+            }
         }
 
-        ConfigSwitch {
-            buttonIcon: "timer"
-            text: Translation.tr("Minute Bubble")
-            checked: Config.options.background.widgets.scallop_dot_clock.showMinuteBubble ?? true
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showMinuteBubble = checked
-        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: Config.isWidgetActive("scallop_dot_clock")
 
-        ConfigSwitch {
-            buttonIcon: "grain"
-            text: Translation.tr("Background Dots")
-            checked: Config.options.background.widgets.scallop_dot_clock.showDots ?? true
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showDots = checked
-        }
-    }
+            // ── Size ─────────────────────────────────────────────────────────
+            ContentSubsectionLabel { text: Translation.tr("Size") }
 
-    ContentSection {
-        visible: Config.isWidgetActive("scallop_dot_clock")
-        icon: "palette"
-        title: Translation.tr("Style & Appearance")
+            ConfigSlider {
+                buttonIcon: "aspect_ratio"
+                text:  Translation.tr("Widget Size")
+                value: Config.options.background.widgets.scallop_dot_clock.widgetSize ?? 100
+                from: 50; to: 200; stepSize: 10
+                onValueChanged: Config.options.background.widgets.scallop_dot_clock.widgetSize = value
+            }
 
-        ConfigSwitch {
-            buttonIcon: "format_bold"
-            text: Translation.tr("Bold Font")
-            checked: Config.options.background.widgets.scallop_dot_clock.boldFont ?? true
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.boldFont = checked
-        }
+            // ── Display Toggles ───────────────────────────────────────────────
+            ContentSubsectionLabel { text: Translation.tr("Display Elements") }
 
-        ConfigSwitch {
-            buttonIcon: "contrast"
-            text: Translation.tr("Black Background")
-            checked: Config.options.background.widgets.scallop_dot_clock.useBlackBg ?? true
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.useBlackBg = checked
-        }
+            ConfigSwitch {
+                buttonIcon: "schedule"
+                text:    Translation.tr("Hour Bubble & Hand")
+                checked: Config.options.background.widgets.scallop_dot_clock.showHourHand ?? true
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showHourHand = checked
+            }
+            ConfigSwitch {
+                buttonIcon: "timer"
+                text:    Translation.tr("Minute Bubble")
+                checked: Config.options.background.widgets.scallop_dot_clock.showMinuteBubble ?? true
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showMinuteBubble = checked
+            }
+            ConfigSwitch {
+                buttonIcon: "grain"
+                text:    Translation.tr("Background Dots")
+                checked: Config.options.background.widgets.scallop_dot_clock.showDots ?? true
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.showDots = checked
+            }
 
-        ConfigSwitch {
-            buttonIcon: "wb_twilight"
-            text: Translation.tr("Glass Reflection")
-            checked: Config.options.background.widgets.scallop_dot_clock.enableGlassReflection ?? false
-            onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.enableGlassReflection = checked
-        }
-    }
+            // ── Style ─────────────────────────────────────────────────────────
+            ContentSubsectionLabel { text: Translation.tr("Style & Appearance") }
 
-    ContentSection {
-        visible: Config.isWidgetActive("scallop_dot_clock")
-        icon: "aspect_ratio"
-        title: Translation.tr("Sizing")
-
-        ConfigSlider {
-            buttonIcon: "aspect_ratio"
-            text: Translation.tr("Widget Size")
-            value: Config.options.background.widgets.scallop_dot_clock.widgetSize ?? 100
-            from: 50
-            to: 200
-            stepSize: 10
-            onValueChanged: Config.options.background.widgets.scallop_dot_clock.widgetSize = value
+            ConfigSwitch {
+                buttonIcon: "format_bold"
+                text:    Translation.tr("Bold Font")
+                checked: Config.options.background.widgets.scallop_dot_clock.boldFont ?? true
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.boldFont = checked
+            }
+            ConfigSwitch {
+                buttonIcon: "contrast"
+                text:    Translation.tr("Black Background")
+                checked: Config.options.background.widgets.scallop_dot_clock.useBlackBg ?? true
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.useBlackBg = checked
+            }
+            ConfigSwitch {
+                buttonIcon: "wb_twilight"
+                text:    Translation.tr("Glass Reflection")
+                checked: Config.options.background.widgets.scallop_dot_clock.enableGlassReflection ?? false
+                onCheckedChanged: Config.options.background.widgets.scallop_dot_clock.enableGlassReflection = checked
+            }
         }
     }
 }
