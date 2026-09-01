@@ -80,6 +80,7 @@ Singleton {
     property var desktopMenuScreen: null
     property real desktopMenuX: 0
     property real desktopMenuY: 0
+    property var desktopMenuWidgetId: null
 
     // Drop shelf, positioned at the point the files were dropped. -1 means the
     // shelf was opened without one and should centre itself.

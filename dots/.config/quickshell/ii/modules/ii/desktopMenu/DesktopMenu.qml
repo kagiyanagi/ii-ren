@@ -273,7 +273,7 @@ Scope {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 132
                         Layout.bottomMargin: 6
-                        visible: wallpaperStrip.count > 0
+                        visible: wallpaperStrip.count > 0 && GlobalStates.desktopMenuWidgetId === null
 
                         // The viewport cuts the tiles at each end square, so round
                         // the cut itself the same as the tiles.
@@ -466,6 +466,7 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId === null
                         // Launcher3 popup rows: bg_popup_item_height 52dp,
                         // system_shortcut_icon_size 20dp, margin_start 16dp,
                         // deep_shortcut_drawable_padding 16dp between the two,
@@ -491,6 +492,7 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId === null
                         // Launcher3 popup rows: bg_popup_item_height 52dp,
                         // system_shortcut_icon_size 20dp, margin_start 16dp,
                         // deep_shortcut_drawable_padding 16dp between the two,
@@ -514,6 +516,7 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId === null
                         // Launcher3 popup rows: bg_popup_item_height 52dp,
                         // system_shortcut_icon_size 20dp, margin_start 16dp,
                         // deep_shortcut_drawable_padding 16dp between the two,
@@ -537,6 +540,7 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId === null
                         // Launcher3 popup rows: bg_popup_item_height 52dp,
                         // system_shortcut_icon_size 20dp, margin_start 16dp,
                         // deep_shortcut_drawable_padding 16dp between the two,
@@ -566,6 +570,7 @@ Scope {
 
                     DockMenuButton {
                         Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId === null
                         // Launcher3 popup rows: bg_popup_item_height 52dp,
                         // system_shortcut_icon_size 20dp, margin_start 16dp,
                         // deep_shortcut_drawable_padding 16dp between the two,
@@ -588,6 +593,78 @@ Scope {
                             Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
                         }
                     }
+                    DockMenuButton {
+                        Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId !== null
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        topLeftRadius: menuCard.outerRadius
+                        topRightRadius: topLeftRadius
+                        symbolName: "flip_to_front"
+                        labelText: Translation.tr("Move to upper layer")
+                        onTriggered: {
+                            menuWindow.dismiss();
+                            let cloned = JSON.parse(JSON.stringify(Config.options.background.activeWidgets || []));
+                            const index = cloned.findIndex(w => w.id === GlobalStates.desktopMenuWidgetId);
+                            if (index >= 0) {
+                                const item = cloned.splice(index, 1)[0];
+                                cloned.push(item);
+                                Config.options.background.activeWidgets = cloned;
+                            }
+                        }
+                    }
+
+                    DockMenuButton {
+                        Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId !== null
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        symbolName: "settings"
+                        labelText: Translation.tr("Config")
+                        onTriggered: {
+                            menuWindow.dismiss();
+                            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+                        }
+                    }
+
+                    DockMenuButton {
+                        Layout.fillWidth: true
+                        visible: GlobalStates.desktopMenuWidgetId !== null
+                        implicitHeight: 52
+                        symbolSize: 20
+                        sidePadding: 16
+                        contentSpacing: 16
+                        fontSize: Appearance.font.pixelSize.normal
+                        buttonRadius: menuCard.innerRadius
+                        colBackground: Appearance.colors.colSurfaceContainerHigh
+                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        bottomLeftRadius: menuCard.outerRadius
+                        bottomRightRadius: bottomLeftRadius
+                        symbolName: "delete"
+                        labelText: Translation.tr("Remove")
+                        onTriggered: {
+                            menuWindow.dismiss();
+                            let cloned = JSON.parse(JSON.stringify(Config.options.background.activeWidgets || []));
+                            cloned = cloned.filter(w => w.id !== GlobalStates.desktopMenuWidgetId);
+                            Config.options.background.activeWidgets = cloned;
+                        }
+                    }
+
                 }
             }
         }

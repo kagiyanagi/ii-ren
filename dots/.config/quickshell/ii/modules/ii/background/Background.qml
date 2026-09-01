@@ -306,6 +306,7 @@ Variants {
             // dismiss handler takes a full click, so the release that follows
             // this press cannot immediately close it again.
             onPressed: mouse => {
+                GlobalStates.desktopMenuWidgetId = null;
                 GlobalStates.desktopMenuScreen = bgRoot.screen;
                 GlobalStates.desktopMenuX = mouse.x;
                 GlobalStates.desktopMenuY = mouse.y;
