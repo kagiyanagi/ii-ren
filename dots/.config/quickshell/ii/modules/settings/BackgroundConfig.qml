@@ -11,6 +11,10 @@ ContentPage {
     property bool register: parent.register ?? false
     forceWidth: true
     
+    // A video wallpaper is swapped by mpvpaper, which knows nothing about the
+    // transition set here.
+    readonly property bool wallpaperIsVideo: Wallpapers.isVideoFile((Config.options.background.wallpaperPath ?? "").toLowerCase())
+
     property bool allowHeavyLoads: false
     Component.onCompleted: Qt.callLater(() => page.allowHeavyLoads = true)
 
@@ -70,9 +74,26 @@ ContentPage {
         ContentSubsection {
             visible: Config.options.background.animateWallpaperChanges
             title: Translation.tr("Wallpaper transition style")
-            
+
+            // Kept at full strength while the controls below it dim: a disabled
+            // control that cannot say why it is disabled is its own kind of
+            // silence, and this one is only off because of the wallpaper that
+            // happens to be set right now.
+            StyledText {
+                visible: page.wallpaperIsVideo
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: Appearance.colors.colSubtext
+                text: Translation.tr("A video wallpaper is swapped straight in by mpvpaper, which cannot play a transition. This applies to image wallpapers.")
+            }
+
             StyledComboBox {
                 Layout.fillWidth: true
+                enabled: !page.wallpaperIsVideo
+                opacity: enabled ? 1 : 0.4
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
                 buttonIcon: "masked_transitions"
                 textRole: "displayName"
                 model: [
@@ -123,6 +144,11 @@ ContentPage {
 
             ConfigSpinBox {
                 visible: Config.options.background.transitionType === "wipe" || Config.options.background.transitionType === "wave"
+                enabled: !page.wallpaperIsVideo
+                opacity: enabled ? 1 : 0.4
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
                 Layout.fillWidth: true
                 icon: "rotate_right"
                 text: Translation.tr("Wipe Angle (0° starts from left side)")
