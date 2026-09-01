@@ -16,8 +16,8 @@ AsyncTask {
     property var paragraphs: []
 
     // Every installed traineddata except osd, which detects orientation rather than text.
-    // Empty (no langpacks) means let tesseract pick its own default.
-    readonly property string langSetup: `L=$(tesseract --list-langs 2>/dev/null | awk 'NR>1 && $1 != "osd" {print $1}' | tr '\\n' '+' | sed 's/+$//')`
+    // Put 'eng' at the end of the list so it doesn't override other languages (fixes CJK being read as English gibberish).
+    readonly property string langSetup: `L=$(tesseract --list-langs 2>/dev/null | awk 'NR>1 && $1 != "osd" {print $1}' | awk '{if($1=="eng") eng=$1; else printf "%s+", $1} END{if(eng) printf "%s", eng}' | sed 's/+$//')`
 
     function recognize(imageUri: string) {
         resetState();
@@ -25,7 +25,7 @@ AsyncTask {
         root.state = AsyncTask.State.Processing;
         const path = StringUtils.shellSingleQuoteEscape(FileUtils.trimFileProtocol(imageUri));
         proc.runSequence([
-            ["bash", "-c", `${root.langSetup}; tesseract '${path}' stdout \${L:+-l "$L"} tsv 2>/dev/null`],
+            ["bash", "-c", `${root.langSetup}; OMP_THREAD_LIMIT=1 tesseract '${path}' stdout \${L:+-l "$L"} --psm 11 tsv 2>/dev/null`],
             (out) => root.handleTsv(out)
         ]);
     }

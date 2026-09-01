@@ -49,7 +49,34 @@ Item {
     }
 
     Component.onCompleted: {
-        ocr.recognize(root.screenshotPath);
+        if (Config.options.language.translator.mode === "local_model") {
+            localModelProc.runSequence([
+                ["bash", "-c", `python3 ${StringUtils.shellSingleQuoteEscape(Quickshell.shellPath("scripts/images/local_model_translator.py"))} '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}' 2>/dev/null`],
+                (out) => {
+                    try {
+                        const res = JSON.parse(out);
+                        if (res.error) {
+                            root.handleError(res.error);
+                            return;
+                        }
+                        root.paragraphs = res.data;
+                        root.translation = ({});
+                        for (let p of res.data) {
+                            Object.assign(root.translation, { [p.text]: p.translated });
+                        }
+                        root.loading = false;
+                    } catch (e) {
+                        root.handleError(Translation.tr("Failed to parse local model output: ") + e);
+                    }
+                }
+            ]);
+        } else {
+            ocr.recognize(root.screenshotPath);
+        }
+    }
+
+    MultiTurnProcess {
+        id: localModelProc
     }
 
     Rectangle {
@@ -73,7 +100,9 @@ Item {
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: {
-                    if (ocr.state == AsyncTask.State.Processing)
+                    if (Config.options.language.translator.mode === "local_model")
+                        return Translation.tr("Running Local AI Model...");
+                    else if (ocr.state == AsyncTask.State.Processing)
                         return Translation.tr("Reading screen");
                     else if (translator.state == AsyncTask.State.Processing)
                         return Translation.tr("Translating");

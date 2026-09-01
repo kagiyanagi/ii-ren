@@ -28,11 +28,12 @@ AsyncTask {
         }
         root.state = AsyncTask.State.Processing;
 
-        // `trans` emits exactly one line per argument, so any newline in the source
-        // would desync the input/output mapping.
-        const args = strings.map(s => `'${StringUtils.shellSingleQuoteEscape(s.replace(/\s+/g, " ").trim())}'`).join(" ");
+        // Passing a single argument with newlines makes `trans` do exactly one HTTP request,
+        // which prevents rate-limiting and makes it instantly fast.
+        const combined = strings.map(s => s.replace(/\s+/g, " ").trim()).join("\n");
+        const arg = `'${StringUtils.shellSingleQuoteEscape(combined)}'`;
         proc.runSequence([
-            ["bash", "-c", `trans -brief -no-bidi -target '${StringUtils.shellSingleQuoteEscape(root.targetLanguage)}' -- ${args}`],
+            ["bash", "-c", `trans -brief -no-bidi -target '${StringUtils.shellSingleQuoteEscape(root.targetLanguage)}' -- ${arg}`],
             (out) => root.handleTransOutput(out)
         ]);
     }

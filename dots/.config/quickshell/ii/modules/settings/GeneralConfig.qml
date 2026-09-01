@@ -195,6 +195,41 @@ ContentPage {
     } 
 
     ContentSection {
+        icon: "translate"
+        title: Translation.tr("Screen Translator")
+
+        ContentSubsection {
+            title: Translation.tr("Translation Engine")
+            tooltip: "Engine for screen translation. Web engines require no setup.\nLocal Model (Manga) requires: pip install mokuro argostranslate\nLocal Argos (General) requires: pip install argostranslate"
+
+            StyledComboBox {
+                buttonIcon: "memory"
+                textRole: "displayName"
+
+                model: [
+                    {
+                        displayName: Translation.tr("Lightweight (Tesseract + Google)"),
+                        value: "lightweight"
+                    },
+                    {
+                        displayName: Translation.tr("Local AI Model (Mokuro MangaOCR)"),
+                        value: "local_model"
+                    }
+                ]
+
+                currentIndex: {
+                    const index = model.findIndex(item => item.value === Config.options.language.translator.mode);
+                    return index !== -1 ? index : 0;
+                }
+
+                onActivated: index => {
+                    Config.options.language.translator.mode = model[index].value;
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "rule"
         title: Translation.tr("Policies")
 
