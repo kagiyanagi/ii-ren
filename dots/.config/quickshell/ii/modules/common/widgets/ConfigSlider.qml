@@ -18,6 +18,7 @@ ColumnLayout {
     property bool usePercentTooltip: true
     property real from: slider.from
     property real to: slider.to
+    property alias stepSize: slider.stepSize
 
     // Emitted only for actual user interaction. valueChanged also fires for
     // every frame of StyledSlider's settle animation, so a handler that writes

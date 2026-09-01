@@ -12,6 +12,7 @@ Item {
     property string icon: ""
     property string text: ""
     property string inputText: ""
+    property alias placeholderText: textField.placeholderText
 
     Layout.fillWidth: true
     implicitHeight: 48
