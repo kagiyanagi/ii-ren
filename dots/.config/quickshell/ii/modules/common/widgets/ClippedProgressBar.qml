@@ -35,7 +35,7 @@ ProgressBar {
     text: Math.round(value * 100)
     font {
         pixelSize: 13
-        weight: text.length > 2 ? Font.Medium : Font.DemiBold
+        weight: text.length > 2 ? 575 : 675
     }
 
     background: Item {
@@ -85,9 +85,8 @@ ProgressBar {
         }
     }
 
+    // The bar itself, rounded to the pill silhouette.
     OpacityMask {
-        id: roundingMask
-        visible: false
         anchors.fill: parent
         source: contentItem
         maskSource: Rectangle {
@@ -97,10 +96,29 @@ ProgressBar {
         }
     }
 
+    // The same bar with the fill and track colours swapped, painted only inside
+    // the glyphs, so text and icons read as the exact inverse of whatever is
+    // behind them. Masking to the glyphs rather than punching them out keeps
+    // this off the rounded corners, which it would otherwise square off.
+    Rectangle {
+        id: inverseContent
+        visible: false
+        anchors.fill: parent
+        color: root.highlightColor
+
+        Rectangle {
+            x: progressFill.x
+            y: progressFill.y
+            width: progressFill.width
+            height: progressFill.height
+            radius: progressFill.radius
+            color: root.trackColor
+        }
+    }
+
     OpacityMask {
         anchors.fill: parent
-        source: roundingMask
-        invert: true
+        source: inverseContent
         maskSource: root.textMask
     }
 }

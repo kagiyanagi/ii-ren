@@ -125,6 +125,59 @@ Item {
     }
 
     // -------------------------------------------------------------
+    // Inside content (percentage text and charging bolt) over a fill
+    // -------------------------------------------------------------
+    // Drawn twice: once in the on-track colour, once in the on-fill colour
+    // clipped to the fill rect. Every pixel is then the inverse of whatever
+    // sits behind it, so the number stays readable at any charge level.
+    component FillAwareContent: Item {
+        id: fillAware
+        property Item fillItem: null
+        property rect fillRect: fillAware.fillItem ? Qt.rect(fillAware.fillItem.x, fillAware.fillItem.y, fillAware.fillItem.width, fillAware.fillItem.height) : Qt.rect(0, 0, 0, 0)
+        property real boltSize: Appearance.font.pixelSize.smaller - 2
+        property real textSize: Appearance.font.pixelSize.smaller - 3
+
+        Repeater {
+            model: 2
+
+            delegate: Item {
+                id: contentLayer
+                required property int index
+                readonly property bool overFill: index === 1
+                readonly property color contentColor: overFill ? root.trackColor : root.highlightColor
+
+                clip: overFill
+                x: overFill ? fillAware.fillRect.x : 0
+                y: overFill ? fillAware.fillRect.y : 0
+                width: overFill ? fillAware.fillRect.width : fillAware.width
+                height: overFill ? fillAware.fillRect.height : fillAware.height
+
+                MaterialSymbol {
+                    x: (fillAware.width - width) / 2 - contentLayer.x
+                    y: (fillAware.height - height) / 2 - contentLayer.y
+                    visible: root.isCharging && root.showChargingIndicator
+                    fill: 1
+                    text: "bolt"
+                    iconSize: fillAware.boltSize
+                    color: contentLayer.contentColor
+                }
+
+                StyledText {
+                    x: (fillAware.width - width) / 2 - contentLayer.x
+                    y: (fillAware.height - height) / 2 - contentLayer.y
+                    visible: root.displayInsideText
+                    text: root.rawPercentageText
+                    color: contentLayer.contentColor
+                    font {
+                        pixelSize: fillAware.textSize
+                        weight: Font.Bold
+                    }
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
     // Style 1: Circle (LineageOS / OxygenOS / AOSP Circle Battery)
     // -------------------------------------------------------------
     Component {
@@ -522,6 +575,7 @@ Item {
 
                     // Bottom-anchored fill
                     Rectangle {
+                        id: portraitFill
                         anchors.bottom: parent.bottom
                         anchors.left: parent.left
                         anchors.right: parent.right
@@ -532,24 +586,9 @@ Item {
                     }
 
                     // Bolt or inside percentage
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        visible: root.isCharging && root.showChargingIndicator
-                        fill: 1
-                        text: "bolt"
-                        iconSize: Appearance.font.pixelSize.smaller - 2
-                        color: root.highlightColor
-                    }
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        visible: root.displayInsideText
-                        text: root.rawPercentageText
-                        color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                        font {
-                            pixelSize: Appearance.font.pixelSize.smaller - 3
-                            weight: Font.Bold
-                        }
+                    FillAwareContent {
+                        anchors.fill: parent
+                        fillItem: portraitFill
                     }
                 }
             }
@@ -580,6 +619,7 @@ Item {
 
                     // Inner fill
                     Rectangle {
+                        id: landscapeFill
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
@@ -589,24 +629,9 @@ Item {
                         color: root.highlightColor
                     }
 
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        visible: root.isCharging && root.showChargingIndicator
-                        fill: 1
-                        text: "bolt"
-                        iconSize: Appearance.font.pixelSize.smaller - 2
-                        color: root.highlightColor
-                    }
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        visible: root.displayInsideText
-                        text: root.rawPercentageText
-                        color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                        font {
-                            pixelSize: Appearance.font.pixelSize.smaller - 3
-                            weight: Font.Bold
-                        }
+                    FillAwareContent {
+                        anchors.fill: parent
+                        fillItem: landscapeFill
                     }
                 }
 
@@ -654,6 +679,7 @@ Item {
                     clip: true
 
                     Rectangle {
+                        id: landscapeLeftFill
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
@@ -663,24 +689,9 @@ Item {
                         color: root.highlightColor
                     }
 
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        visible: root.isCharging && root.showChargingIndicator
-                        fill: 1
-                        text: "bolt"
-                        iconSize: Appearance.font.pixelSize.smaller - 2
-                        color: root.highlightColor
-                    }
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        visible: root.displayInsideText
-                        text: root.rawPercentageText
-                        color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                        font {
-                            pixelSize: Appearance.font.pixelSize.smaller - 3
-                            weight: Font.Bold
-                        }
+                    FillAwareContent {
+                        anchors.fill: parent
+                        fillItem: landscapeLeftFill
                     }
                 }
             }
@@ -711,6 +722,7 @@ Item {
                     clip: true
 
                     Rectangle {
+                        id: iosFill
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
@@ -720,24 +732,9 @@ Item {
                         color: root.highlightColor
                     }
 
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        visible: root.isCharging && root.showChargingIndicator
-                        fill: 1
-                        text: "bolt"
-                        iconSize: Appearance.font.pixelSize.smaller - 2
-                        color: root.highlightColor
-                    }
-
-                    StyledText {
-                        anchors.centerIn: parent
-                        visible: root.displayInsideText
-                        text: root.rawPercentageText
-                        color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                        font {
-                            pixelSize: Appearance.font.pixelSize.smaller - 3
-                            weight: Font.Bold
-                        }
+                    FillAwareContent {
+                        anchors.fill: parent
+                        fillItem: iosFill
                     }
                 }
 
@@ -812,6 +809,7 @@ Item {
                 clip: true
 
                 Rectangle {
+                    id: muskuFill
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
@@ -830,24 +828,9 @@ Item {
                     opacity: root.animatedPercentage >= 0.95 ? 1.0 : 0.4
                 }
 
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    visible: root.isCharging && root.showChargingIndicator
-                    fill: 1
-                    text: "bolt"
-                    iconSize: Appearance.font.pixelSize.smaller - 2
-                    color: root.highlightColor
-                }
-
-                StyledText {
-                    anchors.centerIn: parent
-                    visible: root.displayInsideText
-                    text: root.rawPercentageText
-                    color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                    font {
-                        pixelSize: Appearance.font.pixelSize.smaller - 3
-                        weight: Font.Bold
-                    }
+                FillAwareContent {
+                    anchors.fill: parent
+                    fillItem: muskuFill
                 }
             }
         }
@@ -895,24 +878,9 @@ Item {
                 }
             }
 
-            MaterialSymbol {
-                anchors.centerIn: parent
-                visible: root.isCharging && root.showChargingIndicator
-                fill: 1
-                text: "bolt"
-                iconSize: Appearance.font.pixelSize.smaller - 2
-                color: root.highlightColor
-            }
-
-            StyledText {
-                anchors.centerIn: parent
-                visible: root.displayInsideText
-                text: root.rawPercentageText
-                color: root.animatedPercentage >= 0.6 ? Appearance.colors.colLayer1 : root.highlightColor
-                font {
-                    pixelSize: Appearance.font.pixelSize.smaller - 3
-                    weight: Font.Bold
-                }
+            FillAwareContent {
+                anchors.fill: parent
+                fillRect: Qt.rect(1, 2.5, 1 + Math.max(0, 20 * root.animatedPercentage), 9)
             }
         }
     }
