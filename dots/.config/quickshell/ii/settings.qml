@@ -24,65 +24,113 @@ ApplicationWindow {
     property real contentPadding: 8
     property bool showNextTime: false
 
-    property int currentPage: 0
+    property int currentPage: {
+        const p = Quickshell.env("II_SETTINGS_PAGE");
+        if (p) {
+            const idx = root.pages.findIndex(x => x.id === p);
+            return idx !== -1 ? idx : 0;
+        }
+        return 0;
+    }
     property real scrollPos: 0
     property string lastSearch: ""
     property int lastSearchIndex: -1
     property int resultsCount: 0
+    property string pendingSectionHighlight: Quickshell.env("II_SETTINGS_HIGHLIGHT") || ""
+
+    IpcHandler {
+        target: "settings"
+        
+        function openPage(pageId, subPagePath) {
+            root.Window.window.requestActivate();
+            const idx = root.pages.findIndex(p => p.id === pageId);
+            if (idx !== -1) {
+                root.currentPage = idx;
+            }
+            if (subPagePath) {
+                root.pendingSectionHighlight = subPagePath;
+            }
+        }
+    }
+
 
     property var pages: [
         {
+            id: "quick",
             name: Translation.tr("Quick"),
             icon: "instant_mix",
             component: "modules/settings/QuickConfig.qml"
         },
         {
+            id: "general",
             name: Translation.tr("General"),
             icon: "browse",
             component: "modules/settings/GeneralConfig.qml"
         },
         {
+            id: "bar",
             name: Translation.tr("Bar"),
             icon: "toast",
             iconRotation: 180,
             component: "modules/settings/BarConfig.qml"
         },
         {
+            id: "background",
             name: Translation.tr("Background"),
             icon: "texture",
             component: "modules/settings/BackgroundConfig.qml"
         },
         {
+            id: "widgets",
+            name: Translation.tr("Widgets"),
+            icon: "widgets",
+            component: "modules/settings/WidgetsConfig.qml"
+        },
+        {
+            id: "interface",
             name: Translation.tr("Interface"),
             icon: "bottom_app_bar",
             component: "modules/settings/InterfaceConfig.qml"
         },
         {
+            id: "services",
             name: Translation.tr("Services"),
             icon: "api",
             component: "modules/settings/ServicesConfig.qml"
         },
         {
+            id: "extensions",
             name: Translation.tr("Extensions"),
             icon: "extension",
             component: "modules/settings/ExtensionsConfig.qml"
         },
         {
+            id: "hyprland",
             name: Translation.tr("Hyprland"),
             icon: "desktop_windows",
             component: "modules/settings/HyprlandConfig.qml"
         },
         {
+            id: "advanced",
             name: Translation.tr("Advanced"),
             icon: "construction",
             component: "modules/settings/AdvancedConfig.qml"
         },
         {
+            id: "about",
             name: Translation.tr("About"),
             icon: "info",
             component: "modules/settings/About.qml"
         }
     ]
+
+    function pageIndexById(id) {
+        if (!id) return -1;
+        for (let i = 0; i < pages.length; i++) {
+            if (pages[i].id === id) return i;
+        }
+        return -1;
+    }
     
 
     visible: true

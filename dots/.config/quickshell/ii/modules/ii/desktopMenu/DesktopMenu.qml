@@ -637,7 +637,21 @@ Scope {
                         labelText: Translation.tr("Config")
                         onTriggered: {
                             menuWindow.dismiss();
-                            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+                            let cloned = Config.options.background.activeWidgets || [];
+                            const widgetData = cloned.find(w => w.id === GlobalStates.desktopMenuWidgetId);
+                            let configPage = "";
+                            if (widgetData) {
+                                // Have to use absolute import path for singleton since this file is deep in a different directory
+                                const meta = qs.modules.ii.background.widgets.WidgetsRegistry.getWidgetMetadata(widgetData.widgetId);
+                                if (meta && meta.configPage) {
+                                    configPage = meta.configPage;
+                                }
+                            }
+                            if (configPage !== "") {
+                                Quickshell.execDetached(["bash", "-c", "II_SETTINGS_PAGE=widgets II_SETTINGS_HIGHLIGHT=" + configPage + " qs -p " + Quickshell.shellPath("settings.qml")]);
+                            } else {
+                                Quickshell.execDetached(["bash", "-c", "II_SETTINGS_PAGE=widgets qs -p " + Quickshell.shellPath("settings.qml")]);
+                            }
                         }
                     }
 

@@ -26,6 +26,25 @@ QtObject {
         }
     }
 
+    // ── Deferred removal ─────────────────────────────────────────────────────
+    // `exiting` is set on the model entry, the delegate plays its exit, and this
+    // timer runs the sync a second time with `reapDue` set so the entry is
+    // actually dropped. Kept slightly longer than the exit animation so the
+    // widget is never destroyed mid-fade.
+    property bool reapDue: false
+    property Timer reapTimer: Timer {
+        interval: Math.round(260 * Appearance.animMultiplier)
+        repeat: false
+        onTriggered: {
+            manager.reapDue = true;
+            manager.syncActiveWidgets();
+            manager.reapDue = false;
+        }
+    }
+    function scheduleReap() {
+        manager.reapTimer.restart();
+    }
+
     function syncActiveWidgets() {
         let configList = Config.options.background.activeWidgets || [];
         console.log("[Background] syncActiveWidgets called. Config activeWidgets count: " + configList.length + ", current model count: " + widgetListModel.count);
@@ -44,11 +63,20 @@ QtObject {
                 }
             }
             if (!found) {
-                widgetListModel.remove(i);
+                // Deferred removal: the Repeater destroys a delegate the moment
+                // it leaves the model, so an exit animation had nowhere to run.
+                // Flag it, let the widget animate itself out, and reap it after.
+                if (!widgetListModel.get(i).exiting) {
+                    widgetListModel.setProperty(i, "exiting", true);
+                    manager.scheduleReap();
+                } else if (manager.reapDue) {
+                    widgetListModel.remove(i);
+                }
             }
         }
 
-        // 2. Add or update items in ListModel
+        // 2. Add, update, and reorder items in ListModel
+        let targetIndex = 0;
         for (let j = 0; j < configList.length; j++) {
             let configItem = configList[j];
             let modelIndex = -1;
@@ -60,14 +88,16 @@ QtObject {
             }
 
             if (modelIndex === -1) {
-                widgetListModel.append({
+                widgetListModel.insert(targetIndex, {
                     "instanceId": configItem.id,
                     "widgetId": configItem.widgetId,
                     "widgetX": configItem.x,
                     "widgetY": configItem.y,
                     "placementStrategy": configItem.placementStrategy || "free",
                     "lockBehavior": configItem.lockBehavior || "hide",
-                    "staggerDelay": addCount * 60
+                    "staggerDelay": addCount * 60,
+                    "scale": configItem.scale ?? 1.0,
+                    "exiting": false
                 });
                 addCount++;
             } else {
@@ -89,10 +119,17 @@ QtObject {
                 if (modelItem.lockBehavior !== (configItem.lockBehavior || "hide")) {
                     modelItem.lockBehavior = configItem.lockBehavior || "hide";
                 }
+                if (Math.abs((modelItem.scale ?? 1.0) - (configItem.scale ?? 1.0)) > 0.001) {
+                    modelItem.scale = configItem.scale ?? 1.0;
+                }
                 if (moveCount > 0 || addCount > 0) {
                     modelItem.staggerDelay = j * 60;
                 }
+                if (modelIndex !== targetIndex) {
+                    widgetListModel.move(modelIndex, targetIndex, 1);
+                }
             }
+            targetIndex++;
         }
 
         let isBulkChange = (addCount + moveCount) > 0;
