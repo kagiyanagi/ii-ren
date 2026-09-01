@@ -81,6 +81,8 @@ Variants {
         property real movableXSpace: ((wallpaperWidth / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.width) / 2
         property real movableYSpace: ((wallpaperHeight / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.height) / 2
 
+        readonly property bool parallaxEnabled: Config.options.background.parallax.enableWorkspace
+            || Config.options.background.parallax.enableSidebar
         readonly property bool verticalParallax: (Config.options.background.parallax.autoVertical && wallpaperHeight > wallpaperWidth) || Config.options.background.parallax.vertical
         // Colors
         property bool shouldBlur: (GlobalStates.screenLocked && Config.options.lock.blur.enable)
@@ -141,6 +143,7 @@ Variants {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
+        onParallaxEnabledChanged: bgRoot.updateZoomScale()
         onWallpaperPathChanged: {
             bgRoot.updateZoomScale();
             // Clock position gets updated after zoom scale is updated
@@ -164,13 +167,26 @@ Variants {
                     bgRoot.wallpaperWidth = width;
                     bgRoot.wallpaperHeight = height;
 
+                    let scale;
                     if (width <= screenWidth || height <= screenHeight) {
                         // Undersized/perfectly sized wallpapers
-                        bgRoot.effectiveWallpaperScale = Math.max(screenWidth / width, screenHeight / height);
+                        scale = Math.max(screenWidth / width, screenHeight / height);
                     } else {
                         // Oversized = can be zoomed for parallax, yay
-                        bgRoot.effectiveWallpaperScale = Math.min(bgRoot.preferredWallpaperScale, width / screenWidth, height / screenHeight);
+                        scale = Math.min(bgRoot.preferredWallpaperScale, width / screenWidth, height / screenHeight);
                     }
+
+                    // Parallax pans the wallpaper about inside the screen, so it
+                    // needs a wallpaper bigger than the screen to pan. One that
+                    // matches the screen exactly covers it and leaves nothing to
+                    // move, and parallax then does nothing at all with no hint
+                    // as to why - which is every 1920x1080 wallpaper on a
+                    // 1920x1080 panel, and most video wallpapers, since they are
+                    // usually cut to the panel. Give those the same zoom an
+                    // oversized wallpaper gets; anything that already has room
+                    // keeps the room it has.
+                    bgRoot.effectiveWallpaperScale = (bgRoot.parallaxEnabled && scale <= 1)
+                        ? bgRoot.preferredWallpaperScale : scale;
                 }
             }
         }
