@@ -7,6 +7,7 @@ import qs.modules.common.functions
 // ponytail: DockMenuButton is a generic icon + label menu row with nothing dock
 // specific in it. Move it to common/widgets if a third menu wants it.
 import qs.modules.ii.dock
+import qs.modules.ii.background.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
@@ -642,15 +643,15 @@ Scope {
                             let configPage = "";
                             if (widgetData) {
                                 // Have to use absolute import path for singleton since this file is deep in a different directory
-                                const meta = qs.modules.ii.background.widgets.WidgetsRegistry.getWidgetMetadata(widgetData.widgetId);
+                                const meta = WidgetsRegistry.getWidgetMetadata(widgetData.widgetId);
                                 if (meta && meta.configPage) {
                                     configPage = meta.configPage;
                                 }
                             }
                             if (configPage !== "") {
-                                Quickshell.execDetached(["bash", "-c", "II_SETTINGS_PAGE=widgets II_SETTINGS_HIGHLIGHT=" + configPage + " qs -p " + Quickshell.shellPath("settings.qml")]);
+                                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=widgets", "II_SETTINGS_HIGHLIGHT=" + configPage, "qs", "-p", Quickshell.shellPath("settings.qml")]);
                             } else {
-                                Quickshell.execDetached(["bash", "-c", "II_SETTINGS_PAGE=widgets qs -p " + Quickshell.shellPath("settings.qml")]);
+                                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=widgets", "qs", "-p", Quickshell.shellPath("settings.qml")]);
                             }
                         }
                     }
