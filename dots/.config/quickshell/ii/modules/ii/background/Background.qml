@@ -9,6 +9,7 @@ import qs.modules.common.widgets.widgetCanvas
 import qs.modules.common.functions as CF
 import QtQuick
 import QtQuick.Layouts
+import QtMultimedia
 import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Io
@@ -464,10 +465,10 @@ Variants {
             }
 
             // Wallpaper
-            TransitionImage {
+            Item {
                 id: wallpaper
                 visible: !blurLoader.active
-                opacity: bgRoot.wallpaperIsVideo ? 0 : 1
+                opacity: (bgRoot.wallpaperIsVideo && !wallpaperEffects.takesOver && !blurLoader.active) ? 0 : 1
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
                 property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
@@ -498,9 +499,6 @@ Variants {
                 x: -(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace
                 y: -(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace
 
-                imageSource: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
-                animated: !bgRoot.wallpaperIsVideo
-                fillMode: Image.PreserveAspectCrop
                 Behavior on x {
                     NumberAnimation {
                         duration: 600
@@ -527,6 +525,30 @@ Variants {
                 }
                 width: bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
                 height: bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
+
+                TransitionImage {
+                    anchors.fill: parent
+                    visible: !bgRoot.wallpaperIsVideo
+                    imageSource: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
+                    animated: true
+                    fillMode: Image.PreserveAspectCrop
+                }
+
+                MediaPlayer {
+                    id: videoPlayer
+                    source: (bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered && (wallpaperEffects.takesOver || blurLoader.active)) ? "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath) : ""
+                    audioOutput: AudioOutput { muted: true }
+                    videoOutput: vidOutput
+                    loops: MediaPlayer.Infinite
+                    autoPlay: true
+                }
+
+                VideoOutput {
+                    id: vidOutput
+                    anchors.fill: parent
+                    visible: bgRoot.wallpaperIsVideo
+                    fillMode: VideoOutput.PreserveAspectCrop
+                }
             }
 
             Loader {
@@ -583,8 +605,9 @@ Variants {
                 id: wallpaperEffects
                 anchors.fill: wallpaper
                 wallpaper: wallpaper
+                isVideo: bgRoot.wallpaperIsVideo
                 // The lock screen runs its own blur; don't stack the two.
-                visible: !blurLoader.active && !bgRoot.wallpaperIsVideo
+                visible: !blurLoader.active
             }
 
             WidgetCanvas {

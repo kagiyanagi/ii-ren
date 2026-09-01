@@ -23,6 +23,7 @@ Item {
 
     required property Item wallpaper
     readonly property var opt: Config.options.background.effects
+    property bool isVideo: false
 
     // The ROMs aim the effects at the home screen, the lock screen or both;
     // screenLocked is the equivalent here.
@@ -93,7 +94,7 @@ Item {
         id: blurInput
         anchors.fill: parent
         visible: false
-        live: root.baking
+        live: root.baking || root.isVideo
         // Never hidden: this one always reads the wallpaper directly.
         hideSource: false
         sourceItem: root.blurActive ? root.wallpaper : null
@@ -117,7 +118,7 @@ Item {
         sourceComponent: FlutedGlass {
             source: blurLoader.item ?? root.wallpaper
             hideSource: source !== root.wallpaper
-            live: root.baking
+            live: root.baking || root.isVideo
         }
     }
 
@@ -128,7 +129,7 @@ Item {
         sourceComponent: WallpaperFilter {
             source: glassLoader.item ?? blurLoader.item ?? root.wallpaper
             hideSource: source !== root.wallpaper
-            live: root.baking
+            live: root.baking || root.isVideo
         }
     }
 
@@ -137,7 +138,7 @@ Item {
         id: baked
         anchors.fill: parent
         visible: root.takesOver
-        live: root.baking
+        live: root.baking || root.isVideo
         hideSource: true
         sourceItem: root.takesOver
             ? (filterLoader.item ?? glassLoader.item ?? blurLoader.item)
