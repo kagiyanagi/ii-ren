@@ -7,7 +7,10 @@ import qs.modules.common.widgets
 ColumnLayout {
     id: root
     property string title: ""
+    property string icon: ""
     property string tooltip: ""
+    property bool collapsible: false
+    property bool expanded: false
     default property alias contentData: sectionContent.contentData
 
     Layout.fillWidth: true
@@ -26,6 +29,7 @@ ColumnLayout {
     }
 
     RowLayout {
+        id: headerRow
         Layout.leftMargin: 6
         ContentSubsectionLabel {
             opacity: 1 - highlightOverlay.opacity
@@ -56,8 +60,37 @@ ColumnLayout {
             visible: false
         }
         Item { Layout.fillWidth: true }
+
+        MaterialSymbol {
+            visible: root.collapsible
+            text: "keyboard_arrow_down"
+            iconSize: Appearance.font.pixelSize.large
+            color: Appearance.colors.colOnLayer1
+            rotation: root.expanded ? 0 : -90
+            Behavior on rotation {
+                NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+            }
+        }
     }
-    ContentGroup {
-        id: sectionContent
+
+    MouseArea {
+        parent: headerRow
+        anchors.fill: parent
+        enabled: root.collapsible
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.expanded = !root.expanded
+    }
+    
+    Item {
+        Layout.fillWidth: true
+        implicitHeight: root.expanded || !root.collapsible ? sectionContent.implicitHeight : 0
+        visible: root.expanded || !root.collapsible
+        
+        ContentGroup {
+            id: sectionContent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+        }
     }
 }

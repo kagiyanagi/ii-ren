@@ -10,6 +10,8 @@ ColumnLayout {
     property string title
     property string icon: ""
     property string tooltip: ""
+    property bool collapsible: false
+    property bool expanded: false
     property list<string> stringMap: []
     default property alias contentData: sectionContent.contentData
 
@@ -42,6 +44,7 @@ ColumnLayout {
     }
 
     RowLayout {
+        id: headerRow
         spacing: 12
         Layout.leftMargin: 4
 
@@ -91,9 +94,38 @@ ColumnLayout {
             id: highlightOverlay
             visible: false
         }
+        Item { Layout.fillWidth: true }
+
+        MaterialSymbol {
+            visible: root.collapsible
+            text: "keyboard_arrow_down"
+            iconSize: Appearance.font.pixelSize.huge
+            color: Appearance.colors.colOnLayer0
+            rotation: root.expanded ? 0 : -90
+            Behavior on rotation {
+                NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+            }
+        }
     }
 
-    ContentGroup {
-        id: sectionContent
+    MouseArea {
+        parent: headerRow
+        anchors.fill: parent
+        enabled: root.collapsible
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.expanded = !root.expanded
+    }
+
+    Item {
+        Layout.fillWidth: true
+        implicitHeight: root.expanded || !root.collapsible ? sectionContent.implicitHeight : 0
+        visible: root.expanded || !root.collapsible
+        
+        ContentGroup {
+            id: sectionContent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+        }
     }
 }
