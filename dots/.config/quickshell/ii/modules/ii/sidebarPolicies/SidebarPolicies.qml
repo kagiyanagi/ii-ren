@@ -66,13 +66,27 @@ Scope { // Scope
 
     // Building the pages costs RAM while shut and startup time while booting; keeping
     // them costs nothing on open. Config picks which, same trade as the right sidebar.
+    property bool _isIncubating: false
     function ensureContent() {
-        if (root.sidebarContent) return;
-        root.sidebarContent = contentComponent.createObject(null, {
+        if (root.sidebarContent || root._isIncubating) return;
+        root._isIncubating = true;
+        var incubator = contentComponent.incubateObject(null, {
             "scopeRoot": root,
         });
-        const host = root.detach ? detachedSidebarLoader : sidebarLoader;
-        if (host.item) host.item.contentParent.children = [root.sidebarContent];
+        const applyContent = function() {
+            root._isIncubating = false;
+            root.sidebarContent = incubator.object;
+            const host = root.detach ? detachedSidebarLoader : sidebarLoader;
+            if (host.item) host.item.contentParent.children = [root.sidebarContent];
+        };
+        if (incubator.status !== Component.Ready) {
+            incubator.onStatusChanged = function(status) {
+                if (status === Component.Ready) applyContent();
+                else if (status === Component.Error) root._isIncubating = false;
+            };
+        } else {
+            applyContent();
+        }
     }
 
     function releaseContent() {
