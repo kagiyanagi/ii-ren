@@ -96,6 +96,12 @@ ApplicationWindow {
             component: "modules/settings/HyprlandConfig.qml"
         },
         {
+            id: "lock",
+            name: Translation.tr("Lock Screen"),
+            icon: "lock",
+            component: "modules/settings/LockConfig.qml"
+        },
+        {
             id: "advanced",
             name: Translation.tr("Advanced"),
             icon: "construction",

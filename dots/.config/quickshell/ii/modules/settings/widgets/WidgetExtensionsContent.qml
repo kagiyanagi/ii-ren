@@ -411,7 +411,7 @@ ColumnLayout {
                                     {
                                         value: "keep",
                                         icon: "visibility",
-                                        tooltip: "Show fixed on lock"
+                                        tooltip: Translation.tr("Show on lock")
                                     },
                                     {
                                         value: "center",

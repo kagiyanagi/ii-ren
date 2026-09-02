@@ -78,6 +78,104 @@ MouseArea {
         forceFieldFocus();
     }
 
+    // ── Lock screen widget drags ─────────────────────────────────────────────
+    // This surface is above every layer shell, so the desktop widgets never see
+    // its pointer. One proxy per movable widget, sitting exactly over it, doing
+    // nothing but forwarding the gesture into the widget's own drag - which
+    // already owns clamping, the grid, snapping and the config commit. No
+    // position state lives here; that is what used to fight the widget and snap
+    // it back on release.
+    Repeater {
+        model: Config.options?.background?.activeWidgets ?? []
+
+        delegate: MouseArea {
+            id: dragProxy
+            required property var modelData
+
+            readonly property Item target: {
+                GlobalStates.lockDragTargetsVersion; // re-resolve as widgets come and go
+                const targets = GlobalStates.lockDragTargets;
+                const suffix = `|${dragProxy.modelData.id}`;
+                const own = targets[`${root.QsWindow.window?.screen?.name ?? ""}${suffix}`];
+                if (own)
+                    return own;
+                // Whichever output registered it. Driving another screen's copy
+                // beats refusing the drag: the commit is per widget, not per
+                // screen, so the position still lands where it was dropped.
+                for (const key in targets) {
+                    if (key.endsWith(suffix))
+                        return targets[key];
+                }
+                return null;
+            }
+
+            // The widget's own rectangle in scene coordinates, so any transform
+            // on the desktop plane (overview zoom, parallax, lock zoom) is
+            // already accounted for. Both surfaces cover the whole output, so
+            // its scene coordinates are also this one's.
+            readonly property rect targetRect: {
+                if (!dragProxy.target)
+                    return Qt.rect(0, 0, 0, 0);
+                dragProxy.target.x;
+                dragProxy.target.y;
+                dragProxy.target.width;
+                dragProxy.target.height;
+                dragProxy.target.scale;
+                const topLeft = dragProxy.target.mapToItem(null, 0, 0);
+                const bottomRight = dragProxy.target.mapToItem(null, dragProxy.target.width, dragProxy.target.height);
+                return Qt.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+            }
+
+            // Centred widgets are placed by the lock screen itself, so there is
+            // nothing to drag; `draggable` already covers locked positions.
+            enabled: (dragProxy.target?.draggable ?? false)
+                && (dragProxy.modelData.lockBehavior === "keep" || dragProxy.modelData.lockBehavior === "lockOnly")
+            visible: enabled
+
+            x: targetRect.x
+            y: targetRect.y
+            width: targetRect.width
+            height: targetRect.height
+
+            hoverEnabled: true
+            preventStealing: true
+            acceptedButtons: Qt.LeftButton
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+            onPressed: mouse => {
+                if (!dragProxy.target) {
+                    root.forceFieldFocus();
+                    return;
+                }
+                const p = dragProxy.mapToItem(null, mouse.x, mouse.y);
+                dragProxy.target.beginDragAt(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
+            }
+            onPositionChanged: mouse => {
+                if (!dragProxy.pressed || !dragProxy.target)
+                    return;
+                const p = dragProxy.mapToItem(null, mouse.x, mouse.y);
+                dragProxy.target.moveDragTo(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
+            }
+            onReleased: mouse => {
+                if (!dragProxy.target)
+                    return;
+                const moved = dragProxy.target.isDragging;
+                dragProxy.target.endDrag(mouse.modifiers & Qt.ControlModifier);
+                if (!moved)
+                    root.forceFieldFocus();
+            }
+            onCanceled: dragProxy.target?.cancelDrag()
+
+            StateOverlay {
+                anchors.fill: parent
+                radius: Appearance.rounding.normal
+                contentColor: Appearance.colors.colOnSurface
+                hover: dragProxy.containsMouse && !dragProxy.pressed
+                press: dragProxy.pressed
+            }
+        }
+    }
+
     // Main toolbar: password box
     Toolbar {
         id: mainIsland

@@ -226,8 +226,17 @@ AbstractWidget {
         }
     }
     property bool _pendingPosition: false
-    property real targetX: isPreview ? 0 : (forceCenter ? centeringX : ((placementStrategy === "free" || placementStrategy === "draggable") ? WidgetDragMath.clamp(widgetInstance !== null ? widgetInstance.x : (configEntry ? configEntry.x : 0), dragMinimumX(), dragMaximumX()) : calculatedX))
-    property real targetY: isPreview ? 0 : (forceCenter ? centeringY : ((placementStrategy === "free" || placementStrategy === "draggable") ? WidgetDragMath.clamp(widgetInstance !== null ? widgetInstance.y : (configEntry ? configEntry.y : 0), dragMinimumY(), dragMaximumY()) : calculatedY))
+
+    // The lock screen is a placement of its own: a widget kept on it carries a
+    // second position pair, so moving it there does not move it on the desktop.
+    // `lockX`/`lockY` are absent until the widget is first moved on the lock
+    // screen, and WidgetStateManager falls them back to the desktop pair until
+    // then, so nothing shifts for a widget that was never moved there.
+    readonly property bool usingLockPosition: GlobalStates.screenLocked && visibleWhenLocked && !forceCenter && widgetInstance !== null
+    readonly property real placedX: widgetInstance !== null ? (usingLockPosition ? widgetInstance.lockX : widgetInstance.x) : (configEntry ? configEntry.x : 0)
+    readonly property real placedY: widgetInstance !== null ? (usingLockPosition ? widgetInstance.lockY : widgetInstance.y) : (configEntry ? configEntry.y : 0)
+    property real targetX: isPreview ? 0 : (forceCenter ? centeringX : ((placementStrategy === "free" || placementStrategy === "draggable") ? WidgetDragMath.clamp(placedX, dragMinimumX(), dragMaximumX()) : calculatedX))
+    property real targetY: isPreview ? 0 : (forceCenter ? centeringY : ((placementStrategy === "free" || placementStrategy === "draggable") ? WidgetDragMath.clamp(placedY, dragMinimumY(), dragMaximumY()) : calculatedY))
     property bool isDraggingOrSettling: false
 
     // Pointer coordinates and rendered coordinates are intentionally separate.
@@ -298,6 +307,7 @@ AbstractWidget {
             root.animateXPos = !root.isDragging;
             root.animateYPos = !root.isDragging;
         });
+        root._syncDragRegistration();
     }
 
     Timer {
@@ -563,7 +573,7 @@ AbstractWidget {
         }
         if (!isPreview) {
             if (widgetInstance !== null)
-                Config.updateWidgetPosition(widgetInstance.id, x, y);
+                Config.updateWidgetPosition(widgetInstance.id, x, y, root.usingLockPosition);
             else if (configEntry) {
                 configEntry.x = x;
                 configEntry.y = y;
@@ -600,7 +610,15 @@ AbstractWidget {
         settleTimer.restart();
     }
 
-    function beginPointerGesture(mouse) {
+    // ── Drag gesture ─────────────────────────────────────────────────────────
+    // Driven by scene coordinates rather than by this MouseArea's events, so
+    // the lock screen can push its own pointer through the very same gesture.
+    // A session lock surface sits above every layer shell, so a widget on the
+    // desktop plane never sees the lock screen's pointer; the proxy in
+    // LockSurface forwards it here instead of keeping a second copy of the
+    // position. Both surfaces cover the whole output, so the scene coordinates
+    // of one are the scene coordinates of the other.
+    function beginDragAt(sceneX, sceneY, ctrl) {
         if (!draggable)
             return;
 
@@ -612,9 +630,9 @@ AbstractWidget {
         staggerTimer.stop();
         _pendingPosition = false;
 
-        const pointer = root.mapToItem(canvas, mouse.x, mouse.y);
+        const pointer = canvas.mapFromItem(null, sceneX, sceneY);
         _pointerGestureReady = true;
-        setCtrlBypass(Boolean(mouse.modifiers & Qt.ControlModifier));
+        setCtrlBypass(Boolean(ctrl));
         _dragMovementActive = false;
         isDraggingOrSettling = true;
         _pressCanvasX = pointer.x;
@@ -635,15 +653,15 @@ AbstractWidget {
         _lastGridY = WidgetDragMath.clamp(Math.round(root.y / _gridStep) * _gridStep, dragMinimumY(), gridMaximumY());
     }
 
-    function updatePointerGesture(mouse) {
-        if (!_pointerGestureReady || !pressed || !draggable)
+    function moveDragTo(sceneX, sceneY, ctrl) {
+        if (!_pointerGestureReady || !draggable)
             return;
 
         const canvas = findCanvas(root.parent);
         if (!canvas)
             return;
 
-        const pointer = root.mapToItem(canvas, mouse.x, mouse.y);
+        const pointer = canvas.mapFromItem(null, sceneX, sceneY);
         const deltaX = pointer.x - _pressCanvasX;
         const deltaY = pointer.y - _pressCanvasY;
 
@@ -656,9 +674,67 @@ AbstractWidget {
 
         _rawDragX = WidgetDragMath.clamp(_dragOriginX + deltaX, dragMinimumX(), dragMaximumX());
         _rawDragY = WidgetDragMath.clamp(_dragOriginY + deltaY, dragMinimumY(), dragMaximumY());
-        setCtrlBypass(Boolean(mouse.modifiers & Qt.ControlModifier));
+        setCtrlBypass(Boolean(ctrl));
         root.x = applyGridAndSnapX(_rawDragX, _rawDragY);
         root.y = applyGridAndSnapY(_rawDragY, _rawDragX);
+    }
+
+    function endDrag(ctrl) {
+        setCtrlBypass(Boolean(ctrl));
+        if (!_pointerGestureReady) {
+            isDraggingOrSettling = false;
+            return;
+        }
+        if (isPreview || !_dragMovementActive) {
+            _pointerGestureReady = false;
+            _dragMovementActive = false;
+            isDraggingOrSettling = false;
+            return;
+        }
+
+        const finalX = applyGridAndSnapX(_rawDragX, _rawDragY);
+        const finalY = applyGridAndSnapY(_rawDragY, _rawDragX);
+        root.x = finalX;
+        root.y = finalY;
+
+        const canvas = findCanvas(root.parent);
+        if (canvas) {
+            canvas.snapLineX = -1;
+            canvas.snapLineY = -1;
+        }
+
+        if (widgetInstance !== null) {
+            Config.updateWidgetPosition(widgetInstance.id, finalX, finalY, root.usingLockPosition);
+        } else if (configEntry) {
+            configEntry.x = finalX;
+            configEntry.y = finalY;
+        }
+
+        _pointerGestureReady = false;
+        _dragMovementActive = false;
+        settleTimer.restart();
+    }
+
+    function cancelDrag() {
+        if (_pointerGestureReady && _dragMovementActive) {
+            root.x = _dragOriginX;
+            root.y = _dragOriginY;
+        }
+        _pointerGestureReady = false;
+        _dragMovementActive = false;
+        isDraggingOrSettling = false;
+    }
+
+    function beginPointerGesture(mouse) {
+        const p = root.mapToItem(null, mouse.x, mouse.y);
+        beginDragAt(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
+    }
+
+    function updatePointerGesture(mouse) {
+        if (!pressed)
+            return;
+        const p = root.mapToItem(null, mouse.x, mouse.y);
+        moveDragTo(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
     }
 
     onPressed: mouse => {
@@ -699,7 +775,6 @@ AbstractWidget {
     }
 
 
-
     visible: opacity > 0
     readonly property real lockOpacity: {
         if (lockBehavior === "lockOnly") return GlobalStates.lockScreenCentered ? 1 : 0;
@@ -721,6 +796,26 @@ AbstractWidget {
         * lockScaleFactor * lifecycleScale * dragLift
     Behavior on scale {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+    }
+
+    // The lock screen finds its drag proxy's widget through this. Keyed by
+    // screen, because every output renders its own instance of every widget.
+    readonly property string lockDragKey: (!isPreview && widgetInstance) ? `${root.QsWindow.window?.screen?.name ?? ""}|${widgetInstance.id}` : ""
+    property string _registeredDragKey: ""
+    function _syncDragRegistration() {
+        if (_registeredDragKey === lockDragKey)
+            return;
+        if (_registeredDragKey)
+            GlobalStates.unregisterLockDragTarget(_registeredDragKey);
+        _registeredDragKey = lockDragKey;
+        if (_registeredDragKey)
+            GlobalStates.registerLockDragTarget(_registeredDragKey, root);
+
+    }
+    onLockDragKeyChanged: root._syncDragRegistration()
+    Component.onDestruction: {
+        if (root._registeredDragKey)
+            GlobalStates.unregisterLockDragTarget(root._registeredDragKey);
     }
 
     function findCanvas(item) {
@@ -1022,52 +1117,9 @@ AbstractWidget {
     animateXPos: entryDone && !isDragging && !isDraggingOrSettling && (visibleWhenLocked || !GlobalStates.screenLocked)
     animateYPos: entryDone && !isDragging && !isDraggingOrSettling && (visibleWhenLocked || !GlobalStates.screenLocked)
 
-    onReleased: mouse => {
-        setCtrlBypass(Boolean(mouse.modifiers & Qt.ControlModifier));
-        if (!_pointerGestureReady) {
-            isDraggingOrSettling = false;
-            return;
-        }
-        if (isPreview || !_dragMovementActive) {
-            _pointerGestureReady = false;
-            _dragMovementActive = false;
-            isDraggingOrSettling = false;
-            return;
-        }
+    onReleased: mouse => root.endDrag(mouse.modifiers & Qt.ControlModifier)
 
-        const finalX = applyGridAndSnapX(_rawDragX, _rawDragY);
-        const finalY = applyGridAndSnapY(_rawDragY, _rawDragX);
-        root.x = finalX;
-        root.y = finalY;
-
-        const canvas = findCanvas(root.parent);
-        if (canvas) {
-            canvas.snapLineX = -1;
-            canvas.snapLineY = -1;
-        }
-
-        if (widgetInstance !== null) {
-            Config.updateWidgetPosition(widgetInstance.id, finalX, finalY);
-        } else if (configEntry) {
-            configEntry.x = finalX;
-            configEntry.y = finalY;
-        }
-
-        _pointerGestureReady = false;
-        _dragMovementActive = false;
-        console.warn("[ResizeDebug]", "moveRelease id=", widgetInstance !== null ? widgetInstance.id : "?", "model.scale=", widgetInstance !== null ? widgetInstance.scale : null, "final=", finalX, finalY);
-        settleTimer.restart();
-    }
-
-    onCanceled: {
-        if (_pointerGestureReady && _dragMovementActive) {
-            root.x = _dragOriginX;
-            root.y = _dragOriginY;
-        }
-        _pointerGestureReady = false;
-        _dragMovementActive = false;
-        isDraggingOrSettling = false;
-    }
+    onCanceled: root.cancelDrag()
 
     property bool needsColText: false
     property color dominantColor: Appearance.colors.colPrimary

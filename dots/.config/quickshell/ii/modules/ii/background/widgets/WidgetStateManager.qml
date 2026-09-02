@@ -93,6 +93,8 @@ QtObject {
                     "widgetId": configItem.widgetId,
                     "widgetX": configItem.x,
                     "widgetY": configItem.y,
+                    "widgetLockX": configItem.lockX ?? configItem.x,
+                    "widgetLockY": configItem.lockY ?? configItem.y,
                     "placementStrategy": configItem.placementStrategy || "free",
                     "lockBehavior": configItem.lockBehavior || "hide",
                     "aboveSubject": configItem.aboveSubject ?? false,
@@ -105,31 +107,45 @@ QtObject {
             } else {
                 let modelItem = widgetListModel.get(modelIndex);
                 if (modelItem.widgetId !== configItem.widgetId) {
-                    modelItem.widgetId = configItem.widgetId;
+                    widgetListModel.setProperty(modelIndex, "widgetId", configItem.widgetId);
                 }
                 if (Math.abs(modelItem.widgetX - configItem.x) > 0.01) {
-                    modelItem.widgetX = configItem.x;
+                    widgetListModel.setProperty(modelIndex, "widgetX", configItem.x);
                     moveCount++;
                 }
                 if (Math.abs(modelItem.widgetY - configItem.y) > 0.01) {
-                    modelItem.widgetY = configItem.y;
+                    widgetListModel.setProperty(modelIndex, "widgetY", configItem.y);
+                    moveCount++;
+                }
+                // Recomputed from the fallback every sync, so a widget that has
+                // never been moved on the lock screen keeps following the desktop.
+                let lockX = configItem.lockX ?? configItem.x;
+                let lockY = configItem.lockY ?? configItem.y;
+                if (Math.abs(modelItem.widgetLockX - lockX) > 0.01) {
+                    widgetListModel.setProperty(modelIndex, "widgetLockX", lockX);
+                    moveCount++;
+                }
+                if (Math.abs(modelItem.widgetLockY - lockY) > 0.01) {
+                    widgetListModel.setProperty(modelIndex, "widgetLockY", lockY);
                     moveCount++;
                 }
                 if (modelItem.placementStrategy !== configItem.placementStrategy) {
-                    modelItem.placementStrategy = configItem.placementStrategy || "free";
+                    widgetListModel.setProperty(modelIndex, "placementStrategy", configItem.placementStrategy || "free");
                 }
                 if (modelItem.lockBehavior !== (configItem.lockBehavior || "hide")) {
-                    modelItem.lockBehavior = configItem.lockBehavior || "hide";
+                    widgetListModel.setProperty(modelIndex, "lockBehavior", configItem.lockBehavior || "hide");
                 }
                 if (modelItem.aboveSubject !== (configItem.aboveSubject ?? false)) {
-                    modelItem.aboveSubject = configItem.aboveSubject ?? false;
+                    widgetListModel.setProperty(modelIndex, "aboveSubject", configItem.aboveSubject ?? false);
                 }
                 if (Math.abs((modelItem.scale ?? 1.0) - (configItem.scale ?? 1.0)) > 0.001) {
-                    modelItem.scale = configItem.scale ?? 1.0;
+                    widgetListModel.setProperty(modelIndex, "scale", configItem.scale ?? 1.0);
                 }
                 modelItem.widgetConfig = configItem.config || {};
-                if (moveCount > 0 || addCount > 0) {
-                    modelItem.staggerDelay = j * 60;
+                if (addCount > 0) {
+                    widgetListModel.setProperty(modelIndex, "staggerDelay", j * 60);
+                } else {
+                    widgetListModel.setProperty(modelIndex, "staggerDelay", 0);
                 }
                 if (modelIndex !== targetIndex) {
                     widgetListModel.move(modelIndex, targetIndex, 1);

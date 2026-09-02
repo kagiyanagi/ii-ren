@@ -48,8 +48,30 @@ StyledFlickable {
         }
         spacing: 0
 
+        ListModel {
+            id: charsModel
+        }
+
+        Connections {
+            target: root
+            function onLengthChanged() {
+                while (charsModel.count < root.length) {
+                    charsModel.append({});
+                }
+                while (charsModel.count > root.length) {
+                    charsModel.remove(charsModel.count - 1);
+                }
+            }
+        }
+        
+        Component.onCompleted: {
+            while (charsModel.count < root.length) {
+                charsModel.append({});
+            }
+        }
+
         Repeater {
-            model: root.length
+            model: charsModel
 
             delegate: Rectangle {
                 id: charItem
@@ -60,12 +82,61 @@ StyledFlickable {
 
                 color: ColorUtils.transparentize(root.selectionColor, selected ? 0 : 1)
 
-                Rectangle {
+                MaterialShape {
+                    id: materialShape
                     anchors.centerIn: parent
-                    implicitWidth: 10
-                    implicitHeight: 10
-                    radius: width / 2
+                    property list<var> charShapes: [
+                        MaterialShape.Shape.Clover4Leaf,
+                        MaterialShape.Shape.Arrow,
+                        MaterialShape.Shape.Pill,
+                        MaterialShape.Shape.SoftBurst,
+                        MaterialShape.Shape.Diamond,
+                        MaterialShape.Shape.ClamShell,
+                        MaterialShape.Shape.Pentagon,
+                    ]
+                    shape: charShapes[charItem.index % charShapes.length]
                     color: charItem.selected ? root.selectedTextColor : Appearance.colors.colOnLayer1
+                    implicitSize: 0
+                    opacity: 0
+                    scale: 0.5
+                    Component.onCompleted: {
+                        appearAnim.start();
+                    }
+                    ParallelAnimation {
+                        id: appearAnim
+                        NumberAnimation {
+                            target: materialShape
+                            properties: "opacity"
+                            to: 1
+                            duration: Appearance.animation.elementMoveExit.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                        NumberAnimation {
+                            target: materialShape
+                            properties: "scale"
+                            to: 1
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                        }
+                        NumberAnimation {
+                            target: materialShape
+                            properties: "implicitSize"
+                            to: 18
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                        }
+                        ColorAnimation {
+                            target: materialShape
+                            properties: "color"
+                            from: Appearance.colors.colPrimary
+                            to: charItem.selected ? root.selectedTextColor : Appearance.colors.colOnLayer1
+                            duration: Appearance.animation.elementMoveEnter.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                    }
                 }
             }
         }

@@ -23,7 +23,23 @@ Singleton {
     // ponytail: stubs, so the widgets bind and render; the handful of buttons
     // that write them are inert. Bind Cheatsheet/Notes loaders to these if the
     // buttons turn out to matter.
-    property bool lockAnimationActive: false
+    property alias lockAnimationActive: root.screenLocked
+
+    // ── Lock screen widget drags ─────────────────────────────────────────────
+    // A session lock surface is above every layer shell, so a desktop widget
+    // never sees the lock screen's pointer. Widgets register themselves here so
+    // the proxy in LockSurface can forward the gesture into the real widget
+    // rather than keep a second copy of its position. Keyed screen|instanceId.
+    readonly property var lockDragTargets: ({})
+    property int lockDragTargetsVersion: 0
+    function registerLockDragTarget(key: string, item: Item): void {
+        root.lockDragTargets[key] = item;
+        root.lockDragTargetsVersion++;
+    }
+    function unregisterLockDragTarget(key: string): void {
+        delete root.lockDragTargets[key];
+        root.lockDragTargetsVersion++;
+    }
     property bool workspaceRestoreInProgress: false
     property bool cheatsheetOpen: false
     property bool notesOpen: false

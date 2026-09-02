@@ -2089,13 +2089,22 @@ Singleton {
         }
     }
 
-    function updateWidgetPosition(instanceId, newX, newY) {
+    // `forLock` writes the lock screen's own position pair instead. The two are
+    // separate placements of the same widget; `lockX`/`lockY` stay absent until
+    // the widget is first moved on the lock screen, and until then it follows
+    // wherever it sits on the desktop.
+    function updateWidgetPosition(instanceId, newX, newY, forLock) {
         let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
         let found = false;
         for (let i = 0; i < cloned.length; i++) {
             if (cloned[i].id === instanceId) {
-                cloned[i].x = newX;
-                cloned[i].y = newY;
+                if (forLock) {
+                    cloned[i].lockX = newX;
+                    cloned[i].lockY = newY;
+                } else {
+                    cloned[i].x = newX;
+                    cloned[i].y = newY;
+                }
                 found = true;
                 break;
             }

@@ -26,6 +26,8 @@ Item {
     required property string instanceId
     required property real widgetX
     required property real widgetY
+    required property real widgetLockX
+    required property real widgetLockY
     required property string placementStrategy
     required property string lockBehavior
     // Which side of the depth-subject cutout this widget draws on. Read as `z`
@@ -1116,6 +1118,8 @@ Item {
                     "widgetId": delegateRoot.widgetId,
                     "x": delegateRoot.widgetX,
                     "y": delegateRoot.widgetY,
+                    "lockX": delegateRoot.widgetLockX,
+                    "lockY": delegateRoot.widgetLockY,
                     "placementStrategy": delegateRoot.placementStrategy,
                     "lockBehavior": delegateRoot.lockBehavior,
                     "widgetConfig": delegateRoot.widgetConfig
