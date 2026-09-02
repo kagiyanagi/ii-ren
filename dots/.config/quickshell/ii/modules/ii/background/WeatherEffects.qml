@@ -38,9 +38,12 @@ Item {
         return root.opt.effect;
     }
 
-    // The slider is a master scale over whatever the conditions asked for.
-    readonly property real intensity: Math.max(0, Math.min(1,
-        (root.opt.intensity / 100) * (root.opt.followWeather ? Weather.liveIntensity : 1)))
+    // While following the weather the conditions set this outright, and the
+    // settings slider becomes a readout of it rather than a ceiling over it -
+    // a slider that never moved while the sky changed read as broken.
+    readonly property real intensity: Math.max(0, Math.min(1, root.opt.followWeather
+        ? Weather.liveIntensity
+        : root.opt.intensity / 100))
 
     // True while the effect is drawing the scene itself, so the desktop knows
     // to stop drawing it and a video wallpaper knows to play in-process.

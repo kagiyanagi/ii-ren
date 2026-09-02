@@ -818,26 +818,42 @@ ContentPage {
         ContentSubsection {
             visible: page.weatherOpt.enable
             title: Translation.tr("Adjustments")
+            tooltip: Translation.tr("Intensity is what the conditions drive, so it becomes a readout while following the weather.\nParticle scale is not a weather property - AOSP keeps its grid fixed and varies intensity and fall speed only - so it stays yours to set for your monitor's size and how far away you sit.")
 
+            // A readout, not a control, while the weather owns the value. The
+            // binding has to be reinstated on the way in because dragging a
+            // QtQuick Slider writes `value` directly and kills whatever
+            // binding was on it.
             ConfigSlider {
+                id: weatherIntensitySlider
                 Layout.fillWidth: true
                 buttonIcon: "opacity"
                 text: page.weatherOpt.followWeather
-                    ? Translation.tr("Intensity ceiling (%)")
+                    ? Translation.tr("Intensity (%) - from weather")
                     : Translation.tr("Intensity (%)")
                 usePercentTooltip: false
                 from: 0
                 to: 100
                 value: page.weatherOpt.intensity
+                enabled: !page.weatherOpt.followWeather
+                opacity: enabled ? 1 : 0.4
                 onMoved: value => Config.options.background.weatherEffects.intensity = Math.round(value)
             }
 
+            Binding {
+                target: weatherIntensitySlider
+                property: "value"
+                value: Math.round(Weather.liveIntensity * 100)
+                when: page.weatherOpt.followWeather
+            }
+
+            // Left editable in both modes on purpose: AOSP derives its grid
+            // from the display, never from the conditions, so there is nothing
+            // for the weather to say here.
             ConfigSlider {
                 Layout.fillWidth: true
                 buttonIcon: "grain"
                 text: Translation.tr("Particle scale (%)")
-                // AOSP picks its grid from the display width in dp, which is
-                // calibrated for a phone at arm's length.
                 usePercentTooltip: false
                 from: 50
                 to: 200
