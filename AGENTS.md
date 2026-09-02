@@ -77,7 +77,7 @@ Config lives in `Config.qml` as nested `JsonObject` properties. Key top-level gr
 - `appearance` — theme, fonts, transparency, wallpaper theming, `fakeScreenRounding` (0-3)
 - `bar` — layout, workspaces, layouts (left/center/right component arrays), vertical mode
 - `sidebar` — position ("default"/"inverted"/"left"/"right"), quickToggles, quickSliders
-- `background` — wallpaper, widgets (clock/media/weather), media mode, parallax
+- `background` — wallpaper, widgets (clock/media/weather), parallax
 - `lock` — lock screen, blur, `useHyprlock`
 - `waffles` — Waffle-specific tweaks (bar, actionCenter toggles)
 - `ai` — system prompt, models, tools

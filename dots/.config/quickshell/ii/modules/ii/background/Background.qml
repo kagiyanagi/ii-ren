@@ -191,13 +191,6 @@ Variants {
             }
         }
 
-        property bool mediaModeOpen: mediaModeLoader.active && MprisController.activePlayer
-        onMediaModeOpenChanged: {
-            if (!mediaModeOpen && Config.options.appearance.palette.type.startsWith("scheme")) {
-                Wallpapers.apply(Config.options.background.wallpaperPath)
-                LyricsService.shellColorChanged = false
-            }
-        }
 
         property var _extensionBgWidgetEntries: []
         property var _pendingWidgetSaves: ({})
@@ -302,9 +295,6 @@ Variants {
 
         Component.onCompleted: {
             refreshExtensionBgWidgets()
-            if (!mediaModeOpen && Config.options.appearance.palette.type.startsWith("scheme")) {
-                Wallpapers.apply(Config.options.background.wallpaperPath)
-            }
         }
 
         Connections {
@@ -472,11 +462,6 @@ Variants {
                 // wallpaper alone - widgets holding still while the image moved
                 // under them reads as a glitch, not an effect.
                 return overviewOpen ? defaultRatio * bgRoot.launcherZoom : defaultRatio;
-            }
-            opacity: mediaModeOpen ? 0 : 1
-            
-            Behavior on opacity {
-                NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
             }
 
             Behavior on scale {
@@ -833,8 +818,8 @@ Variants {
         // the wallpaper effects, the widgets and subject depth all sit
         // underneath. A sibling of wallpaperItem rather than a child, so it can
         // render the plane it draws over without feeding its own output back
-        // in; the transform is mirrored so the overview zoom and the media-mode
-        // fade still move everything as one.
+        // in; the transform is mirrored so the overview zoom still moves
+        // everything as one.
         WeatherEffects {
             id: weatherEffects
             anchors.fill: parent
@@ -848,28 +833,6 @@ Variants {
             opacity: wallpaperItem.opacity
         }
 
-        GlobalShortcut {
-            name: "mediaModeToggle"
-            description: "Toggles media mode on press"
-
-            onPressed: {
-                if (!monitor.focused && Config.options.background.mediaMode.togglePerMonitor) return
-                mediaModeLoader.active = !mediaModeLoader.active
-                LyricsService.mediaModeOpenCount += mediaModeLoader.active ? 1 : -1
-            }
-        }
-        
-        Loader {
-            id: mediaModeLoader
-            anchors.fill: parent
-            active: false
-            asynchronous: true
-            sourceComponent: MediaMode {}
-            opacity: status === Loader.Ready ? 1 : 0
-            Behavior on opacity {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-        }
     }
 }
 }

@@ -1136,21 +1136,6 @@ Singleton {
                     property bool enableSidebar: false
                     property real widgetsFactor: 1.2
                 }
-                property JsonObject mediaMode: JsonObject {
-                    property bool togglePerMonitor: false
-                    property string backgroundShape: "Square"
-                    property bool enableBackgroundAnimation: true // It **may** cause nausea for someone
-                    property bool changeShellColor: true // Changes the shell color to the album color
-                    property int backgroundOpacity: 50 // In percent
-                    property int backgroundBlurRadius: 120
-                    property JsonObject backgroundAnimation: JsonObject {
-                        property bool enable: true
-                        property int speedScale: 10 // 1: very slow, 10: default, 20: 2x speed etc.
-                    }
-                    property JsonObject syllable: JsonObject {
-                        property int textHighlightStyle: 0 // 0: vertical, 1: horizontal (not perfect bc its not synced in a word level, but a cool animation to have)
-                    }
-                }
             }
 
             property JsonObject bar: JsonObject {

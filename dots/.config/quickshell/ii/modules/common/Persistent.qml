@@ -72,9 +72,6 @@ Singleton {
             property JsonObject background: JsonObject {
                 property bool widgetsMigrated: false
                 property bool lockBehaviorMigrated: false
-                property JsonObject mediaMode: JsonObject {
-                    property real userScrollOffset: 0
-                }
             }
 
             property JsonObject cheatsheet: JsonObject {

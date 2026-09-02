@@ -1,5 +1,4 @@
 hl.bind("CTRL+SUPER+ALT+Slash", hl.dsp.exec_cmd("xdg-open ~/.config/hypr/custom/keybinds.lua"), {description = "Edit user keybinds"} )
-hl.bind("SUPER+Z", hl.dsp.exec_cmd("quickshell:mediaModeToggle"), {description = "Edit user keybinds"} )
 hl.bind("SUPER + escape", hl.dsp.global("quickshell:settingsToggle"), {description = "Toggle settings"})
 hl.bind("SUPER + i", hl.dsp.exec_cmd("/home/aqua/.local/share/Antigravity-x64/antigravity"))
 hl.bind("SUPER + SHIFT + B", hl.dsp.global("quickshell:conduitDictate"))

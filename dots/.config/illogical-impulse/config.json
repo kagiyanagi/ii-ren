@@ -120,21 +120,6 @@
         "dropToSetWallpaper": true,
         "enable": true,
         "hideWhenFullscreen": true,
-        "mediaMode": {
-            "backgroundAnimation": {
-                "enable": true,
-                "speedScale": 10
-            },
-            "backgroundBlurRadius": 120,
-            "backgroundOpacity": 50,
-            "backgroundShape": "Square",
-            "changeShellColor": true,
-            "enableBackgroundAnimation": true,
-            "syllable": {
-                "textHighlightStyle": 0
-            },
-            "togglePerMonitor": false
-        },
         "parallax": {
             "autoVertical": false,
             "enableSidebar": true,

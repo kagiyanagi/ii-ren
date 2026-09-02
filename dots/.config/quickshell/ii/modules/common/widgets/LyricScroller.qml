@@ -3,7 +3,6 @@ import qs.services
 import QtQuick
 
 // Shows synced lyrics from Lrclib
-// default values are for media mode visuals, but these can be overridden by the parent
 
 Item {
     id: root
