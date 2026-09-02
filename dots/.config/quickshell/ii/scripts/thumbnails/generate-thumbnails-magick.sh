@@ -98,8 +98,6 @@ while [[ $# -gt 0 ]]; do
             usage
             ;;
     esac
-    # Only one mode allowed
-    [[ -n "$MODE" ]] && break
 done
 
 THUMBNAIL_SIZE="$(get_thumbnail_size "$SIZE_NAME")"

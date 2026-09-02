@@ -247,12 +247,13 @@ Scope {
 
                     readonly property var shuffledWallpapers: {
                         const current = menuColumn.initialWallpaper;
-                        const rest = Wallpapers.wallpapers.filter(path => Images.isValidImageByName(path.toLowerCase()) && path !== current);
+                        const isImageOrVideo = (p) => Images.isValidImageByName(p.toLowerCase()) || Wallpapers.isVideoFile(p.toLowerCase());
+                        const rest = Wallpapers.wallpapers.filter(path => isImageOrVideo(path) && path !== current);
                         for (let i = rest.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
                             [rest[i], rest[j]] = [rest[j], rest[i]];
                         }
-                        return Images.isValidImageByName(current.toLowerCase()) ? [current, ...rest] : rest;
+                        return isImageOrVideo(current) ? [current, ...rest] : rest;
                     }
 
                     anchors.fill: parent

@@ -41,19 +41,11 @@ StyledImage {
     Process {
         id: thumbnailGeneration
         command: {
-            if (sourceSize.width >= 512 || sourceSize.height >= 512) {
-                const maxSize = root.sourceSize.width;
-                const thumbFile = FileUtils.trimFileProtocol(root.thumbnailPath)
-                return ["bash", "-c",
-                    `[ -f '${thumbFile}' ] && exit 0 || { mkdir -p "$(dirname '${thumbFile}')" && magick '${root.sourcePath}' -resize ${maxSize}x${maxSize} '${thumbFile}' && exit 1; }`
-                ]
-            } else {
-                const maxSize = Images.thumbnailSizes[root.thumbnailSizeName];
-                return ["bash", "-c", 
-                    `[ -f '${FileUtils.trimFileProtocol(root.thumbnailPath)}' ] && exit 0 || { magick '${root.sourcePath}' -resize ${maxSize}x${maxSize} '${FileUtils.trimFileProtocol(root.thumbnailPath)}' && exit 1; }`
-                ]
-            }
-            
+            const thumbFile = FileUtils.trimFileProtocol(root.thumbnailPath);
+            const script = FileUtils.trimFileProtocol(Directories.scriptPath) + "/thumbnails/generate-thumbnails-magick.sh";
+            return ["bash", "-c",
+                `[ -f '${thumbFile}' ] && exit 0 || { '${script}' -f '${root.sourcePath}' -s '${root.thumbnailSizeName}' && exit 1; }`
+            ];
         }
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 1) { // Force reload if thumbnail had to be generated
