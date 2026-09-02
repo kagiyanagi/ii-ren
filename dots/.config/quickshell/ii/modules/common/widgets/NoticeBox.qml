@@ -184,7 +184,7 @@ Rectangle {
             Layout.fillWidth: false
             Layout.alignment: Qt.AlignVCenter
             text: "info"
-            shape: MaterialShape.Shape.Slanted
+            shape: MaterialShape.Shape.Circle
             iconSize: 22
             padding: 8
             color: Appearance.colors.colTertiary

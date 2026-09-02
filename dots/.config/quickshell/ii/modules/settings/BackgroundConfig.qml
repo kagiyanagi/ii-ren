@@ -1216,15 +1216,5 @@ ContentPage {
         
     }
 
-    ContentSection {
-        title: Translation.tr("Widget Manager")
-        icon: "widgets"
-        
-        ShortcutBox {
-            Layout.fillWidth: true
-            value: Translation.tr("Desktop Widgets configuration")
-            targetPageId: "widgets"
-            targetSectionTitle: Translation.tr("Widget Manager")
-        }
-    }
+
 }

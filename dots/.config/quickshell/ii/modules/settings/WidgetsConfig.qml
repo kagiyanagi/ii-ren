@@ -201,13 +201,6 @@ Item {
             title: Translation.tr("Desktop Widgets")
             icon: "widgets"
 
-            ShortcutBox {
-                Layout.fillWidth: true
-                value: Translation.tr("Lock screen widget settings")
-                targetPageId: "interface"
-                targetSectionTitle: Translation.tr("Lock screen")
-                materialIcon: "lock"
-            }
 
             ConfigSwitch {
                 buttonIcon: "grid_on"
