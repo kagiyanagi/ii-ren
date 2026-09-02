@@ -149,7 +149,7 @@ RowLayout {
     component ResultPreview: Rectangle {
         id: resultPreview
 
-        property LauncherSearchResult entry // LauncherSearchResult
+        property var entry // LauncherSearchResult
 
         Layout.fillHeight: true
         color: Looks.colors.bg1
