@@ -114,6 +114,7 @@ Scope {
                         if (!GlobalStates.overviewOpen) {
                             searchWidget.disableExpandAnimation();
                             overviewScope.dontAutoCancelSearch = false;
+                            grab.active = false;
                         } else {
                             if (!overviewScope.dontAutoCancelSearch) {
                                 searchWidget.cancelSearch();
