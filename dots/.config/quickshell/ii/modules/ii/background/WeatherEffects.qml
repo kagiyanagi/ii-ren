@@ -35,8 +35,9 @@ Item {
             ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
         : Config.options.background.weatherEffects.desktop
 
-    // "rain", "fog", "snow", "sun", or empty for nothing.
-    readonly property string effect: {
+    // What the config and the sky are asking for: "rain", "fog", "snow", "sun",
+    // or empty for nothing. Not necessarily what is on screen - see below.
+    readonly property string targetEffect: {
         if (!Config.ready || !root.opt.enable)
             return "";
         if (root.opt.followWeather)
@@ -47,13 +48,55 @@ Item {
     // While following the weather the conditions set this outright, and the
     // settings slider becomes a readout of it rather than a ceiling over it -
     // a slider that never moved while the sky changed read as broken.
-    readonly property real intensity: Math.max(0, Math.min(1, root.opt.followWeather
-        ? Weather.liveIntensity
-        : root.opt.intensity / 100))
+    readonly property real targetIntensity: root.targetEffect.length === 0 ? 0
+        : Math.max(0, Math.min(1, root.opt.followWeather
+            ? Weather.liveIntensity
+            : root.opt.intensity / 100))
+
+    // AOSP's WeatherEngine keeps `effectTargetIntensity` and `effectIntensity`
+    // apart and runs a ValueAnimator between them, so the weather never snaps:
+    // it thickens and thins, and it recedes when you unlock rather than
+    // vanishing. This is that split. `activeEffect` is what the shader is
+    // actually rendering, which lags `targetEffect` because one shader cannot
+    // cross-fade into another - the old one thins to nothing first, then the
+    // new one thickens up.
+    property string activeEffect: ""
+
+    // Every shader is an exact identity pass at intensity 0 (each one's masks
+    // and blends are scaled by it), so ramping to zero lands precisely on the
+    // untouched desktop and there is nothing to hide behind an opacity fade.
+    readonly property real intensityGoal: root.targetEffect === root.activeEffect
+        ? root.targetIntensity : 0
+
+    property real intensity: root.intensityGoal
+
+    // Not an Appearance spec on purpose: this is ambient weather, an order of
+    // magnitude slower than any UI motion, and both numbers are transcribed.
+    Behavior on intensity {
+        NumberAnimation {
+            // AOSP WeatherEngine.AUTO_FADE_DURATION_MILLIS.
+            duration: 3000
+            // The ValueAnimator in AOSP's animateWeatherIntensityOut sets no
+            // interpolator, so it gets AccelerateDecelerateInterpolator:
+            // cos((t+1)*PI)/2 + 0.5, which is Easing.InOutSine exactly.
+            easing.type: Easing.InOutSine
+        }
+    }
+
+    // Swap the rendered effect only once the old one has thinned to nothing.
+    onIntensityChanged: if (root.intensity <= 0.0005 && root.activeEffect !== root.targetEffect)
+        root.activeEffect = root.targetEffect
+    // ...and immediately when there was nothing on screen to thin out.
+    onTargetEffectChanged: if (root.intensity <= 0.0005)
+        root.activeEffect = root.targetEffect
+    Component.onCompleted: if (root.intensity <= 0.0005)
+        root.activeEffect = root.targetEffect
 
     // True while the effect is drawing the scene itself, so the desktop knows
-    // to stop drawing it and a video wallpaper knows to play in-process.
-    readonly property bool takesOver: root.effect.length > 0
+    // to stop drawing it and a video wallpaper knows to play in-process. Stays
+    // true for the whole ramp out, or the shader would be torn down mid-fade.
+    readonly property bool takesOver: root.activeEffect.length > 0
+        && (root.intensity > 0.0005 || root.intensityGoal > 0)
 
     // AOSP's GraphicsUtils.computeDefaultGridSize, with Android's own xxhdpi
     // density as the reference: at that density a 1080px-wide strip of screen
@@ -75,7 +118,7 @@ Item {
     // COLOR_GRADING_INTENSITY from each of AOSP's *EffectConfig companions.
     readonly property var lutStrengths: ({ rain: 0.3, fog: 0.3, snow: 0.25, sun: 0.18 })
     readonly property real lutIntensity: !root.opt.colorGrading ? 0
-        : (root.lutStrengths[root.effect] ?? 0) * root.intensity
+        : (root.lutStrengths[root.activeEffect] ?? 0) * root.intensity
 
     /* Clock. AOSP integrates its own elapsed time per effect rather than using
      * the frame clock directly, because two of the three warp it. */
@@ -83,7 +126,7 @@ Item {
 
     // SnowEffect.setIntensity: the flakes speed up as they thin out, or the
     // few that are left look like they are floating.
-    readonly property real speed: root.effect === "snow"
+    readonly property real speed: root.activeEffect === "snow"
         ? 2.5 + (1.7 - 2.5) * root.intensity
         : 1
 
@@ -108,7 +151,7 @@ Item {
         onTriggered: {
             // A stalled frame must not teleport the rain across the screen.
             const dt = Math.min(frameTime, 0.1);
-            if (root.effect === "fog") {
+            if (root.activeEffect === "fog") {
                 // Variation range [0.4, 1]; AOSP does not want it to reach 0.
                 const t = elapsedTime;
                 root.elapsed += (Math.sin(0.06 * t + Math.sin(0.18 * t)) * 0.3 + 0.7) * dt;
@@ -135,7 +178,7 @@ Item {
         anchors.fill: parent
         visible: false
         live: true
-        hideSource: chain.opacity >= 1
+        hideSource: chain.status === Loader.Ready
         sourceItem: chain.active ? root.scene : null
     }
 
@@ -143,12 +186,13 @@ Item {
     // Loaded through a Repeat-wrapped source because an Image clamps.
     Loader {
         id: fogTextures
-        active: chain.active && root.effect === "fog"
+        active: chain.active && root.activeEffect === "fog"
         sourceComponent: Item {
             readonly property alias fog: fogSource
             readonly property alias clouds: cloudsSource
             ShaderEffectSource {
                 id: fogSource
+                visible: false
                 width: 512
                 height: 512
                 live: false
@@ -162,6 +206,7 @@ Item {
             }
             ShaderEffectSource {
                 id: cloudsSource
+                visible: false
                 width: 512
                 height: 512
                 live: false
@@ -179,33 +224,21 @@ Item {
     Image {
         id: lutTexture
         visible: false
-        source: root.effect.length > 0
-            ? Qt.resolvedUrl(`../../../assets/images/weather/${root.effect}_lut.png`)
+        source: root.activeEffect.length > 0
+            ? Qt.resolvedUrl(`../../../assets/images/weather/${root.activeEffect}_lut.png`)
             : ""
     }
 
+    // No opacity fade: the intensity ramp above is the fade, and cross-fading
+    // the shader against the scene it already contains only muddied it.
     Loader {
         id: chain
         anchors.fill: parent
-        active: opacity > 0
-        visible: opacity > 0
-        opacity: root.takesOver ? 1 : 0
-        sourceComponent: root.effect === "fog" ? fogComponent
-            : root.effect === "snow" ? snowComponent
-            : root.effect === "sun" ? sunComponent
+        active: root.takesOver
+        sourceComponent: root.activeEffect === "fog" ? fogComponent
+            : root.activeEffect === "snow" ? snowComponent
+            : root.activeEffect === "sun" ? sunComponent
             : rainComponent
-
-        // Opacity is an effect, so neither direction may overshoot. A
-        // screen-sized surface arriving is slow effects; leaving is fast.
-        Behavior on opacity {
-            NumberAnimation {
-                duration: root.takesOver
-                    ? Appearance.animationCurves.expressiveSlowEffectsDuration
-                    : Appearance.animation.elementMoveExit.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-            }
-        }
     }
 
     // Rain is two passes, as it is on Android: the shower through the scene,

@@ -186,8 +186,11 @@ void main() {
     float noiseT = triangleNoise(fragCoord + vec2(12.31, 1024.1241));
     color = imageRangeConversion(color, 0.88, 0.02, noiseT * 0.025, intensity);
 
-    // Slight tint on the scene behind the snow.
-    color = normalBlendNotPremultiplied(color, bgdTint.rgb, bgdTint.a);
+    // Slight tint on the scene behind the snow. AOSP applies this flat, but it
+    // is the one blend in the whole set that its `intensity` does not reach, so
+    // fading intensity to zero would leave a 7% grey wash behind and pop when
+    // the pass was finally torn down. Scaling it is a no-op at full intensity.
+    color = normalBlendNotPremultiplied(color, bgdTint.rgb, bgdTint.a * intensity);
 
     // Ten layers, farthest first.
     for (float i = farthestSnowLayerIndex; i >= closestSnowLayerIndex; i--) {

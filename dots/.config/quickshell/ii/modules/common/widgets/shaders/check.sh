@@ -57,7 +57,11 @@ wbase=shader-check/weather-00-baseline.png
 [ -f "$wbase" ] || { echo "FAIL: no weather baseline rendered"; exit 1; }
 
 for f in shader-check/weather-*.png; do
-    case "$f" in *weather-00-baseline.png) continue ;; esac
+    case "$f" in
+        *weather-00-baseline.png) continue ;;
+        # Asserted the other way round below.
+        *weather-zero-*.png) continue ;;
+    esac
     diff=$(magick compare -metric RMSE "$wbase" "$f" null: 2>&1 | sed 's/.*(\([0-9.]*\)).*/\1/')
     if [ "$(echo "$diff < 0.01" | bc -l)" = "1" ]; then
         echo "FAIL: $(basename "$f" .png) is indistinguishable from the baseline (RMSE $diff)"
@@ -77,5 +81,20 @@ if [ "$(echo "$moved < 0.01" | bc -l)" = "1" ]; then
 else
     echo "ok:   rain moves over time (RMSE $moved)"
 fi
+
+# The intensity ramp fades an effect out by driving `intensity` to 0, then
+# tears the pass down once it gets there. That only lands on the untouched
+# desktop if every shader is an exact identity pass at 0 - so anything a shader
+# does that `intensity` does not scale shows up here as a difference from the
+# baseline. Snow's flat background tint was exactly that.
+for f in shader-check/weather-zero-*.png; do
+    diff=$(magick compare -metric RMSE "$wbase" "$f" null: 2>&1 | sed 's/.*(\([0-9.]*\)).*/\1/')
+    if [ "$(echo "$diff > 0.01" | bc -l)" = "1" ]; then
+        echo "FAIL: $(basename "$f" .png) is not an identity pass (RMSE $diff vs baseline)"
+        fail=1
+    else
+        echo "ok:   $(basename "$f" .png) renders nothing at intensity 0 (RMSE $diff)"
+    fi
+done
 
 [ "$fail" = 0 ] && echo "all shader branches changed the image" || exit 1

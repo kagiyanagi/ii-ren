@@ -3,32 +3,47 @@ import QtQuick
 // Runnable check for the weather shaders - rain (two passes), fog, snow and
 // sun. Renders each effect over a synthetic high-frequency pattern and saves a
 // PNG into ./shader-check/.
-// check.sh then asserts each one differs from the unweathered baseline, and
-// that the two rain frames differ from each other - which is what catches a
-// stale bake, a renamed uniform, a texture that failed to load, or a `time`
-// that stopped reaching the GPU. Needs a real GPU: the offscreen QPA plugin
-// cannot run ShaderEffect.
+//
+// check.sh then asserts three things. Each effect at full intensity differs
+// from the unweathered baseline, and the two rain frames differ from each
+// other - which catches a stale bake, a renamed uniform, a texture that failed
+// to load, or a `time` that stopped reaching the GPU. And each effect at
+// intensity 0 is *identical* to the baseline: the intensity ramp fades the
+// effect out by driving that uniform to zero, so anything a shader does that
+// intensity does not reach would be left stranded on screen and then pop when
+// the pass is torn down. Snow's background tint was exactly that.
+//
+// Needs a real GPU: the offscreen QPA plugin cannot run ShaderEffect.
 Window {
     id: win
     width: 480
     height: 270
     visible: true
 
-    // Two rain frames far enough apart that no drop is where it was.
+    // Two rain frames far enough apart that no drop is where it was, then the
+    // same four effects wound down to intensity 0, which must render nothing.
     readonly property var cases: [
         { name: "weather-00-baseline", effect: "none", time: 0 },
         { name: "weather-01-rain",     effect: "rain", time: 3.0 },
         { name: "weather-02-rain-later", effect: "rain", time: 9.0 },
         { name: "weather-03-fog",      effect: "fog",  time: 12.0 },
         { name: "weather-04-snow",     effect: "snow", time: 6.0 },
-        { name: "weather-05-sun",      effect: "sun",  time: 4.0 }
+        { name: "weather-05-sun",      effect: "sun",  time: 4.0 },
+        { name: "weather-zero-rain",   effect: "rain", time: 3.0, intensity: 0 },
+        { name: "weather-zero-fog",    effect: "fog",  time: 12.0, intensity: 0 },
+        { name: "weather-zero-snow",   effect: "snow", time: 6.0, intensity: 0 },
+        { name: "weather-zero-sun",    effect: "sun",  time: 4.0, intensity: 0 }
     ]
 
     property int index: 0
     readonly property var current: win.cases[win.index]
     property int failures: 0
 
-    readonly property real intensity: 1.0
+    readonly property real intensity: win.current.intensity ?? 1.0
+    // COLOR_GRADING_INTENSITY per effect, scaled by intensity as
+    // WeatherEffectBase.setIntensity does.
+    readonly property var lutStrengths: ({ rain: 0.3, fog: 0.3, snow: 0.25, sun: 0.18 })
+    readonly property real lutIntensity: (win.lutStrengths[win.current.effect] ?? 0) * win.intensity
     readonly property real gridScale: 1.0
     readonly property real aspect: win.width / win.height
     readonly property vector2d resolution: Qt.vector2d(win.width, win.height)
@@ -72,6 +87,7 @@ Window {
     // AOSP's tileable fog and cloud noise, wrapped so it repeats.
     ShaderEffectSource {
         id: fogSource
+        visible: false
         width: 512
         height: 512
         live: false
@@ -90,6 +106,7 @@ Window {
 
     ShaderEffectSource {
         id: cloudsSource
+        visible: false
         width: 512
         height: 512
         live: false
@@ -146,7 +163,7 @@ Window {
         property real screenAspectRatio: win.aspect
         property real gridScale: win.gridScale
         property real intensity: win.intensity
-        property real lutIntensity: 0.3
+        property real lutIntensity: win.lutIntensity
         fragmentShader: Qt.resolvedUrl("weatherRainGlass.frag.qsb")
         onStatusChanged: if (status === ShaderEffect.Error) {
             console.error("weatherRainGlass FAILED TO COMPILE:", log);
@@ -164,7 +181,7 @@ Window {
         property real time: win.current.time
         property real screenAspectRatio: win.aspect
         property real intensity: win.intensity
-        property real lutIntensity: 0.25
+        property real lutIntensity: win.lutIntensity
         fragmentShader: Qt.resolvedUrl("weatherSnow.frag.qsb")
         onStatusChanged: if (status === ShaderEffect.Error) {
             console.error("weatherSnow FAILED TO COMPILE:", log);
@@ -180,7 +197,7 @@ Window {
         property vector2d screenSize: win.resolution
         property real time: win.current.time
         property real intensity: win.intensity
-        property real lutIntensity: 0.18
+        property real lutIntensity: win.lutIntensity
         fragmentShader: Qt.resolvedUrl("weatherSun.frag.qsb")
         onStatusChanged: if (status === ShaderEffect.Error) {
             console.error("weatherSun FAILED TO COMPILE:", log);
@@ -202,7 +219,7 @@ Window {
         property real screenAspectRatio: win.aspect
         property real pixelDensity: 2.625
         property real intensity: win.intensity
-        property real lutIntensity: 0.3
+        property real lutIntensity: win.lutIntensity
         fragmentShader: Qt.resolvedUrl("weatherFog.frag.qsb")
         onStatusChanged: if (status === ShaderEffect.Error) {
             console.error("weatherFog FAILED TO COMPILE:", log);
