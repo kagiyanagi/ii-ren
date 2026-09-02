@@ -16,7 +16,10 @@ ShaderEffect {
     // its transition animation runs through layers on its own images, and an
     // item nothing renders never produces them, so the wipe never appears.
     property bool hideSource: true
-    readonly property var opt: Config.options.background.effects
+    // Desktop and lock screen target separately; the caller resolves which
+    // one is active and hands it in. Defaults to desktop for callers (like
+    // the settings preview) that always override every key via `preset`.
+    property var opt: Config.options.background.effects.desktop
 
     // Index order matches the shader's `filterMode` switch.
     readonly property var filterNames: ["none", "grayscale", "sepia", "negative",

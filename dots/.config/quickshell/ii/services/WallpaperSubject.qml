@@ -24,7 +24,13 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property bool enabled: Config.ready && Config.options.background.depth.enable
+    // The cutout is one shared resource, so it is worth having the moment
+    // either desktop or lock screen wants it.
+    readonly property bool enabled: Config.ready
+        && (Config.options.background.depth.desktop.enable
+            || (Config.options.background.depth.lock.sync
+                ? Config.options.background.depth.desktop.enable
+                : Config.options.background.depth.lock.enable))
 
     readonly property bool wallpaperIsVideo: Wallpapers.isVideoFile((Config.options.background.wallpaperPath ?? "").toLowerCase())
     readonly property bool wallpaperUsable: (Config.options.background.wallpaperPath ?? "").length > 0

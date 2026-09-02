@@ -22,22 +22,27 @@ Item {
     id: root
 
     required property Item wallpaper
-    readonly property var opt: Config.options.background.effects
+    // Desktop and lock screen each pick their own group of settings; fluted
+    // glass targets separately from the blur/filter/adjustments group, same
+    // split as the settings page.
+    readonly property var opt: GlobalStates.screenLocked
+        ? (Config.options.background.effects.lock.sync
+            ? Config.options.background.effects.desktop : Config.options.background.effects.lock)
+        : Config.options.background.effects.desktop
+    readonly property var glassOpt: GlobalStates.screenLocked
+        ? (Config.options.background.effects.glass.lock.sync
+            ? Config.options.background.effects.glass.desktop : Config.options.background.effects.glass.lock)
+        : Config.options.background.effects.glass.desktop
     property bool isVideo: false
-
-    // The ROMs aim the effects at the home screen, the lock screen or both;
-    // screenLocked is the equivalent here.
-    readonly property bool targeted: root.opt.target === "both"
-        || ((root.opt.target === "lock") === GlobalStates.screenLocked)
 
     // "glass" and "frosted" are the ROMs' two blur presets.
     readonly property int blurRadius: root.opt.blur.style === "glass" ? 50
         : root.opt.blur.style === "frosted" ? 9 : root.opt.blur.radius
 
-    readonly property bool glassActive: root.targeted && root.opt.glass.enable
-    readonly property bool blurActive: root.targeted && root.opt.blur.enable && root.blurRadius > 0
-    readonly property bool filterActive: root.targeted && (root.opt.filter !== "none"
-        || root.opt.saturation !== 100 || root.opt.dim > 0 || root.opt.vignette > 0 || root.opt.grain > 0)
+    readonly property bool glassActive: root.glassOpt.enable
+    readonly property bool blurActive: root.opt.blur.enable && root.blurRadius > 0
+    readonly property bool filterActive: root.opt.filter !== "none"
+        || root.opt.saturation !== 100 || root.opt.dim > 0 || root.opt.vignette > 0 || root.opt.grain > 0
 
     // The wallpaper hides itself once a stage renders it for us.
     readonly property bool takesOver: root.glassActive || root.blurActive || root.filterActive
@@ -47,7 +52,8 @@ Item {
     // Keep rendering only while something is actually changing. Walking the
     // option tree covers every knob, including ones added later, and QML tracks
     // the reads as binding dependencies.
-    readonly property string digest: Config.options.background.wallpaperPath + JSON.stringify(root.opt)
+    readonly property string digest: Config.options.background.wallpaperPath
+        + JSON.stringify(root.opt) + JSON.stringify(root.glassOpt)
 
     // Anything below is live only while a bake is in flight.
     readonly property bool baking: settle.running || quickBake.running
@@ -59,7 +65,6 @@ Item {
     // fullscreen chain is exactly what the unlock animation cannot afford -
     // nothing changed there, so a couple of frames is enough.
     onVisibleChanged: if (root.visible) quickBake.restart()
-    onTargetedChanged: settle.restart()
     onWidthChanged: settle.restart()
     onHeightChanged: settle.restart()
 
@@ -119,6 +124,7 @@ Item {
             source: blurLoader.item ?? root.wallpaper
             hideSource: source !== root.wallpaper
             live: root.baking || root.isVideo
+            opt: root.glassOpt
         }
     }
 
@@ -130,6 +136,7 @@ Item {
             source: glassLoader.item ?? blurLoader.item ?? root.wallpaper
             hideSource: source !== root.wallpaper
             live: root.baking || root.isVideo
+            opt: root.opt
         }
     }
 

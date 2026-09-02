@@ -195,34 +195,73 @@ ContentPage {
         }
     }
 
-    ContentSection {
-        icon: "category"
-        title: Translation.tr("Wallpaper shape")
-        tooltip: Translation.tr("Custom shape the wallpaper in Material Icons. Gray out subject depth when enabled.")
+    // Every wallpaper feature below configures the desktop and the lock
+    // screen independently. One card each, not two: the segmented control at
+    // the top picks which of the two the controls underneath are editing.
+    // That choice is view state, not config - nothing about it is persisted,
+    // and the lock screen mirrors the desktop until told otherwise, so the
+    // common case is one card that looks exactly like it did before.
+    component TargetedSection: ContentSection {
+        id: section
+        required property var desktopOpt
+        required property var lockOpt
+
+        property string editTarget: "desktop"
+        readonly property bool editingDesktop: section.editTarget === "desktop"
+        readonly property var opt: section.editingDesktop ? section.desktopOpt : section.lockOpt
+        // A mirroring lock screen has nothing of its own to show, so the
+        // controls below hide themselves rather than lie about what they edit.
+        readonly property bool collapsed: !section.editingDesktop && section.lockOpt.sync
+
+        ConfigSelectionArray {
+            currentValue: section.editTarget
+            onSelected: newValue => section.editTarget = newValue
+            options: [
+                { displayName: Translation.tr("Desktop"), icon: "desktop_windows", value: "desktop" },
+                { displayName: Translation.tr("Lock screen"), icon: "lock", value: "lock" }
+            ]
+        }
+
+        ConfigSwitch {
+            visible: !section.editingDesktop
+            Layout.fillWidth: true
+            buttonIcon: "sync"
+            text: Translation.tr("Match desktop")
+            checked: section.lockOpt.sync
+            onCheckedChanged: section.lockOpt.sync = checked
+        }
+    }
+
+    component ShapeMaskSection: TargetedSection {
+        id: shapeSection
 
         ConfigRow {
+            visible: !shapeSection.collapsed
+
             ConfigSwitch {
                 Layout.fillWidth: true
                 buttonIcon: "interests"
                 text: Translation.tr("Enable shape mask")
-                checked: Config.options.background.shape.enable
+                checked: shapeSection.opt.enable
                 onCheckedChanged: {
-                    Config.options.background.shape.enable = checked;
-                    if (checked) {
-                        Config.options.background.depth.enable = false;
+                    shapeSection.opt.enable = checked;
+                    // Subject depth wants the same pixels, and only on the
+                    // desktop does it have widgets to layer into.
+                    if (checked && shapeSection.editingDesktop) {
+                        Config.options.background.depth.desktop.enable = false;
                     }
                 }
             }
 
             RippleButtonWithShape {
                 Layout.fillWidth: false
-                enabled: Config.options.background.shape.enable
-                shapeString: Config.options.background.shape.style
+                enabled: shapeSection.opt.enable
+                shapeString: shapeSection.opt.style
                 implicitWidth: 60
                 extraIcon: "edit"
 
                 onClicked: {
-                    wallpaperShapeShapeLoader.active = !wallpaperShapeShapeLoader.active;
+                    shapeStyleLoader.active = !shapeStyleLoader.active;
                 }
                 StyledToolTip {
                     text: Translation.tr("Edit the material shape")
@@ -230,30 +269,30 @@ ContentPage {
             }
         }
 
-        Loader { 
-            id: wallpaperShapeShapeLoader
+        Loader {
+            id: shapeStyleLoader
             active: false
-            visible: active
+            visible: active && !shapeSection.collapsed
             Layout.fillWidth: true
             sourceComponent: ContentSubsection {
                 title: Translation.tr("Background shape")
-                
+
                 ConfigSelectionArray {
-                    currentValue: Config.options.background.shape.style
+                    currentValue: shapeSection.opt.style
                     onSelected: newValue => {
-                        Config.options.background.shape.style = newValue;
+                        shapeSection.opt.style = newValue;
                     }
-                    options: ([ 
+                    options: ([
                         "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle",
-                        "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", 
-                        "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", 
-                        "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart" 
-                    ]).map(icon => { 
-                        return { 
-                            displayName: "", 
-                            shape: icon, 
-                            value: icon 
-                        } 
+                        "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided",
+                        "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst",
+                        "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"
+                    ]).map(icon => {
+                        return {
+                            displayName: "",
+                            shape: icon,
+                            value: icon
+                        }
                     })
                 }
             }
@@ -261,17 +300,17 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Background color")
-            visible: Config.options.background.shape.enable
+            visible: !shapeSection.collapsed && shapeSection.opt.enable
 
             // Reusing a text field or color picker if available. Otherwise just text field.
             ConfigTextField {
                 Layout.fillWidth: true
                 icon: "palette"
                 text: Translation.tr("Hex Color or @colLayer0")
-                inputText: Config.options.background.shape.backgroundColor
+                inputText: shapeSection.opt.backgroundColor
                 onInputTextChanged: {
-                    if (Config.options.background.shape.backgroundColor !== inputText) {
-                        Config.options.background.shape.backgroundColor = inputText;
+                    if (shapeSection.opt.backgroundColor !== inputText) {
+                        shapeSection.opt.backgroundColor = inputText;
                     }
                 }
             }
@@ -311,7 +350,7 @@ ContentPage {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                Config.options.background.shape.backgroundColor = "@" + modelData.name;
+                                shapeSection.opt.backgroundColor = "@" + modelData.name;
                             }
                         }
                     }
@@ -327,19 +366,24 @@ ContentPage {
                 usePercentTooltip: false
                 from: 10
                 to: 150
-                value: Config.options.background.shape.size * 100
-                onMoved: value => Config.options.background.shape.size = Math.round(value) / 100
+                value: shapeSection.opt.size * 100
+                onMoved: value => shapeSection.opt.size = Math.round(value) / 100
             }
         }
+    }
+
+    ShapeMaskSection {
+        icon: "category"
+        title: Translation.tr("Wallpaper shape")
+        tooltip: Translation.tr("Custom shape the wallpaper in Material Icons. Grays out subject depth when enabled.\nDesktop and lock screen are set separately; the lock screen matches the desktop until you turn that off.")
+        desktopOpt: Config.options.background.shape.desktop
+        lockOpt: Config.options.background.shape.lock
     }
 
     // ---- Wallpaper effects ----------------------------------------------
     // The filter list and its maths mirror what custom ROMs ship (risingOS's
     // SystemUI WallpaperUtils, inherited by Evolution X, Matrixx, Mist,
     // Lunaris, PenguinOS). Fluted glass is ours.
-    readonly property var effectOpt: Config.options.background.effects
-    readonly property var weatherOpt: Config.options.background.weatherEffects
-
     readonly property var wallpaperFilters: [
         { value: "none",       icon: "block",           name: Translation.tr("None") },
         { value: "grayscale",  icon: "filter_b_and_w",  name: Translation.tr("Grayscale") },
@@ -366,16 +410,14 @@ ContentPage {
         { name: Translation.tr("Frosted"),  preset: { pattern: "lines",   profile: "flat",    fluteWidth: 28, angle: 0,  distortion: 20, dispersion: 5,  smear: 55, highlights: 25, shadows: 15, edges: 10, frost: 10, irregularity: 0,  waviness: 0 } }
     ]
 
-    function applyGlassPreset(preset) {
-        const glass = Config.options.background.effects.glass;
+    function applyGlassPreset(glassOpt, preset) {
         for (const key in preset)
-            glass[key] = preset[key];
-        glass.enable = true;
+            glassOpt[key] = preset[key];
+        glassOpt.enable = true;
     }
 
-    function glassPresetActive(preset) {
-        const glass = Config.options.background.effects.glass;
-        return glass.enable && Object.keys(preset).every(key => glass[key] === preset[key]);
+    function glassPresetActive(glassOpt, preset) {
+        return glassOpt.enable && Object.keys(preset).every(key => glassOpt[key] === preset[key]);
     }
 
     // A live preview of the wallpaper under one effect, doubling as its picker.
@@ -429,28 +471,44 @@ ContentPage {
         }
     }
 
-    ContentSection {
-        icon: "filter_center_focus"
-        title: Translation.tr("Subject depth")
-        tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the desktop widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nEach widget picks its own side from its right-click menu; behind is the default.")
+    component DepthSection: TargetedSection {
+        id: depthSection
+        // Shape mask and subject depth both claim the same pixels, so
+        // whichever shape mask covers the target being edited wins.
+        readonly property bool shapeConflict: depthSection.editingDesktop
+            ? Config.options.background.shape.desktop.enable
+            : (Config.options.background.shape.lock.sync
+                ? Config.options.background.shape.desktop.enable
+                : Config.options.background.shape.lock.enable)
 
-        enabled: !Config.options.background.shape.enable
+        enabled: !depthSection.shapeConflict
         opacity: enabled ? 1 : 0.4
         Behavior on opacity {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
         ConfigSwitch {
+            visible: !depthSection.collapsed
             buttonIcon: "filter_center_focus"
             text: Translation.tr("Layer widgets into the wallpaper")
-            checked: Config.options.background.depth.enable
+            checked: depthSection.opt.enable
             onCheckedChanged: {
-                Config.options.background.depth.enable = checked;
+                depthSection.opt.enable = checked;
             }
         }
+    }
+
+    DepthSection {
+        icon: "filter_center_focus"
+        title: Translation.tr("Subject depth")
+        tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nEach widget picks its own side from its right-click menu; behind is the default.")
+        desktopOpt: Config.options.background.depth.desktop
+        lockOpt: Config.options.background.depth.lock
 
         ContentSubsection {
-            visible: Config.options.background.depth.enable
+            // The cutout is one shared resource, so its status is worth
+            // showing whenever either context is actually using it.
+            visible: WallpaperSubject.enabled
             title: Translation.tr("Subject")
 
             RowLayout {
@@ -545,28 +603,11 @@ ContentPage {
         }
     }
 
-    ContentSection {
-        icon: "auto_fix"
-        title: Translation.tr("Wallpaper effects")
-        tooltip: Translation.tr("Applied to the wallpaper image only - widgets, panels and the dock are untouched.\nA video wallpaper cannot be filtered.\nEach effect is a GPU pass over the whole wallpaper, so stacking several costs frames on weak hardware.")
+    component WallpaperEffectsSection: TargetedSection {
+        id: fxSection
 
         ContentSubsection {
-            title: Translation.tr("Apply to")
-
-            ConfigSelectionArray {
-                currentValue: page.effectOpt.target
-                onSelected: newValue => {
-                    Config.options.background.effects.target = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Everywhere"), icon: "select_all",  value: "both" },
-                    { displayName: Translation.tr("Desktop"),    icon: "desktop_windows", value: "desktop" },
-                    { displayName: Translation.tr("Lock screen"), icon: "lock",       value: "lock" }
-                ]
-            }
-        }
-
-        ContentSubsection {
+            visible: !fxSection.collapsed
             title: Translation.tr("Filter")
             tooltip: Translation.tr("One at a time, as on a ROM. The adjustments below stack on top of whichever you pick.")
 
@@ -579,14 +620,14 @@ ContentPage {
                     EffectCard {
                         required property var modelData
                         label: modelData.name
-                        selected: page.effectOpt.filter === modelData.value
+                        selected: fxSection.opt.filter === modelData.value
                         // Preview the filter alone, with the adjustments off.
                         filterPreset: ({
                             filter: modelData.value,
                             saturation: 100, dim: 0, vignette: 0, grain: 0
                         })
                         onClicked: {
-                            Config.options.background.effects.filter = modelData.value;
+                            fxSection.opt.filter = modelData.value;
                         }
                     }
                 }
@@ -594,82 +635,83 @@ ContentPage {
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.filter === "posterize"
+                visible: fxSection.opt.filter === "posterize"
                 buttonIcon: "gradient"
                 text: Translation.tr("Posterize levels")
                 usePercentTooltip: false
                 from: 2
                 to: 16
-                value: page.effectOpt.posterizeLevels
-                onMoved: value => Config.options.background.effects.posterizeLevels = Math.round(value)
+                value: fxSection.opt.posterizeLevels
+                onMoved: value => fxSection.opt.posterizeLevels = Math.round(value)
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.filter === "pixelate"
+                visible: fxSection.opt.filter === "pixelate"
                 buttonIcon: "grid_on"
                 text: Translation.tr("Pixel size (px)")
                 usePercentTooltip: false
                 from: 2
                 to: 40
-                value: page.effectOpt.pixelSize
-                onMoved: value => Config.options.background.effects.pixelSize = Math.round(value)
+                value: fxSection.opt.pixelSize
+                onMoved: value => fxSection.opt.pixelSize = Math.round(value)
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.filter === "sharpen"
+                visible: fxSection.opt.filter === "sharpen"
                 buttonIcon: "deblur"
                 text: Translation.tr("Sharpen amount")
                 usePercentTooltip: false
                 from: 0
                 to: 300
-                value: page.effectOpt.sharpen * 100
-                onMoved: value => Config.options.background.effects.sharpen = Math.round(value) / 100
+                value: fxSection.opt.sharpen * 100
+                onMoved: value => fxSection.opt.sharpen = Math.round(value) / 100
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.filter === "chromatic"
+                visible: fxSection.opt.filter === "chromatic"
                 buttonIcon: "blur_linear"
                 text: Translation.tr("Colour separation (px)")
                 usePercentTooltip: false
                 from: 1
                 to: 40
-                value: page.effectOpt.chromatic
-                onMoved: value => Config.options.background.effects.chromatic = Math.round(value)
+                value: fxSection.opt.chromatic
+                onMoved: value => fxSection.opt.chromatic = Math.round(value)
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.filter === "radialBlur"
+                visible: fxSection.opt.filter === "radialBlur"
                 buttonIcon: "blur_circular"
                 text: Translation.tr("Radial blur (%)")
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.radialBlur
-                onMoved: value => Config.options.background.effects.radialBlur = Math.round(value)
+                value: fxSection.opt.radialBlur
+                onMoved: value => fxSection.opt.radialBlur = Math.round(value)
             }
         }
 
         ContentSubsection {
+            visible: !fxSection.collapsed
             title: Translation.tr("Blur")
 
             ConfigSwitch {
                 Layout.fillWidth: true
                 buttonIcon: "blur_on"
                 text: Translation.tr("Blur the wallpaper")
-                checked: page.effectOpt.blur.enable
+                checked: fxSection.opt.blur.enable
                 onCheckedChanged: {
-                    Config.options.background.effects.blur.enable = checked;
+                    fxSection.opt.blur.enable = checked;
                 }
             }
 
             Flow {
                 Layout.fillWidth: true
                 spacing: 6
-                visible: page.effectOpt.blur.enable
+                visible: fxSection.opt.blur.enable
 
                 Repeater {
                     // Glass and Frosted are the ROMs' two styles, radius 50 and 9.
@@ -681,11 +723,11 @@ ContentPage {
                     EffectCard {
                         required property var modelData
                         label: modelData.name
-                        selected: page.effectOpt.blur.style === modelData.value
-                        previewBlur: modelData.radius < 0 ? page.effectOpt.blur.radius : modelData.radius
+                        selected: fxSection.opt.blur.style === modelData.value
+                        previewBlur: modelData.radius < 0 ? fxSection.opt.blur.radius : modelData.radius
                         filterPreset: ({ filter: "none", saturation: 100, dim: 0, vignette: 0, grain: 0 })
                         onClicked: {
-                            Config.options.background.effects.blur.style = modelData.value;
+                            fxSection.opt.blur.style = modelData.value;
                         }
                     }
                 }
@@ -693,18 +735,19 @@ ContentPage {
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.blur.enable && page.effectOpt.blur.style === "custom"
+                visible: fxSection.opt.blur.enable && fxSection.opt.blur.style === "custom"
                 buttonIcon: "blur_on"
                 text: Translation.tr("Blur radius")
                 usePercentTooltip: false
                 from: 1
                 to: 150
-                value: page.effectOpt.blur.radius
-                onMoved: value => Config.options.background.effects.blur.radius = Math.round(value)
+                value: fxSection.opt.blur.radius
+                onMoved: value => fxSection.opt.blur.radius = Math.round(value)
             }
         }
 
         ContentSubsection {
+            visible: !fxSection.collapsed
             title: Translation.tr("Adjustments")
 
             ConfigSlider {
@@ -714,8 +757,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 50
                 to: 200
-                value: page.effectOpt.saturation
-                onMoved: value => Config.options.background.effects.saturation = Math.round(value)
+                value: fxSection.opt.saturation
+                onMoved: value => fxSection.opt.saturation = Math.round(value)
             }
 
             ConfigSlider {
@@ -725,8 +768,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.dim
-                onMoved: value => Config.options.background.effects.dim = Math.round(value)
+                value: fxSection.opt.dim
+                onMoved: value => fxSection.opt.dim = Math.round(value)
             }
 
             ConfigSlider {
@@ -736,8 +779,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.vignette
-                onMoved: value => Config.options.background.effects.vignette = Math.round(value)
+                value: fxSection.opt.vignette
+                onMoved: value => fxSection.opt.vignette = Math.round(value)
             }
 
             ConfigSlider {
@@ -747,46 +790,53 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.grain
-                onMoved: value => Config.options.background.effects.grain = Math.round(value)
+                value: fxSection.opt.grain
+                onMoved: value => fxSection.opt.grain = Math.round(value)
             }
         }
     }
 
-    ContentSection {
-        icon: "rainy"
-        title: Translation.tr("Weather effects")
-        tooltip: Translation.tr("Android's live weather wallpaper, ported shader for shader from AOSP.\nIt draws over everything on the desktop plane - the wallpaper effects, the widgets and subject depth all sit underneath.\nUnlike the wallpaper effects, this one animates: it redraws the whole desktop every frame for as long as it is on.")
+    WallpaperEffectsSection {
+        icon: "auto_fix"
+        title: Translation.tr("Wallpaper effects")
+        tooltip: Translation.tr("Applied to the wallpaper image only - widgets, panels and the dock are untouched.\nA video wallpaper cannot be filtered.\nEach effect is a GPU pass over the whole wallpaper, so stacking several costs frames on weak hardware.")
+        desktopOpt: Config.options.background.effects.desktop
+        lockOpt: Config.options.background.effects.lock
+    }
+
+    component WeatherEffectsSection: TargetedSection {
+        id: weatherSection
 
         ConfigSwitch {
+            visible: !weatherSection.collapsed
             Layout.fillWidth: true
             buttonIcon: "rainy"
             text: Translation.tr("Live weather effects")
-            checked: page.weatherOpt.enable
+            checked: weatherSection.opt.enable
             onCheckedChanged: {
-                Config.options.background.weatherEffects.enable = checked;
+                weatherSection.opt.enable = checked;
             }
         }
 
         ConfigSwitch {
             Layout.fillWidth: true
-            visible: page.weatherOpt.enable
+            visible: !weatherSection.collapsed && weatherSection.opt.enable
             buttonIcon: "cloud_sync"
             text: Translation.tr("Follow the current weather")
-            checked: page.weatherOpt.followWeather
+            checked: weatherSection.opt.followWeather
             onCheckedChanged: {
-                Config.options.background.weatherEffects.followWeather = checked;
+                weatherSection.opt.followWeather = checked;
             }
         }
 
         ContentSubsection {
-            visible: page.weatherOpt.enable && !page.weatherOpt.followWeather
+            visible: !weatherSection.collapsed && weatherSection.opt.enable && !weatherSection.opt.followWeather
             title: Translation.tr("Effect")
 
             ConfigSelectionArray {
-                currentValue: page.weatherOpt.effect
+                currentValue: weatherSection.opt.effect
                 onSelected: newValue => {
-                    Config.options.background.weatherEffects.effect = newValue;
+                    weatherSection.opt.effect = newValue;
                 }
                 options: [
                     { displayName: Translation.tr("Rain"), icon: "rainy", value: "rain" },
@@ -798,7 +848,7 @@ ContentPage {
         }
 
         ContentSubsection {
-            visible: page.weatherOpt.enable && page.weatherOpt.followWeather
+            visible: !weatherSection.collapsed && weatherSection.opt.enable && weatherSection.opt.followWeather
             title: Translation.tr("Right now")
             tooltip: Translation.tr("The effect follows the conditions the weather widget is fetching. Nothing draws when it is clear out.")
 
@@ -816,7 +866,7 @@ ContentPage {
         }
 
         ContentSubsection {
-            visible: page.weatherOpt.enable
+            visible: !weatherSection.collapsed && weatherSection.opt.enable
             title: Translation.tr("Adjustments")
             tooltip: Translation.tr("Intensity is what the conditions drive, so it becomes a readout while following the weather.\nParticle scale is not a weather property - AOSP keeps its grid fixed and varies intensity and fall speed only - so it stays yours to set for your monitor's size and how far away you sit.")
 
@@ -828,23 +878,23 @@ ContentPage {
                 id: weatherIntensitySlider
                 Layout.fillWidth: true
                 buttonIcon: "opacity"
-                text: page.weatherOpt.followWeather
+                text: weatherSection.opt.followWeather
                     ? Translation.tr("Intensity (%) - from weather")
                     : Translation.tr("Intensity (%)")
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.weatherOpt.intensity
-                enabled: !page.weatherOpt.followWeather
+                value: weatherSection.opt.intensity
+                enabled: !weatherSection.opt.followWeather
                 opacity: enabled ? 1 : 0.4
-                onMoved: value => Config.options.background.weatherEffects.intensity = Math.round(value)
+                onMoved: value => weatherSection.opt.intensity = Math.round(value)
             }
 
             Binding {
                 target: weatherIntensitySlider
                 property: "value"
                 value: Math.round(Weather.liveIntensity * 100)
-                when: page.weatherOpt.followWeather
+                when: weatherSection.opt.followWeather
             }
 
             // Left editable in both modes on purpose: AOSP derives its grid
@@ -857,8 +907,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 50
                 to: 200
-                value: page.weatherOpt.scale
-                onMoved: value => Config.options.background.weatherEffects.scale = Math.round(value)
+                value: weatherSection.opt.scale
+                onMoved: value => weatherSection.opt.scale = Math.round(value)
             }
 
             // The per-effect lookup table Android grades each effect through:
@@ -867,31 +917,41 @@ ContentPage {
                 Layout.fillWidth: true
                 buttonIcon: "palette"
                 text: Translation.tr("Colour grading")
-                checked: page.weatherOpt.colorGrading
+                checked: weatherSection.opt.colorGrading
                 onCheckedChanged: {
-                    Config.options.background.weatherEffects.colorGrading = checked;
+                    weatherSection.opt.colorGrading = checked;
                 }
             }
         }
     }
 
-    ContentSection {
-        icon: "texture"
-        title: Translation.tr("Fluted glass")
-        tooltip: Translation.tr("Vertical cylindrical lenses refracted through Snell's law, so the flutes compress toward their seams like real cast glass.")
+    WeatherEffectsSection {
+        icon: "rainy"
+        title: Translation.tr("Weather effects")
+        tooltip: Translation.tr("Android's live weather wallpaper, ported shader for shader from AOSP.\nIt draws over everything on the desktop plane - the wallpaper effects, the widgets and subject depth all sit underneath.\nUnlike the wallpaper effects, this one animates: it redraws the whole desktop every frame for as long as it is on.")
+        desktopOpt: Config.options.background.weatherEffects.desktop
+        lockOpt: Config.options.background.weatherEffects.lock
+    }
+
+    // Fluted glass targets on its own, separately from the other wallpaper
+    // effects - it is subtle enough to want running everywhere far more
+    // often than a filter is.
+    component GlassSection: TargetedSection {
+        id: glassSection
 
         ConfigSwitch {
+            visible: !glassSection.collapsed
             buttonIcon: "texture"
             text: Translation.tr("Fluted glass")
-            checked: page.effectOpt.glass.enable
+            checked: glassSection.opt.enable
             onCheckedChanged: {
-                Config.options.background.effects.glass.enable = checked;
+                glassSection.opt.enable = checked;
             }
         }
 
         ContentSubsection {
             title: Translation.tr("Style")
-            visible: page.effectOpt.glass.enable
+            visible: !glassSection.collapsed && glassSection.opt.enable
 
             Flow {
                 Layout.fillWidth: true
@@ -902,10 +962,10 @@ ContentPage {
                     EffectCard {
                         required property var modelData
                         label: modelData.name
-                        selected: page.glassPresetActive(modelData.preset)
+                        selected: page.glassPresetActive(glassSection.opt, modelData.preset)
                         glassPreset: modelData.preset
                         filterPreset: ({ filter: "none", saturation: 100, dim: 0, vignette: 0, grain: 0 })
-                        onClicked: page.applyGlassPreset(modelData.preset)
+                        onClicked: page.applyGlassPreset(glassSection.opt, modelData.preset)
                     }
                 }
             }
@@ -913,7 +973,7 @@ ContentPage {
 
         ContentSubsection {
             title: Translation.tr("Pattern")
-            visible: page.effectOpt.glass.enable
+            visible: !glassSection.collapsed && glassSection.opt.enable
 
             StyledComboBox {
                 Layout.fillWidth: true
@@ -925,15 +985,15 @@ ContentPage {
                     { displayName: Translation.tr("Chevron"),       value: "chevron" },
                     { displayName: Translation.tr("Bubble grid"),   value: "bubble" }
                 ]
-                currentIndex: Math.max(0, model.findIndex(item => item.value === page.effectOpt.glass.pattern))
+                currentIndex: Math.max(0, model.findIndex(item => item.value === glassSection.opt.pattern))
                 onActivated: index => {
-                    Config.options.background.effects.glass.pattern = model[index].value;
+                    glassSection.opt.pattern = model[index].value;
                 }
             }
 
             StyledComboBox {
                 Layout.fillWidth: true
-                visible: page.effectOpt.glass.pattern !== "bubble"
+                visible: glassSection.opt.pattern !== "bubble"
                 buttonIcon: "line_curve"
                 textRole: "displayName"
                 model: [
@@ -943,16 +1003,16 @@ ContentPage {
                     { displayName: Translation.tr("Cascade"),        value: "cascade" },
                     { displayName: Translation.tr("Flat"),           value: "flat" }
                 ]
-                currentIndex: Math.max(0, model.findIndex(item => item.value === page.effectOpt.glass.profile))
+                currentIndex: Math.max(0, model.findIndex(item => item.value === glassSection.opt.profile))
                 onActivated: index => {
-                    Config.options.background.effects.glass.profile = model[index].value;
+                    glassSection.opt.profile = model[index].value;
                 }
             }
         }
 
         ContentSubsection {
             title: Translation.tr("Shape")
-            visible: page.effectOpt.glass.enable
+            visible: !glassSection.collapsed && glassSection.opt.enable
 
             ConfigSlider {
                 Layout.fillWidth: true
@@ -961,8 +1021,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 4
                 to: 160
-                value: page.effectOpt.glass.fluteWidth
-                onMoved: value => Config.options.background.effects.glass.fluteWidth = Math.round(value)
+                value: glassSection.opt.fluteWidth
+                onMoved: value => glassSection.opt.fluteWidth = Math.round(value)
             }
 
             ConfigSlider {
@@ -972,38 +1032,38 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 180
-                value: page.effectOpt.glass.angle
-                onMoved: value => Config.options.background.effects.glass.angle = Math.round(value)
+                value: glassSection.opt.angle
+                onMoved: value => glassSection.opt.angle = Math.round(value)
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.glass.pattern === "rain" || page.effectOpt.glass.pattern === "chevron"
+                visible: glassSection.opt.pattern === "rain" || glassSection.opt.pattern === "chevron"
                 buttonIcon: "waves"
                 text: Translation.tr("Rib bending (%)")
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.waviness
-                onMoved: value => Config.options.background.effects.glass.waviness = Math.round(value)
+                value: glassSection.opt.waviness
+                onMoved: value => glassSection.opt.waviness = Math.round(value)
             }
 
             ConfigSlider {
                 Layout.fillWidth: true
-                visible: page.effectOpt.glass.pattern === "lines"
+                visible: glassSection.opt.pattern === "lines"
                 buttonIcon: "shuffle"
                 text: Translation.tr("Uneven widths (%)")
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.irregularity
-                onMoved: value => Config.options.background.effects.glass.irregularity = Math.round(value)
+                value: glassSection.opt.irregularity
+                onMoved: value => glassSection.opt.irregularity = Math.round(value)
             }
         }
 
         ContentSubsection {
             title: Translation.tr("Optics")
-            visible: page.effectOpt.glass.enable
+            visible: !glassSection.collapsed && glassSection.opt.enable
 
             ConfigSlider {
                 Layout.fillWidth: true
@@ -1012,8 +1072,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.distortion
-                onMoved: value => Config.options.background.effects.glass.distortion = Math.round(value)
+                value: glassSection.opt.distortion
+                onMoved: value => glassSection.opt.distortion = Math.round(value)
             }
 
             ConfigSlider {
@@ -1023,8 +1083,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.dispersion
-                onMoved: value => Config.options.background.effects.glass.dispersion = Math.round(value)
+                value: glassSection.opt.dispersion
+                onMoved: value => glassSection.opt.dispersion = Math.round(value)
             }
 
             ConfigSlider {
@@ -1034,8 +1094,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.smear
-                onMoved: value => Config.options.background.effects.glass.smear = Math.round(value)
+                value: glassSection.opt.smear
+                onMoved: value => glassSection.opt.smear = Math.round(value)
             }
 
             ConfigSlider {
@@ -1045,8 +1105,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.highlights
-                onMoved: value => Config.options.background.effects.glass.highlights = Math.round(value)
+                value: glassSection.opt.highlights
+                onMoved: value => glassSection.opt.highlights = Math.round(value)
             }
 
             ConfigSlider {
@@ -1056,8 +1116,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.shadows
-                onMoved: value => Config.options.background.effects.glass.shadows = Math.round(value)
+                value: glassSection.opt.shadows
+                onMoved: value => glassSection.opt.shadows = Math.round(value)
             }
 
             ConfigSlider {
@@ -1067,8 +1127,8 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.edges
-                onMoved: value => Config.options.background.effects.glass.edges = Math.round(value)
+                value: glassSection.opt.edges
+                onMoved: value => glassSection.opt.edges = Math.round(value)
             }
 
             ConfigSlider {
@@ -1078,10 +1138,18 @@ ContentPage {
                 usePercentTooltip: false
                 from: 0
                 to: 100
-                value: page.effectOpt.glass.frost
-                onMoved: value => Config.options.background.effects.glass.frost = Math.round(value)
+                value: glassSection.opt.frost
+                onMoved: value => glassSection.opt.frost = Math.round(value)
             }
         }
     }
 
+    GlassSection {
+        icon: "texture"
+        title: Translation.tr("Fluted glass")
+        tooltip: Translation.tr("Vertical cylindrical lenses refracted through Snell's law, so the flutes compress toward their seams like real cast glass.")
+        desktopOpt: Config.options.background.effects.glass.desktop
+        lockOpt: Config.options.background.effects.glass.lock
+    }
 }
+

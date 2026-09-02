@@ -456,8 +456,17 @@ Singleton {
 
     Timer {
         id: timer
-        running: Config.options.bar.weather.enable
-            || (Config.options.background.weatherEffects.enable && Config.options.background.weatherEffects.followWeather)
+        // Desktop and lock screen each have their own weather-effect config
+        // now; poll if either wants live conditions, same as the shared
+        // subject cutout does for the shape mask.
+        running: {
+            const desktop = Config.options.background.weatherEffects.desktop;
+            const lock = Config.options.background.weatherEffects.lock;
+            const lockEffective = lock.sync ? desktop : lock;
+            return Config.options.bar.weather.enable
+                || (desktop.enable && desktop.followWeather)
+                || (lockEffective.enable && lockEffective.followWeather);
+        }
         repeat: true
         interval: root.fetchInterval
         // No triggeredOnStart: the initial fetch is owned by Component.onCompleted

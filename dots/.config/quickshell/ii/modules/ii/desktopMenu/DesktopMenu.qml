@@ -663,7 +663,7 @@ Scope {
                         }
 
                         visible: GlobalStates.desktopMenuWidgetId !== null
-                            && Config.options.background.depth.enable
+                            && Config.options.background.depth.desktop.enable
                             && WallpaperSubject.hasSubject
                         implicitHeight: 52
                         symbolSize: 20

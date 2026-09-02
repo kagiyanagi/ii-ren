@@ -67,6 +67,13 @@ Variants {
         // Subject depth on a video means we play it here, packed with its matte,
         // instead of letting mpvpaper have it.
         readonly property bool depthVideo: WallpaperSubject.packedVideo.length > 0
+        // Desktop and lock screen decide independently whether the cutout
+        // actually draws, same as the shape mask - the cutout itself is one
+        // shared resource (WallpaperSubject.enabled), this is who gets to see it.
+        readonly property bool depthActive: GlobalStates.screenLocked
+            ? (Config.options.background.depth.lock.sync
+                ? Config.options.background.depth.desktop.enable : Config.options.background.depth.lock.enable)
+            : Config.options.background.depth.desktop.enable
         property bool wallpaperSafetyTriggered: {
             const enabled = Config.options.workSafety.enable.wallpaper;
             const sensitiveWallpaper = (CF.StringUtils.stringListContainsSubstring(wallpaperPath.toLowerCase(), Config.options.workSafety.triggerCondition.fileKeywords));
@@ -190,7 +197,6 @@ Variants {
                 }
             }
         }
-
 
         property var _extensionBgWidgetEntries: []
         property var _pendingWidgetSaves: ({})
@@ -468,11 +474,19 @@ Variants {
                 animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
             }
 
+            // Desktop and lock screen each own their shape config, but the
+            // lock screen mirrors the desktop one unless told not to.
+            readonly property var activeShapeOpt: GlobalStates.screenLocked
+                ? (Config.options.background.shape.lock.sync
+                    ? Config.options.background.shape.desktop : Config.options.background.shape.lock)
+                : Config.options.background.shape.desktop
+            readonly property bool shapeActive: wallpaperItem.activeShapeOpt.enable
+
             Rectangle {
                 anchors.fill: parent
-                visible: Config.options.background.shape.enable
+                visible: wallpaperItem.shapeActive
                 color: {
-                    let c = Config.options.background.shape.backgroundColor;
+                    let c = wallpaperItem.activeShapeOpt.backgroundColor;
                     if (c && c.startsWith("@")) {
                         let prop = c.substring(1);
                         if (Appearance.colors[prop]) return Appearance.colors[prop];
@@ -484,16 +498,23 @@ Variants {
             Item {
                 id: wallpaperVisuals
                 anchors.fill: parent
-                layer.enabled: Config.options.background.shape.enable
+                layer.enabled: wallpaperItem.shapeActive
                 layer.effect: OpacityMask {
                     maskSource: Item {
                         width: wallpaperVisuals.width
                         height: wallpaperVisuals.height
                         MaterialShape {
                             anchors.centerIn: parent
-                            width: Math.min(parent.width, parent.height) * (Config.options.background.shape.size ?? 0.95)
+                            width: Math.min(parent.width, parent.height) * (wallpaperItem.activeShapeOpt.size ?? 0.95)
                             height: width
-                            shapeString: Config.options.background.shape.style
+                            shapeString: wallpaperItem.activeShapeOpt.style
+
+                            Behavior on width {
+                                animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+                            }
+                            // ShapeCanvas only repaints on progress/color changes; a size
+                            // tween needs its own nudge to redraw every frame.
+                            onWidthChanged: requestPaint()
                         }
                     }
                 }
@@ -743,9 +764,9 @@ Variants {
                     // first frame reaching the output. Either way the fade runs
                     // over something real rather than over an empty item, which
                     // is why this is not the usual FadeLoader.
-                    readonly property bool showing: bgRoot.depthVideo
+                    readonly property bool showing: bgRoot.depthActive && (bgRoot.depthVideo
                         ? (videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo)
-                        : (stillCutout.status === Image.Ready)
+                        : (stillCutout.status === Image.Ready))
 
                     // Opacity is an effect, so both directions take the effects
                     // curve and neither may overshoot. They are not the same
@@ -832,7 +853,6 @@ Variants {
             scale: wallpaperItem.scale
             opacity: wallpaperItem.opacity
         }
-
     }
 }
 }

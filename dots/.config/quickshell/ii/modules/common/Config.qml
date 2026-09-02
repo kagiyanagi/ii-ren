@@ -255,11 +255,24 @@ Singleton {
             }
 
             property JsonObject background: JsonObject {
+                // Desktop and lock screen configure their own shape mask
+                // independently - enabling one never touches the other.
                 property JsonObject shape: JsonObject {
-                    property bool enable: false
-                    property string style: "Arch"
-                    property string backgroundColor: "#000000"
-                    property real size: 0.95
+                    property JsonObject desktop: JsonObject {
+                        property bool enable: false
+                        property string style: "Arch"
+                        property string backgroundColor: "#000000"
+                        property real size: 0.95
+                    }
+                    property JsonObject lock: JsonObject {
+                        // Mirrors the desktop shape by default, so there's
+                        // nothing to configure twice unless it's wanted.
+                        property bool sync: true
+                        property bool enable: false
+                        property string style: "Arch"
+                        property string backgroundColor: "#000000"
+                        property real size: 0.95
+                    }
                 }
                 property bool enable: true // if someone wants to use an external wallpaper manager, note that its not fully tested but it should just disable background.qml from being loaded
                 // Drop an image anywhere on the empty desktop to set it as the
@@ -1051,48 +1064,90 @@ Singleton {
                 // styles, a dim level, and one filter at a time, plus a fluted-glass
                 // distortion pass of our own. Every default is a no-op.
                 property JsonObject effects: JsonObject {
-                    // Where the effects apply, as the ROMs' effect target does.
-                    property string target: "both" // "both", "desktop", "lock"
+                    // Blur, filter and the tone adjustments move together as
+                    // one group, targeted at desktop or lock screen like the
+                    // shape mask - the lock screen mirrors the desktop unless
+                    // told not to. Fluted glass targets on its own below.
+                    property JsonObject desktop: JsonObject {
+                        // "glass" and "frosted" are the ROMs' two radii, 50 and 9.
+                        property JsonObject blur: JsonObject {
+                            property bool enable: false
+                            property string style: "glass" // "glass", "frosted", "custom"
+                            property int radius: 50        // only read when style is "custom"
+                        }
 
-                    // "glass" and "frosted" are the ROMs' two radii, 50 and 9.
-                    property JsonObject blur: JsonObject {
-                        property bool enable: false
-                        property string style: "glass" // "glass", "frosted", "custom"
-                        property int radius: 50        // only read when style is "custom"
+                        // One at a time, matching the ROMs' effect picker. Options:
+                        // none, grayscale, sepia, negative, posterize, pixelate,
+                        // sharpen, chromatic, radialBlur
+                        property string filter: "none"
+                        property int posterizeLevels: 8 // 2..16
+                        property int pixelSize: 8       // px per block
+                        property real sharpen: 1.0      // 1.0 = the ROMs' 3x3 kernel
+                        property int chromatic: 5       // px of R/B separation
+                        property int radialBlur: 5      // %, matches the ROMs' 0.05 strength
+
+                        // These stack on top of whichever filter is picked.
+                        property int saturation: 100 // 100 = untouched
+                        property int dim: 0          // %
+                        property int vignette: 0     // %
+                        property int grain: 0        // %
+                    }
+                    property JsonObject lock: JsonObject {
+                        property bool sync: true
+                        property JsonObject blur: JsonObject {
+                            property bool enable: false
+                            property string style: "glass"
+                            property int radius: 50
+                        }
+                        property string filter: "none"
+                        property int posterizeLevels: 8
+                        property int pixelSize: 8
+                        property real sharpen: 1.0
+                        property int chromatic: 5
+                        property int radialBlur: 5
+                        property int saturation: 100
+                        property int dim: 0
+                        property int vignette: 0
+                        property int grain: 0
                     }
 
-                    // One at a time, matching the ROMs' effect picker. Options:
-                    // none, grayscale, sepia, negative, posterize, pixelate,
-                    // sharpen, chromatic, radialBlur
-                    property string filter: "none"
-                    property int posterizeLevels: 8 // 2..16
-                    property int pixelSize: 8       // px per block
-                    property real sharpen: 1.0      // 1.0 = the ROMs' 3x3 kernel
-                    property int chromatic: 5       // px of R/B separation
-                    property int radialBlur: 5      // %, matches the ROMs' 0.05 strength
-
-                    // These stack on top of whichever filter is picked.
-                    property int saturation: 100 // 100 = untouched
-                    property int dim: 0          // %
-                    property int vignette: 0     // %
-                    property int grain: 0        // %
-
-                    // Fluted / reeded glass. No ROM has this one.
+                    // Fluted / reeded glass. No ROM has this one. Targeted
+                    // separately from the group above - it is subtle enough
+                    // to want running everywhere far more often than a filter.
                     property JsonObject glass: JsonObject {
-                        property bool enable: false
-                        property string pattern: "lines" // lines, rain, chevron, bubble
-                        property string profile: "lens"  // lens, prism, contour, cascade, flat
-                        property int fluteWidth: 22      // px per flute
-                        property int angle: 0            // degrees
-                        property int distortion: 55      // %
-                        property int dispersion: 25      // % chromatic aberration
-                        property int smear: 10           // % blur along the rib
-                        property int highlights: 55      // %
-                        property int shadows: 35         // % seam darkening
-                        property int edges: 30           // % extra bend at the seams
-                        property int frost: 0            // %
-                        property int irregularity: 0     // % uneven flute widths
-                        property int waviness: 0         // % rib bending, for rain/chevron
+                        property JsonObject desktop: JsonObject {
+                            property bool enable: false
+                            property string pattern: "lines" // lines, rain, chevron, bubble
+                            property string profile: "lens"  // lens, prism, contour, cascade, flat
+                            property int fluteWidth: 22      // px per flute
+                            property int angle: 0            // degrees
+                            property int distortion: 55      // %
+                            property int dispersion: 25      // % chromatic aberration
+                            property int smear: 10           // % blur along the rib
+                            property int highlights: 55      // %
+                            property int shadows: 35         // % seam darkening
+                            property int edges: 30           // % extra bend at the seams
+                            property int frost: 0            // %
+                            property int irregularity: 0     // % uneven flute widths
+                            property int waviness: 0         // % rib bending, for rain/chevron
+                        }
+                        property JsonObject lock: JsonObject {
+                            property bool sync: true
+                            property bool enable: false
+                            property string pattern: "lines"
+                            property string profile: "lens"
+                            property int fluteWidth: 22
+                            property int angle: 0
+                            property int distortion: 55
+                            property int dispersion: 25
+                            property int smear: 10
+                            property int highlights: 55
+                            property int shadows: 35
+                            property int edges: 30
+                            property int frost: 0
+                            property int irregularity: 0
+                            property int waviness: 0
+                        }
                     }
                 }
                 // Subject depth. The wallpaper's foreground subject is cut out
@@ -1105,7 +1160,16 @@ Singleton {
                 // and set from its right-click menu. Behind is the default:
                 // that is the effect.
                 property JsonObject depth: JsonObject {
-                    property bool enable: false
+                    // Desktop and lock screen decide independently whether
+                    // widgets layer into the subject cutout - the lock screen
+                    // mirrors the desktop by default, same as the shape mask.
+                    property JsonObject desktop: JsonObject {
+                        property bool enable: false
+                    }
+                    property JsonObject lock: JsonObject {
+                        property bool sync: true
+                        property bool enable: false
+                    }
                     // Wallpapers whose bake the user cancelled. A cancel is a
                     // decision, not a pause: these are never cut again on their
                     // own, however often the wallpaper is reselected or the
@@ -1115,18 +1179,31 @@ Singleton {
                 // Android's live weather wallpaper effects, ported from AOSP's
                 // weathereffects library. They draw over the finished desktop:
                 // above the wallpaper effects, the widgets and subject depth.
+                // Desktop and lock screen target independently, lock mirroring
+                // desktop by default, same as everything else above.
                 property JsonObject weatherEffects: JsonObject {
-                    property bool enable: false
-                    property string effect: "rain" // "rain", "fog", "snow", "sun"
-                    // Take the effect from the current conditions instead of
-                    // the one picked above. Nothing draws in clear weather.
-                    property bool followWeather: false
-                    property int intensity: 100 // %, and the master scale when following the weather
-                    // AOSP sizes its particle grid for a phone held at arm's
-                    // length; a monitor is further away, so this is the knob.
-                    property int scale: 100 // %
-                    // The per-effect LUT the ROM grades each effect through.
-                    property bool colorGrading: true
+                    property JsonObject desktop: JsonObject {
+                        property bool enable: false
+                        property string effect: "rain" // "rain", "fog", "snow", "sun"
+                        // Take the effect from the current conditions instead of
+                        // the one picked above. Nothing draws in clear weather.
+                        property bool followWeather: false
+                        property int intensity: 100 // %, and the master scale when following the weather
+                        // AOSP sizes its particle grid for a phone held at arm's
+                        // length; a monitor is further away, so this is the knob.
+                        property int scale: 100 // %
+                        // The per-effect LUT the ROM grades each effect through.
+                        property bool colorGrading: true
+                    }
+                    property JsonObject lock: JsonObject {
+                        property bool sync: true
+                        property bool enable: false
+                        property string effect: "rain"
+                        property bool followWeather: false
+                        property int intensity: 100
+                        property int scale: 100
+                        property bool colorGrading: true
+                    }
                 }
                 property JsonObject parallax: JsonObject {
                     property bool vertical: true

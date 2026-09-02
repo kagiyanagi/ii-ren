@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs
 import qs.services
 import qs.modules.common
 import QtQuick
@@ -27,7 +28,12 @@ Item {
     // Everything that should end up underneath the weather.
     required property Item scene
 
-    readonly property var opt: Config.options.background.weatherEffects
+    // Desktop and lock screen target independently, lock mirroring desktop
+    // unless told not to - same split as the wallpaper effects above it.
+    readonly property var opt: GlobalStates.screenLocked
+        ? (Config.options.background.weatherEffects.lock.sync
+            ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
+        : Config.options.background.weatherEffects.desktop
 
     // "rain", "fog", "snow", "sun", or empty for nothing.
     readonly property string effect: {
