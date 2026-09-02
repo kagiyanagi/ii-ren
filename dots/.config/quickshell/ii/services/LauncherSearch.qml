@@ -216,7 +216,7 @@ Singleton {
                     shouldBlurImage = shouldBlurImage && (root.containsUnsafeLink(array[index - 1]) || root.containsUnsafeLink(array[index + 1]));
                 }
                 const type = `#${entry.match(/^\s*(\S+)/)?.[1] || ""}`;
-                return resultComp.createObject(null, {
+                return root.createResult( {
                     rawValue: entry,
                     name: StringUtils.cleanCliphistEntry(entry),
                     verb: "",
@@ -224,14 +224,14 @@ Singleton {
                     execute: () => {
                         Cliphist.copy(entry);
                     },
-                    actions: [resultComp.createObject(null, {
+                    actions: [root.createResult( {
                             name: Translation.tr("Copy"),
                             iconName: "content_copy",
                             iconType: LauncherSearchResult.IconType.Material,
                             execute: () => {
                                 Cliphist.copy(entry);
                             }
-                        }), resultComp.createObject(null, {
+                        }), root.createResult( {
                             name: Translation.tr("Delete"),
                             iconName: "delete",
                             iconType: LauncherSearchResult.IconType.Material,
@@ -247,7 +247,7 @@ Singleton {
             const searchString = StringUtils.cleanPrefix(root.query, Config.options.search.prefix.emojis);
             return Emojis.fuzzyQuery(searchString).map(entry => {
                 const emoji = entry.match(/^\s*(\S+)/)?.[1] || "";
-                return resultComp.createObject(null, {
+                return root.createResult( {
                     rawValue: entry,
                     name: entry.replace(/^\s*\S+\s+/, ""),
                     iconName: emoji,
@@ -263,7 +263,7 @@ Singleton {
 
         ////////////////// Init ///////////////////
         nonAppResultsTimer.restart();
-        const mathResultObject = resultComp.createObject(null, {
+        const mathResultObject = root.createResult( {
             name: root.mathResult,
             verb: Translation.tr("Copy"),
             type: Translation.tr("Math result"),
@@ -275,7 +275,7 @@ Singleton {
             }
         });
         const fileResultsObject = root.fileResults.map(entry => {
-            return resultComp.createObject(null, {
+            return root.createResult( {
                 type: Translation.tr("File"),
                 name: entry,
                 verb: Translation.tr("Open"),
@@ -287,7 +287,7 @@ Singleton {
             });
         })
         const appResultObjects = AppSearch.fuzzyQuery(StringUtils.cleanPrefix(root.query, Config.options.search.prefix.app)).map(entry => {
-            return resultComp.createObject(null, {
+            return root.createResult( {
                 type: Translation.tr("App"),
                 id: entry.id,
                 name: entry.name,
@@ -307,7 +307,7 @@ Singleton {
                 genericName: entry.genericName,
                 keywords: entry.keywords,
                 actions: entry.actions.map(action => {
-                    return resultComp.createObject(null, {
+                    return root.createResult( {
                         name: action.name,
                         iconName: action.icon,
                         iconType: LauncherSearchResult.IconType.System,
@@ -322,7 +322,7 @@ Singleton {
                 })
             });
         });
-        const commandResultObject = resultComp.createObject(null, {
+        const commandResultObject = root.createResult( {
             name: StringUtils.cleanPrefix(root.query, Config.options.search.prefix.shellCommand).replace("file://", ""),
             verb: Translation.tr("Run"),
             type: Translation.tr("Command"),
@@ -338,7 +338,7 @@ Singleton {
                 Quickshell.execDetached(["bash", "-c", root.query.startsWith('sudo') ? `${Config.options.apps.terminal} fish -C '${cleanedCommand}'` : cleanedCommand]);
             }
         });
-        const webSearchResultObject = resultComp.createObject(null, {
+        const webSearchResultObject = root.createResult( {
             name: StringUtils.cleanPrefix(root.query, Config.options.search.prefix.webSearch),
             verb: Translation.tr("Search"),
             type: Translation.tr("Web search"),
@@ -356,7 +356,7 @@ Singleton {
         const launcherActionObjects = root.allActions.map(action => {
             const actionString = `${Config.options.search.prefix.action}${action.action}`;
             if (actionString.startsWith(root.query) || root.query.startsWith(actionString)) {
-                return resultComp.createObject(null, {
+                return root.createResult( {
                     name: root.query.startsWith(actionString) ? root.query : actionString,
                     verb: Translation.tr("Run"),
                     type: Translation.tr("Action"),
@@ -406,8 +406,7 @@ Singleton {
         return result;
     }
 
-    Component {
-        id: resultComp
-        LauncherSearchResult {}
+    function createResult(obj) {
+        return obj;
     }
 }
