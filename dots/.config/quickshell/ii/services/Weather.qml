@@ -79,7 +79,47 @@ Singleton {
         tempFeelsLike: "0°C",
         lastRefresh: "00:00",
         isDay: 1,
+        wmoCode: -1,
     })
+
+    // The Android wallpaper effect the current conditions call for, and how
+    // hard it should come down. AOSP's weathereffects library ships four:
+    // rain, fog, snow and sun. Which one a condition maps to is the ROM's
+    // business, so this is the WMO table Open-Meteo returns split the way
+    // Android's own weather app splits it.
+    //
+    // Sun is the one that needs a second input: god rays and a lens flare at
+    // two in the morning are absurd, so a clear sky only lights up in daylight
+    // and an overcast one (WMO 3) gets nothing either way.
+    readonly property string liveEffect: {
+        const c = root.data?.wmoCode ?? -1;
+        if (c >= 0 && c <= 2) return root.isNight ? "" : "sun";   // clear, mainly clear, partly cloudy
+        if (c === 45 || c === 48) return "fog";                   // fog, rime fog
+        if (c >= 51 && c <= 57) return "rain";                    // drizzle
+        if (c >= 61 && c <= 67) return "rain";                    // rain, freezing rain
+        if (c >= 71 && c <= 77) return "snow";                    // snow, snow grains
+        if (c >= 80 && c <= 82) return "rain";                    // rain showers
+        if (c === 85 || c === 86) return "snow";                  // snow showers
+        if (c >= 95) return "rain";                               // thunderstorm
+        return "";
+    }
+
+    // 0..1, following the WMO code's own slight/moderate/heavy grading. For sun
+    // it is how much sky is left: cloud cover dims the rays.
+    readonly property real liveIntensity: {
+        const c = root.data?.wmoCode ?? -1;
+        const table = {
+            0: 1.0, 1: 0.75, 2: 0.45,
+            45: 0.8, 48: 1.0,
+            51: 0.3, 53: 0.4, 55: 0.5, 56: 0.45, 57: 0.5,
+            61: 0.5, 63: 0.7, 65: 1.0, 66: 0.7, 67: 0.9,
+            71: 0.4, 73: 0.7, 75: 1.0, 77: 0.35,
+            80: 0.6, 81: 0.8, 82: 1.0,
+            85: 0.6, 86: 0.9,
+            95: 0.9, 96: 1.0, 99: 1.0
+        };
+        return table[c] ?? 0;
+    }
 
     readonly property bool isNight: {
         if (root.data && root.data.isDay !== undefined) {
@@ -192,6 +232,7 @@ Singleton {
         temp.sunset = formatTime(daily.sunset[0]);
         temp.windDir = degreesToCompass(current.wind_direction_10m);
         temp.wCode = wmoToWwo(current.weather_code);
+        temp.wmoCode = current.weather_code;
         temp.wDesc = getWeatherDescription(temp.wCode);
         temp.city = cityName;
         temp.isDay = current.is_day !== undefined ? current.is_day : 1;
@@ -416,6 +457,7 @@ Singleton {
     Timer {
         id: timer
         running: Config.options.bar.weather.enable
+            || (Config.options.background.weatherEffects.enable && Config.options.background.weatherEffects.followWeather)
         repeat: true
         interval: root.fetchInterval
         // No triggeredOnStart: the initial fetch is owned by Component.onCompleted

@@ -520,7 +520,7 @@ Variants {
                 // The packed video is double height, and the bottom half is the
                 // matte. Without this it paints over the lower desktop.
                 clip: bgRoot.depthVideo
-                opacity: (bgRoot.wallpaperIsVideo && !bgRoot.depthVideo && !wallpaperEffects.takesOver && !blurLoader.active) ? 0 : 1
+                opacity: (bgRoot.wallpaperIsVideo && !bgRoot.depthVideo && !wallpaperEffects.takesOver && !weatherEffects.takesOver && !blurLoader.active) ? 0 : 1
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
                 property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
@@ -596,7 +596,7 @@ Variants {
                         // downstream - effects, lock blur - sees a wallpaper.
                         if (bgRoot.depthVideo)
                             return WallpaperSubject.packedVideo;
-                        if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || blurLoader.active))
+                        if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active))
                             return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
                         return "";
                     }
@@ -827,6 +827,25 @@ Variants {
                     }
                 }
             }
+        }
+
+        // Android's live weather effects, on top of the whole desktop plane:
+        // the wallpaper effects, the widgets and subject depth all sit
+        // underneath. A sibling of wallpaperItem rather than a child, so it can
+        // render the plane it draws over without feeding its own output back
+        // in; the transform is mirrored so the overview zoom and the media-mode
+        // fade still move everything as one.
+        WeatherEffects {
+            id: weatherEffects
+            anchors.fill: parent
+            scene: wallpaperItem
+            // Mirrored, never animated here: a Behavior on either of these
+            // would kill the binding and leave the weather a frame behind the
+            // plane it is drawn on. Both items scale about their centres,
+            // which is what keeps the two in register - setting
+            // transformOrigin on either one slides the weather off the desktop.
+            scale: wallpaperItem.scale
+            opacity: wallpaperItem.opacity
         }
 
         GlobalShortcut {

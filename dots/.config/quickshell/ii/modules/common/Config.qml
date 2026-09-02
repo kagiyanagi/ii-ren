@@ -1112,6 +1112,22 @@ Singleton {
                     // shell restarts. Only the rebake button clears one.
                     property list<string> declined: []
                 }
+                // Android's live weather wallpaper effects, ported from AOSP's
+                // weathereffects library. They draw over the finished desktop:
+                // above the wallpaper effects, the widgets and subject depth.
+                property JsonObject weatherEffects: JsonObject {
+                    property bool enable: false
+                    property string effect: "rain" // "rain", "fog", "snow", "sun"
+                    // Take the effect from the current conditions instead of
+                    // the one picked above. Nothing draws in clear weather.
+                    property bool followWeather: false
+                    property int intensity: 100 // %, and the master scale when following the weather
+                    // AOSP sizes its particle grid for a phone held at arm's
+                    // length; a monitor is further away, so this is the knob.
+                    property int scale: 100 // %
+                    // The per-effect LUT the ROM grades each effect through.
+                    property bool colorGrading: true
+                }
                 property JsonObject parallax: JsonObject {
                     property bool vertical: true
                     property bool autoVertical: false

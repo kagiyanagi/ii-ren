@@ -338,6 +338,7 @@ ContentPage {
     // SystemUI WallpaperUtils, inherited by Evolution X, Matrixx, Mist,
     // Lunaris, PenguinOS). Fluted glass is ours.
     readonly property var effectOpt: Config.options.background.effects
+    readonly property var weatherOpt: Config.options.background.weatherEffects
 
     readonly property var wallpaperFilters: [
         { value: "none",       icon: "block",           name: Translation.tr("None") },
@@ -748,6 +749,112 @@ ContentPage {
                 to: 100
                 value: page.effectOpt.grain
                 onMoved: value => Config.options.background.effects.grain = Math.round(value)
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "rainy"
+        title: Translation.tr("Weather effects")
+        tooltip: Translation.tr("Android's live weather wallpaper, ported shader for shader from AOSP.\nIt draws over everything on the desktop plane - the wallpaper effects, the widgets and subject depth all sit underneath.\nUnlike the wallpaper effects, this one animates: it redraws the whole desktop every frame for as long as it is on.")
+
+        ConfigSwitch {
+            Layout.fillWidth: true
+            buttonIcon: "rainy"
+            text: Translation.tr("Live weather effects")
+            checked: page.weatherOpt.enable
+            onCheckedChanged: {
+                Config.options.background.weatherEffects.enable = checked;
+            }
+        }
+
+        ConfigSwitch {
+            Layout.fillWidth: true
+            visible: page.weatherOpt.enable
+            buttonIcon: "cloud_sync"
+            text: Translation.tr("Follow the current weather")
+            checked: page.weatherOpt.followWeather
+            onCheckedChanged: {
+                Config.options.background.weatherEffects.followWeather = checked;
+            }
+        }
+
+        ContentSubsection {
+            visible: page.weatherOpt.enable && !page.weatherOpt.followWeather
+            title: Translation.tr("Effect")
+
+            ConfigSelectionArray {
+                currentValue: page.weatherOpt.effect
+                onSelected: newValue => {
+                    Config.options.background.weatherEffects.effect = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Rain"), icon: "rainy", value: "rain" },
+                    { displayName: Translation.tr("Fog"),  icon: "foggy", value: "fog" },
+                    { displayName: Translation.tr("Snow"), icon: "weather_snowy", value: "snow" },
+                    { displayName: Translation.tr("Sun"),  icon: "clear_day", value: "sun" }
+                ]
+            }
+        }
+
+        ContentSubsection {
+            visible: page.weatherOpt.enable && page.weatherOpt.followWeather
+            title: Translation.tr("Right now")
+            tooltip: Translation.tr("The effect follows the conditions the weather widget is fetching. Nothing draws when it is clear out.")
+
+            StyledText {
+                Layout.fillWidth: true
+                color: Appearance.colors.colSubtext
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.small
+                text: Weather.liveEffect === "rain" ? Translation.tr("Raining - %1").arg(Weather.data.wDesc)
+                    : Weather.liveEffect === "fog" ? Translation.tr("Foggy - %1").arg(Weather.data.wDesc)
+                    : Weather.liveEffect === "snow" ? Translation.tr("Snowing - %1").arg(Weather.data.wDesc)
+                    : Weather.liveEffect === "sun" ? Translation.tr("Sunny - %1").arg(Weather.data.wDesc)
+                    : Translation.tr("Nothing to draw - %1").arg(Weather.data.wDesc)
+            }
+        }
+
+        ContentSubsection {
+            visible: page.weatherOpt.enable
+            title: Translation.tr("Adjustments")
+
+            ConfigSlider {
+                Layout.fillWidth: true
+                buttonIcon: "opacity"
+                text: page.weatherOpt.followWeather
+                    ? Translation.tr("Intensity ceiling (%)")
+                    : Translation.tr("Intensity (%)")
+                usePercentTooltip: false
+                from: 0
+                to: 100
+                value: page.weatherOpt.intensity
+                onMoved: value => Config.options.background.weatherEffects.intensity = Math.round(value)
+            }
+
+            ConfigSlider {
+                Layout.fillWidth: true
+                buttonIcon: "grain"
+                text: Translation.tr("Particle scale (%)")
+                // AOSP picks its grid from the display width in dp, which is
+                // calibrated for a phone at arm's length.
+                usePercentTooltip: false
+                from: 50
+                to: 200
+                value: page.weatherOpt.scale
+                onMoved: value => Config.options.background.weatherEffects.scale = Math.round(value)
+            }
+
+            // The per-effect lookup table Android grades each effect through:
+            // cold blue for rain, a grey wash for fog, a cool cast for snow.
+            ConfigSwitch {
+                Layout.fillWidth: true
+                buttonIcon: "palette"
+                text: Translation.tr("Colour grading")
+                checked: page.weatherOpt.colorGrading
+                onCheckedChanged: {
+                    Config.options.background.weatherEffects.colorGrading = checked;
+                }
             }
         }
     }

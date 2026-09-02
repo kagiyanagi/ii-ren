@@ -49,4 +49,33 @@ else
     echo "ok:   subject-matte (clear $left, halfway $mid, opaque $right)"
 fi
 
+# The weather shaders get their own renderer and their own baseline: they draw
+# over a pattern without the vertical rules the wallpaper cases use, so the two
+# baselines are not interchangeable.
+"$qml" "$here/check-weather.qml" || { echo "FAIL: weather renderer exited non-zero"; exit 1; }
+wbase=shader-check/weather-00-baseline.png
+[ -f "$wbase" ] || { echo "FAIL: no weather baseline rendered"; exit 1; }
+
+for f in shader-check/weather-*.png; do
+    case "$f" in *weather-00-baseline.png) continue ;; esac
+    diff=$(magick compare -metric RMSE "$wbase" "$f" null: 2>&1 | sed 's/.*(\([0-9.]*\)).*/\1/')
+    if [ "$(echo "$diff < 0.01" | bc -l)" = "1" ]; then
+        echo "FAIL: $(basename "$f" .png) is indistinguishable from the baseline (RMSE $diff)"
+        fail=1
+    else
+        echo "ok:   $(basename "$f" .png) (RMSE $diff)"
+    fi
+done
+
+# A `time` uniform that stopped reaching the GPU still renders rain - it just
+# renders the same rain forever, which no baseline comparison can see.
+moved=$(magick compare -metric RMSE shader-check/weather-01-rain.png \
+    shader-check/weather-02-rain-later.png null: 2>&1 | sed 's/.*(\([0-9.]*\)).*/\1/')
+if [ "$(echo "$moved < 0.01" | bc -l)" = "1" ]; then
+    echo "FAIL: rain does not move over time (RMSE $moved between t=3 and t=9)"
+    fail=1
+else
+    echo "ok:   rain moves over time (RMSE $moved)"
+fi
+
 [ "$fail" = 0 ] && echo "all shader branches changed the image" || exit 1
