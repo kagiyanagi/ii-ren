@@ -216,7 +216,7 @@ Scope {
                         scale: root.effectiveScale
                         anchors.top: searchWidgetWrapper.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
-                        active: root.visible && (Config?.options.overview.enable ?? true) && !root.isScrollingLayout
+                        active: (Config?.options.overview.enable ?? true) && !root.isScrollingLayout
                         sourceComponent: OverviewWidget {
                             panelWindow: root
                             visible: (root.searchingText == "")
@@ -228,7 +228,7 @@ Scope {
                         id: scrollingOverviewLoader
                         scale: root.effectiveScale
                         anchors.fill: parent
-                        active: root.visible && (Config?.options.overview.enable ?? true) && root.isScrollingLayout
+                        active: (Config?.options.overview.enable ?? true) && root.isScrollingLayout
                         sourceComponent: ScrollingOverviewWidget {
                             anchors.fill: parent
                             panelWindow: root

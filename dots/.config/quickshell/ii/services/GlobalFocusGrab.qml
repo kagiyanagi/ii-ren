@@ -40,17 +40,9 @@ Singleton {
     function addDismissable(window) { root._addTo(root.dismissable, window) }
     function removeDismissable(window) { root._removeFrom(root.dismissable, window) }
 
-    function hasActive(element) {
-        return element?.activeFocus || Array.from(
-            element?.children
-        ).some(
-            (child) => hasActive(child)
-        );
-    }
-
     HyprlandFocusGrab {
         id: grab
-        windows: root.dismissable.every(w => !w?.focusable) || root.dismissable.some(w => hasActive(w?.contentItem)) ? [...root.dismissable, ...root.persistent] : [...root.dismissable]
+        windows: root.dismissable.every(w => !w?.focusable) || root.dismissable.some(w => w?.activeFocusItem !== null) ? [...root.dismissable, ...root.persistent] : [...root.dismissable]
         active: root.dismissable.length > 0
         onCleared: () => {
             root.dismiss();
