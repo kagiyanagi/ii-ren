@@ -21,6 +21,7 @@ Item { // Wrapper
 
     readonly property bool sharpMode: Config.options.appearance.sharpMode
     property string searchingText: LauncherSearch.query
+    property var currentResults: []
     property bool showResults: searchingText != ""
     implicitWidth: searchWidgetContent.implicitWidth + Appearance.sizes.elevationMargin * 2
     implicitHeight: searchWidgetContent.implicitHeight + searchBar.verticalPadding * 2 + Appearance.sizes.elevationMargin * 2
@@ -182,23 +183,20 @@ Item { // Wrapper
                     id: debounceTimer
                     interval: root.typingDebounceInterval
                     onTriggered: {
-                        resultModel.values = LauncherSearch.results ?? [];
+                        root.currentResults = LauncherSearch.results ?? [];
                     }
                 }
 
                 Connections {
                     target: LauncherSearch
                     function onResultsChanged() {
-                        resultModel.values = LauncherSearch.results.slice(0, root.typingResultLimit);
+                        root.currentResults = LauncherSearch.results.slice(0, root.typingResultLimit);
                         root.focusFirstItem();
                         debounceTimer.restart();
                     }
                 }
 
-                model: ScriptModel {
-                    id: resultModel
-                    objectProp: "key"
-                }
+                model: root.currentResults
 
                 delegate: SearchItem {
                     id: searchItem
