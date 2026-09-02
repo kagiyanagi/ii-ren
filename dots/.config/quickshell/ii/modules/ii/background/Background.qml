@@ -483,10 +483,40 @@ Variants {
                 animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
             }
 
-            // Wallpaper
+            Rectangle {
+                anchors.fill: parent
+                visible: Config.options.background.shape.enable
+                color: {
+                    let c = Config.options.background.shape.backgroundColor;
+                    if (c && c.startsWith("@")) {
+                        let prop = c.substring(1);
+                        if (Appearance.colors[prop]) return Appearance.colors[prop];
+                    }
+                    return c || "transparent";
+                }
+            }
+
             Item {
-                id: wallpaper
-                visible: !blurLoader.active
+                id: wallpaperVisuals
+                anchors.fill: parent
+                layer.enabled: Config.options.background.shape.enable
+                layer.effect: OpacityMask {
+                    maskSource: Item {
+                        width: wallpaperVisuals.width
+                        height: wallpaperVisuals.height
+                        MaterialShape {
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width, parent.height) * (Config.options.background.shape.size ?? 0.95)
+                            height: width
+                            shapeString: Config.options.background.shape.style
+                        }
+                    }
+                }
+
+                // Wallpaper
+                Item {
+                    id: wallpaper
+                    visible: !blurLoader.active
                 // The packed video is double height, and the bottom half is the
                 // matte. Without this it paints over the lower desktop.
                 clip: bgRoot.depthVideo
@@ -647,6 +677,7 @@ Variants {
                 isVideo: bgRoot.wallpaperIsVideo
                 // The lock screen runs its own blur; don't stack the two.
                 visible: !blurLoader.active
+            }
             }
 
             WidgetCanvas {

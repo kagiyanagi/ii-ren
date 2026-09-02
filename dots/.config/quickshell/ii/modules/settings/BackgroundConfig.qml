@@ -195,6 +195,144 @@ ContentPage {
         }
     }
 
+    ContentSection {
+        icon: "category"
+        title: Translation.tr("Wallpaper shape")
+        tooltip: Translation.tr("Custom shape the wallpaper in Material Icons. Gray out subject depth when enabled.")
+
+        ConfigRow {
+            ConfigSwitch {
+                Layout.fillWidth: true
+                buttonIcon: "interests"
+                text: Translation.tr("Enable shape mask")
+                checked: Config.options.background.shape.enable
+                onCheckedChanged: {
+                    Config.options.background.shape.enable = checked;
+                    if (checked) {
+                        Config.options.background.depth.enable = false;
+                    }
+                }
+            }
+
+            RippleButtonWithShape {
+                Layout.fillWidth: false
+                enabled: Config.options.background.shape.enable
+                shapeString: Config.options.background.shape.style
+                implicitWidth: 60
+                extraIcon: "edit"
+
+                onClicked: {
+                    wallpaperShapeShapeLoader.active = !wallpaperShapeShapeLoader.active;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Edit the material shape")
+                }
+            }
+        }
+
+        Loader { 
+            id: wallpaperShapeShapeLoader
+            active: false
+            visible: active
+            Layout.fillWidth: true
+            sourceComponent: ContentSubsection {
+                title: Translation.tr("Background shape")
+                
+                ConfigSelectionArray {
+                    currentValue: Config.options.background.shape.style
+                    onSelected: newValue => {
+                        Config.options.background.shape.style = newValue;
+                    }
+                    options: ([ 
+                        "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Pill", "Triangle",
+                        "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", 
+                        "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", 
+                        "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart" 
+                    ]).map(icon => { 
+                        return { 
+                            displayName: "", 
+                            shape: icon, 
+                            value: icon 
+                        } 
+                    })
+                }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Background color")
+            visible: Config.options.background.shape.enable
+
+            // Reusing a text field or color picker if available. Otherwise just text field.
+            ConfigTextField {
+                Layout.fillWidth: true
+                icon: "palette"
+                text: Translation.tr("Hex Color or @colLayer0")
+                inputText: Config.options.background.shape.backgroundColor
+                onInputTextChanged: {
+                    if (Config.options.background.shape.backgroundColor !== inputText) {
+                        Config.options.background.shape.backgroundColor = inputText;
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                Layout.bottomMargin: 8
+                spacing: 12
+
+                StyledText {
+                    text: Translation.tr("Recommended")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
+                    Layout.rightMargin: 8
+                }
+
+                Repeater {
+                    model: [
+                        { name: "colLayer0", col: Appearance.colors.colLayer0 },
+                        { name: "colLayer1", col: Appearance.colors.colLayer1 },
+                        { name: "colLayer2", col: Appearance.colors.colLayer2 },
+                        { name: "colPrimaryContainer", col: Appearance.colors.colPrimaryContainer },
+                        { name: "colSecondaryContainer", col: Appearance.colors.colSecondaryContainer },
+                        { name: "colTertiaryContainer", col: Appearance.colors.colTertiaryContainer }
+                    ]
+
+                    delegate: Rectangle {
+                        width: 32
+                        height: 32
+                        radius: 16
+                        color: modelData.col
+                        border.color: Appearance.colors.colOutlineVariant
+                        border.width: 1
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                Config.options.background.shape.backgroundColor = "@" + modelData.name;
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true } // spacer
+            }
+
+            ConfigSlider {
+                Layout.fillWidth: true
+                buttonIcon: "aspect_ratio"
+                text: Translation.tr("Shape size (%)")
+                usePercentTooltip: false
+                from: 10
+                to: 150
+                value: Config.options.background.shape.size * 100
+                onMoved: value => Config.options.background.shape.size = Math.round(value) / 100
+            }
+        }
+    }
+
     // ---- Wallpaper effects ----------------------------------------------
     // The filter list and its maths mirror what custom ROMs ship (risingOS's
     // SystemUI WallpaperUtils, inherited by Evolution X, Matrixx, Mist,
@@ -294,6 +432,12 @@ ContentPage {
         icon: "filter_center_focus"
         title: Translation.tr("Subject depth")
         tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the desktop widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nEach widget picks its own side from its right-click menu; behind is the default.")
+
+        enabled: !Config.options.background.shape.enable
+        opacity: enabled ? 1 : 0.4
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
 
         ConfigSwitch {
             buttonIcon: "filter_center_focus"

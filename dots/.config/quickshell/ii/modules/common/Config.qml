@@ -255,6 +255,12 @@ Singleton {
             }
 
             property JsonObject background: JsonObject {
+                property JsonObject shape: JsonObject {
+                    property bool enable: false
+                    property string style: "Arch"
+                    property string backgroundColor: "#000000"
+                    property real size: 0.95
+                }
                 property bool enable: true // if someone wants to use an external wallpaper manager, note that its not fully tested but it should just disable background.qml from being loaded
                 // Drop an image anywhere on the empty desktop to set it as the
                 // wallpaper. Off leaves the drop to whatever is underneath.
