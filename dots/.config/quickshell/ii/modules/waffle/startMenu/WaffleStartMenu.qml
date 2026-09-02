@@ -17,55 +17,44 @@ Scope {
         function onSearchOpenChanged() {
             if (GlobalStates.searchOpen) {
                 LauncherSearch.query = "";
-                panelLoader.active = true;
+            } else {
+                content.close();
             }
         }
     }
 
-    Loader {
-        id: panelLoader
-        active: GlobalStates.searchOpen
-        sourceComponent: PanelWindow {
-            id: panelWindow
-            exclusiveZone: 0
-            WlrLayershell.namespace: "quickshell:wStartMenu"
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-            color: "transparent"
+    PanelWindow {
+        id: panelWindow
+        visible: GlobalStates.searchOpen
+        exclusiveZone: 0
+        WlrLayershell.namespace: "quickshell:wStartMenu"
+        WlrLayershell.keyboardFocus: GlobalStates.searchOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        color: "transparent"
 
-            anchors {
-                bottom: Config.options.waffles.bar.bottom
-                top: !Config.options.waffles.bar.bottom
-                left: Config.options.waffles.bar.leftAlignApps
-            }
+        anchors {
+            bottom: Config.options.waffles.bar.bottom
+            top: !Config.options.waffles.bar.bottom
+            left: Config.options.waffles.bar.leftAlignApps
+        }
 
-            implicitWidth: content.implicitWidth
-            implicitHeight: content.implicitHeight
+        implicitWidth: content.implicitWidth
+        implicitHeight: content.implicitHeight
 
-            HyprlandFocusGrab {
-                id: focusGrab
-                active: true
-                windows: [panelWindow]
-                onCleared: content.close()
-            }
+        HyprlandFocusGrab {
+            id: focusGrab
+            active: GlobalStates.searchOpen
+            windows: [panelWindow]
+            onCleared: content.close()
+        }
 
-            Connections {
-                target: GlobalStates
-                function onSearchOpenChanged() {
-                    if (!GlobalStates.searchOpen)
-                        content.close();
-                }
-            }
+        StartMenuContent {
+            id: content
+            anchors.fill: parent
+            focus: true
 
-            StartMenuContent {
-                id: content
-                anchors.fill: parent
-                focus: true
-
-                onClosed: {
-                    GlobalStates.searchOpen = false;
-                    panelLoader.active = false;
-                    LauncherSearch.query = "";
-                }
+            onClosed: {
+                GlobalStates.searchOpen = false;
+                LauncherSearch.query = "";
             }
         }
     }
