@@ -100,6 +100,7 @@ QtObject {
                     "aboveSubject": configItem.aboveSubject ?? false,
                     "staggerDelay": addCount * 60,
                     "scale": configItem.scale ?? 1.0,
+                    "lockScale": configItem.lockScale ?? configItem.scale ?? 1.0,
                     "widgetConfig": configItem.config || {},
                     "exiting": false
                 });
@@ -140,6 +141,13 @@ QtObject {
                 }
                 if (Math.abs((modelItem.scale ?? 1.0) - (configItem.scale ?? 1.0)) > 0.001) {
                     widgetListModel.setProperty(modelIndex, "scale", configItem.scale ?? 1.0);
+                }
+                // Recomputed from the fallback every sync, so a widget that has
+                // never been resized on the lock screen keeps following the
+                // desktop - same as widgetLockX/widgetLockY above.
+                let lockScale = configItem.lockScale ?? configItem.scale ?? 1.0;
+                if (Math.abs((modelItem.lockScale ?? 1.0) - lockScale) > 0.001) {
+                    widgetListModel.setProperty(modelIndex, "lockScale", lockScale);
                 }
                 modelItem.widgetConfig = configItem.config || {};
                 if (addCount > 0) {

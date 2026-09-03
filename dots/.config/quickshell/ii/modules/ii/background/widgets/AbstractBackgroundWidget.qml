@@ -233,6 +233,11 @@ AbstractWidget {
     // screen, and WidgetStateManager falls them back to the desktop pair until
     // then, so nothing shifts for a widget that was never moved there.
     readonly property bool usingLockPosition: GlobalStates.screenLocked && visibleWhenLocked && !forceCenter && widgetInstance !== null
+    // Size is per-surface for the same reason position is, but on a predicate
+    // of its own: a centred widget's *position* is the lock screen's business
+    // (which is why usingLockPosition excludes forceCenter) while its size is
+    // still its own.
+    readonly property bool usingLockScale: GlobalStates.screenLocked && visibleWhenLocked && widgetInstance !== null
     readonly property real placedX: widgetInstance !== null ? (usingLockPosition ? widgetInstance.lockX : widgetInstance.x) : (configEntry ? configEntry.x : 0)
     readonly property real placedY: widgetInstance !== null ? (usingLockPosition ? widgetInstance.lockY : widgetInstance.y) : (configEntry ? configEntry.y : 0)
     property real targetX: isPreview ? 0 : (forceCenter ? centeringX : ((placementStrategy === "free" || placementStrategy === "draggable") ? WidgetDragMath.clamp(placedX, dragMinimumX(), dragMaximumX()) : calculatedX))
@@ -400,6 +405,14 @@ AbstractWidget {
         "triple_ring_clock": true, "wearos_arc_clock": true
     })
     readonly property bool _usesWidgetSizeKey: _scaleSection !== null && _scaleSection.widgetSize !== undefined && _widgetSizeConsumers[configEntryName] === true
+    // `widgetSize` lives on the widget *type*'s config section, so it cannot
+    // hold one value per surface - it cannot even hold one per instance. On the
+    // lock screen those widgets therefore resize through the per-instance
+    // factor instead, layered over the desktop size, which keeps the two
+    // surfaces independent without giving two dozen config sections a second
+    // key each. Every gate on the *gesture* uses this; `_usesWidgetSizeKey`
+    // itself still describes the widget, not the surface it is drawn on.
+    readonly property bool _widgetSizeKeyActive: _usesWidgetSizeKey && !root.usingLockScale
     // >0 only while a resize gesture runs on the Item.scale path. It is what
     // makes the widget itself follow the grip instead of only an outline —
     // and it deliberately never touches the config, so the pointer never
@@ -415,7 +428,11 @@ AbstractWidget {
         let result = 1.0;
         for (let i = 0; i < list.length; i++) {
             if (list[i].id === id) {
-                result = list[i].scale ?? 1.0;
+                // `lockScale` is absent until the widget is first resized on
+                // the lock screen and falls back to the desktop factor until
+                // then, exactly as `lockX`/`lockY` fall back to `x`/`y`, so
+                // nothing moves for a widget that was never resized there.
+                result = (root.usingLockScale ? (list[i].lockScale ?? list[i].scale) : list[i].scale) ?? 1.0;
                 break;
             }
         }
@@ -454,7 +471,7 @@ AbstractWidget {
     readonly property real _resizeDetent: 0.03 // magnetic pull back to 100%
 
     function _currentScaleFactor() {
-        if (_usesWidgetSizeKey)
+        if (_widgetSizeKeyActive)
             return (_scaleSection !== null ? (_scaleSection.widgetSize ?? 100) : 100) / 100;
         return _persistedInstanceScale;
     }
@@ -483,7 +500,7 @@ AbstractWidget {
         _resizeStartDist = Math.max(1, Math.hypot(p.x - anchor.x, p.y - anchor.y));
         _resizeStartScale = _currentScaleFactor();
         _resizeMinScale = 0.5;
-        if (_usesWidgetSizeKey) {
+        if (_widgetSizeKeyActive) {
             // Never let the widget outgrow its monitor.
             const maxByWidth = (scaledScreenWidth / Math.max(1, width)) * _resizeStartScale;
             const maxByHeight = (scaledScreenHeight / Math.max(1, height)) * _resizeStartScale;
@@ -521,7 +538,7 @@ AbstractWidget {
     // Live, but visual only. Keep top-left anchored so the widget expands
     // down and right towards the bottom-right handle.
     function applyLiveResize() {
-        if (_usesWidgetSizeKey) {
+        if (_widgetSizeKeyActive) {
             if (_scaleSection === null || _scaleSection.widgetSize === undefined)
                 return;
             _scaleSection.widgetSize = Math.round(_resizePreviewScale * 100);
@@ -540,7 +557,7 @@ AbstractWidget {
     // Single commit point for both the grip release and the double-click reset.
     function commitResizeScale(factor) {
         const target = WidgetDragMath.clamp(factor, 0.5, 2);
-        if (_usesWidgetSizeKey) {
+        if (_widgetSizeKeyActive) {
             if (_scaleSection === null || _scaleSection.widgetSize === undefined)
                 return;
             _scaleSection.widgetSize = Math.round(target * 100);
@@ -551,11 +568,16 @@ AbstractWidget {
             if (isPreview || widgetInstance === null)
                 return;
             const rounded = Math.round(target * 100) / 100;
-            Config.updateWidgetScale(widgetInstance.id, rounded);
+            Config.updateWidgetScale(widgetInstance.id, rounded, root.usingLockScale);
             // Write the role directly too, so the scale binding re-evaluates
-            // even if the config resync hiccups.
-            if ((widgetInstance.scale ?? -1) !== rounded)
+            // even if the config resync hiccups - into whichever surface's
+            // factor the gesture was actually resizing.
+            if (root.usingLockScale) {
+                if ((widgetInstance.lockScale ?? -1) !== rounded)
+                    widgetInstance.lockScale = rounded;
+            } else if ((widgetInstance.scale ?? -1) !== rounded) {
                 widgetInstance.scale = rounded;
+            }
             const dScale = rounded - _resizeStartScale;
             x = WidgetDragMath.clamp(_resizeStartX + _resizeStartW * dScale / 2, dragMinimumX(), dragMaximumX());
             y = WidgetDragMath.clamp(_resizeStartY + _resizeStartH * dScale / 2, dragMinimumY(), dragMaximumY());
