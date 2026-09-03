@@ -78,13 +78,19 @@ MouseArea {
         forceFieldFocus();
     }
 
-    // ── Lock screen widget drags ─────────────────────────────────────────────
+    // ── Lock screen widget pointer ───────────────────────────────────────────
     // This surface is above every layer shell, so the desktop widgets never see
-    // its pointer. One proxy per movable widget, sitting exactly over it, doing
-    // nothing but forwarding the gesture into the widget's own drag - which
-    // already owns clamping, the grid, snapping and the config commit. No
-    // position state lives here; that is what used to fight the widget and snap
-    // it back on release.
+    // its pointer. One proxy per widget, sitting exactly over it, doing nothing
+    // but forwarding the gesture into the widget's own - which already owns
+    // clamping, the grid, snapping and the config commit. No position state
+    // lives here; that is what used to fight the widget and snap it back on
+    // release.
+    //
+    // A widget that is *used* on the lock screen rather than only moved (the
+    // notification list, say) sets `lockInteractive` and gets first refusal on
+    // every press through the same proxy. It hands the gesture back by
+    // returning false from lockPointerMove, which is how a horizontal
+    // swipe-to-dismiss and a drag of the widget itself can share one press.
     Repeater {
         model: Config.options?.background?.activeWidgets ?? []
 
@@ -130,9 +136,20 @@ MouseArea {
             // nothing to drag; `draggable` already covers the desktop-wide lock.
             // `lock.lockWidgetPositions` is the lock-screen-only freeze, kept
             // separate so it does not also lock the desktop copy.
-            enabled: (dragProxy.target?.draggable ?? false)
+            readonly property bool dragAllowed: (dragProxy.target?.draggable ?? false)
                 && !Config.options.lock.lockWidgetPositions
                 && (dragProxy.modelData.lockBehavior === "keep" || dragProxy.modelData.lockBehavior === "lockOnly")
+            // Interaction survives the freeze: frozen positions are the point
+            // at which a widget stops being furniture and starts being used.
+            readonly property bool interactAllowed: (dragProxy.target?.lockInteractive ?? false)
+                && dragProxy.modelData.lockBehavior !== "hide"
+
+            property bool interacting: false
+            property bool dragging: false
+            property real pressSceneX: 0
+            property real pressSceneY: 0
+
+            enabled: dragProxy.dragAllowed || dragProxy.interactAllowed
             visible: enabled
 
             x: targetRect.x
@@ -142,8 +159,12 @@ MouseArea {
 
             hoverEnabled: true
             preventStealing: true
-            acceptedButtons: Qt.LeftButton
-            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            acceptedButtons: dragProxy.interactAllowed ? (Qt.LeftButton | Qt.MiddleButton) : Qt.LeftButton
+            cursorShape: {
+                if (dragProxy.interactAllowed && !dragProxy.dragging)
+                    return dragProxy.pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor;
+                return dragProxy.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+            }
 
             onPressed: mouse => {
                 if (!dragProxy.target) {
@@ -151,30 +172,85 @@ MouseArea {
                     return;
                 }
                 const p = dragProxy.mapToItem(null, mouse.x, mouse.y);
+                dragProxy.pressSceneX = p.x;
+                dragProxy.pressSceneY = p.y;
+                dragProxy.interacting = false;
+                dragProxy.dragging = false;
+
+                if (dragProxy.interactAllowed)
+                    dragProxy.interacting = dragProxy.target.lockPointerPress(p.x, p.y, mouse.button, mouse.modifiers);
+                if (dragProxy.interacting)
+                    return;
+                if (!dragProxy.dragAllowed)
+                    return;
+                dragProxy.dragging = true;
                 dragProxy.target.beginDragAt(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
             }
             onPositionChanged: mouse => {
-                if (!dragProxy.pressed || !dragProxy.target)
+                if (!dragProxy.target)
                     return;
                 const p = dragProxy.mapToItem(null, mouse.x, mouse.y);
-                dragProxy.target.moveDragTo(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
+                if (!dragProxy.pressed) {
+                    if (dragProxy.interactAllowed)
+                        dragProxy.target.lockPointerHover(p.x, p.y);
+                    return;
+                }
+                if (dragProxy.interacting) {
+                    if (dragProxy.target.lockPointerMove(p.x, p.y))
+                        return;
+                    // The widget gave the gesture back: it turned out to be a
+                    // move, not something the widget itself responds to.
+                    dragProxy.target.lockPointerCancel();
+                    dragProxy.interacting = false;
+                    if (!dragProxy.dragAllowed)
+                        return;
+                    dragProxy.dragging = true;
+                    // From the original press point, so the widget does not
+                    // jump by the travel already spent.
+                    dragProxy.target.beginDragAt(dragProxy.pressSceneX, dragProxy.pressSceneY, mouse.modifiers & Qt.ControlModifier);
+                }
+                if (dragProxy.dragging)
+                    dragProxy.target.moveDragTo(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
             }
             onReleased: mouse => {
                 if (!dragProxy.target)
                     return;
+                const p = dragProxy.mapToItem(null, mouse.x, mouse.y);
+                if (dragProxy.interacting) {
+                    dragProxy.interacting = false;
+                    dragProxy.target.lockPointerRelease(p.x, p.y, mouse.button);
+                    root.forceFieldFocus();
+                    return;
+                }
                 const moved = dragProxy.target.isDragging;
+                dragProxy.dragging = false;
                 dragProxy.target.endDrag(mouse.modifiers & Qt.ControlModifier);
                 if (!moved)
                     root.forceFieldFocus();
             }
-            onCanceled: dragProxy.target?.cancelDrag()
+            onCanceled: {
+                if (dragProxy.interacting) {
+                    dragProxy.interacting = false;
+                    dragProxy.target?.lockPointerCancel();
+                }
+                if (dragProxy.dragging) {
+                    dragProxy.dragging = false;
+                    dragProxy.target?.cancelDrag();
+                }
+            }
+            onExited: {
+                if (dragProxy.interactAllowed)
+                    dragProxy.target?.lockPointerExit();
+            }
 
+            // "You can move this" - so it is wrong over a widget whose own
+            // content answers the pointer with its own state layers.
             StateOverlay {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
                 contentColor: Appearance.colors.colOnSurface
-                hover: dragProxy.containsMouse && !dragProxy.pressed
-                press: dragProxy.pressed
+                hover: dragProxy.containsMouse && !dragProxy.pressed && !dragProxy.interactAllowed
+                press: dragProxy.pressed && !dragProxy.interacting
             }
 
             // ── Resize grip ──────────────────────────────────────────────────
@@ -199,7 +275,7 @@ MouseArea {
                     return dragProxy.target.mapToItem(null, dragProxy.target.width - 34, dragProxy.target.height - 34, 40, 40);
                 }
 
-                enabled: dragProxy.enabled && (dragProxy.target?._scaleHandleAvailable ?? false)
+                enabled: dragProxy.dragAllowed && (dragProxy.target?._scaleHandleAvailable ?? false)
                 visible: enabled
 
                 x: handleRect.x - dragProxy.x

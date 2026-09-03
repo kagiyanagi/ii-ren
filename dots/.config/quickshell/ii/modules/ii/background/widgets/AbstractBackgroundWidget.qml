@@ -714,6 +714,31 @@ AbstractWidget {
         isDraggingOrSettling = false;
     }
 
+    // ── Lock screen interaction ──────────────────────────────────────────────
+    // Dragging is not the only thing a widget can want the lock screen's
+    // pointer for. A widget that is *used* there rather than only moved sets
+    // `lockInteractive` and implements these; LockSurface's proxy offers it
+    // every press, and hands the gesture to the drag above whenever the widget
+    // declines it or gives it back. Scene coordinates, for the same reason
+    // beginDragAt takes them: both surfaces cover the whole output, so one's
+    // scene coordinates are the other's.
+    //
+    // `lockPointerPress` returns whether the widget claimed the gesture, and
+    // `lockPointerMove` returns whether it still wants it - returning false
+    // part way through is how a widget says "this turned out to be a move".
+    property bool lockInteractive: false
+    function lockPointerPress(sceneX, sceneY, button, modifiers) { return false; }
+    function lockPointerMove(sceneX, sceneY) { return false; }
+    function lockPointerRelease(sceneX, sceneY, button) {}
+    function lockPointerCancel() {}
+    function lockPointerHover(sceneX, sceneY) {}
+    function lockPointerExit() {}
+
+    // A widget whose content sits under its own hoverEnabled MouseArea swallows
+    // the hover this widget needs to show its resize grip. Such a widget hands
+    // it back through here.
+    property bool contentHovered: false
+
     // Desktop-only entry points into the shared drag engine — the lock
     // screen drives beginDragAt/moveDragTo directly from LockSurface's own
     // proxy, so gating the desktop lock here never touches that path.
@@ -1221,7 +1246,7 @@ AbstractWidget {
     Item {
         id: resizeHandle
         visible: opacity > 0.001
-        opacity: root._scaleHandleAvailable && !root._desktopPositionsLocked && !root.isDragging && (root.containsMouse || resizeDragArea.dragging) ? 1 : 0
+        opacity: root._scaleHandleAvailable && !root._desktopPositionsLocked && !root.isDragging && (root.containsMouse || root.contentHovered || resizeDragArea.dragging) ? 1 : 0
         // Grow into place instead of only fading: at this size a pure opacity
         // ramp reads as a glitch rather than as something arriving.
         scale: opacity > 0.5 ? 1 : 0.7

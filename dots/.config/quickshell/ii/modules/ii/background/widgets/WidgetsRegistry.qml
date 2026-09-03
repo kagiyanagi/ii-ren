@@ -634,6 +634,15 @@ Singleton {
             "configPage": "widgets/DesktopAtAGlanceConfig.qml"
         },
         {
+            "widgetId": "notification_list",
+            "name": Translation.tr("Notification List (Lock Screen)"),
+            "category": "Utility",
+            "qmlPath": Qt.resolvedUrl("notifications/NotificationListWidget.qml"),
+            "icon": "notifications",
+            "description": Translation.tr("Android and One UI lock screen notifications: cards, group expansion, swipe to dismiss and an overflow icon shelf."),
+            "configPage": "widgets/DesktopNotificationListConfig.qml"
+        },
+        {
             "widgetId": "resource_cpu_pill",
             "name": Translation.tr("CPU Resource Pill"),
             "category": "Resources",

@@ -6,6 +6,7 @@ import qs.modules.ii.background.widgets.DateWidget
 import qs.modules.ii.background.widgets.bluetooth
 import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.media
+import qs.modules.ii.background.widgets.notifications
 import qs.modules.ii.background.widgets.photo
 import qs.modules.ii.background.widgets.system
 import qs.modules.ii.background.widgets.utility
@@ -119,6 +120,7 @@ Item {
         "quote": component_quote,
         "water_reminder": component_water_reminder,
         "at_a_glance": component_at_a_glance,
+        "notification_list": component_notification_list,
         "resource_cpu_pill": component_resource_cpu_pill,
         "resource_ram_pill": component_resource_ram_pill,
         "resource_disk_pill": component_resource_disk_pill,
@@ -1226,6 +1228,18 @@ Item {
 
     }
 
+
+    Component {
+        id: component_notification_list
+        NotificationListWidget {
+            screenWidth: delegateRoot.screenWidth
+            screenHeight: delegateRoot.screenHeight
+            scaledScreenWidth: delegateRoot.screenWidth
+            scaledScreenHeight: delegateRoot.screenHeight
+            wallpaperScale: delegateRoot.wallpaperScale
+            wallpaperSafetyTriggered: delegateRoot.wallpaperSafetyTriggered
+        }
+    }
 
     Component {
         id: component_todo

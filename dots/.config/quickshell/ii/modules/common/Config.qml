@@ -708,6 +708,39 @@ Singleton {
                         property bool showSeparators: true
                         property bool animateContent: true
                     }
+                    // Android lock screen notification list, drawn to AOSP's
+                    // 2025 notification redesign as it ships on Pixel with
+                    // Android 16 QPR1.
+                    property JsonObject notification_list: JsonObject {
+                        property bool enable: false
+                        property string placementStrategy: "free"
+                        property real x: 40
+                        property real y: 260
+                        // "full" is Pixel's "Full list"; "compact" is its
+                        // default - one notification, the rest as shelf icons.
+                        property string view: "full"
+                        property int width: 400
+                        property int maxCards: 4
+                        // "show", "hideContent" (AOSP's public version: app and
+                        // time stay, content goes) or "hideAll".
+                        property string privacy: "show"
+                        // Android's "Show seen notifications", inverted.
+                        property bool onlySinceLock: false
+                        // Freedesktop has no silent bucket; low urgency is the
+                        // closest thing to Android's Silent section.
+                        property bool showLowUrgency: true
+                        property bool skipTransient: true
+                        property bool showActions: true
+                        // AOSP's NotificationShelf: the overflow icon row.
+                        property bool showShelf: true
+                        property bool hideWhenEmpty: true
+                        property bool dismissOnSwipe: true
+                        // What a tap on a card does: "expand", or "invoke" the
+                        // notification's first action.
+                        property string bodyAction: "expand"
+                        property int backgroundOpacity: 100
+                        property int fontScale: 100
+                    }
                     property JsonObject weather: JsonObject {
                         property bool enable: false
                         property string style: "default" // default, expressive
