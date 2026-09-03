@@ -1597,6 +1597,10 @@ Singleton {
                     property bool requirePasswordToPower: false
                 }
                 property bool materialShapeChars: true
+                // Freezes widget drag/resize on the lock screen specifically,
+                // independent of `background.widgets.lockWidgetPositions`
+                // which freezes them on the desktop.
+                property bool lockWidgetPositions: false
             }
 
             property JsonObject media: JsonObject {

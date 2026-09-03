@@ -127,8 +127,11 @@ MouseArea {
             }
 
             // Centred widgets are placed by the lock screen itself, so there is
-            // nothing to drag; `draggable` already covers locked positions.
+            // nothing to drag; `draggable` already covers the desktop-wide lock.
+            // `lock.lockWidgetPositions` is the lock-screen-only freeze, kept
+            // separate so it does not also lock the desktop copy.
             enabled: (dragProxy.target?.draggable ?? false)
+                && !Config.options.lock.lockWidgetPositions
                 && (dragProxy.modelData.lockBehavior === "keep" || dragProxy.modelData.lockBehavior === "lockOnly")
             visible: enabled
 
@@ -172,6 +175,88 @@ MouseArea {
                 contentColor: Appearance.colors.colOnSurface
                 hover: dragProxy.containsMouse && !dragProxy.pressed
                 press: dragProxy.pressed
+            }
+
+            // ── Resize grip ──────────────────────────────────────────────────
+            // Same story as the drag proxy above: the widget's own resize grip
+            // (AbstractBackgroundWidget's `resizeHandle`) never sees this
+            // surface's pointer, so its corner gets its own small proxy here,
+            // sized and positioned to match that grip exactly, forwarding into
+            // the same beginResizeGesture/updateResizeGesture/endResizeGesture
+            // the desktop grip drives.
+            MouseArea {
+                id: resizeProxy
+                readonly property rect handleRect: {
+                    if (!dragProxy.target)
+                        return Qt.rect(0, 0, 0, 0);
+                    dragProxy.target.x;
+                    dragProxy.target.y;
+                    dragProxy.target.width;
+                    dragProxy.target.height;
+                    dragProxy.target.scale;
+                    // Matches resizeHandle's own anchors: right/bottom margin
+                    // -6, 40x40, hanging off the widget's corner.
+                    return dragProxy.target.mapToItem(null, dragProxy.target.width - 34, dragProxy.target.height - 34, 40, 40);
+                }
+
+                enabled: dragProxy.enabled && (dragProxy.target?._scaleHandleAvailable ?? false)
+                visible: enabled
+
+                x: handleRect.x - dragProxy.x
+                y: handleRect.y - dragProxy.y
+                width: handleRect.width
+                height: handleRect.height
+                z: 1
+
+                hoverEnabled: true
+                preventStealing: true
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.SizeFDiagCursor
+
+                onPressed: mouse => {
+                    if (!dragProxy.target)
+                        return;
+                    const p = resizeProxy.mapToItem(null, mouse.x, mouse.y);
+                    dragProxy.target.beginResizeGesture(p.x, p.y, mouse.modifiers & Qt.ShiftModifier);
+                }
+                onPositionChanged: mouse => {
+                    if (!dragProxy.target)
+                        return;
+                    const p = resizeProxy.mapToItem(null, mouse.x, mouse.y);
+                    dragProxy.target.updateResizeGesture(p.x, p.y, mouse.modifiers & Qt.ShiftModifier);
+                }
+                onReleased: dragProxy.target?.endResizeGesture()
+                onCanceled: dragProxy.target?.endResizeGesture()
+                onDoubleClicked: dragProxy.target?.resetScaleFromHandle()
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: -3
+                    anchors.verticalCenterOffset: -3
+                    width: 22
+                    height: 22
+                    radius: Appearance.rounding.verysmall
+                    color: (resizeProxy.pressed || resizeProxy.containsMouse)
+                        ? Appearance.colors.colPrimary
+                        : Appearance.colors.colSecondaryContainer
+                    opacity: (dragProxy.containsMouse || resizeProxy.containsMouse || resizeProxy.pressed) ? 1 : 0
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        text: "open_in_full"
+                        iconSize: 13
+                        color: (resizeProxy.pressed || resizeProxy.containsMouse)
+                            ? Appearance.colors.colOnPrimary
+                            : Appearance.colors.colOnSecondaryContainer
+                    }
+                }
             }
         }
     }

@@ -47,6 +47,14 @@ ContentPage {
                 Config.options.lock.materialShapeChars = checked;
             }
         }
+        ConfigSwitch {
+            buttonIcon: "push_pin"
+            text: Translation.tr("Lock widget size and position")
+            checked: Config.options.lock.lockWidgetPositions
+            onCheckedChanged: {
+                Config.options.lock.lockWidgetPositions = checked;
+            }
+        }
     }
 
     ContentSection {

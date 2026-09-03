@@ -375,9 +375,12 @@ AbstractWidget {
     // settings slider edits (implicit-size growth with x/y compensated); every
     // other widget falls back to a per-instance multiplier persisted on the
     // activeWidgets entry and applied as a visual Item scale around the centre.
-    readonly property bool _positionsLocked: Config.options.background.widgets.lockWidgetPositions ?? false
+    // Desktop-only: `lock.lockWidgetPositions` is the lock-screen equivalent,
+    // checked separately wherever the lock screen gates its own proxies, so
+    // one toggle never freezes the other surface's copy of the widget.
+    readonly property bool _desktopPositionsLocked: Config.options.background.widgets.lockWidgetPositions ?? false
     readonly property var _scaleSection: Config.options.background.widgets[configEntryName] ?? null
-    readonly property bool _scaleHandleAvailable: !isPreview && draggable && !_positionsLocked && widgetInstance !== null
+    readonly property bool _scaleHandleAvailable: !isPreview && draggable && widgetInstance !== null
     // Path selection is consumer-based, not declaration-based: sections like
     // clock_nothing declare `widgetSize` while their layout ignores it, and
     // writing it there changes nothing (the widget "snaps back"). Only widgets
@@ -432,9 +435,7 @@ AbstractWidget {
     property bool _resizeActive: false
     property real _resizeStartScale: 1 // factor, not percent
     property real _resizeStartDist: 1
-    property bool _resizeUsesGlobal: false
-    property point _resizeStartGlobal: Qt.point(0, 0)  // screen-space pointer at press
-    property point _resizeCentreGlobal: Qt.point(0, 0) // screen-space widget centre at press
+    property point _resizeCentreGlobal: Qt.point(0, 0) // frame-space widget anchor at press
     property real _resizeMinScale: 0.5
     property real _resizeMaxScale: 2
     property real _resizeStartX: 0
@@ -467,23 +468,18 @@ AbstractWidget {
         return WidgetDragMath.clamp(Math.round(v / _resizeStep) * _resizeStep, _resizeMinScale, _resizeMaxScale);
     }
 
-    function beginResizeGesture(mouse) {
+    // Driven by scene coordinates rather than by a mouse event tied to
+    // resizeHandle's own space, for the same reason beginDragAt/moveDragTo
+    // are: the lock screen's surface sits above every layer shell and pushes
+    // its own pointer through this same gesture via a proxy over the corner.
+    function beginResizeGesture(sceneX, sceneY, shift) {
         const canvas = findCanvas(root.parent);
         const frame = canvas ?? root;
-        const p = resizeHandle.mapToItem(frame, mouse.x, mouse.y);
+        const p = frame.mapFromItem(null, sceneX, sceneY);
         // Anchor at top-left corner of the widget in frame space so dragging
         // the bottom-right corner expands downwards and rightwards without shifting the top-left.
         const anchor = frame === root ? Qt.point(0, 0) : root.mapToItem(frame, 0, 0);
-        const hasGlobal = mouse.globalPosition !== undefined;
-        _resizeUsesGlobal = hasGlobal;
-        if (hasGlobal) {
-            const gp = mouse.globalPosition;
-            _resizeStartGlobal = Qt.point(gp.x, gp.y);
-            _resizeCentreGlobal = Qt.point(anchor.x + (gp.x - p.x), anchor.y + (gp.y - p.y));
-        } else {
-            _resizeStartGlobal = Qt.point(p.x, p.y);
-            _resizeCentreGlobal = Qt.point(anchor.x, anchor.y);
-        }
+        _resizeCentreGlobal = anchor;
         _resizeStartDist = Math.max(1, Math.hypot(p.x - anchor.x, p.y - anchor.y));
         _resizeStartScale = _currentScaleFactor();
         _resizeMinScale = 0.5;
@@ -501,7 +497,7 @@ AbstractWidget {
         _resizeStartH = height;
         _resizeActive = true;
         _resizeGestureMoved = false;
-        _resizeFreeStep = false;
+        _resizeFreeStep = Boolean(shift);
         _resizePreviewScale = _resizeStartScale;
         isDraggingOrSettling = true;
         settleTimer.stop();
@@ -509,22 +505,15 @@ AbstractWidget {
         _pendingPosition = false;
     }
 
-    function updateResizeGesture(mouse) {
+    function updateResizeGesture(sceneX, sceneY, shift) {
         if (!_resizeActive)
             return;
         _resizeGestureMoved = true;
-        _resizeFreeStep = Boolean(mouse.modifiers & Qt.ShiftModifier);
-        let dist;
-        if (_resizeUsesGlobal && mouse.globalPosition !== undefined) {
-            const gp = mouse.globalPosition;
-            dist = Math.hypot(gp.x - _resizeCentreGlobal.x, gp.y - _resizeCentreGlobal.y);
-        } else {
-            const canvas = findCanvas(root.parent);
-            const frame = canvas ?? root;
-            const p = resizeHandle.mapToItem(frame, mouse.x, mouse.y);
-            dist = Math.hypot(p.x - _resizeCentreGlobal.x, p.y - _resizeCentreGlobal.y);
-        }
-        dist = Math.max(1, dist);
+        _resizeFreeStep = Boolean(shift);
+        const canvas = findCanvas(root.parent);
+        const frame = canvas ?? root;
+        const p = frame.mapFromItem(null, sceneX, sceneY);
+        const dist = Math.max(1, Math.hypot(p.x - _resizeCentreGlobal.x, p.y - _resizeCentreGlobal.y));
         _resizePreviewScale = _quantiseScale(_resizeStartScale * (dist / _resizeStartDist));
         applyLiveResize();
     }
@@ -725,13 +714,18 @@ AbstractWidget {
         isDraggingOrSettling = false;
     }
 
+    // Desktop-only entry points into the shared drag engine — the lock
+    // screen drives beginDragAt/moveDragTo directly from LockSurface's own
+    // proxy, so gating the desktop lock here never touches that path.
     function beginPointerGesture(mouse) {
+        if (_desktopPositionsLocked)
+            return;
         const p = root.mapToItem(null, mouse.x, mouse.y);
         beginDragAt(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
     }
 
     function updatePointerGesture(mouse) {
-        if (!pressed)
+        if (!pressed || _desktopPositionsLocked)
             return;
         const p = root.mapToItem(null, mouse.x, mouse.y);
         moveDragTo(p.x, p.y, mouse.modifiers & Qt.ControlModifier);
@@ -1109,11 +1103,17 @@ AbstractWidget {
         return targetYVal;
     }
 
-    draggable: !isPreview && !(Config.options.background.widgets.lockWidgetPositions ?? false) && (placementStrategy === "free" || placementStrategy === "draggable")
+    // Whether this widget type can be dragged at all, in principle. The
+    // desktop-lock and lock-screen-lock toggles are each applied at their
+    // own entry point (beginPointerGesture/updatePointerGesture below for
+    // the desktop, LockSurface's proxies for the lock screen) rather than
+    // baked in here, so one surface's lock never freezes the other's copy.
+    draggable: !isPreview && (placementStrategy === "free" || placementStrategy === "draggable")
     drag.target: undefined
     drag.threshold: 4
     preventStealing: true
     hoverEnabled: true
+    cursorShape: (draggable && !_desktopPositionsLocked && containsPress) ? Qt.ClosedHandCursor : (draggable && !_desktopPositionsLocked) ? Qt.OpenHandCursor : Qt.ArrowCursor
     animateXPos: entryDone && !isDragging && !isDraggingOrSettling && (visibleWhenLocked || !GlobalStates.screenLocked)
     animateYPos: entryDone && !isDragging && !isDraggingOrSettling && (visibleWhenLocked || !GlobalStates.screenLocked)
 
@@ -1221,7 +1221,7 @@ AbstractWidget {
     Item {
         id: resizeHandle
         visible: opacity > 0.001
-        opacity: root._scaleHandleAvailable && !root.isDragging && (root.containsMouse || resizeDragArea.dragging) ? 1 : 0
+        opacity: root._scaleHandleAvailable && !root._desktopPositionsLocked && !root.isDragging && (root.containsMouse || resizeDragArea.dragging) ? 1 : 0
         // Grow into place instead of only fading: at this size a pure opacity
         // ramp reads as a glitch rather than as something arriving.
         scale: opacity > 0.5 ? 1 : 0.7
@@ -1274,8 +1274,14 @@ AbstractWidget {
             cursorShape: Qt.SizeFDiagCursor
             preventStealing: true
 
-            onPressed: mouse => root.beginResizeGesture(mouse)
-            onPositionChanged: mouse => root.updateResizeGesture(mouse)
+            onPressed: mouse => {
+                const p = resizeHandle.mapToItem(null, mouse.x, mouse.y);
+                root.beginResizeGesture(p.x, p.y, mouse.modifiers & Qt.ShiftModifier);
+            }
+            onPositionChanged: mouse => {
+                const p = resizeHandle.mapToItem(null, mouse.x, mouse.y);
+                root.updateResizeGesture(p.x, p.y, mouse.modifiers & Qt.ShiftModifier);
+            }
             onReleased: root.endResizeGesture()
             onCanceled: root.endResizeGesture()
             onDoubleClicked: root.resetScaleFromHandle()
