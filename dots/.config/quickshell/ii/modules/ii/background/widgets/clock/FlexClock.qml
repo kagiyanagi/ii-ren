@@ -14,8 +14,16 @@ AbstractBackgroundWidget {
     configEntryName: "clock_flex"
 
     readonly property real contentScale: (Config.options.background.widgets.clock_flex.widgetSize ?? 100) / 100.0
-    implicitWidth: 240 * contentScale
-    implicitHeight: 240 * contentScale
+
+    // The 240×240 canvas the layout fractions below were authored against. The
+    // widget's own box is the digit ink inside it (see glyphInk): the 2×2 grid
+    // cells are Text line boxes, considerably wider than the digits they
+    // centre, so boxing the canvas would leave dead bands down both sides.
+    readonly property real designW: 240 * contentScale
+    readonly property real designH: 240 * contentScale
+
+    implicitWidth: glyphInk.boxWidth
+    implicitHeight: glyphInk.boxHeight
 
     // Time extraction
     readonly property string hour: DateTime.time.split(":")[0].padStart(2, "0")
@@ -32,19 +40,49 @@ AbstractBackgroundWidget {
     readonly property color colorDiagonalB: WidgetColorScheme.accentColor
 
     // Stroke thickness around upper elements (die-cut margin)
-    readonly property real strokeWidth: root.width * 0.020
+    readonly property real strokeWidth: root.designW * 0.020
 
     // Tight grid 2x2 cell dimensions
-    readonly property real cellW: root.width * 0.66
-    readonly property real cellH: root.height * 0.66
+    readonly property real cellW: root.designW * 0.66
+    readonly property real cellH: root.designH * 0.66
 
     // Cell positions (fine-tuned spacing)
-    readonly property real col0X: root.width * 0.00
-    readonly property real col1X: root.width * 0.30
-    readonly property real row0Y: root.height * -0.04
-    readonly property real row1Y: root.height * 0.42
+    readonly property real col0X: root.designW * 0.00
+    readonly property real col1X: root.designW * 0.30
+    readonly property real row0Y: root.designH * -0.04
+    readonly property real row1Y: root.designH * 0.42
 
-    readonly property real glyphPixelSize: root.height * 0.66
+    readonly property real glyphPixelSize: root.designH * 0.66
+
+    // Digit ink inside the grid cells: the box, and the offset that lands the
+    // ink on it.
+    GlyphTileInk {
+        id: glyphInk
+        tileFont: glyphFont.font
+        tileWidth: root.cellW
+        tileHeight: root.cellH
+        leftTileX: root.col0X
+        rightTileX: root.col1X
+        topTileY: root.row0Y
+        bottomTileY: root.row1Y
+    }
+
+    // One shared definition of the digit face, so the measured ink and the
+    // drawn glyphs can never drift apart. StyledText would impose its own
+    // family, and Qt.font() silently drops variableAxes, which is what
+    // carries the wght 1000 these glyphs are cut at.
+    // design-ok: a font value, not text — it draws nothing.
+    Text {
+        id: glyphFont
+        visible: false
+        font {
+            family: "Google Sans Flex"
+            weight: 1000
+            bold: true
+            pixelSize: root.glyphPixelSize
+            variableAxes: ({ "wght": 1000 })
+        }
+    }
 
     // Smooth circle sample offset model for clean outline masks without sharp corner artifacts
     readonly property var strokeOffsets: [
@@ -75,19 +113,18 @@ AbstractBackgroundWidget {
 
     Item {
         id: container
-        anchors.fill: parent
+        // The design canvas, shifted so its digit ink sits on the widget's box.
+        // The slack it carries outside that box draws nothing.
+        x: -glyphInk.left
+        y: -glyphInk.top
+        width: root.designW
+        height: root.designH
 
         // Reusable Digit template
         component Digit: Text {
             width: root.cellW
             height: root.cellH
-            font {
-                family: "Google Sans Flex"
-                weight: 1000
-                bold: true
-                pixelSize: root.glyphPixelSize
-                variableAxes: ({ "wght": 1000 })
-            }
+            font: glyphFont.font
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }

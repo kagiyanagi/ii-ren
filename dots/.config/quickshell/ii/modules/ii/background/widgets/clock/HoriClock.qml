@@ -14,8 +14,19 @@ AbstractBackgroundWidget {
     configEntryName: "clock_hori"
 
     readonly property real contentScale: (Config.options.background.widgets.clock_hori.widgetSize ?? 100) / 100.0
-    implicitWidth: 320 * contentScale
-    implicitHeight: 200 * contentScale
+
+    // The 320×200 canvas the layout fractions below were authored against. The
+    // widget's own box is the digit ink inside it (see glyphInk), not this
+    // canvas: a glyph tile is a Text line box, taller than the digits by the
+    // font's ascent/descent leading and wider by its side bearings, and the
+    // tiles stop short of the canvas edge. Boxing the canvas would hand the
+    // drag area, the snap edges and the resize grip a third of a widget's
+    // worth of empty air.
+    readonly property real designW: 320 * contentScale
+    readonly property real designH: 200 * contentScale
+
+    implicitWidth: glyphInk.boxWidth
+    implicitHeight: glyphInk.boxHeight
 
     // ── Time extraction (same approach as FlexClock) ──
     readonly property string hour:   DateTime.time.split(":")[0].padStart(2, "0")
@@ -31,22 +42,52 @@ AbstractBackgroundWidget {
     readonly property color tintSoft: useAltColors ? WidgetColorScheme.cardBgColor : WidgetColorScheme.textColorOnBg
     readonly property color tintBold: WidgetColorScheme.accentColor
 
-    // ── Layout geometry (horizontal, 320×200) ──
-    readonly property real tileW:      root.width  * 0.22
-    readonly property real tileH:      root.height * 0.72
-    readonly property real glyphSize:  root.height * 0.60
-    readonly property real posY:       root.height * 0.14
+    // ── Layout geometry (horizontal, on the 320×200 design canvas) ──
+    readonly property real tileW:      root.designW * 0.22
+    readonly property real tileH:      root.designH * 0.72
+    readonly property real glyphSize:  root.designH * 0.60
+    readonly property real posY:       root.designH * 0.14
 
-    readonly property real pos0X:      root.width  * 0.00
-    readonly property real pos1X:      root.width  * 0.17
-    readonly property real pos2X:      root.width  * 0.48
-    readonly property real pos3X:      root.width  * 0.65
+    readonly property real pos0X:      root.designW * 0.00
+    readonly property real pos1X:      root.designW * 0.17
+    readonly property real pos2X:      root.designW * 0.48
+    readonly property real pos3X:      root.designW * 0.65
 
-    readonly property real colonX:     root.width  * 0.43
-    readonly property real colonDotSize: root.height * 0.07
-    readonly property real colonGap:   root.height * 0.08
+    readonly property real colonX:     root.designW * 0.43
+    readonly property real colonDotSize: root.designH * 0.07
+    readonly property real colonGap:   root.designH * 0.08
 
-    readonly property real fringeSize: root.height * 0.02
+    readonly property real fringeSize: root.designH * 0.02
+
+    // Digit ink inside the tiles: the box, and the offset that lands the ink
+    // on it. The colon sits between the middle tiles, well inside this.
+    GlyphTileInk {
+        id: glyphInk
+        tileFont: glyphFont.font
+        tileWidth: root.tileW
+        tileHeight: root.tileH
+        leftTileX: root.pos0X
+        rightTileX: root.pos3X
+        topTileY: root.posY
+        bottomTileY: root.posY
+    }
+
+    // One shared definition of the tile face, so the measured ink and the
+    // drawn glyphs can never drift apart. StyledText would impose its own
+    // family, and Qt.font() silently drops variableAxes, which is what
+    // carries the wght 1000 these glyphs are cut at.
+    // design-ok: a font value, not text — it draws nothing.
+    Text {
+        id: glyphFont
+        visible: false
+        font {
+            family: "Google Sans Flex"
+            weight: 1000
+            bold: true
+            pixelSize: root.glyphSize
+            variableAxes: ({ "wght": 1000 })
+        }
+    }
 
     // ── Fringe / stroke samples (PixelClock style) ──
     function ringSamples(count, radius) {
@@ -69,18 +110,17 @@ AbstractBackgroundWidget {
     // ── Main stage ──
     Item {
         id: glyphStage
-        anchors.fill: parent
+        // The design canvas, shifted so its digit ink sits on the widget's box.
+        // The slack it carries outside that box draws nothing.
+        x: -glyphInk.left
+        y: -glyphInk.top
+        width: root.designW
+        height: root.designH
 
         component GlyphTile: Text {
             width: root.tileW
             height: root.tileH
-            font {
-                family: "Google Sans Flex"
-                weight: 1000
-                bold: true
-                pixelSize: root.glyphSize
-                variableAxes: ({ "wght": 1000 })
-            }
+            font: glyphFont.font
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }

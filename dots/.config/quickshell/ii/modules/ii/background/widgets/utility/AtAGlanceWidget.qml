@@ -36,7 +36,10 @@ AbstractBackgroundWidget {
     readonly property bool dualColumn: (options.dualColumnMode ?? false) && targetsList.length > 1
 
     implicitWidth:  (dualColumn ? 480 : (widthCells === 2 ? 250 : (widthCells === 4 ? 450 : 350))) * contentScale
-    implicitHeight: 76 * contentScale
+    // The row and its margins, not a nominal cell height: this widget paints
+    // no card, so a taller box would just be dead air around the row — the
+    // drag area and the resize grip would sit off the art.
+    implicitHeight: contentRow.implicitHeight + 8 * contentScale
 
     readonly property var targetsList: AtAGlanceService.activeTargetsList
     property int selectedTargetIndex: 0
@@ -163,6 +166,7 @@ AbstractBackgroundWidget {
         }
 
         RowLayout {
+            id: contentRow
             anchors.fill: parent
             anchors.leftMargin: 8 * root.contentScale
             anchors.rightMargin: 8 * root.contentScale
