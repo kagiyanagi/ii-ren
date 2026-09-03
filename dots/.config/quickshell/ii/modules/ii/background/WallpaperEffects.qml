@@ -58,7 +58,25 @@ Item {
     // Anything below is live only while a bake is in flight.
     readonly property bool baking: settle.running || quickBake.running
 
-    onDigestChanged: settle.restart()
+    // Which side of the lock the digest was last taken on, so a group switch
+    // can be told apart from a real edit. Assigned, never bound.
+    property bool digestWasLocked: false
+    Component.onCompleted: root.digestWasLocked = GlobalStates.screenLocked
+
+    onDigestChanged: {
+        // Locking swaps this whole chain from the desktop group to the lock
+        // group, which changes the digest without anything animating: the
+        // chain has to be re-rendered once and then it is a still image again.
+        // The long settle is for a wallpaper transition or a slider being
+        // dragged, and 2.5s of live full-screen blur is exactly what the lock
+        // animation cannot afford.
+        if (GlobalStates.screenLocked !== root.digestWasLocked) {
+            root.digestWasLocked = GlobalStates.screenLocked;
+            quickBake.restart();
+            return;
+        }
+        settle.restart();
+    }
     // Hiding the window (a fullscreen app, per background.hideWhenFullscreen)
     // can drop the frozen textures, so bake again on the way back. The lock
     // screen's own blur also flips this on every unlock, and 2.5s of live

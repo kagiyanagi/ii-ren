@@ -1,5 +1,6 @@
 import QtQuick
 import qs.modules.common
+import qs.modules.common.widgets
 
 MouseArea {
     id: root
@@ -10,48 +11,52 @@ MouseArea {
     property bool draggingActive: false
     property bool gridOverlayEnabled: false
     property int alignmentGridStep: 10
-    onAlignmentGridStepChanged: dotGrid.requestPaint()
+    onAlignmentGridStepChanged: dotGrid.item?.requestPaint()
 
-    Canvas {
+    // Loaded only while it is actually on screen. It is a full-screen Canvas,
+    // and this item animates its own width and height every time the screen
+    // locks or unlocks - a Canvas reallocates and repaints its whole backing
+    // image on every size change, so an invisible grid was repainting ~20k
+    // dots on the GUI thread on every frame of the lock animation. That was
+    // 100-200ms of blocked main thread and about twenty dropped frames per
+    // lock, whether or not anything was being dragged.
+    FadeLoader {
         id: dotGrid
         anchors.fill: parent
         z: -1
-        visible: root.draggingActive && root.gridOverlayEnabled && opacity > 0.001
-        opacity: root.draggingActive && root.gridOverlayEnabled ? 0.55 : 0
+        shown: root.draggingActive && root.gridOverlayEnabled
+        // The grid's own weight, not a full-strength fade; FadeLoader supplies
+        // the elementMoveFast curve this had before.
+        opacity: shown ? 0.55 : 0
 
-        readonly property real dotSize: 1.5
-        readonly property color dotColor: Appearance.colors.colPrimary
+        sourceComponent: Canvas {
+            readonly property real dotSize: 1.5
+            readonly property color dotColor: Appearance.colors.colPrimary
 
-        // Uniform on purpose. A radial falloff around the dragged widget was
-        // tried and reverted: it repainted this full-screen canvas on every
-        // pointer frame with a per-dot alpha, which is ~20k Qt.rgba allocations
-        // and fillStyle switches per frame — the grid could not keep up and
-        // read as simply missing. Painted once per size/step change, it costs
-        // nothing while you drag.
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.reset();
-            ctx.fillStyle = dotGrid.dotColor;
+            // Uniform on purpose. A radial falloff around the dragged widget was
+            // tried and reverted: it repainted this full-screen canvas on every
+            // pointer frame with a per-dot alpha, which is ~20k Qt.rgba allocations
+            // and fillStyle switches per frame — the grid could not keep up and
+            // read as simply missing. Painted once per size/step change, it costs
+            // nothing while you drag.
+            onPaint: {
+                const ctx = getContext("2d");
+                ctx.reset();
+                ctx.fillStyle = dotColor;
 
-            const offset = dotGrid.dotSize / 2;
-            const step = Math.max(1, root.alignmentGridStep);
-            for (let y = 0; y <= height; y += step) {
-                for (let x = 0; x <= width; x += step) {
-                    ctx.fillRect(x - offset, y - offset, dotGrid.dotSize, dotGrid.dotSize);
+                const offset = dotSize / 2;
+                const step = Math.max(1, root.alignmentGridStep);
+                for (let y = 0; y <= height; y += step) {
+                    for (let x = 0; x <= width; x += step) {
+                        ctx.fillRect(x - offset, y - offset, dotSize, dotSize);
+                    }
                 }
             }
-        }
 
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onDotColorChanged: requestPaint()
-        onVisibleChanged: {
-            if (visible)
-                requestPaint();
-        }
-
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            onDotColorChanged: requestPaint()
+            Component.onCompleted: requestPaint()
         }
     }
 

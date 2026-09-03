@@ -35,15 +35,35 @@ Item {
             ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
         : Config.options.background.weatherEffects.desktop
 
-    // What the config and the sky are asking for: "rain", "fog", "snow", "sun",
-    // or empty for nothing. Not necessarily what is on screen - see below.
-    readonly property string targetEffect: {
-        if (!Config.ready || !root.opt.enable)
+    // Whether either target has the weather turned on. The textures below are
+    // decoded off this rather than off what is running, because the effect the
+    // lock screen wants is not known until it locks - and by then it is far
+    // too late to be decoding PNGs on the GUI thread.
+    readonly property bool everConfigured: Config.ready
+        && (Config.options.background.weatherEffects.desktop.enable
+            || Config.options.background.weatherEffects.lock.enable)
+
+    // The target that is *not* on screen. Locking swaps the two, so this is
+    // what the shell is about to need.
+    readonly property var otherOpt: GlobalStates.screenLocked
+        ? Config.options.background.weatherEffects.desktop
+        : (Config.options.background.weatherEffects.lock.sync
+            ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
+
+    // What a target is asking for: "rain", "fog", "snow", "sun", or empty for
+    // nothing.
+    function effectFor(opt: var): string {
+        if (!Config.ready || !opt?.enable)
             return "";
-        if (root.opt.followWeather)
+        if (opt.followWeather)
             return Weather.liveEffect;
-        return root.opt.effect;
+        return opt.effect;
     }
+
+    // What the config and the sky are asking for. Not necessarily what is on
+    // screen - see below.
+    readonly property string targetEffect: root.effectFor(root.opt)
+    readonly property string warmEffect: root.effectFor(root.otherOpt)
 
     // While following the weather the conditions set this outright, and the
     // settings slider becomes a readout of it rather than a ceiling over it -
@@ -186,7 +206,10 @@ Item {
     // Loaded through a Repeat-wrapped source because an Image clamps.
     Loader {
         id: fogTextures
-        active: chain.active && root.activeEffect === "fog"
+        // Not `chain.active`: building these two 512px sources is part of what
+        // made the first lock of a session drop four frames. They are 1MB of
+        // texture between them, so they may as well be ready.
+        active: root.everConfigured
         sourceComponent: Item {
             readonly property alias fog: fogSource
             readonly property alias clouds: cloudsSource
@@ -229,6 +252,22 @@ Item {
             : ""
     }
 
+    // The grading LUTs for every effect, decoded once and held so that the one
+    // above is a cache hit whenever the effect changes - including the change
+    // that happens as the screen locks. Four 1024x32 images; the whole set is
+    // 145KB on disk.
+    Loader {
+        active: root.everConfigured
+        sourceComponent: Repeater {
+            model: ["rain", "fog", "snow", "sun"]
+            delegate: Image {
+                required property string modelData
+                visible: false
+                source: Qt.resolvedUrl(`../../../assets/images/weather/${modelData}_lut.png`)
+            }
+        }
+    }
+
     // No opacity fade: the intensity ramp above is the fade, and cross-fading
     // the shader against the scene it already contains only muddied it.
     Loader {
@@ -238,6 +277,28 @@ Item {
         sourceComponent: root.activeEffect === "fog" ? fogComponent
             : root.activeEffect === "snow" ? snowComponent
             : root.activeEffect === "sun" ? sunComponent
+            : rainComponent
+    }
+
+    // The same chain again at one pixel, on whichever shader the other target
+    // wants, so that its graphics pipeline is already built by the time the
+    // screen locks. Building one costs about 70ms on the render thread and the
+    // GUI thread blocks on it during sync, which landed four dropped frames on
+    // the first frame of the lock animation. Here it lands on a frame nobody is
+    // watching instead.
+    //
+    // It has to be nominally on screen: an invisible item is never rendered,
+    // so its pipeline is never built. One pixel at 1% is the price. The uniforms
+    // are whatever the running effect happens to have - only the shader the
+    // pipeline is built from matters, not what that pixel ends up showing.
+    Loader {
+        width: 1
+        height: 1
+        opacity: 0.01
+        active: root.warmEffect.length > 0 && root.warmEffect !== root.activeEffect
+        sourceComponent: root.warmEffect === "fog" ? fogComponent
+            : root.warmEffect === "snow" ? snowComponent
+            : root.warmEffect === "sun" ? sunComponent
             : rainComponent
     }
 
