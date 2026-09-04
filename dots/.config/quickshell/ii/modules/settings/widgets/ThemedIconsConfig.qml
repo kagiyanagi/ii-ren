@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -43,7 +45,7 @@ Item {
             }
 
             StyledText {
-                text: Translation.tr("Themed Icons")
+                text: Translation.tr("Icon Packs (Apps & Folders)")
                 font.pixelSize: Appearance.font.pixelSize.large
                 font.family: Appearance.font.family.title
                 color: Appearance.colors.colOnLayer0
@@ -51,47 +53,181 @@ Item {
         }
 
         ContentSection {
-            title: Translation.tr("Themed Icons Configuration")
+            title: Translation.tr("Dynamic Icon Packs")
             icon: "category"
+
+            // Informational explanation card
+            Rectangle {
+                Layout.fillWidth: true
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer2
+                implicitHeight: infoLayout.implicitHeight + 24
+
+                RowLayout {
+                    id: infoLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignTop
+                        iconSize: Appearance.font.pixelSize.larger
+                        text: "palette"
+                        color: Appearance.colors.colPrimary
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Wallpaper-Adaptive Folder Colors")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.family: Appearance.font.family.title
+                            color: Appearance.colors.colOnLayer2
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            text: Translation.tr("Dynamic icon packs (like Breeze Plus, Papirus, and Breeze) use SVG color variables (FollowsColorScheme). When you change wallpapers, Dolphin folder icons automatically adapt to your wallpaper's accent colors.")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+                }
+            }
+
+            // Current Active System Status
+            Rectangle {
+                Layout.fillWidth: true
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer1
+                implicitHeight: statusLayout.implicitHeight + 20
+
+                RowLayout {
+                    id: statusLayout
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.large
+                        text: IconThemes.isCurrentDynamic ? "auto_awesome" : "folder"
+                        color: IconThemes.isCurrentDynamic ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        StyledText {
+                            text: Translation.tr("Active System Theme")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        StyledText {
+                            text: IconThemes.currentSystemTheme.length > 0 ? IconThemes.currentSystemTheme : Translation.tr("Detecting…")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.family: Appearance.font.family.title
+                            color: Appearance.colors.colOnLayer1
+                        }
+                    }
+
+                    Rectangle {
+                        radius: Appearance.rounding.full
+                        color: IconThemes.isCurrentDynamic ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
+                        implicitHeight: 28
+                        implicitWidth: dynamicBadgeText.implicitWidth + 16
+
+                        StyledText {
+                            id: dynamicBadgeText
+                            anchors.centerIn: parent
+                            text: IconThemes.isCurrentDynamic ? Translation.tr("Dynamic") : Translation.tr("Static")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: IconThemes.isCurrentDynamic ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colSubtext
+                        }
+                    }
+                }
+            }
 
             ConfigSwitch {
                 buttonIcon: "magic_button"
-                text: Translation.tr("Enable themed icons")
-                checked: Config.options.appearance.icons.enableThemed
+                text: Translation.tr("Enable dynamic icon theming")
+                checked: IconThemes.enableThemed
                 onCheckedChanged: IconThemes.setThemed(checked)
 
                 StyledToolTip {
-                    text: Translation.tr("When enabled, uses the dynamic Matugen generated icon pack. Fallbacks to Tint Icons.")
+                    text: Translation.tr("Synchronizes icon packs with system wallpaper color extraction and dark/light modes.")
+                }
+            }
+
+            ConfigSwitch {
+                visible: IconThemes.enableThemed
+                buttonIcon: "dark_mode"
+                text: Translation.tr("Auto-switch between light and dark packs")
+                checked: IconThemes.autoSwitchWithDarkMode
+                onCheckedChanged: {
+                    IconThemes.autoSwitchWithDarkMode = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Automatically toggles between your light and dark icon pack selections when night light or dark mode toggles.")
                 }
             }
 
             ContentSubsection {
-                visible: Config.options.appearance.icons.enableThemed
-                title: Translation.tr("Base icon theme")
-                icon: "palette"
+                visible: IconThemes.enableThemed
+                title: Translation.tr("Light Mode Icon Pack")
+                icon: "light_mode"
                 Layout.fillWidth: true
-                tooltip: Translation.tr("Select the base icon theme to be recolored by Matugen.\nRequires generating colors again to apply.")
+                tooltip: Translation.tr("Icon pack applied during Light Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")
 
                 ConfigSelectionArray {
-                    currentValue: Config.options.appearance.iconTheme
+                    currentValue: IconThemes.lightTheme
                     onSelected: (newValue) => {
-                        Config.options.appearance.iconTheme = newValue;
+                        IconThemes.lightTheme = newValue;
                     }
                     options: IconThemes.availableThemes.map((theme) => {
                         return ({
-                            "displayName": theme,
-                            "value": theme,
-                            "icon": "category"
+                            "displayName": (theme.dynamic ? "✦ " : "") + theme.name,
+                            "value": theme.id,
+                            "icon": theme.dynamic ? "auto_awesome" : "folder"
+                        });
+                    })
+                }
+            }
+
+            ContentSubsection {
+                visible: IconThemes.enableThemed
+                title: Translation.tr("Dark Mode Icon Pack")
+                icon: "dark_mode"
+                Layout.fillWidth: true
+                tooltip: Translation.tr("Icon pack applied during Dark Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")
+
+                ConfigSelectionArray {
+                    currentValue: IconThemes.darkTheme
+                    onSelected: (newValue) => {
+                        IconThemes.darkTheme = newValue;
+                    }
+                    options: IconThemes.availableThemes.map((theme) => {
+                        return ({
+                            "displayName": (theme.dynamic ? "✦ " : "") + theme.name,
+                            "value": theme.id,
+                            "icon": theme.dynamic ? "auto_awesome" : "folder"
                         });
                     })
                 }
             }
 
             RippleButtonWithIcon {
-                visible: Config.options.appearance.icons.enableThemed
-                materialIcon: "magic_button"
-                mainText: Translation.tr("Apply Theme")
-                useDynamicRadius: true
+                id: applyButton
+                property bool appliedRecently: false
+                materialIcon: appliedRecently ? "check" : "magic_button"
+                mainText: appliedRecently ? Translation.tr("Applied to Dolphin & GTK!") : Translation.tr("Apply Theme Now")
+                buttonRadius: Appearance.rounding.small
                 implicitHeight: 48
                 Layout.fillWidth: true
                 colBackground: Appearance.colors.colPrimaryContainer
@@ -99,16 +235,17 @@ Item {
                 colRipple: Appearance.colors.colPrimaryContainerActive
                 colText: Appearance.colors.colOnPrimaryContainer
                 onClicked: {
-                    IconThemes.applyTheme(false);
+                    IconThemes.applyCurrent();
+                    appliedRecently = true;
+                    feedbackTimer.restart();
                 }
-            }
 
-            ConfigSwitch {
-                buttonIcon: "restart_alt"
-                text: Translation.tr("Auto restart Quickshell on theme change")
-                checked: Config.options.appearance.wallpaperTheming.autoRestartQuickshell
-                onCheckedChanged: {
-                    Config.options.appearance.wallpaperTheming.autoRestartQuickshell = checked;
+                Timer {
+                    id: feedbackTimer
+                    interval: 2000
+                    onTriggered: {
+                        applyButton.appliedRecently = false;
+                    }
                 }
             }
         }

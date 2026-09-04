@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+
+# recolor-icon-theme
+# Automatically generates/updates a -Dynamic variant of any icon pack to match the current wallpaper color.
+
+THEME_ARG="$1"
+if [ -z "$THEME_ARG" ]; then
+    echo "Usage: recolor-icon-theme <path-or-theme-name>"
+    exit 1
+fi
+
+# Resolve input directory
+INPUT_DIR=""
+if [ -d "$THEME_ARG" ]; then
+    INPUT_DIR=$(realpath "$THEME_ARG")
+else
+    for d in "$HOME/.icons/$THEME_ARG" "$HOME/.local/share/icons/$THEME_ARG" "/usr/share/icons/$THEME_ARG"; do
+        if [ -d "$d" ]; then
+            INPUT_DIR="$d"
+            break
+        fi
+    done
+fi
+
+if [ -z "$INPUT_DIR" ] || [ ! -d "$INPUT_DIR" ]; then
+    echo "Error: Could not find icon theme '$THEME_ARG'"
+    exit 1
+fi
+
+BASE_NAME=$(basename "$INPUT_DIR")
+BASE_NAME="${BASE_NAME%-Dynamic}"
+OUTPUT_DIR="$HOME/.local/share/icons/${BASE_NAME}-Dynamic"
+
+# Read target color
+COLOR_FILE="$HOME/.local/state/quickshell/user/generated/color.txt"
+if [ -f "$COLOR_FILE" ]; then
+    TARGET_COLOR=$(cat "$COLOR_FILE" | tr -d '\n')
+fi
+TARGET_COLOR="${TARGET_COLOR:-#8283a5}"
+
+python3 - <<PYEOF "$INPUT_DIR" "$OUTPUT_DIR" "$BASE_NAME" "$TARGET_COLOR"
+import sys, os, re, colorsys, shutil
+
+input_dir = sys.argv[1]
+output_dir = sys.argv[2]
+base_name = sys.argv[3]
+target_hex = sys.argv[4]
+
+def hex_to_hsv(hex_color):
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 3:
+        hex_color = ''.join([c*2 for c in hex_color])
+    rgb = tuple(int(hex_color[i:i+2], 16)/255.0 for i in (0, 2, 4))
+    return colorsys.rgb_to_hsv(*rgb)
+
+def hsv_to_hex(h, s, v):
+    rgb = colorsys.hsv_to_rgb(h, s, v)
+    return "#{:02x}{:02x}{:02x}".format(int(rgb[0]*255), int(rgb[1]*255), int(rgb[2]*255))
+
+def get_colors_from_svg(svg_path):
+    with open(svg_path, 'r', encoding='utf-8', errors='ignore') as f:
+        content = f.read()
+    clean_content = re.sub(r'\.ColorScheme-[^\{]*\{[^\}]*\}', '', content)
+    colors = set(re.findall(r'#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b', clean_content))
+    return ["#" + c.lower() for c in colors]
+
+# Find best reference folder.svg
+ref_file = None
+candidates = [
+    "scalable/places/folder.svg",
+    "64x64/places/folder.svg",
+    "places/scalable/folder.svg",
+    "places/64/folder.svg",
+    "48x48/places/folder.svg",
+    "32x32/places/folder.svg",
+    "24x24/places/folder.svg",
+    "16x16/places/folder.svg",
+    "places/folder.svg"
+]
+
+for c in candidates:
+    p = os.path.join(input_dir, c)
+    if os.path.isfile(p):
+        ref_file = p
+        break
+
+if not ref_file:
+    for root, _, files in os.walk(input_dir):
+        if "folder.svg" in files and "places" in root.split(os.sep):
+            ref_file = os.path.join(root, "folder.svg")
+            break
+
+if not ref_file:
+    print(f"No folder.svg found in {input_dir}")
+    sys.exit(0)
+
+base_colors = get_colors_from_svg(ref_file)
+target_hsv = hex_to_hsv(target_hex)
+
+color_map = {}
+for c in base_colors:
+    orig_hsv = hex_to_hsv(c)
+    if orig_hsv[1] > 0.12 and 0.08 < orig_hsv[2] < 0.98:
+        new_h = target_hsv[0]
+        new_s = max(target_hsv[1] * 0.8, min(1.0, orig_hsv[1]))
+        new_v = orig_hsv[2]
+        color_map[c] = hsv_to_hex(new_h, new_s, new_v)
+
+if not color_map:
+    for c in base_colors:
+        orig_hsv = hex_to_hsv(c)
+        if 0.2 < orig_hsv[2] < 0.85:
+            new_h = target_hsv[0]
+            new_s = target_hsv[1]
+            new_v = orig_hsv[2]
+            color_map[c] = hsv_to_hex(new_h, new_s, new_v)
+
+os.makedirs(output_dir, exist_ok=True)
+
+# Copy and update index.theme
+input_index = os.path.join(input_dir, "index.theme")
+output_index = os.path.join(output_dir, "index.theme")
+if os.path.isfile(input_index):
+    with open(input_index, 'r', encoding='utf-8', errors='ignore') as f:
+        idx_content = f.read()
+    idx_content = re.sub(r'^Name=.*', f'Name={base_name} Dynamic', idx_content, flags=re.MULTILINE)
+    if re.search(r'^Inherits=', idx_content, re.MULTILINE):
+        idx_content = re.sub(r'^Inherits=(.*)', f'Inherits={base_name},\\1', idx_content, flags=re.MULTILINE)
+    else:
+        idx_content = re.sub(r'(\[Icon Theme\])', f'\\1\nInherits={base_name},breeze,hicolor', idx_content)
+    with open(output_index, 'w', encoding='utf-8') as f:
+        f.write(idx_content)
+
+# Recolor only places SVGs
+for root, _, files in os.walk(input_dir):
+    if "places" in root.split(os.sep):
+        rel_root = os.path.relpath(root, input_dir)
+        dest_root = os.path.join(output_dir, rel_root)
+        os.makedirs(dest_root, exist_ok=True)
+        for f in files:
+            in_p = os.path.join(root, f)
+            out_p = os.path.join(dest_root, f)
+            if f.endswith('.svg'):
+                with open(in_p, 'r', encoding='utf-8', errors='ignore') as inf:
+                    content = inf.read()
+                for orig, repl in color_map.items():
+                    pattern = re.compile(orig + r'\b', re.IGNORECASE)
+                    content = pattern.sub(repl, content)
+                with open(out_p, 'w', encoding='utf-8') as outf:
+                    outf.write(content)
+
+print(f"Successfully generated dynamic theme: {output_dir}")
+PYEOF

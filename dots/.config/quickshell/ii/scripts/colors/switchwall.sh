@@ -40,9 +40,11 @@ pre_process() {
     if [[ "$mode_flag" == "dark" ]]; then
         gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
         gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
+        "$SCRIPT_DIR/apply-icon-theme.sh" --mode "dark" &
     elif [[ "$mode_flag" == "light" ]]; then
         gsettings set org.gnome.desktop.interface color-scheme 'prefer-light'
         gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3'
+        "$SCRIPT_DIR/apply-icon-theme.sh" --mode "light" &
     fi
 
     if [ ! -d "$CACHE_DIR"/user/generated ]; then
@@ -57,6 +59,9 @@ post_process() {
 
     handle_kde_material_you_colors &
     "$SCRIPT_DIR/code/material-code-set-color.sh"
+
+    # Sync and recolor dynamic icon themes with new wallpaper colors
+    "$SCRIPT_DIR/apply-icon-theme.sh" --sync &
 
     # Generate YouTube Music theme
     "$SCRIPT_DIR/../ytmusic/generate-ytmusic-theme.sh" > /dev/null 2>&1 &

@@ -224,6 +224,12 @@ Singleton {
                     property string type: "auto" // Allowed: auto, scheme-content, scheme-expressive, scheme-fidelity, scheme-fruit-salad, scheme-monochrome, scheme-neutral, scheme-rainbow, scheme-tonal-spot
                     property string accentColor: ""
                 }
+                property JsonObject icons: JsonObject {
+                    property bool enableThemed: true
+                    property string lightTheme: "breeze-plus"
+                    property string darkTheme: "breeze-plus-dark"
+                    property bool autoSwitchWithDarkMode: true
+                }
                 property list<string> customColorSchemes: []
             }
 

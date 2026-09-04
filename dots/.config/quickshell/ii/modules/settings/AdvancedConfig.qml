@@ -2,37 +2,126 @@ import QtQuick
 import QtQuick.Layouts
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 
-ContentPage {
-    id: page
-    readonly property int index: 6
+Item {
+    id: advancedConfigRoot
+    anchors.fill: parent
+
+    property alias contentY: page.contentY
+    property alias activeSubPage: subPageOverlay.activeSubPage
     property bool register: parent.register ?? false
-    forceWidth: true
 
-    ContentSection {
-        icon: "colors"
-        title: Translation.tr("Color generation")
-
-        ConfigSwitch {
-            buttonIcon: "hardware"
-            text: Translation.tr("Shell & utilities")
-            checked: Config.options.appearance.wallpaperTheming.enableAppsAndShell
-            onCheckedChanged: {
-                Config.options.appearance.wallpaperTheming.enableAppsAndShell = checked;
+    Connections {
+        target: root
+        function onPendingSectionHighlightChanged() {
+            if (root.pendingSectionHighlight && root.pendingSectionHighlight.endsWith(".qml")) {
+                advancedConfigRoot.activeSubPage = Qt.resolvedUrl(root.pendingSectionHighlight);
+                root.pendingSectionHighlight = "";
             }
         }
-        ConfigSwitch {
-            buttonIcon: "tv_options_input_settings"
-            text: Translation.tr("Qt apps")
-            checked: Config.options.appearance.wallpaperTheming.enableQtApps
-            onCheckedChanged: {
-                Config.options.appearance.wallpaperTheming.enableQtApps = checked;
-            }
-            StyledToolTip {
-                text: Translation.tr("Shell & utilities theming must also be enabled")
-            }
+    }
+
+    Component.onCompleted: {
+        if (root.pendingSectionHighlight && root.pendingSectionHighlight.endsWith(".qml")) {
+            advancedConfigRoot.activeSubPage = Qt.resolvedUrl(root.pendingSectionHighlight);
+            root.pendingSectionHighlight = "";
         }
+    }
+
+    ContentPage {
+        id: page
+        readonly property int index: 6
+        property bool register: advancedConfigRoot.register
+        anchors.fill: parent
+        forceWidth: true
+
+        opacity: subPageOverlay.slideProgress
+        visible: opacity > 0
+
+        ContentSection {
+            icon: "colors"
+            title: Translation.tr("Color generation")
+
+            ConfigSwitch {
+                buttonIcon: "hardware"
+                text: Translation.tr("Shell & utilities")
+                checked: Config.options.appearance.wallpaperTheming.enableAppsAndShell
+                onCheckedChanged: {
+                    Config.options.appearance.wallpaperTheming.enableAppsAndShell = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "tv_options_input_settings"
+                text: Translation.tr("Qt apps")
+                checked: Config.options.appearance.wallpaperTheming.enableQtApps
+                onCheckedChanged: {
+                    Config.options.appearance.wallpaperTheming.enableQtApps = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Shell & utilities theming must also be enabled")
+                }
+            }
+            RippleButton {
+                id: iconThemeEntry
+                Layout.fillWidth: true
+                leftPadding: 8
+                rightPadding: 8
+                implicitHeight: contentItem.implicitHeight + 12 * 2
+                buttonRadius: Appearance.rounding.verysmall
+                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
+
+                onClicked: advancedConfigRoot.activeSubPage = Qt.resolvedUrl("widgets/ThemedIconsConfig.qml")
+
+                SearchHandler {
+                    searchString: Translation.tr("Icon Themes, Dynamic Icon Pack, Dolphin folders, App icons")
+                }
+
+                contentItem: RowLayout {
+                    spacing: 10
+
+                    MaterialSymbol {
+                        text: "category"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnSecondaryContainer
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: Translation.tr("Dynamic Icon Pack (Apps & Folders)")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.family: Appearance.font.family.main
+                            color: Appearance.colors.colOnSecondaryContainer
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: {
+                                if (!IconThemes.enableThemed)
+                                    return Translation.tr("Off");
+                                return IconThemes.currentSystemTheme.length > 0 
+                                    ? IconThemes.currentSystemTheme + (IconThemes.isCurrentDynamic ? " • " + Translation.tr("Dynamic") : "")
+                                    : Translation.tr("Configure dynamic icon packs");
+                            }
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+
+                    MaterialSymbol {
+                        text: "chevron_right"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colSubtext
+                    }
+                }
+            }
         ConfigSwitch {
             buttonIcon: "terminal"
             text: Translation.tr("Terminal")
@@ -266,5 +355,12 @@ ContentPage {
                 }
             }
         }
+    }
+    }
+
+    ConfigSubPageHost {
+        id: subPageOverlay
+        anchors.fill: parent
+        z: 10
     }
 }

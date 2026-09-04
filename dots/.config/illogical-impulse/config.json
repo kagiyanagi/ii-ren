@@ -45,6 +45,12 @@
             "reading": "Readex Pro",
             "title": "Space Grotesk"
         },
+        "icons": {
+            "autoSwitchWithDarkMode": true,
+            "darkTheme": "breeze-plus-dark",
+            "enableThemed": true,
+            "lightTheme": "breeze-plus"
+        },
         "palette": {
             "accentColor": "",
             "type": "scheme-auto"
