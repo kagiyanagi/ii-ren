@@ -122,6 +122,64 @@ Item {
                     }
                 }
             }
+
+            RippleButton {
+                id: cursorThemeEntry
+                Layout.fillWidth: true
+                leftPadding: 8
+                rightPadding: 8
+                implicitHeight: contentItem.implicitHeight + 12 * 2
+                buttonRadius: Appearance.rounding.verysmall
+                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
+
+                onClicked: advancedConfigRoot.activeSubPage = Qt.resolvedUrl("widgets/CustomCursorConfig.qml")
+
+                SearchHandler {
+                    searchString: Translation.tr("Cursor Theme, Cursor Size, Mouse, Pointer, Custom Cursor")
+                }
+
+                contentItem: RowLayout {
+                    spacing: 10
+
+                    MaterialSymbol {
+                        text: "arrow_selector_tool"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnSecondaryContainer
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: Translation.tr("Cursor (Pointer Theme & Size)")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.family: Appearance.font.family.main
+                            color: Appearance.colors.colOnSecondaryContainer
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: {
+                                const theme = CursorTheme.configuredTheme.length > 0 ? CursorTheme.configuredTheme : Translation.tr("Default");
+                                const size = CursorTheme.configuredSize;
+                                return `${theme} · ${size}px`;
+                            }
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+
+                    MaterialSymbol {
+                        text: "chevron_right"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colSubtext
+                    }
+                }
+            }
         ConfigSwitch {
             buttonIcon: "terminal"
             text: Translation.tr("Terminal")

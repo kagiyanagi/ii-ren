@@ -230,6 +230,10 @@ Singleton {
                     property string darkTheme: "breeze-plus-dark"
                     property bool autoSwitchWithDarkMode: true
                 }
+                property JsonObject cursor: JsonObject {
+                    property string theme: "Bibata-Modern-Classic"
+                    property int size: 24
+                }
                 property list<string> customColorSchemes: []
             }
 

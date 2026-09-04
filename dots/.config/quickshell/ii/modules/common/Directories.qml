@@ -83,6 +83,9 @@ Singleton {
     property string locationServiceScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/privacy/locationservice.sh`)
     property string geniusLyricsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/lyrics/genius-lyrics.js`)
     property string localSendDownloadPath: FileUtils.trimFileProtocol(`${Directories.home}/Downloads/localsend`)
+    property string applyCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/apply-cursor-theme.sh`)
+    property string listCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/list-cursor-themes.py`)
+    property string queryCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/query-cursor-theme.py`)
 
     // Extension system paths
     property string extensionsPath: FileUtils.trimFileProtocol(`${Directories.shellConfig}/extensions`)

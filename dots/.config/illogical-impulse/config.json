@@ -51,6 +51,10 @@
             "enableThemed": true,
             "lightTheme": "breeze-plus"
         },
+        "cursor": {
+            "theme": "macOS-White",
+            "size": 28
+        },
         "palette": {
             "accentColor": "",
             "type": "scheme-auto"

@@ -317,6 +317,46 @@ ContentPage {
         }
 
         ContentSubsection {
+            title: Translation.tr("Cursor")
+
+            ConfigRow {
+                StyledComboBox {
+                    id: hyprCursorSelector
+                    Layout.fillWidth: true
+                    buttonIcon: "arrow_selector_tool"
+                    textRole: "name"
+                    model: CursorTheme.availableThemes
+                    currentIndex: {
+                        for (let i = 0; i < CursorTheme.availableThemes.length; i++) {
+                            if (CursorTheme.availableThemes[i].id === CursorTheme.configuredTheme)
+                                return i;
+                        }
+                        return -1;
+                    }
+                    onActivated: index => {
+                        if (index >= 0 && index < CursorTheme.availableThemes.length) {
+                            CursorTheme.setCursor(CursorTheme.availableThemes[index].id, CursorTheme.configuredSize);
+                        }
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "format_size"
+                    text: Translation.tr("Size")
+                    from: 12
+                    to: 64
+                    stepSize: 2
+                    value: CursorTheme.configuredSize
+                    onValueChanged: {
+                        if (value !== CursorTheme.configuredSize) {
+                            CursorTheme.setCursor(CursorTheme.configuredTheme, value);
+                        }
+                    }
+                }
+            }
+        }
+
+        ContentSubsection {
             title: Translation.tr("Focus follows mouse")
 
             ConfigSelectionArray {
