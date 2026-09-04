@@ -99,7 +99,12 @@ Item {
         implicitHeight: cardLayout.implicitHeight + 40
         height: implicitHeight
         radius: Appearance.rounding.windowRounding
-        color: Appearance.colors.colLayer1
+        // Opaque base, not colLayer1: the layer colours are solved against
+        // contentTransparency so a panel on the desktop can show through, and
+        // a modal card that shows the page it is blocking is unreadable.
+        // WindowDialog does the same thing for the same reason. Children stay
+        // on colLayer2, which is already solved against this exact surface.
+        color: Appearance.colors.colLayer1Base
         border.width: 1
         border.color: Appearance.colors.colOutlineVariant
 
@@ -127,7 +132,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: 20
             anchors.rightMargin: 20
-            spacing: 14
+            spacing: 12
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
@@ -179,8 +184,8 @@ Item {
                         readonly property real rad: tick.angle * Math.PI / 180
                         readonly property bool filled: tick.index < Fingerprint.enrollStage
 
-                        width: 5
-                        height: 15
+                        width: 4
+                        height: 16
                         radius: Appearance.rounding.full
                         x: parent.width / 2 + parent.ringRadius * Math.cos(tick.rad) - width / 2
                         y: parent.height / 2 + parent.ringRadius * Math.sin(tick.rad) - height / 2
@@ -191,16 +196,13 @@ Item {
                         scale: tick.filled ? 1.15 : 1
 
                         Behavior on color {
-                            ColorAnimation {
-                                duration: 180
-                            }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
 
+                        // Scale is spatial, so the fast spatial spec's overshoot
+                        // is wanted here — it is what makes a stage land.
                         Behavior on scale {
-                            NumberAnimation {
-                                duration: 180
-                                easing.type: Easing.OutBack
-                            }
+                            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                         }
                     }
                 }

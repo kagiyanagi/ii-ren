@@ -1628,6 +1628,14 @@ Singleton {
                 property JsonObject security: JsonObject {
                     property bool unlockKeyring: true
                     property bool requirePasswordToPower: false
+                    property JsonObject fingerprint: JsonObject {
+                        property bool enable: true
+                        property bool showIndicator: true
+                        // pam_fprintd stops listening after this many failed
+                        // scans. Re-arming past that point would leave the
+                        // reader lit with nothing behind it.
+                        property int maxAttempts: 3
+                    }
                 }
                 property bool materialShapeChars: true
                 // Freezes widget drag/resize on the lock screen specifically,

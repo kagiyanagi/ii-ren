@@ -357,15 +357,101 @@ MouseArea {
             Layout.leftMargin: 10
             Layout.rightMargin: 6
             Layout.alignment: Qt.AlignVCenter
-            active: root.context.fingerprintsConfigured
+            active: root.context.fingerprintsConfigured && Config.options.lock.security.fingerprint.showIndicator
             visible: active
 
-            sourceComponent: MaterialSymbol {
-                id: fingerprintIcon
-                fill: 1
-                text: "fingerprint"
-                iconSize: Appearance.font.pixelSize.hugeass
-                color: Appearance.colors.colOnSurfaceVariant
+            sourceComponent: ColumnLayout {
+                spacing: 2
+
+                // Balances the attempt dots below, so the icon sits on the
+                // toolbar's centre line instead of riding high by half the
+                // dot row. The dots keep their space whether or not they are
+                // showing — otherwise the icon would hop the first time a
+                // finger failed.
+                Item {
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitWidth: 0
+                    implicitHeight: attemptDots.implicitHeight
+                }
+
+                MaterialSymbol {
+                    id: fingerprintIcon
+                    Layout.alignment: Qt.AlignHCenter
+                    fill: 1
+                    text: root.context.fingerprintExhausted ? "fingerprint_off" : "fingerprint"
+                    iconSize: Appearance.font.pixelSize.hugeass
+                    // Tinted while the reader is actually listening, so the
+                    // icon says "armed" rather than just "this laptop has a
+                    // sensor". fingerNeeded is best-effort — a driver that
+                    // never sets it simply leaves the icon in its resting
+                    // colour, which is what it did before.
+                    color: root.context.fingerprintFailed ? Appearance.colors.colError : root.context.fingerprintExhausted ? Appearance.colors.colSubtext : Fingerprint.fingerNeeded ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
+
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+
+                    // Swells while the sensor has a finger on it. This is the
+                    // whole point of watching finger-present: a press reader
+                    // takes a moment to decide, and without this the screen
+                    // gives nothing back until PAM finally answers.
+                    //
+                    // Scale is spatial, so clickBounce's overshoot is wanted —
+                    // it is the same acknowledgement a button press gets.
+                    transformOrigin: Item.Center
+                    scale: Fingerprint.fingerPresent ? 1.12 : 1
+
+                    Behavior on scale {
+                        animation: Appearance.animation.clickBounce.numberAnimation.createObject(this)
+                    }
+
+                    // Same shake the password field gets, so a finger that did
+                    // not match reads the same as a password that did not.
+                    ErrorShakeAnimation {
+                        id: fingerprintShakeAnim
+                        target: fingerprintIcon
+                    }
+                    Connections {
+                        target: root.context
+                        function onFingerprintFailedChanged() {
+                            if (root.context.fingerprintFailed)
+                                fingerprintShakeAnim.restart();
+                        }
+                    }
+                }
+
+                // One dot per attempt, spent ones going red. pam_fprintd stops
+                // listening after the last one, and a reader that has quietly
+                // stopped listening is worse than one that says so.
+                RowLayout {
+                    id: attemptDots
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 4
+                    opacity: root.context.fingerprintAttempts > 0 ? 1 : 0
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+
+                    Repeater {
+                        model: root.context.fingerprintMaxAttempts
+
+                        delegate: Rectangle {
+                            id: attemptDot
+                            required property int index
+                            readonly property bool spent: attemptDot.index >= (root.context.fingerprintMaxAttempts - root.context.fingerprintAttempts)
+
+                            implicitWidth: 4
+                            implicitHeight: 4
+                            radius: Appearance.rounding.full
+                            color: attemptDot.spent ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
+
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
+                        }
+                    }
+                }
             }
         }
 

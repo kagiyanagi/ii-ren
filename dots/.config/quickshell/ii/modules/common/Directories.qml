@@ -46,6 +46,9 @@ Singleton {
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
 	property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.md`)
 	property string notesPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notes.json`)
+	// finger slot -> custom name. Its own file rather than a config key:
+	// the config schema has no shape for a map with arbitrary keys.
+	property string fingerprintLabelsPath: FileUtils.trimFileProtocol(`${Directories.state}/user/fingerprint_labels.json`)
 	property string conflictCachePath: FileUtils.trimFileProtocol(`${Directories.cache}/conflict-killer`)
     property string notificationsPath: FileUtils.trimFileProtocol(`${Directories.cache}/notifications/notifications.json`)
     property string lyricsPath: FileUtils.trimFileProtocol(`${Directories.cache}/lyrics/lyrics.json`)

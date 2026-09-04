@@ -80,10 +80,10 @@ Item {
         MaterialSymbol {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
-            anchors.topMargin: 5
+            anchors.topMargin: 4
             visible: digit.enrolled || digit.selected
             text: digit.selected && !digit.enrolled ? "add" : "fingerprint"
-            iconSize: 15
+            iconSize: 16
             fill: 1
             color: digit.colContent
         }
@@ -178,7 +178,7 @@ Item {
             y: 96
             width: root.palmDesignWidth
             height: 68
-            radius: 26
+            radius: Appearance.rounding.large
             color: Appearance.colors.colLayer2
             border.width: 1
             border.color: Appearance.colors.colOutlineVariant

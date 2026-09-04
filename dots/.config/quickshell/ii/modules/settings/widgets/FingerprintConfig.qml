@@ -38,6 +38,11 @@ Item {
     // rather than trusting whatever was true at startup.
     Component.onCompleted: Fingerprint.refresh()
 
+    // Navigating back destroys this page. Whatever the reader was doing for it
+    // has to stop here, or the claim outlives the page and the lock screen
+    // finds the sensor busy.
+    Component.onDestruction: Fingerprint.releaseReader()
+
     ContentPage {
         id: page
         anchors.fill: parent
@@ -93,7 +98,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.leftMargin: 16
                     anchors.rightMargin: 12
-                    spacing: 14
+                    spacing: 12
 
                     MaterialSymbol {
                         text: Fingerprint.deviceAvailable ? "fingerprint" : "sensors_off"
@@ -119,8 +124,14 @@ Item {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
                             text: {
+                                // "fprintd missing" and "fprintd running but
+                                // blind" need different answers: the second one
+                                // means the reader has no libfprint driver,
+                                // which installing fprintd again will not fix.
+                                if (!Fingerprint.installed)
+                                    return Translation.tr("fprintd is not installed, or its system service is unavailable.");
                                 if (!Fingerprint.deviceAvailable)
-                                    return Translation.tr("Make sure fprintd is installed and the reader is supported by libfprint.");
+                                    return Translation.tr("fprintd is running but reports no devices, so libfprint has no driver for this reader. Readers that ship one only for Ubuntu — Dell ControlVault, some Goodix and Synaptics — need libfprint's TOD build plus that vendor's driver package.");
                                 const kind = Fingerprint.pressType ? Translation.tr("Press reader") : Translation.tr("Swipe reader");
                                 return `${kind} · ${Translation.tr("%1 scans per fingerprint").arg(Fingerprint.numEnrollStages)}`;
                             }

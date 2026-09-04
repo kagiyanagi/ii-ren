@@ -63,7 +63,9 @@ Scope {
                         GlobalStates.overlayOpen = false;
                     }
                     lockContext.reset();
-                    lockContext.tryFingerUnlock();
+                    // Every lock starts with a fresh attempt budget, so a
+                    // reader given up on last time is listening again.
+                    lockContext.resetFingerprint();
                 }
             }
         }
