@@ -50,6 +50,11 @@ fi
 light_theme="${light_theme:-${existing_light:-breeze-plus}}"
 dark_theme="${dark_theme:-${existing_dark:-breeze-plus-dark}}"
 
+# Strip any legacy -Dynamic suffix if present
+light_theme="${light_theme%-Dynamic}"
+dark_theme="${dark_theme%-Dynamic}"
+[[ -n "$target_theme" ]] && target_theme="${target_theme%-Dynamic}"
+
 # Detect current mode if not specified
 if [[ -z "$mode" ]]; then
     current_scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null | tr -d "'")
@@ -86,56 +91,22 @@ update_conf_key() {
     fi
 }
 
-# Auto-recolor non-native themes to match system wallpaper color
-resolve_and_recolor_theme() {
-    local theme="$1"
-    [[ -z "$theme" ]] && return
-
-    # Breeze family has native dynamic support built-in
-    if [[ "$theme" =~ ^[Bb]reeze ]]; then
-        echo "$theme"
-        return
-    fi
-
-    local base_name="${theme%-Dynamic}"
-    local recolor_bin=""
-    if [ -x "$SCRIPT_DIR/../icons/recolor-icon-theme" ]; then
-        recolor_bin="$SCRIPT_DIR/../icons/recolor-icon-theme"
-    elif [ -x "$HOME/.local/bin/recolor-icon-theme" ]; then
-        recolor_bin="$HOME/.local/bin/recolor-icon-theme"
-    fi
-
-    if [ -n "$recolor_bin" ]; then
-        "$recolor_bin" "$base_name" >/dev/null 2>&1
-        if [ -d "$HOME/.local/share/icons/${base_name}-Dynamic" ]; then
-            echo "${base_name}-Dynamic"
-            return
-        fi
-    fi
-
-    echo "$theme"
-}
-
-effective_target=$(resolve_and_recolor_theme "$target_theme")
-effective_light=$(resolve_and_recolor_theme "$light_theme")
-effective_dark=$(resolve_and_recolor_theme "$dark_theme")
-
 # Persist to kde-material-you-colors configuration
-if [[ -n "$effective_light" ]]; then
-    update_conf_key "$KDE_MYC_CONF" "iconslight" "$effective_light"
+if [[ -n "$light_theme" ]]; then
+    update_conf_key "$KDE_MYC_CONF" "iconslight" "$light_theme"
 fi
-if [[ -n "$effective_dark" ]]; then
-    update_conf_key "$KDE_MYC_CONF" "iconsdark" "$effective_dark"
+if [[ -n "$dark_theme" ]]; then
+    update_conf_key "$KDE_MYC_CONF" "iconsdark" "$dark_theme"
 fi
 
 # Apply to KDE (Dolphin and Qt apps)
 if command -v kwriteconfig6 &>/dev/null; then
-    kwriteconfig6 --file kdeglobals --group Icons --key Theme "$effective_target"
+    kwriteconfig6 --file kdeglobals --group Icons --key Theme "$target_theme"
 fi
 
 # Apply to GNOME / GTK
 if command -v gsettings &>/dev/null; then
-    gsettings set org.gnome.desktop.interface icon-theme "$effective_target" 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface icon-theme "$target_theme" 2>/dev/null || true
 fi
 
 # Notify KDE applications (KIconLoader in Dolphin, etc.)
@@ -143,4 +114,4 @@ if command -v qdbus6 &>/dev/null; then
     qdbus6 org.kde.KGlobalSettings /KGlobalSettings org.kde.KGlobalSettings.notifyChange 2 0 2>/dev/null || true
 fi
 
-echo "Applied icon theme: $effective_target (light: $effective_light, dark: $effective_dark, mode: $mode)"
+echo "Applied icon theme: $target_theme (light: $light_theme, dark: $dark_theme, mode: $mode)"

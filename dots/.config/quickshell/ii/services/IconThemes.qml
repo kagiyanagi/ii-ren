@@ -113,12 +113,7 @@ Singleton {
     }
 
     function updateIsCurrentDynamic() {
-        if (!root.currentSystemTheme) return;
-        if (root.currentSystemTheme.endsWith("-Dynamic")) {
-            root.isCurrentDynamic = true;
-            return;
-        }
-        if (root.availableThemes.length === 0) return;
+        if (!root.currentSystemTheme || root.availableThemes.length === 0) return;
         const matched = root.availableThemes.find(t => t.id === root.currentSystemTheme);
         root.isCurrentDynamic = matched ? matched.dynamic : false;
     }

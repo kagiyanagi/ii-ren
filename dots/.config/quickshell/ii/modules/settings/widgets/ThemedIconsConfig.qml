@@ -53,7 +53,7 @@ Item {
         }
 
         ContentSection {
-            title: Translation.tr("Dynamic Icon Packs")
+            title: Translation.tr("Icon Packs")
             icon: "category"
 
             // Informational explanation card
@@ -82,7 +82,7 @@ Item {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: Translation.tr("Wallpaper-Adaptive Folder Colors")
+                            text: Translation.tr("System Icon Themes")
                             font.pixelSize: Appearance.font.pixelSize.normal
                             font.family: Appearance.font.family.title
                             color: Appearance.colors.colOnLayer2
@@ -91,7 +91,7 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             wrapMode: Text.WordWrap
-                            text: Translation.tr("Dynamic icon packs (like Breeze Plus, Papirus, and Breeze) use SVG color variables (FollowsColorScheme). When you change wallpapers, Dolphin folder icons automatically adapt to your wallpaper's accent colors.")
+                            text: Translation.tr("Select icon packs for apps and folders across KDE (Dolphin, Qt) and GTK. Packs marked with ✦ (like Breeze and Breeze Plus) natively adapt their folder colors to your wallpaper.")
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.colors.colSubtext
                         }
@@ -154,13 +154,13 @@ Item {
             }
 
             ConfigSwitch {
-                buttonIcon: "magic_button"
-                text: Translation.tr("Enable dynamic icon theming")
+                buttonIcon: "palette"
+                text: Translation.tr("Enable icon theme management")
                 checked: IconThemes.enableThemed
                 onCheckedChanged: IconThemes.setThemed(checked)
 
                 StyledToolTip {
-                    text: Translation.tr("Synchronizes icon packs with system wallpaper color extraction and dark/light modes.")
+                    text: Translation.tr("Synchronizes icon packs across KDE and GTK with light and dark mode switching.")
                 }
             }
 
