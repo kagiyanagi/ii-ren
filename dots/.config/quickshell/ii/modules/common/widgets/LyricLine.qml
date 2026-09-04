@@ -15,8 +15,13 @@ Item {
     property int textHorizontalAlignment: Text.AlignHCenter
     property real gradientDensity: 1.0
 
+    // Set by LyricScroller. Resolved through the caller's scope before, which
+    // silently collapsed the line to zero height in any file that named its
+    // LyricScroller something else.
+    property real rowHeight: 0
+
     width: parent.width
-    height: lyricScroller.rowHeight
+    height: lyricLineItem.rowHeight
     transformOrigin: lyricLineItem.textHorizontalAlignment === Text.AlignLeft  ? Item.Left  :
                  lyricLineItem.textHorizontalAlignment === Text.AlignRight ? Item.Right :
                                                                               Item.Center

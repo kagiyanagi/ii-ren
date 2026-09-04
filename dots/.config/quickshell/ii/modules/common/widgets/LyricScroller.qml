@@ -63,6 +63,7 @@ Item {
 
             LyricLine {
                 required property int index
+                rowHeight: root.rowHeight
                 property int lineOffset: index - root.halfVisibleLines
                 property int actualIndex: root.targetCurrentIndex + lineOffset
                 property bool isValidLine: root.hasSyncedLines && actualIndex >= 0 && actualIndex < LyricsService.syncedLines.length
