@@ -153,7 +153,7 @@ ContentPage {
                                     from: 0
                                     to: 360
                                     loops: Animation.Infinite
-                                    duration: Appearance.animation.elementMoveDuration * 4
+                                    duration: Appearance.animation.elementMove.duration * 4
                                 }
                             }
 

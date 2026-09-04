@@ -28,7 +28,18 @@ Singleton {
         if (configLang !== "auto")
             return configLang;
 
-        return Qt.locale().name;
+        return root.resolveLocale(Qt.locale().name);
+    }
+
+    // Qt reports the full system locale (en_IN, pt_PT, de_AT...), and most of
+    // those have no translation file of their own. Take an exact match if there
+    // is one, else any file for the same language, else English.
+    function resolveLocale(locale) {
+        const available = root.allAvailableLanguages;
+        if (available.includes(locale))
+            return locale;
+        const base = locale.split("_")[0];
+        return available.find(lang => lang.startsWith(base + "_")) ?? "en_US";
     }
 
     TranslationScanner {
@@ -117,6 +128,7 @@ Singleton {
 
     component TranslationReader: FileView {
         id: translationReader
+        printErrors: false // A language with no file of its own is normal, onLoadFailed handles it
         required property string translationsDir
         property string languageCode: root.languageCode
         signal contentLoaded(var data)

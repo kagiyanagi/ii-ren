@@ -48,6 +48,7 @@ Singleton {
 
     FileView {
         id: extFileView
+        printErrors: false // Written on the first install; absent until then
         path: Directories.widgetExtensionsPath
         watchChanges: true
         atomicWrites: true

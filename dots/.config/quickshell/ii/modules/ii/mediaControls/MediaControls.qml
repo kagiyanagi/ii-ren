@@ -88,7 +88,7 @@ Scope {
             color: "transparent"
             WlrLayershell.namespace: "quickshell:mediaControls"
             
-            readonly property var rect: Persistent.states.media.popupRect
+            readonly property var rect: Qt.rect(Persistent.states.media.popupX, Persistent.states.media.popupY, Persistent.states.media.popupWidth, Persistent.states.media.popupHeight)
             readonly property real barThickness: {
                 if (Config.options.bar.vertical) {
                     return Config.options.bar.sizes.width || 40;

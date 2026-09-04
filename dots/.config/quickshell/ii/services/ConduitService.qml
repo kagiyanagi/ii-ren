@@ -1553,6 +1553,7 @@ exit 0
     }
 
     property FileView chatIndexLoader: FileView {
+        printErrors: false // No index yet on a first run
         onLoaded: {
             try {
                 const parsed = JSON.parse(chatIndexLoader.text());

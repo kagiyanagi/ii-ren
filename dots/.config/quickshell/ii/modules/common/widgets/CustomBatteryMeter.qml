@@ -53,7 +53,7 @@ Item {
     property real animatedPercentage: percentage
     Behavior on animatedPercentage {
         NumberAnimation {
-            duration: Appearance.animation.elementMoveSlow.duration
+            duration: Appearance.animation.elementMove.duration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
         }
@@ -289,7 +289,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.animation.fadeFast.duration
+                                duration: Appearance.animation.elementMoveFast.duration
                                 easing.type: Easing.BezierSpline
                                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                             }
@@ -510,7 +510,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.animation.fadeFast.duration
+                                duration: Appearance.animation.elementMoveFast.duration
                                 easing.type: Easing.BezierSpline
                                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                             }
@@ -915,7 +915,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.animation.fadeFast.duration
+                                duration: Appearance.animation.elementMoveFast.duration
                                 easing.type: Easing.BezierSpline
                                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                             }

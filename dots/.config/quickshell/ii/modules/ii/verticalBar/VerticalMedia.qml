@@ -35,7 +35,10 @@ MouseArea {
 
     function updatePopupRect() {
         var globalPos = root.mapToItem(null, 0, 0);
-        Persistent.states.media.popupRect = Qt.rect(globalPos.x, globalPos.y, root.width, root.height);
+        Persistent.states.media.popupX = globalPos.x;
+        Persistent.states.media.popupY = globalPos.y;
+        Persistent.states.media.popupWidth = root.width;
+        Persistent.states.media.popupHeight = root.height;
     }
 
     Connections {

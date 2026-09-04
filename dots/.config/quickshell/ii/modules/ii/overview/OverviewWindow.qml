@@ -17,12 +17,16 @@ Item { // Window
     property var windowData
     property var monitorData
     property var scale
+    // Hyprland can hand over a window whose monitor is not in the monitor list
+    // yet (or at all, mid-hotplug). Both ratios are 1 until it is.
     property real widthRatio: {
+        if (!widgetMonitor || !monitorData) return 1;
         const widgetWidth = widgetMonitor.transform & 1 ? widgetMonitor.height : widgetMonitor.width;
         const monitorWidth = monitorData.transform & 1 ? monitorData.height : monitorData.width;
         return (widgetWidth * monitorData.scale) / (monitorWidth * widgetMonitor.scale);
     }
     property real heightRatio: {
+        if (!widgetMonitor || !monitorData) return 1;
         const widgetHeight = widgetMonitor.transform & 1 ? widgetMonitor.width : widgetMonitor.height;
         const monitorHeight = monitorData.transform & 1 ? monitorData.width : monitorData.height;
         return (widgetHeight * monitorData.scale) / (monitorHeight * widgetMonitor.scale);
@@ -32,7 +36,7 @@ Item { // Window
     property real xOffset: 0
     property real yOffset: 0
     property var widgetMonitor
-    property int widgetMonitorId: widgetMonitor.id
+    property int widgetMonitorId: widgetMonitor?.id ?? -1
 
     property real targetWindowWidth: (windowData ? windowData.size[0] : 0) * scale * widthRatio
     property real targetWindowHeight: (windowData ? windowData.size[1] : 0) * scale * heightRatio

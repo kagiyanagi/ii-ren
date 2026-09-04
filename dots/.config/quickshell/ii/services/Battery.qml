@@ -91,6 +91,7 @@ Singleton {
 
     FileView {
         id: chargeLimitFile
+        printErrors: false // Walking a candidate list: most of them are absent by design
         path: root.chargeLimitCandidates[root.chargeLimitCandidateIndex]?.path ?? ""
         onLoaded: {
             const candidate = root.chargeLimitCandidates[root.chargeLimitCandidateIndex];
@@ -107,6 +108,7 @@ Singleton {
 
     FileView {
         id: cycleCountFile
+        printErrors: false // Plenty of batteries do not report a cycle count
         path: root.batteryNativePath ? `/sys/class/power_supply/${root.batteryNativePath}/cycle_count` : ""
         onLoaded: {
             const content = text().trim();

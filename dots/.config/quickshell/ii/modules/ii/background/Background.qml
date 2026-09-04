@@ -170,6 +170,10 @@ Variants {
                 onStreamFinished: {
                     const output = wallpaperSizeOutputCollector.text;
                     const [width, height] = output.split(" ").map(Number);
+                    // No output at all when the wallpaper is gone or magick is
+                    // missing. Keep the last known size rather than assigning
+                    // NaN and dividing by it below.
+                    if (!(width > 0) || !(height > 0)) return;
                     const [screenWidth, screenHeight] = [bgRoot.screen.width, bgRoot.screen.height];
                     bgRoot.wallpaperWidth = width;
                     bgRoot.wallpaperHeight = height;

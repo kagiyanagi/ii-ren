@@ -145,8 +145,16 @@ Singleton {
                 }
             }
             property JsonObject media: JsonObject {
-                property rect popupRect: Qt.rect(0, 0, 0, 0)
+                // Four numbers rather than a rect: JsonAdapter cannot serialize a
+                // QRectF, so a stored rect comes back as null and warns on every
+                // start.
+                property real popupX: 0
+                property real popupY: 0
+                property real popupWidth: 0
+                property real popupHeight: 0
             }
+
+            property list<var> alarms: []
 
             property JsonObject wallpaper: JsonObject {
                 property list<string> favourites: []

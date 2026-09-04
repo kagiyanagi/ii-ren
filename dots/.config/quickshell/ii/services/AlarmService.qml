@@ -11,7 +11,7 @@ import QtQuick
 Singleton {
     id: root
 
-    property list<var> alarms: Persistent.ready ? Persistent.states.alarms : []
+    property list<var> alarms: Persistent.ready ? (Persistent.states.alarms ?? []) : []
     property int ringingAlarmIndex: -1
     property var ringingAlarm: (ringingAlarmIndex >= 0 && alarms && ringingAlarmIndex < alarms.length) ? alarms[ringingAlarmIndex] : null
 
@@ -19,14 +19,14 @@ Singleton {
 
     function saveAlarms(newAlarms) {
         Persistent.states.alarms = newAlarms;
-        root.alarms = Persistent.states.alarms;
+        root.alarms = Persistent.states.alarms ?? [];
     }
 
     Connections {
         target: Persistent
         function onReadyChanged() {
             if (Persistent.ready) {
-                root.alarms = Persistent.states.alarms;
+                root.alarms = Persistent.states.alarms ?? [];
             }
         }
     }

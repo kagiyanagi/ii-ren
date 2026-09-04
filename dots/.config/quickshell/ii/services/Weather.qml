@@ -51,7 +51,7 @@ Singleton {
             positionSource.update(root.fixTimeout);
             fallbackTimer.restart();
         } else {
-            positionSource.stop();
+            root.stopPositionFix();
             requestRefetch();
         }
     }
@@ -472,11 +472,19 @@ Singleton {
         onTriggered: {
             if (!root.location.valid) {
                 console.info("[WeatherService] GPS timed out or invalid. Falling back to IP-based location.");
-                positionSource.stop();
+                root.stopPositionFix();
                 root.gpsActive = false;
                 root.getData(true);
             }
         }
+    }
+
+    // GeoClue warns when a source that was never started is stopped, and the
+    // stop paths below run on config changes and backend failures that can
+    // happen before any fix was ever requested.
+    function stopPositionFix() {
+        if (positionSource.active)
+            positionSource.stop();
     }
 
     // One fix per refresh, not a standing subscription: keeping this running
@@ -488,7 +496,7 @@ Singleton {
         onPositionChanged: {
             if (position.latitudeValid && position.longitudeValid) {
                 fallbackTimer.stop();
-                positionSource.stop();
+                root.stopPositionFix();
                 root.location.lat = position.coordinate.latitude;
                 root.location.lon = position.coordinate.longitude;
                 root.location.valid = true;
@@ -504,7 +512,7 @@ Singleton {
 
         onValidityChanged: {
             if (!positionSource.valid) {
-                positionSource.stop();
+                root.stopPositionFix();
                 fallbackTimer.stop();
                 root.location.valid = false;
                 root.gpsActive = false;

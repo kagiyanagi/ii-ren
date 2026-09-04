@@ -74,7 +74,9 @@ Singleton {
     Process {
         id: khalCheckProcess
 
-        command: ["khal", "list", "today"]
+        // Through bash so a machine without khal reports a non-zero exit
+        // instead of failing to start the process and warning about it.
+        command: ["bash", "-c", "command -v khal >/dev/null && khal list today"]
         running: true
         onExited: (exitCode) => {
           root.khalAvailable = (exitCode === 0);

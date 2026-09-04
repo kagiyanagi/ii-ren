@@ -84,7 +84,12 @@ AbstractBackgroundWidget {
     }
 
     property bool downloaded: false
-    property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
+    readonly property bool isLocalArt: String(root.artUrl ?? "").startsWith("file://")
+    property string displayedArtFilePath: {
+        if (!root.artUrl) return "";
+        if (root.isLocalArt) return root.artUrl;
+        return root.downloaded ? Qt.resolvedUrl(artFilePath) : "";
+    }
 
     property list<real> visualizerPoints: Config.options.background.widgets.media.visualizer.enable ? CavaService.visualizerPoints : []
 
@@ -112,6 +117,16 @@ AbstractBackgroundWidget {
     }
 
     function updateArt() {
+        // No art at all hashes to the md5 of an empty string, which is a path
+        // that never exists: nothing to download, nothing to quantize.
+        if (!root.artUrl || root.artUrl.length === 0) {
+            root.downloaded = false;
+            return;
+        }
+        if (root.isLocalArt) {
+            root.downloaded = true;
+            return;
+        }
         coverArtDownloader.targetFile = root.artUrl;
         coverArtDownloader.artFilePath = root.artFilePath;
         coverArtDownloader.artTempPath = root.artFilePath + ".tmp";
