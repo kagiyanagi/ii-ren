@@ -45,7 +45,11 @@ Singleton {
     onCityChanged: requestRefetch()
     onGpsActiveChanged: {
         if (root.gpsActive) {
+            // Arm the fallback here too: GPS can be switched on after the
+            // singleton was built (config settling at startup does exactly
+            // that), and without this the request hangs with nothing to catch it.
             positionSource.update(root.fixTimeout);
+            fallbackTimer.restart();
         } else {
             positionSource.stop();
             requestRefetch();
@@ -302,6 +306,102 @@ Singleton {
 
     property double lastFetchTimestamp: 0
 
+    // Two problems, one place. A local `const xhr` is only reachable from the
+    // JS stack, so once the function returns the engine may collect it
+    // mid-flight and the response is dropped with no readyState change and
+    // nothing logged; and firing a second request for the same endpoint while
+    // the first is still open (two GPS fixes in a row do exactly that) stalls
+    // both indefinitely. So: hold a reference until the request settles, refuse
+    // a duplicate while one is open, and abort on a deadline of our own -
+    // Qt's QML XMLHttpRequest ignores `timeout`/`ontimeout`.
+    property var pendingRequests: ({})
+    readonly property int requestTimeout: 8000
+    readonly property int requestRetries: 2
+    // Connections to the weather APIs stall outright a good fraction of the
+    // time on a long path, and the stalls come in bursts, so an immediate
+    // retry tends to land in the same bad window. Space them out, and if the
+    // whole round still fails, re-arm well before the next poll rather than
+    // leaving the widgets on placeholder data for a full fetch interval.
+    readonly property int retryDelay: 5000
+    readonly property int roundRetryDelay: 60000
+
+    function request(url, label, onSuccess, attempt = 0) {
+        if (attempt === 0 && root.pendingRequests[label])
+            return;
+
+        const xhr = new XMLHttpRequest();
+        const deadline = deadlineComponent.createObject(root, {
+            interval: root.requestTimeout
+        });
+        root.pendingRequests[label] = xhr;
+
+        const settle = () => {
+            delete root.pendingRequests[label];
+            deadline.destroy();
+        };
+        const fail = message => {
+            settle();
+            if (attempt < root.requestRetries) {
+                console.warn(`[WeatherService] ${label} ${message}, retrying`);
+                const backoff = deadlineComponent.createObject(root, {
+                    interval: root.retryDelay
+                });
+                backoff.triggered.connect(() => {
+                    backoff.destroy();
+                    root.request(url, label, onSuccess, attempt + 1);
+                });
+                backoff.start();
+                return;
+            }
+            console.error(`[WeatherService] ${label} ${message}`);
+            root.forecastLoading = false;
+            roundRetryTimer.restart();
+        };
+
+        // abort() drives readyState to DONE with status 0, so mute the
+        // handler first - otherwise the timeout is reported twice and retried
+        // twice over.
+        deadline.triggered.connect(() => {
+            xhr.onreadystatechange = null;
+            xhr.abort();
+            fail("timed out");
+        });
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return;
+            if (xhr.status !== 200) {
+                fail(`failed with status ${xhr.status}`);
+                return;
+            }
+            settle();
+            try {
+                onSuccess(JSON.parse(xhr.responseText));
+            } catch (e) {
+                console.error(`[WeatherService] Failed to parse ${label}:`, e);
+                root.forecastLoading = false;
+            }
+        };
+
+        xhr.open("GET", url);
+        xhr.send();
+        deadline.start();
+    }
+
+    Timer {
+        id: roundRetryTimer
+        interval: root.roundRetryDelay
+        repeat: false
+        onTriggered: root.getData(true)
+    }
+
+    Component {
+        id: deadlineComponent
+
+        Timer {
+            repeat: false
+        }
+    }
+
     function getData(force = false) {
         const now = Date.now();
         if (!force && (now - lastFetchTimestamp < 60000)) { // 1 minute rate limit
@@ -318,83 +418,41 @@ Singleton {
             fetchCoordinates(root.city);
         } else {
             // Default to ip-api for automatic location
-            const xhr = new XMLHttpRequest();
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === XMLHttpRequest.DONE) {
-                    if (xhr.status === 200) {
-                        try {
-                            const loc = JSON.parse(xhr.responseText);
-                            if (loc.status === "success") {
-                                root.location.lat = loc.lat;
-                                root.location.lon = loc.lon;
-                                root.location.city = loc.city;
-                                root.location.valid = true;
-                                fetchWeather(loc.lat, loc.lon, loc.city);
-                            } else {
-                                console.error("[WeatherService] ip-api failed:", loc.message);
-                            }
-                        } catch (e) {
-                            console.error("[WeatherService] Failed to parse location:", e);
-                        }
-                    }
+            root.request("http://ip-api.com/json/", "ip-api", loc => {
+                if (loc.status !== "success") {
+                    console.error("[WeatherService] ip-api failed:", loc.message);
+                    return;
                 }
-            };
-            xhr.open("GET", "http://ip-api.com/json/");
-            xhr.send();
+                root.location.lat = loc.lat;
+                root.location.lon = loc.lon;
+                root.location.city = loc.city;
+                root.location.valid = true;
+                root.fetchWeather(loc.lat, loc.lon, loc.city);
+            });
         }
     }
 
     function fetchCoordinates(cityName) {
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
-        const xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    try {
-                        const res = JSON.parse(xhr.responseText);
-                        if (res.results && res.results.length > 0) {
-                            const loc = res.results[0];
-                            root.location.lat = loc.latitude;
-                            root.location.lon = loc.longitude;
-                            root.location.city = loc.name;
-                            root.location.valid = true;
-                            fetchWeather(loc.latitude, loc.longitude, loc.name);
-                        } else {
-                            console.error("[WeatherService] Geocoding failed for:", cityName);
-                        }
-                    } catch (e) {
-                        console.error("[WeatherService] Failed to parse geocoding:", e);
-                    }
-                }
+        root.request(url, "geocoding", res => {
+            if (!res.results || res.results.length === 0) {
+                console.error("[WeatherService] Geocoding failed for:", cityName);
+                return;
             }
-        };
-        xhr.open("GET", url);
-        xhr.send();
+            const loc = res.results[0];
+            root.location.lat = loc.latitude;
+            root.location.lon = loc.longitude;
+            root.location.city = loc.name;
+            root.location.valid = true;
+            root.fetchWeather(loc.latitude, loc.longitude, loc.name);
+        });
     }
 
     function fetchWeather(lat, lon, cityName) {
         root.forecastLoading = true;
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,uv_index,visibility,is_day&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code&hourly=temperature_2m,weather_code,is_day&timezone=auto`;
         
-        const xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    try {
-                        const weather = JSON.parse(xhr.responseText);
-                        root.refineData(weather, cityName);
-                    } catch (e) {
-                        console.error("[WeatherService] Failed to parse weather:", e);
-                        root.forecastLoading = false;
-                    }
-                } else {
-                    console.error("[WeatherService] Weather API error:", xhr.status);
-                    root.forecastLoading = false;
-                }
-            }
-        };
-        xhr.open("GET", url);
-        xhr.send();
+        root.request(url, "weather", weather => root.refineData(weather, cityName));
     }
 
     Component.onCompleted: {
@@ -434,7 +492,10 @@ Singleton {
                 root.location.lat = position.coordinate.latitude;
                 root.location.lon = position.coordinate.longitude;
                 root.location.valid = true;
-                root.getData();
+                // Forced: the IP-based fetch from the debounce usually landed
+                // seconds ago, so the rate limit would drop the fix on the
+                // floor and the coordinates would go unused until the next poll.
+                root.getData(true);
             } else {
                 root.gpsActive = root.location.valid ? true : false;
                 console.error("[WeatherService] Failed to get the GPS location.");
@@ -456,17 +517,13 @@ Singleton {
 
     Timer {
         id: timer
-        // Desktop and lock screen each have their own weather-effect config
-        // now; poll if either wants live conditions, same as the shared
-        // subject cutout does for the shape mask.
-        running: {
-            const desktop = Config.options.background.weatherEffects.desktop;
-            const lock = Config.options.background.weatherEffects.lock;
-            const lockEffective = lock.sync ? desktop : lock;
-            return Config.options.bar.weather.enable
-                || (desktop.enable && desktop.followWeather)
-                || (lockEffective.enable && lockEffective.followWeather);
-        }
+        // This singleton is built lazily, so it only exists once something has
+        // actually asked for weather - the bar widget, a desktop or lock screen
+        // weather widget, at-a-glance, a live weather effect. Enumerating those
+        // consumers here is how the desktop widgets ended up fetching once at
+        // startup and never again: the condition only knew about the bar.
+        // Existing is the consent.
+        running: true
         repeat: true
         interval: root.fetchInterval
         // No triggeredOnStart: the initial fetch is owned by Component.onCompleted
