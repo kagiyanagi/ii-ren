@@ -130,7 +130,7 @@
         },
         "thumbnailPath": "",
         "transitionType": "radial",
-        "wallpaperPath": "/home/ren/Pictures/Wallpapers/FINAL DOG GRASS.png",
+        "wallpaperPath": "",
         "widgets": {
             "ai_chat": {
                 "enable": false,
@@ -1306,7 +1306,7 @@
     },
     "localsend": {
         "autoStart": true,
-        "downloadPath": "/home/ren/Downloads/localsend",
+        "downloadPath": "~/Downloads/localsend",
         "showNotifications": true
     },
     "lock": {
@@ -1435,7 +1435,7 @@
         "updateInterval": 3000
     },
     "screenRecord": {
-        "savePath": "/home/ren/Videos"
+        "savePath": "~/Videos"
     },
     "screenSnip": {
         "savePath": "",
@@ -1638,7 +1638,7 @@
             {
                 "icon": "wallpaper",
                 "name": "Wallpapers",
-                "path": "file:///home/ren/Pictures/Wallpapers"
+                "path": "file://~/Pictures/Wallpapers"
             }
         ],
         "useSystemFileDialog": false

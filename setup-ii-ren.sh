@@ -212,7 +212,9 @@ install_personal_config() {
     fi
 
     mkdir -p "$(dirname "$DEST")"
-    cp "$SRC" "$DEST"
+    # Paths in the repo copy are stored as "~/..." so they belong to whoever
+    # installs, not to whoever committed them. Expand them for this user.
+    sed -e "s|\"~/|\"$HOME/|g" -e "s|\"file://~/|\"file://$HOME/|g" "$SRC" > "$DEST"
     echo -e "${GREEN}✓ Installed shell settings: $DEST${NC}"
 }
 

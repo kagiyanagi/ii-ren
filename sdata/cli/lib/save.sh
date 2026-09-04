@@ -19,8 +19,25 @@ save_file() {
     CHANGED=$((CHANGED + 1))
 }
 
-save_file "$HOME/.config/illogical-impulse/config.json" \
-          "$REPO/dots/.config/illogical-impulse/config.json"
+# Same as save_file, but de-personalises the copy that lands in the repo: your
+# home directory goes back to "~" so it installs as the next person's paths, and
+# the wallpaper is cleared so a fresh install gets the bundled one instead of a
+# picture that only exists on this machine.
+save_config() {
+    local src="$1" dest="$2" tmp
+    [ -f "$src" ] || return 0
+    tmp="$(mktemp)"
+    sed -e "s|\"$HOME/|\"~/|g" \
+        -e "s|\"file://$HOME/|\"file://~/|g" \
+        -e "s|^\( *\"wallpaperPath\": \)\".*\",\?$|\1\"\",|" \
+        "$src" > "$tmp"
+    save_file "$tmp" "$dest"
+    rm -f "$tmp"
+    [ -f "$dest" ] && chmod 644 "$dest" || true
+}
+
+save_config "$HOME/.config/illogical-impulse/config.json" \
+            "$REPO/dots/.config/illogical-impulse/config.json"
 
 for f in "$HOME"/.config/hypr/custom/*.lua; do
     [ -e "$f" ] || continue
