@@ -1,7 +1,10 @@
 import qs.modules.common
 import QtQuick
 
-Canvas {
+// The wavy fill behind StyledSlider / StyledProgressBar. The wave is drawn
+// analytically in shaders/wavyLine.frag - property names here are its uniform
+// names, so renaming one breaks the binding silently.
+ShaderEffect {
     id: root
     property real amplitudeMultiplier: 0.5
     property real frequency: 6
@@ -9,26 +12,29 @@ Canvas {
     property real lineWidth: 4
     property real fullLength: width
 
-    onPaint: {
-        var ctx = getContext("2d");
-        ctx.clearRect(0, 0, width, height);
+    // False freezes the drift where it stands. The wave is a "something is
+    // happening" cue, so a caller that has nothing happening turns it off.
+    property bool animate: true
 
-        var amplitude = root.lineWidth * root.amplitudeMultiplier;
-        var frequency = root.frequency;
-        var phase = Date.now() / 400.0;
-        var centerY = height / 2;
+    // Uniforms. `amplitude` was `lineWidth * amplitudeMultiplier` in the
+    // Canvas this replaces; keep that so callers need no changes.
+    property vector2d resolution: Qt.vector2d(Math.max(1, width), Math.max(1, height))
+    property color waveColor: root.color
+    property real amplitude: root.lineWidth * root.amplitudeMultiplier
+    property real phase: 0
 
-        ctx.strokeStyle = root.color;
-        ctx.lineWidth = root.lineWidth;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        for (var x = ctx.lineWidth / 2; x <= root.width - ctx.lineWidth / 2; x += 1) {
-            var waveY = centerY + amplitude * Math.sin(frequency * 2 * Math.PI * x / root.fullLength + phase);
-            if (x === 0)
-                ctx.moveTo(x, waveY);
-            else
-                ctx.lineTo(x, waveY);
-        }
-        ctx.stroke();
+    fragmentShader: Qt.resolvedUrl("shaders/wavyLine.frag.qsb")
+
+    // The Canvas took its phase from `Date.now() / 400`, i.e. 1/400 rad per
+    // ms. One full cycle at that rate is 2*PI*400 ms, so animating the uniform
+    // over exactly that keeps the old drift speed to the millisecond. This is
+    // ambient motion rather than a transition, which is why it is derived from
+    // the behaviour it replaces instead of an Appearance duration token.
+    NumberAnimation on phase {
+        running: root.animate && root.visible
+        from: 0
+        to: 2 * Math.PI
+        duration: Math.round(2 * Math.PI * 400)
+        loops: Animation.Infinite
     }
 }

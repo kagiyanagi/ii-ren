@@ -1,6 +1,4 @@
-import qs.services
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Effects
@@ -8,7 +6,6 @@ import QtQuick.Effects
 Canvas { // Visualizer
     id: root
     property list<var> points: []
-    property list<var> smoothPoints: [] 
     property real maxVisualizerValue: 800
     property int smoothing: 2
     property bool live: true
@@ -17,8 +14,44 @@ Canvas { // Visualizer
     property real waveOpacity: 0.15
     property real waveBlur: 1
 
-    onPointsChanged: () => {
-        root.requestPaint()
+    // Cava pushes 60 updates a second, and each repaint costs a repaint of the
+    // whole surface this sits on - which is what actually shows up in a CPU
+    // profile, so the cost tracks the update rate. Integrated graphics is the
+    // target and an ambient wave is indistinguishable at half that rate, so
+    // admit at most one repaint per interval (leading edge first, so it still
+    // reacts immediately) and stop the gate once the audio does. Matches
+    // WaveVisualizer.
+    property int maxFps: 30
+    readonly property int minIntervalMs: Math.max(1, Math.round(1000 / Math.max(1, root.maxFps)))
+    property bool pendingUpdate: false
+
+    onPointsChanged: {
+        if (!root.visible) return;
+        root.pendingUpdate = true;
+        if (!updateGate.running) {
+            root.requestPaint();
+            root.pendingUpdate = false;
+            updateGate.start();
+        }
+    }
+
+    // Going quiet has to land one last paint - the wave has to actually
+    // collapse to the ring, and the gate above would otherwise skip it.
+    onLiveChanged: if (root.visible) root.requestPaint()
+    onVisibleChanged: if (root.visible) root.requestPaint()
+
+    Timer {
+        id: updateGate
+        interval: root.minIntervalMs
+        repeat: true
+        onTriggered: {
+            if (!root.pendingUpdate) {
+                updateGate.stop();
+                return;
+            }
+            root.pendingUpdate = false;
+            if (root.visible) root.requestPaint();
+        }
     }
 
     anchors.fill: parent
@@ -38,46 +71,43 @@ Canvas { // Visualizer
         var maxRadius = Math.min(w, h) / 2;
         var inwardOffset = maxRadius * 0.8;
 
-        var smoothed = VisualizerUtils.smooth(points, root.smoothing);
-        if (!root.live) smoothed.fill(0);
-        root.smoothPoints = smoothed;
-
-
-        var plotPoints = root.smoothPoints.slice();
-        plotPoints.push(root.smoothPoints[0]);
+        // Kept local. Publishing this as a property fired a list<var> change
+        // notification on every one of those 60 frames, and nothing read it.
+        var plotPoints = VisualizerUtils.smooth(points, root.smoothing);
+        if (!root.live) plotPoints.fill(0);
+        plotPoints.push(plotPoints[0]); // Close the ring back onto its start
         var visualN = plotPoints.length;
 
         ctx.beginPath();
 
         for (var i = visualN - 1; i >= 0; --i) {
             var normalized = plotPoints[i] / maxVal;
-            var angle = (i / (visualN - 1)) * Math.PI * 2 - Math.PI / 2; 
+            var angle = (i / (visualN - 1)) * Math.PI * 2 - Math.PI / 2;
 
             var currentRadius = maxRadius - (normalized * inwardOffset);
             if (currentRadius < (maxRadius - inwardOffset)) {
                 currentRadius = (maxRadius - inwardOffset);
             }
-            
+
             var x = cx + Math.cos(angle) * currentRadius;
             var y = cy + Math.sin(angle) * currentRadius;
-            
+
             if (i === visualN - 1)
                 ctx.moveTo(x, y);
             else
                 ctx.lineTo(x, y);
         }
-        
-        ctx.lineTo(cx + maxRadius * Math.cos(Math.PI * 2 * (visualN-1) / (visualN-1) - Math.PI / 2), 
-                   cy + maxRadius * Math.sin(Math.PI * 2 * (visualN-1) / (visualN-1) - Math.PI / 2)); 
+
+        ctx.lineTo(cx, cy - maxRadius);
 
         for (var i = 0; i < visualN; ++i) {
-             var angle = (i / (visualN - 1)) * Math.PI * 2 - Math.PI / 2;
-             var x = cx + Math.cos(angle) * maxRadius;
-             var y = cy + Math.sin(angle) * maxRadius;
-             ctx.lineTo(x, y);
+            var angle = (i / (visualN - 1)) * Math.PI * 2 - Math.PI / 2;
+            var x = cx + Math.cos(angle) * maxRadius;
+            var y = cy + Math.sin(angle) * maxRadius;
+            ctx.lineTo(x, y);
         }
 
-        ctx.closePath(); 
+        ctx.closePath();
         ctx.fillStyle = Qt.rgba(
             root.color.r,
             root.color.g,
@@ -87,7 +117,11 @@ Canvas { // Visualizer
         ctx.fill();
     }
 
-    layer.enabled: true
+    // A layer plus a blur pass, re-run every frame, is most of what this widget
+    // costs on integrated graphics - and at blur 0 it was re-running the whole
+    // pipeline to produce an identical image. Only pay for it when it draws
+    // something.
+    layer.enabled: root.waveBlur > 0
     layer.effect: MultiEffect {
         source: root
         saturation: 1.0

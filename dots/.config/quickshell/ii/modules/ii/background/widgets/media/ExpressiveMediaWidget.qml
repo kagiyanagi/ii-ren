@@ -365,6 +365,11 @@ AbstractBackgroundWidget {
                                 active: root.player?.canSeek ?? false
                                 sourceComponent: StyledSlider {
                                     configuration: StyledSlider.Configuration.Wavy
+                                    // The wave is a playing indicator, so it
+                                    // holds still when the track does - which
+                                    // is also what stops it burning a core in
+                                    // the background while nothing plays.
+                                    animateWave: root.player?.isPlaying ?? false
                                     highlightColor: root.colProgressHighlight
                                     trackColor: root.colProgressTrack
                                     handleColor: root.colProgressHighlight

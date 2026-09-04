@@ -157,17 +157,9 @@ Slider {
                     amplitudeMultiplier: root.wavy ? 0.5 : 0
                     width: parent.width
                     height: root.trackWidth
-                    Connections {
-                        target: root
-                        function onValueChanged() { wavyFill.requestPaint(); }
-                        function onHighlightColorChanged() { wavyFill.requestPaint(); }
-                    }
-                    FrameAnimation {
-                        running: root.animateWave
-                        onTriggered: {
-                            wavyFill.requestPaint()
-                        }
-                    }
+                    // See StyledProgressBar: the wave is a shader, so there is
+                    // no canvas to repaint and no per-frame work to gate.
+                    animate: root.animateWave
                 }
             }
         }

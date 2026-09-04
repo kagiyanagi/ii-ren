@@ -53,17 +53,10 @@ ProgressBar {
                 width: contentItem.width * root.visualPosition
                 lineWidth: contentItem.height
                 fullLength: root.width
-                Connections {
-                    target: root
-                    function onValueChanged() { wavyFill.requestPaint(); }
-                    function onHighlightColorChanged() { wavyFill.requestPaint(); }
-                }
-                FrameAnimation {
-                    running: root.animateWave
-                    onTriggered: {
-                        wavyFill.requestPaint()
-                    }
-                }
+                // WavyLine draws itself from its uniforms now, so value and
+                // colour changes need no repaint plumbing and the wave drift
+                // no longer costs a frame clock.
+                animate: root.animateWave
             }
         }
 
