@@ -6,10 +6,10 @@ uniform sampler2D tex;
 
 layout(location = 0) out vec4 fragColor;
 
-// Android 17 Comfort View - Dynamic Shader (Intensity: 38%)
-const float u_saturation = 0.677;
-const float u_warmth = 0.190;
-const float u_highlightCap = 0.943;
+// Android 17 Comfort View - Dynamic Shader (Intensity: 24%)
+const float u_saturation = 0.796;
+const float u_warmth = 0.120;
+const float u_highlightCap = 0.964;
 
 void main() {
     vec4 pixColor = texture(tex, v_texcoord);
