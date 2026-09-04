@@ -360,7 +360,10 @@ Item {
                     
                 }
                 StyledToolTip {
-                    text: Translation.tr("Update ii-ren, make sure you have the iiren CLI installed")
+                    alternativeVisibleCondition: updateButton.confirm
+                    text: updateButton.confirm ?
+                        Translation.tr("Click again to confirm update") :
+                        Translation.tr("Update ii-ren, make sure you have the iiren CLI installed")
                 }
             }
             QuickToggleButton {
