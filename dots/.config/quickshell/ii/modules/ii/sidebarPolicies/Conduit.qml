@@ -59,6 +59,15 @@ Item {
     // Suggestions are built once from the typed text, and a model list fetched from the
     // CLI can land seconds after `/model ` was typed, so rebuild them when it arrives.
     readonly property var providerModels: root.service?.currentProvider.models ?? []
+
+    // Named and iconed by the service rather than here, so a provider is described in
+    // one place instead of two that can drift apart.
+    readonly property var providerOptions: (root.service?.providerIds ?? []).map(id => ({
+        title: root.service.providers[id].name,
+        icon: root.service.providers[id].icon,
+        value: id
+    }))
+
     onProviderModelsChanged: {
         if (messageInputField.text.length > 0) root.suggestionList = root.completionsFor(messageInputField.text);
     }
@@ -701,39 +710,46 @@ Item {
         Loader { // Provider and model pickers, shown only on an empty chat
             active: root.messageIDs.length === 0 && root.service
             visible: active
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: item?.implicitWidth ?? 0
+            // Sized from the panel, not from what is inside it: a width taken from the
+            // content leaves the two pickers nothing to divide and they shrink onto
+            // their own labels, which is what put them on separate lines.
+            //
+            // Inset from both edges rather than run out to them, so the pair reads as a
+            // lighter row sitting above the full-width input instead of competing with
+            // it. A margin rather than a fixed width, so the longest model name keeps
+            // whatever room the panel actually has.
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
             Layout.preferredHeight: item?.implicitHeight ?? 0
 
-            sourceComponent: ColumnLayout {
-                width: 330
+            sourceComponent: RowLayout {
                 spacing: 4
 
-                ConfigSelectionArray {
-                    id: providerSelector
-                    Layout.alignment: Qt.AlignHCenter
-                    // Not inside a ContentGroup here, so the card-bleed padding
-                    // this widget normally carries just reads as dead space.
-                    topPadding: 0
-                    bottomPadding: 0
-                    currentValue: root.service?.currentProviderId ?? "claude-cli"
-                    onSelected: newValue => root.service?.setProvider(newValue)
-                    options: [
-                        { displayName: "Claude Code", icon: "terminal", value: "claude-cli" },
-                        { displayName: "Antigravity", icon: "auto_awesome", value: "antigravity" }
-                    ]
+                StyledComboBox { // Provider
+                    // Both grow with the panel, and the model keeps the larger share
+                    // because its names are the long ones.
+                    Layout.preferredWidth: 140
+                    textRole: "title"
+                    model: root.providerOptions
+                    currentIndex: Math.max(0, root.providerOptions
+                        .findIndex(provider => provider.value === root.service?.currentProviderId))
+                    onActivated: index => {
+                        const provider = root.providerOptions[index];
+                        if (provider) root.service?.setProvider(provider.value);
+                    }
                 }
 
-                StyledComboBox {
-                    Layout.fillWidth: true
+                StyledComboBox { // Model
+                    Layout.preferredWidth: 200
                     buttonIcon: "wand_stars"
                     textRole: "title"
-                    model: root.service?.currentProvider.models ?? []
-                    currentIndex: Math.max(0, (root.service?.currentProvider.models ?? [])
+                    model: root.providerModels
+                    currentIndex: Math.max(0, root.providerModels
                         .findIndex(model => model.value === root.service?.currentModelId))
                     onActivated: index => {
-                        const models = root.service?.currentProvider.models ?? [];
-                        if (models[index]) root.service?.setModel(models[index].value);
+                        const chosen = root.providerModels[index];
+                        if (chosen) root.service?.setModel(chosen.value);
                     }
                 }
             }
