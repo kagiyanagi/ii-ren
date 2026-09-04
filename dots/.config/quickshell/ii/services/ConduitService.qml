@@ -42,8 +42,12 @@ Singleton {
      * Both providers drive a CLI that is already logged in, so neither takes an
      * API key. `capabilities` records what that CLI can actually do, so the UI can
      * hide a control rather than offer one that silently does nothing.
+     *
+     * The model lists here are only the fallback. A CLI that can name the models it
+     * currently accepts is asked, and its answer replaces the list below — see Model
+     * discovery. What stays useful here is the descriptions, which no CLI prints.
      */
-    readonly property var providers: ({
+    readonly property var baseProviders: ({
         "claude-cli": {
             "name": "Claude Code",
             "command": "claude",
@@ -86,21 +90,24 @@ Singleton {
                 // Effort is a model variant here (gemini-3.1-pro-high vs -low), not a flag.
                 "effortLevels": false
             },
+            // Fallback only, and the source of the descriptions `agy models` does not
+            // print. An id here that agy has since dropped costs nothing: the moment a
+            // real list lands it replaces this one wholesale.
             "models": [
-                { "value": "gemini-3.7-flash-high", "title": "Gemini 3.7 Flash (High)", "description": "Balanced default: newest Flash, full reasoning." },
+                { "value": "gemini-3.8-flash-high", "title": "Gemini 3.8 Flash (High)", "description": "Balanced default: newest Flash, full reasoning." },
                 { "value": "gemini-3.1-pro-high", "title": "Gemini 3.1 Pro (High)", "description": "Most capable, deepest reasoning." },
                 { "value": "gemini-3.1-pro-low", "title": "Gemini 3.1 Pro (Low)", "description": "Pro quality, lighter reasoning." },
-                { "value": "gemini-3.7-flash-medium", "title": "Gemini 3.7 Flash (Medium)", "description": "Less reasoning, quicker replies." },
-                { "value": "gemini-3.7-flash-low", "title": "Gemini 3.7 Flash (Low)", "description": "Fastest." },
-                { "value": "claude-sonnet-4-6", "title": "Claude Sonnet 4.6", "description": "Anthropic model with thinking, billed to Antigravity." },
-                { "value": "claude-opus-4-6-thinking", "title": "Claude Opus 4.6", "description": "Anthropic's most capable, billed to Antigravity." },
-                { "value": "gpt-oss-120b-medium", "title": "GPT-OSS 120B", "description": "Open-weights model." },
-                { "value": "gemini-3.6-flash-high", "title": "Gemini 3.6 Flash (High)", "description": "Previous Flash generation." },
-                { "value": "gemini-3.6-flash-medium", "title": "Gemini 3.6 Flash (Medium)", "description": "Previous Flash generation." },
-                { "value": "gemini-3.6-flash-low", "title": "Gemini 3.6 Flash (Low)", "description": "Previous Flash generation." },
-                { "value": "gemini-3.5-flash-high", "title": "Gemini 3.5 Flash (High)", "description": "Older Flash generation." },
-                { "value": "gemini-3.5-flash-medium", "title": "Gemini 3.5 Flash (Medium)", "description": "Older Flash generation." },
-                { "value": "gemini-3.5-flash-low", "title": "Gemini 3.5 Flash (Low)", "description": "Older Flash generation." }
+                { "value": "gemini-3.8-flash-medium", "title": "Gemini 3.8 Flash (Medium)", "description": "Less reasoning, quicker replies." },
+                { "value": "gemini-3.8-flash-low", "title": "Gemini 3.8 Flash (Low)", "description": "Fastest." },
+                { "value": "claude-sonnet-4-6", "title": "Claude Sonnet 4.6 (Thinking)", "description": "Anthropic model with thinking, billed to Antigravity." },
+                { "value": "claude-opus-4-6-thinking", "title": "Claude Opus 4.6 (Thinking)", "description": "Anthropic's most capable, billed to Antigravity." },
+                { "value": "gpt-oss-120b-medium", "title": "GPT-OSS 120B (Medium)", "description": "Open-weights model." },
+                { "value": "gemini-3.7-flash-high", "title": "Gemini 3.7 Flash (High)", "description": "Previous Flash generation." },
+                { "value": "gemini-3.7-flash-medium", "title": "Gemini 3.7 Flash (Medium)", "description": "Previous Flash generation." },
+                { "value": "gemini-3.7-flash-low", "title": "Gemini 3.7 Flash (Low)", "description": "Previous Flash generation." },
+                { "value": "gemini-3.6-flash-high", "title": "Gemini 3.6 Flash (High)", "description": "Older Flash generation." },
+                { "value": "gemini-3.6-flash-medium", "title": "Gemini 3.6 Flash (Medium)", "description": "Older Flash generation." },
+                { "value": "gemini-3.6-flash-low", "title": "Gemini 3.6 Flash (Low)", "description": "Older Flash generation." }
             ]
         }
     })
@@ -109,6 +116,34 @@ Singleton {
         "claude-cli": root.claudeCliStrategy.createObject(root),
         "antigravity": root.antigravityStrategy.createObject(root)
     })
+
+    /**
+     * `baseProviders` with each model list replaced by whatever that provider's CLI last
+     * reported, so a model the vendor renamed or retired leaves the picker instead of
+     * failing at the first message. Our own descriptions survive by id; a model we have
+     * never heard of simply has none.
+     */
+    readonly property var providers: {
+        let merged = ({});
+        for (const id of Object.keys(root.baseProviders)) {
+            const provider = root.baseProviders[id];
+            const discovered = root.discoveredModels[id] ?? [];
+            if (discovered.length === 0) {
+                merged[id] = provider;
+                continue;
+            }
+            let described = ({});
+            for (const model of provider.models) described[model.value] = model.description;
+            merged[id] = Object.assign({}, provider, {
+                "models": discovered.map(model => ({
+                    "value": model.value,
+                    "title": model.title,
+                    "description": described[model.value] ?? ""
+                }))
+            });
+        }
+        return merged;
+    }
 
     readonly property var providerIds: Object.keys(root.providers)
 
@@ -157,12 +192,20 @@ Singleton {
     }
     readonly property var currentProvider: root.providers[root.currentProviderId]
 
+    // True once the CLI itself has named the models it takes, which makes the list
+    // authoritative rather than a guess that may be several releases behind.
+    readonly property bool currentModelsAreLive: (root.discoveredModels[root.currentProviderId] ?? []).length > 0
+
     readonly property string currentModelId: {
         const stored = Config.options.conduit.model;
         const models = root.currentProvider.models;
         if (models.some(model => model.value === stored)) return stored;
-        // A provider whose model list moves independently keeps whatever was set,
-        // unless the id plainly belongs to one of the other providers.
+        // A live list is the same one the CLI validates `--model` against, so a stored id
+        // missing from it is one the next message would be rejected for. Drop it.
+        if (root.currentModelsAreLive) return models[0].value;
+        // Without one, the fallback list is what may be behind: a provider whose models
+        // move independently keeps whatever was set, unless the id plainly belongs to
+        // one of the other providers.
         const claimedElsewhere = root.providerIds.some(id => id !== root.currentProviderId
             && root.providers[id].models.some(model => model.value === stored));
         if (stored.length > 0 && !claimedElsewhere && root.supportsCustomModels) return stored;
@@ -618,6 +661,83 @@ Singleton {
     property real lastCostUsd: -1
     property var rateLimit: ({ status: "", resetsAt: 0, kind: "" })
 
+    /* ---------- Model discovery ---------------------------------------------- *
+     * The set of models a CLI accepts moves under us: an `agy` update retired the 3.5
+     * Flash line, and every install that had one stored started failing at the first
+     * message with "not recognized as a known model". So the list is asked for rather
+     * than assumed — once the tab is open and whatever we have has aged out — and the
+     * shipped list is only what stands in when the CLI cannot answer.
+     */
+
+    property var discoveredModels: ({})   // providerId -> [{ value, title }]
+    property var modelsCheckedAt: ({})    // providerId -> epoch ms of the last good answer
+    property bool modelsChecking: false
+
+    readonly property int modelsStaleMinutes: 60
+
+    function refreshModels(force) {
+        if (root.modelsChecking) return;
+
+        const providerId = root.currentProviderId;
+        const command = root.strategies[providerId].modelsCommand();
+        if (command.length === 0) return;   // this CLI cannot list its models
+
+        const checkedAt = root.modelsCheckedAt[providerId] ?? 0;
+        const age = Date.now() - checkedAt;
+        if (force !== true && checkedAt > 0 && age < root.modelsStaleMinutes * 60000) return;
+
+        root.modelsChecking = true;
+        modelLister.providerId = providerId;
+        modelLister.command = ["bash", "-c", command];
+        modelLister.running = true;
+    }
+
+    property Process modelLister: Process {
+        id: modelLister
+        property string providerId: ""
+
+        stdout: StdioCollector {
+            id: modelListOutput
+            onStreamFinished: {
+                root.modelsChecking = false;
+
+                let parsed = [];
+                try {
+                    parsed = root.strategies[modelLister.providerId].parseModels(modelListOutput.text) ?? [];
+                } catch (e) {
+                    console.log("[Conduit] Could not read the model list:", e);
+                }
+                // Offline, logged out, or an output format that moved: keep the fallback
+                // list rather than emptying the picker.
+                if (parsed.length === 0) return;
+
+                // Keyed by provider, so an answer that arrives after a switch still lands
+                // where it belongs instead of being thrown away.
+                let models = Object.assign({}, root.discoveredModels);
+                models[modelLister.providerId] = parsed;
+                root.discoveredModels = models;
+
+                let stamps = Object.assign({}, root.modelsCheckedAt);
+                stamps[modelLister.providerId] = Date.now();
+                root.modelsCheckedAt = stamps;
+
+                // The stored id may be one the vendor has since retired — the whole
+                // reason for this. `currentModelId` already falls back for the running
+                // shell, but writing the correction back keeps a dead name out of the
+                // config file, and out of whatever `iiren save` carries to the next
+                // machine.
+                if (modelLister.providerId === root.currentProviderId
+                    && !parsed.some(model => model.value === Config.options.conduit.model)) {
+                    Config.options.conduit.model = root.currentModelId;
+                }
+            }
+        }
+
+        // Backstop: a process that dies without ever opening its stream must not leave
+        // the check latched on.
+        onExited: root.modelsChecking = false
+    }
+
     /* ---------- Account limits ---------------------------------------------- *
      * Both CLIs can say how much of the subscription is left, and neither says it
      * the same way, so each strategy normalises its own report to percent
@@ -860,12 +980,15 @@ Singleton {
         root.limitsCheckedAt = 0;
         root.resetSession(); // Sessions don't carry across providers
         root.addInterfaceMessage(`Provider set to ${root.providers[providerId].name}.`);
+        root.refreshModels(false);      // the new CLI keeps its own list
     }
 
     function setModel(modelId) {
         const listed = root.currentProvider.models.some(model => model.value === modelId);
-        if (!listed && !root.supportsCustomModels) {
-            root.addInterfaceMessage(`Unknown model "${modelId}" for ${root.currentProvider.name}.`);
+        // A live list is what the CLI validates against, so an unlisted id is simply
+        // wrong even for a provider that otherwise takes model names we don't know.
+        if (!listed && (!root.supportsCustomModels || root.currentModelsAreLive)) {
+            root.addInterfaceMessage(`Unknown model "${modelId}" for ${root.currentProvider.name}. Available: ${root.currentProvider.models.map(model => model.value).join(", ")}`);
             return;
         }
         Config.options.conduit.model = modelId;

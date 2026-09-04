@@ -198,6 +198,35 @@ ProviderStrategy {
         return out;
     }
 
+    function modelsCommand() {
+        return 'export PATH="$HOME/.local/bin:$PATH"; exec agy models';
+    }
+
+    /**
+     * Tab-separated id and label, newest first, on stdout — the "Fetching available
+     * models..." progress line goes to stderr, so nothing has to be skipped:
+     *
+     *   gemini-3.8-flash-high\tGemini 3.8 Flash (High)
+     *
+     * The ids already encode the effort level, so this is the whole picker.
+     */
+    function parseModels(text) {
+        let out = [];
+        for (const line of String(text).split("\n")) {
+            const columns = line.split("\t");
+            if (columns.length < 2) continue;
+
+            const value = columns[0].trim();
+            const title = columns[1].trim();
+            // A model id is a single token; anything with a space in it is prose that
+            // happened to carry a tab.
+            if (value.length === 0 || /\s/.test(value)) continue;
+
+            out.push({ "value": value, "title": title.length > 0 ? title : value });
+        }
+        return out;
+    }
+
     /** ISO 8601 into something short and local. */
     function formatStamp(stamp): string {
         const clean = String(stamp).trim();

@@ -44,6 +44,9 @@ Item {
         onTriggered: {
             root.service?.warmUp();
             root.service?.refreshLimits(false);
+            // The CLI's model list moves between releases, so the picker asks rather than
+            // trusting what it shipped with. No-op unless what we have has aged out.
+            root.service?.refreshModels(false);
         }
     }
     readonly property var messageIDs: (root.service?.messageIDs ?? []).filter(id => root.service?.messageByID[id]?.visibleToUser ?? true)
@@ -52,6 +55,13 @@ Item {
 
     property var suggestionList: []
     property bool historyShown: false
+
+    // Suggestions are built once from the typed text, and a model list fetched from the
+    // CLI can land seconds after `/model ` was typed, so rebuild them when it arrives.
+    readonly property var providerModels: root.service?.currentProvider.models ?? []
+    onProviderModelsChanged: {
+        if (messageInputField.text.length > 0) root.suggestionList = root.completionsFor(messageInputField.text);
+    }
 
     onFocusChanged: focus => {
         if (focus) messageInputField.forceActiveFocus();
@@ -103,9 +113,11 @@ Item {
                 description: `${root.service.providers[id].name} — ${root.service.providers[id].blurb ?? ""}`
             }));
         case "models":
+            // A model the CLI reported but we ship no blurb for has a title and nothing
+            // else, so the dash would dangle.
             return (root.service?.currentProvider.models ?? []).map(model => ({
                 value: model.value,
-                description: `${model.title} — ${model.description}`
+                description: (model.description ?? "").length > 0 ? `${model.title} — ${model.description}` : model.title
             }));
         case "efforts":
             return root.service?.supportsEffortLevels
@@ -210,6 +222,9 @@ Item {
             break;
         case "model":
             if (args.length === 0) {
+                // Asking for the list is the one moment it plainly matters that it is
+                // current, so pay for a fetch here even if the last one is still fresh.
+                root.service.refreshModels(true);
                 root.showArgumentsFor("model");
             } else {
                 root.service.setModel(args[0]);

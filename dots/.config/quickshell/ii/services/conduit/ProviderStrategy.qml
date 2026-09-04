@@ -63,6 +63,22 @@ QtObject {
         return [];
     }
 
+    /**
+     * Shell command printing the models the CLI accepts right now, or "" when it has no
+     * way to say — in which case the service keeps the list it ships with.
+     */
+    function modelsCommand(): string {
+        return "";
+    }
+
+    /**
+     * Decodes that output into `[{ value, title }]`, newest first. Returning an empty
+     * list means "could not tell", and leaves the shipped list alone.
+     */
+    function parseModels(text): var {
+        return [];
+    }
+
     /* ---------- Shared helpers -------------------------------------------- */
 
     function shellQuote(text): string {
