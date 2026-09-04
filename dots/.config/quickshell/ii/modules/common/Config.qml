@@ -1536,6 +1536,10 @@ Singleton {
                 property bool enablePreview: true
                 property bool revealOnEmptyWorkspace: true
                 property bool enableMediaWidget: false
+                // The audio wave behind the media widget. Cava feeds it 60
+                // updates a second and each one repaints the dock, so it is
+                // the widget's whole running cost - worth being able to drop.
+                property bool enableMediaVisualizer: true
                 // Media popup: hover to peek, or click to keep it up
                 property bool mediaPopupOnHover: false
                 // The desktop media widget shows on an empty workspace too

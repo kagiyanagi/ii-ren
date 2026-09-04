@@ -200,7 +200,7 @@ Item {
             width: parent.width
             height: implicitHeight
             player: root.player
-            visualizerPoints: CavaService.visualizerPoints
+            visualizerPoints: Config.options.dock.enableMediaVisualizer ? CavaService.visualizerPoints : []
             radius: Appearance.rounding.large
             opacity: root.popupShown ? 1 : 0
 
@@ -300,13 +300,17 @@ Item {
             color: ColorUtils.transparentize(root.blendedColors.colLayer0, 0.45)
         }
 
-        WaveVisualizer {
+        Loader {
             anchors.fill: parent
-            points: CavaService.visualizerPoints
-            live: root.isPlaying
-            color: root.blendedColors.colOnLayer0
-            waveOpacity: 0.45
-            smoothing: 2
+            active: Config.options.dock.enableMediaVisualizer
+
+            sourceComponent: WaveVisualizer {
+                points: CavaService.visualizerPoints
+                live: root.isPlaying
+                color: root.blendedColors.colOnLayer0
+                waveOpacity: 0.45
+                smoothing: 2
+            }
         }
 
         RowLayout {

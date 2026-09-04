@@ -280,6 +280,21 @@ ContentPage {
 
         }
 
+        ConfigSwitch {
+            buttonIcon: "graphic_eq"
+            text: Translation.tr("Media widget audio visualizer")
+            enabled: Config.options.dock.enableMediaWidget
+            checked: Config.options.dock.enableMediaVisualizer
+            onCheckedChanged: {
+                Config.options.dock.enableMediaVisualizer = checked;
+            }
+
+            StyledToolTip {
+                text: Translation.tr("The wave behind the dock's media widget.\nCava feeds it 60 updates a second and each one repaints the dock,\nso turning it off is the biggest saving the dock can make.")
+            }
+
+        }
+
         ConfigSpinBox {
             icon: "height"
             text: Translation.tr("Dock height")
