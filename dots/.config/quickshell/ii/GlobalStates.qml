@@ -49,6 +49,7 @@ Singleton {
     property bool barOpen: true
     property bool crosshairOpen: false
     property bool mediaControlsOpen: false
+    property bool immersiveMediaOpen: false
     property int barMediaCount: 0
     property int dockMediaCount: 0
     readonly property bool barMediaConfigured: {

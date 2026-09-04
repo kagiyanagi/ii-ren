@@ -11,6 +11,7 @@ import qs.modules.ii.desktopMenu
 import qs.modules.ii.dock
 import qs.modules.ii.dropover
 import qs.modules.ii.fastPair
+import qs.modules.ii.immersiveMedia
 import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
@@ -59,6 +60,7 @@ Scope {
     PanelLoader { component: DropShelfPanel {} }
     PanelLoader { extraCondition: Config.options.bluetooth.fastPair.enable; component: FastPairPopup {} }
     PanelLoader { component: Lock {} }
+    PanelLoader { component: ImmersiveMedia {} }
     PanelLoader { component: MediaControls {} }
     PanelLoader { component: NotificationPopup {} }
     PanelLoader { extraCondition: !(Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material")); component: OnScreenDisplay {} }

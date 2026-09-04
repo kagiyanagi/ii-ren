@@ -839,6 +839,77 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "fullscreen"
+        title: Translation.tr("Fullscreen media player")
+
+        ConfigSwitch {
+            buttonIcon: "lyrics"
+            text: Translation.tr("Show lyrics pane")
+            checked: Config.options.media.immersive.showLyrics
+            onCheckedChanged: {
+                Config.options.media.immersive.showLyrics = checked;
+            }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "blur_on"
+            text: Translation.tr("Blurred album art background")
+            checked: Config.options.media.immersive.blurredArtBackground
+            onCheckedChanged: {
+                Config.options.media.immersive.blurredArtBackground = checked;
+            }
+        }
+
+        ConfigSwitch {
+            buttonIcon: "palette"
+            text: Translation.tr("Tint colors from album art")
+            checked: Config.options.media.immersive.dynamicAlbumColors
+            onCheckedChanged: {
+                Config.options.media.immersive.dynamicAlbumColors = checked;
+            }
+        }
+
+        ConfigSpinBox {
+            icon: "opacity"
+            text: Translation.tr("Card opacity (%)")
+            value: Config.options.media.immersive.surfaceOpacityPercentage
+            from: 0
+            to: 100
+            stepSize: 10
+            onValueChanged: {
+                Config.options.media.immersive.surfaceOpacityPercentage = value;
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Lyrics")
+
+            ConfigSwitch {
+                buttonIcon: "gradient"
+                text: Translation.tr("Use gradient masking")
+                checked: Config.options.media.immersive.useGradientMask
+                onCheckedChanged: {
+                    Config.options.media.immersive.useGradientMask = checked;
+                }
+            }
+
+            ConfigSpinBox {
+                icon: "format_size"
+                text: Translation.tr("Lyrics font size (px)")
+                value: Config.options.media.immersive.lyricSize
+                from: 12
+                to: 48
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.media.immersive.lyricSize = value;
+                }
+            }
+
+        }
+
+    }
+
+    ContentSection {
         icon: "screenshot_frame_2"
         title: Translation.tr("Region selector (screen snipping/Google Lens)")
 

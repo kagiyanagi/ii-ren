@@ -1651,6 +1651,17 @@ Singleton {
                 // Automatically sets the active player to a newly detected player if its identifier matches the value specified in the priorityPlayer property like "spotify" or "google-chrome"
                 // This comparison uses the desktopEntry property of MprisPlayer (which is the name of the app casting the media)
                 property string priorityPlayer: ""
+
+                // Fullscreen now-playing surface. Toggle it with the
+                // `immersiveMedia` IPC target or the global shortcut.
+                property JsonObject immersive: JsonObject {
+                    property bool showLyrics: true
+                    property bool blurredArtBackground: true
+                    property bool dynamicAlbumColors: true
+                    property bool useGradientMask: true
+                    property int surfaceOpacityPercentage: 70
+                    property int lyricSize: Appearance.font.pixelSize.huge
+                }
             }
 
             property JsonObject networking: JsonObject {
