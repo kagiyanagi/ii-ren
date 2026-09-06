@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "The Scout wake phrases, and the training settings used to build them.",
+    "",
+    "`file` must match the filename in ConduitService.qml's wakePhrasePresets —",
+    "nothing enforces that automatically, so if you rename one, rename it there",
+    "too. The trained .onnx files go in ~/.local/share/vynx-conduit/wakeword/.",
+    "",
+    "`threshold` is a starting point, not a finding. Measure it: point",
+    "scripts/wakeword/wakeword.py --wav at a recording of yourself saying the",
+    "phrase, and at half an hour of podcast, and pick the number that separates",
+    "them. See the README."
+  ],
+
+  "phrases": [
+    {
+      "name": "hey_scout",
+      "phrase": "hey scout",
+      "file": "hey_scout.onnx",
+      "threshold": 0.5,
+      "note": "The default. The 'hey' prefix gives the model a distinctive onset to anchor on, which is what stops it firing on the word 'scout' in conversation."
+    },
+    {
+      "name": "okay_scout",
+      "phrase": "okay scout",
+      "file": "okay_scout.onnx",
+      "threshold": 0.5,
+      "note": "Three syllables, the most robust of the three. Longer phrase, lower false-accept rate."
+    },
+    {
+      "name": "scout",
+      "phrase": "scout",
+      "file": "scout.onnx",
+      "threshold": 0.7,
+      "note": "One syllable and a common English word, so the classifier has much less to discriminate on. Held to a stricter threshold than the prefixed phrases for that reason; expect it to still be the one that misfires."
+    }
+  ],
+
+  "training": {
+    "n_samples": 5000,
+    "n_samples_val": 1000,
+    "steps": 20000,
+    "target_accuracy": 0.7,
+    "target_recall": 0.5,
+    "_note": "n_samples is the quality dial. openWakeWord's own quick notebook uses 1000 and says accuracy may be low; the thorough one uses tens of thousands and takes hours. 5000 is a deliberate middle. Raise it and steps together if a phrase misfires after threshold tuning."
+  }
+}

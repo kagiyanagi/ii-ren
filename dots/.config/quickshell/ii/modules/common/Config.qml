@@ -183,6 +183,32 @@ Singleton {
                 property bool notifyWhenAway: true
                 property bool restoreOnRestart: false
                 property string ttsVoice: ""
+
+                // Hands-free trigger. Off by default: it holds the microphone open
+                // for as long as the shell runs, which is a thing to opt into
+                // rather than to discover.
+                property JsonObject wakeWord: JsonObject {
+                    property bool enable: false
+                    // Which trained phrase listens. Files live in
+                    // ~/.local/share/vynx-conduit/wakeword; see tools/wakeword.
+                    property string phrase: "hey_scout"
+                    // Score to fire at. Lower catches more and false-fires more.
+                    // Tune it by measurement, not by feel — wakeword.py --wav
+                    // scores a recording so you can see what a real miss costs.
+                    property real threshold: 0.5
+                    // "scout" on its own is one syllable and gives the classifier
+                    // very little to go on, so it is held to a stricter score than
+                    // the prefixed phrases.
+                    property real bareThreshold: 0.7
+                    property string source: "" // as sttSource
+                    property bool pauseWhenLocked: true
+                    // Keep this listener out of the privacy indicator. It holds the
+                    // microphone for as long as it is enabled, so showing it there
+                    // would light the indicator permanently and bury the case it
+                    // exists for — some *other* app opening the mic. Only this
+                    // stream is hidden; every other recorder still shows.
+                    property bool hideFromPrivacy: true
+                }
             }
 
             property JsonObject appearance: JsonObject {

@@ -81,6 +81,7 @@ Singleton {
     property string screenshareStatePath: FileUtils.trimFileProtocol(`${Directories.state}/user/generated/screenshare/apps.txt`)
     property string privacyStateScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/privacy/privacystate.py`)
     property string locationServiceScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/privacy/locationservice.sh`)
+    property string wakeWordScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/wakeword/wakeword.py`)
     property string geniusLyricsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/lyrics/genius-lyrics.js`)
     property string localSendDownloadPath: FileUtils.trimFileProtocol(`${Directories.home}/Downloads/localsend`)
     property string applyCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/apply-cursor-theme.sh`)

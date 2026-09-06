@@ -1,5 +1,6 @@
 import qs.modules.common
 import qs.modules.common.functions as CF
+import Quickshell
 import Quickshell.Io
 import QtQuick
 
@@ -106,6 +107,22 @@ QtObject {
     }
 
     /**
+     * Transcribe a WAV somebody else recorded, skipping the recorder entirely.
+     *
+     * This is the wake word's path: that process owns the microphone for the whole
+     * cycle and hands over a finished file, because reopening the mic between
+     * detecting the phrase and capturing the request clips its first word.
+     */
+    function transcribeFile(path) {
+        if (root.recording || root.transcribing) return;
+        if (!root.available) {
+            root.failed(root.setupHint());
+            return;
+        }
+        transcriber.start(path);
+    }
+
+    /**
      * Turns whisper's stderr into something actionable. The common one is worth
      * special-casing: distributions split the ggml compute backends into their own
      * packages, and whisper-cpp depends only on base ggml, so a stock install has no
@@ -202,8 +219,13 @@ QtObject {
     property Process transcriber: Process {
         id: transcriber
 
-        function start() {
+        // Which file this run is reading, so it can be shredded afterwards.
+        property string audioPath: ""
+
+        function start(path) {
             root.transcribing = true;
+            const audio = (path && path.length > 0) ? path : root.wavPath;
+            transcriber.audioPath = audio;
             const model = CF.FileUtils.trimFileProtocol(root.modelPath);
             // -nt drops timestamps, -np drops progress chatter, so stdout is just text.
             // Whisper continues the prompt's style, so a prompt ending mid-sentence
@@ -215,7 +237,7 @@ QtObject {
                 bias = ` --prompt '${CF.StringUtils.shellSingleQuoteEscape(terminated)}' --carry-initial-prompt`;
             }
             transcriber.command = ["bash", "-c",
-                `[ -s '${root.wavPath}' ] || exit 3; '${root.binary}' -m '${model}' -f '${root.wavPath}' -l '${root.language}' -t ${root.threads}${bias} -nt -np`];
+                `[ -s '${audio}' ] || exit 3; '${root.binary}' -m '${model}' -f '${audio}' -l '${root.language}' -t ${root.threads}${bias} -nt -np`];
             transcriber.running = true;
         }
 
@@ -233,6 +255,18 @@ QtObject {
         // the message box.
         onExited: exitCode => {
             root.transcribing = false;
+
+            /*
+             * The recording has served its purpose the moment it has been read, and
+             * a wake word means these appear without anyone deciding to make one.
+             * Deleted on every path, including the failures - a transcript that
+             * could not be read is not a reason to keep the audio lying in /tmp
+             * until the next reboot, and re-recording costs a sentence.
+             */
+            if (transcriber.audioPath.length > 0) {
+                Quickshell.execDetached(["rm", "-f", transcriber.audioPath]);
+                transcriber.audioPath = "";
+            }
 
             if (exitCode === 3) {
                 root.failed("Nothing was recorded. Is an input device active?");

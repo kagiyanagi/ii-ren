@@ -417,13 +417,119 @@ Singleton {
                 // Voice in, voice out: a turn dictated with the keybinding is read
                 // back the same way, so the whole exchange works without looking.
                 root.speakReply = true;
-                root.sendUserMessage(text);
+                const spoken = root.wakeTurn ? root.stripWakePhrase(text) : text;
+                root.wakeTurn = false;
+                root.sendUserMessage(spoken);
                 return;
             }
+            root.wakeTurn = false;
             root.dictationReady(text);
         }
+        onFailed: reason => {
+            // Cleared here too, else a failed hands-free turn leaves the next
+            // keyboard dictation being treated as one.
+            root.wakeTurn = false;
+            root.addInterfaceMessage(reason);
+        }
+    }
+
+    /* ---------- Wake word --------------------------------------------------- *
+     * The hands-free entry point. It ends in exactly the same place the dictation
+     * keybinding does - autoSend set, whisper handed a WAV - so the reply being
+     * spoken back needs no code of its own here.
+     */
+
+    /*
+     * Which classifier files to load for each setting. "any" runs all three at
+     * once: the expensive part of detection is the shared frontend, which runs
+     * once no matter how many phrases are watched, so a second and third phrase
+     * cost about a megabyte each and no measurable CPU.
+     *
+     * hey_jarvis is openWakeWord's own pretrained model. It is deliberately *not*
+     * offered in settings - this assistant is called Scout - and stays here only
+     * as a way to exercise the pipeline before a trained Scout model exists, by
+     * setting conduit.wakeWord.phrase to "hey_jarvis" in config.json by hand.
+     * Nothing in the UI leads here.
+     */
+    readonly property var wakePhrasePresets: ({
+        "hey_scout":  [{ "name": "hey_scout",  "file": "hey_scout.onnx",  "bare": false }],
+        "okay_scout": [{ "name": "okay_scout", "file": "okay_scout.onnx", "bare": false }],
+        "scout":      [{ "name": "scout",      "file": "scout.onnx",      "bare": true  }],
+        "any_scout":  [{ "name": "hey_scout",  "file": "hey_scout.onnx",  "bare": false },
+                       { "name": "okay_scout", "file": "okay_scout.onnx", "bare": false },
+                       { "name": "scout",      "file": "scout.onnx",      "bare": true  }],
+
+        // openWakeWord's own pretrained phrases. No training, no Colab - they are
+        // fetched straight from the release and work immediately, which is what
+        // makes the feature usable without a GPU anywhere in the picture.
+        // Not "bare" despite having no prefix: that flag exists for single-syllable
+        // triggers, and "Alexa" is three distinctive ones.
+        "alexa":       [{ "name": "alexa",       "file": "alexa_v0.1.onnx",       "bare": false }],
+        "hey_mycroft": [{ "name": "hey_mycroft", "file": "hey_mycroft_v0.1.onnx", "bare": false }],
+        "hey_rhasspy": [{ "name": "hey_rhasspy", "file": "hey_rhasspy_v0.1.onnx", "bare": false }],
+        "hey_jarvis":  [{ "name": "hey_jarvis",  "file": "hey_jarvis_v0.1.onnx",  "bare": false }]
+    })
+
+    readonly property var wakePhrases: {
+        const preset = root.wakePhrasePresets[Config.options.conduit.wakeWord.phrase]
+            ?? root.wakePhrasePresets["hey_scout"];
+        const wake = Config.options.conduit.wakeWord;
+        return preset.map(phrase => ({
+            "name": phrase.name,
+            "file": phrase.file,
+            "threshold": phrase.bare ? wake.bareThreshold : wake.threshold
+        }));
+    }
+
+    // Marks the turn as hands-free, so the transcript gets the wake phrase
+    // trimmed off it and the reply is spoken.
+    property bool wakeTurn: false
+
+    /**
+     * Capture starts a fraction before the phrase is detected, so whatever the
+     * user said arrives with the tail of "hey scout" stuck to the front of it.
+     * Trimmed only when it is really there - and never down to nothing, so a bare
+     * "Scout" with no request survives as something to answer.
+     */
+    function stripWakePhrase(text) {
+        const stripped = text
+            .replace(/^[\s,.!?-]*(?:(?:hey|okay|ok)\s+)?(?:s?cout|jarvis)\b[\s,.!?-]*/i, "")
+            .trim();
+        return stripped.length > 0 ? stripped : text;
+    }
+
+    property WakeWord wake: WakeWord {
+        enabled: Config.options.conduit.enable && Config.options.conduit.wakeWord.enable
+        phrases: root.wakePhrases
+        source: Config.options.conduit.wakeWord.source
+
+        /*
+         * Deaf while the shell is talking, thinking, or locked. The first of those
+         * is not optional: piper's output reaches the microphone, so a reply
+         * containing the wake phrase would wake the shell with its own voice.
+         */
+        suspended: root.reader.busy || root.responding
+            || root.speech.recording || root.speech.transcribing
+            || (Config.options.conduit.wakeWord.pauseWhenLocked && GlobalStates.screenLocked)
+
+        onWoke: (phrase, score) => {
+            console.log(`[Conduit] Wake word "${phrase}" at ${score}`);
+            GlobalStates.policiesPanelOpen = true;
+            root.focusConduitTab();
+        }
+
+        onUtterance: path => {
+            root.wakeTurn = true;
+            root.speech.autoSend = true;
+            root.speech.transcribeFile(path);
+        }
+
         onFailed: reason => root.addInterfaceMessage(reason)
     }
+
+    Binding { target: GlobalStates; property: "wakeListening"; value: root.wake.listening }
+    Binding { target: GlobalStates; property: "wakeCapturing"; value: root.wake.capturing }
+    Binding { target: GlobalStates; property: "wakeLevel"; value: root.wake.level }
 
     /* ---------- Voice output ----------------------------------------------- */
 

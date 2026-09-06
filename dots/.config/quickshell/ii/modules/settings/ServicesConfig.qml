@@ -108,6 +108,61 @@ ContentPage {
             }
         }
 
+        ContentSubsection {
+            title: Translation.tr("Wake word")
+
+            ConfigSwitch {
+                buttonIcon: "record_voice_over"
+                text: Translation.tr("Answer when spoken to, hands-free")
+                checked: Config.options.conduit.wakeWord.enable
+                onCheckedChanged: {
+                    Config.options.conduit.wakeWord.enable = checked;
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                text: Translation.tr("Keeps the microphone open while the shell runs. Detection happens entirely on this machine and nothing is recorded until the phrase is heard.")
+            }
+
+            // Ready-made phrases first: they download on demand and work with no
+            // training. The Scout ones need a trained model in place and will say
+            // so if it is missing.
+            ConfigSelectionArray {
+                currentValue: Config.options.conduit.wakeWord.phrase
+                onSelected: newValue => {
+                    Config.options.conduit.wakeWord.phrase = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Alexa"), value: "alexa" },
+                    { displayName: Translation.tr("Hey Mycroft"), value: "hey_mycroft" },
+                    { displayName: Translation.tr("Hey Rhasspy"), value: "hey_rhasspy" },
+                    { displayName: Translation.tr("Hey Scout"), value: "hey_scout" },
+                    { displayName: Translation.tr("Okay Scout"), value: "okay_scout" },
+                    { displayName: Translation.tr("Scout"), value: "scout" },
+                    { displayName: Translation.tr("Any Scout"), value: "any_scout" }
+                ]
+            }
+
+            // Sensitivity rather than the threshold it sets, because "more
+            // sensitive" is the thing being asked for; the model wants the
+            // opposite number, so it is inverted here rather than in the head of
+            // whoever is dragging it.
+            ConfigSlider {
+                buttonIcon: "sensors"
+                text: Translation.tr("Sensitivity")
+                from: 0.05
+                to: 0.9
+                value: 1 - Config.options.conduit.wakeWord.threshold
+                onMoved: value => {
+                    Config.options.conduit.wakeWord.threshold = 1 - value;
+                }
+            }
+        }
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("Working directory (empty: home). Tools cannot reach outside it.")
