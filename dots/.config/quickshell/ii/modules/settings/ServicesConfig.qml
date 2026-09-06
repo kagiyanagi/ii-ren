@@ -29,83 +29,56 @@ ContentPage {
     }
 
     ContentSection {
-        icon: "electrical_services"
-        title: Translation.tr("Conduit")
+        icon: "auto_awesome"
+        title: Translation.tr("Hermes")
 
         ConfigSwitch {
             buttonIcon: "check"
-            text: Translation.tr("Show Conduit in the sidebar")
-            checked: Config.options.conduit.enable
+            text: Translation.tr("Show Hermes in the sidebar")
+            checked: Config.options.hermes.enable
             onCheckedChanged: {
-                Config.options.conduit.enable = checked;
+                Config.options.hermes.enable = checked;
             }
         }
         ConfigSwitch {
             buttonIcon: "construction"
-            text: Translation.tr("Tools (run unattended in the working directory)")
-            checked: Config.options.conduit.enableTools
+            text: Translation.tr("Show what tools the agent runs")
+            checked: Config.options.hermes.showToolCalls
             onCheckedChanged: {
-                Config.options.conduit.enableTools = checked;
+                Config.options.hermes.showToolCalls = checked;
             }
         }
         ConfigSwitch {
-            buttonIcon: "smart_toy"
-            text: Translation.tr("Desktop control (the agent can see the screen, click and type)")
-            checked: Config.options.conduit.desktopControl
-            enabled: Config.options.conduit.enableTools
+            buttonIcon: "pending"
+            text: Translation.tr("Show what it is doing while it works")
+            checked: Config.options.hermes.showStatusLine
             onCheckedChanged: {
-                Config.options.conduit.desktopControl = checked;
+                Config.options.hermes.showStatusLine = checked;
             }
         }
         ConfigSwitch {
             buttonIcon: "notifications"
             text: Translation.tr("Notify when a reply lands and the tab isn't visible")
-            checked: Config.options.conduit.notifyWhenAway
+            checked: Config.options.hermes.notifyWhenAway
             onCheckedChanged: {
-                Config.options.conduit.notifyWhenAway = checked;
+                Config.options.hermes.notifyWhenAway = checked;
             }
         }
         ConfigSwitch {
-            buttonIcon: "history"
-            text: Translation.tr("Restore the last chat on restart")
-            checked: Config.options.conduit.restoreOnRestart
+            buttonIcon: "record_voice_over"
+            text: Translation.tr("Read the reply back after speaking to it")
+            checked: Config.options.hermes.speakReplies
             onCheckedChanged: {
-                Config.options.conduit.restoreOnRestart = checked;
+                Config.options.hermes.speakReplies = checked;
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Permissions")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.conduit.permissionMode
-                onSelected: newValue => {
-                    Config.options.conduit.permissionMode = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Bypass"), value: "bypassPermissions" },
-                    { displayName: Translation.tr("Edits"), value: "acceptEdits" },
-                    { displayName: Translation.tr("No ask"), value: "dontAsk" },
-                    { displayName: Translation.tr("Plan"), value: "plan" }
-                ]
-            }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Voice accuracy")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.conduit.sttQuality
-                onSelected: newValue => {
-                    Config.options.conduit.sttQuality = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Fast"), value: "fast" },
-                    { displayName: Translation.tr("Balanced"), value: "balanced" },
-                    { displayName: Translation.tr("Accurate"), value: "accurate" },
-                    { displayName: Translation.tr("Best"), value: "best" }
-                ]
-            }
+        StyledText {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            color: Appearance.colors.colSubtext
+            text: Translation.tr("Models, providers, tools and approvals belong to the agent itself — set them with the picker in the sidebar or Hermes' own slash commands.")
         }
 
         ContentSubsection {
@@ -114,9 +87,9 @@ ContentPage {
             ConfigSwitch {
                 buttonIcon: "record_voice_over"
                 text: Translation.tr("Answer when spoken to, hands-free")
-                checked: Config.options.conduit.wakeWord.enable
+                checked: Config.options.hermes.wakeWord.enable
                 onCheckedChanged: {
-                    Config.options.conduit.wakeWord.enable = checked;
+                    Config.options.hermes.wakeWord.enable = checked;
                 }
             }
 
@@ -128,13 +101,50 @@ ContentPage {
                 text: Translation.tr("Keeps the microphone open while the shell runs. Detection happens entirely on this machine and nothing is recorded until the phrase is heard.")
             }
 
+            // Whatever is stopping it from arming, shown against the setting that
+            // caused it rather than announced in the chat on every shell start.
+            Rectangle {
+                Layout.fillWidth: true
+                visible: HermesService.wakeError.length > 0
+                implicitHeight: wakeErrorRow.implicitHeight + 12 * 2
+                radius: Appearance.rounding.small
+                color: Appearance.colors.colLayer2
+
+                RowLayout {
+                    id: wakeErrorRow
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        margins: 12
+                    }
+                    spacing: 8
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignTop
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.m3colors.m3error
+                        text: "mic_off"
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colOnLayer2
+                        text: HermesService.wakeError
+                    }
+                }
+            }
+
             // Ready-made phrases first: they download on demand and work with no
             // training. The Scout ones need a trained model in place and will say
             // so if it is missing.
             ConfigSelectionArray {
-                currentValue: Config.options.conduit.wakeWord.phrase
+                currentValue: Config.options.hermes.wakeWord.phrase
                 onSelected: newValue => {
-                    Config.options.conduit.wakeWord.phrase = newValue;
+                    Config.options.hermes.wakeWord.phrase = newValue;
                 }
                 options: [
                     { displayName: Translation.tr("Alexa"), value: "alexa" },
@@ -156,44 +166,29 @@ ContentPage {
                 text: Translation.tr("Sensitivity")
                 from: 0.05
                 to: 0.9
-                value: 1 - Config.options.conduit.wakeWord.threshold
+                value: 1 - Config.options.hermes.wakeWord.threshold
                 onMoved: value => {
-                    Config.options.conduit.wakeWord.threshold = 1 - value;
+                    Config.options.hermes.wakeWord.threshold = 1 - value;
                 }
             }
-        }
 
-        MaterialTextArea {
-            Layout.fillWidth: true
-            placeholderText: Translation.tr("Working directory (empty: home). Tools cannot reach outside it.")
-            text: Config.options.conduit.workingDir
-            wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Qt.callLater(() => {
-                    Config.options.conduit.workingDir = text.trim();
-                });
-            }
-        }
-        MaterialTextArea {
-            Layout.fillWidth: true
-            placeholderText: Translation.tr("Denied tools, comma-separated (claude only)")
-            text: Config.options.conduit.disallowedTools
-            wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Qt.callLater(() => {
-                    Config.options.conduit.disallowedTools = text.trim();
-                });
-            }
-        }
-        MaterialTextArea {
-            Layout.fillWidth: true
-            placeholderText: Translation.tr("System prompt")
-            text: Config.options.conduit.systemPrompt
-            wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Qt.callLater(() => {
-                    Config.options.conduit.systemPrompt = text;
-                });
+            // Only the wake path transcribes a file, so this is the one place the
+            // shell's own whisper still runs; the mic button uses the agent's STT.
+            ContentSubsection {
+                title: Translation.tr("Wake transcription accuracy")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.hermes.sttQuality
+                    onSelected: newValue => {
+                        Config.options.hermes.sttQuality = newValue;
+                    }
+                    options: [
+                        { displayName: Translation.tr("Fast"), value: "fast" },
+                        { displayName: Translation.tr("Balanced"), value: "balanced" },
+                        { displayName: Translation.tr("Accurate"), value: "accurate" },
+                        { displayName: Translation.tr("Best"), value: "best" }
+                    ]
+                }
             }
         }
     }

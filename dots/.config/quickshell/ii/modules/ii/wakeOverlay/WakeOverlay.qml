@@ -29,13 +29,13 @@ Scope {
     property bool startedByWake: false
 
     readonly property bool busy: root.startedByWake
-        && (GlobalStates.wakeCapturing || ConduitService.speech.transcribing || ConduitService.responding)
+        && (GlobalStates.wakeCapturing || HermesService.speech.transcribing || HermesService.busy)
 
     property bool shown: false
 
     readonly property string caption: {
         if (GlobalStates.wakeCapturing) return Translation.tr("Listening…");
-        if (ConduitService.speech.transcribing) return Translation.tr("Just a moment…");
+        if (HermesService.speech.transcribing) return Translation.tr("Just a moment…");
         return Translation.tr("Thinking…");
     }
 
@@ -49,7 +49,7 @@ Scope {
     property var levels: []
 
     Connections {
-        target: ConduitService.wake
+        target: HermesService.wake
 
         function onWoke(phrase, score) {
             root.startedByWake = true;

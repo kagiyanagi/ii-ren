@@ -83,7 +83,7 @@ Scope {
     PanelLoader { component: SidebarPolicies {} }
     PanelLoader { component: SidebarDashboard {} }
     PanelLoader { extraCondition: Config.options.bar.vertical && barExtraCondition; component: VerticalBar {} }
-    PanelLoader { extraCondition: Config.options.conduit.enable && Config.options.conduit.wakeWord.enable; component: WakeOverlay {} }
+    PanelLoader { extraCondition: Config.options.hermes.enable && Config.options.hermes.wakeWord.enable; component: WakeOverlay {} }
     PanelLoader { component: WallpaperSelector {} }
     PanelLoader { component: WrappedFrame {} }
 }

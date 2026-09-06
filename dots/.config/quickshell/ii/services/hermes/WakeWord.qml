@@ -116,6 +116,20 @@ QtObject {
 
     /* ---------- The detector ------------------------------------------------ */
 
+    /*
+     * A shell that dies without unwinding (a segfault, a kill -9) leaves the
+     * detector orphaned on the microphone, reparented to init. It keeps running and
+     * keeps writing to the same utterance path the next shell uses, so two of them
+     * race and the live shell never sees the wake -- the symptom is a wake word
+     * that simply stops working, with nothing in the log. Only one process should
+     * ever hold this mic, so any stray is reaped before claiming it.
+     */
+    // Probed here as well as from onEnabledChanged/onPhrasesChanged: on a hot
+    // reload Config is already loaded, so `enabled` is true from its very first
+    // evaluation and neither handler ever fires -- which would leave modelsReady
+    // false and the detector unstarted.
+    Component.onCompleted: root.recheckModels()
+
     property Process detector: Process {
         id: detector
 

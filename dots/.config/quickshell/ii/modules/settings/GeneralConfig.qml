@@ -323,13 +323,13 @@ ContentPage {
             }
 
             ContentSubsection {
-                title: Translation.tr("Conduit")
+                title: Translation.tr("Hermes")
                 Layout.fillWidth: false
 
                 ConfigSelectionArray {
-                    currentValue: Config.options.conduit.enable ? 1 : 0
+                    currentValue: Config.options.hermes.enable ? 1 : 0
                     onSelected: newValue => {
-                        Config.options.conduit.enable = (newValue === 1);
+                        Config.options.hermes.enable = (newValue === 1);
                     }
                     options: [
                         {

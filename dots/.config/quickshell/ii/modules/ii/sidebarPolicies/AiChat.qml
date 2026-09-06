@@ -296,7 +296,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             // Messages
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // See Conduit.qml: a layer here costs every cursor inside the transcript,
+            // A layer here costs every cursor inside the transcript,
             // and SidebarPoliciesContent already rounds and clips the SwipeView.
 
             StyledRectangularShadow {

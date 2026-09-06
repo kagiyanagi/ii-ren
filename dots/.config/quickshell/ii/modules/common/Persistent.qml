@@ -64,6 +64,13 @@ Singleton {
                 property real temperature: 0.5
             }
 
+            property JsonObject hermes: JsonObject {
+                // Applied to each new session with `--session`, so the sidebar's
+                // model never overwrites what the hermes CLI starts on.
+                property string model: ""
+                property string provider: ""
+            }
+
             property JsonObject water: JsonObject {
                 property int glassesDrunk: 0
                 property string lastDate: ""

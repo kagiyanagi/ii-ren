@@ -18,7 +18,7 @@ Item {
     property bool animeEnabled: Config.options.policies.weeb !== 0  
     property bool animeCloset: Config.options.policies.weeb === 2  
     property bool continuityEnabled: Config.options.policies.continuity !== 0
-    property bool conduitEnabled: Config.options.conduit.enable
+    property bool hermesEnabled: Config.options.policies.hermes !== 0 && (Config.options.hermes?.enable ?? false)
 
     property bool _sidebarExtended: scopeRoot.extend
     property int _maxTextTabs: _sidebarExtended ? 4 : 3
@@ -26,8 +26,8 @@ Item {
     property var extensionPages: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
 
-    // Conduit sits in front of the built-in pages and is focused on open.
-    readonly property int pinnedTabIndex: root.conduitEnabled ? 0 : -1
+    // Hermes sits in front of the built-in pages and is focused on open.
+    readonly property int pinnedTabIndex: root.hermesEnabled ? 0 : -1
 
     // Reassigning extensionPages re-runs the contentChildren binding below, which
     // rebuilds every extension page from a fresh ?_t= URL and throws its state
@@ -56,8 +56,8 @@ Item {
     }
 
     property var tabButtonList: [  
-        ...(root.conduitEnabled ? [{"icon": "electrical_services", "name": Translation.tr("Conduit")}] : []),
-        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),  
+        ...(root.hermesEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Hermes")}] : []),
+        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
@@ -155,10 +155,10 @@ Item {
                 }
 
                 contentChildren: [
-                    ...(root.conduitEnabled ? [conduit.createObject()] : []),
+                    ...(root.hermesEnabled ? [hermes.createObject()] : []),
                     ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((!root.conduitEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
+                    ...((!root.hermesEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
                     ...(root.animeEnabled ? [anime.createObject()] : []),
                     ...(root.continuityEnabled ? [continuity.createObject()] : []),
                     ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
@@ -167,7 +167,7 @@ Item {
         }
 
         // Every page in the view re-evaluates on open, whether or not it is the tab
-        // being looked at: measured on this machine, Conduit ~40 and Continuity ~63 CPU
+        // being looked at: measured on this machine, Hermes ~40 and Continuity ~63 CPU
         // ticks per open, and they add up. Only the current tab is kept alive; a page is
         // built when you switch to it and dropped when you leave.
         component PageSlot: Loader {
@@ -183,12 +183,12 @@ Item {
         }
 
         Component {
-            id: conduit
-            PageSlot { sourceComponent: Conduit {} }
-        }
-        Component {
             id: aiChat
             PageSlot { sourceComponent: AiChat {} }
+        }
+        Component {
+            id: hermes
+            PageSlot { sourceComponent: Hermes {} }
         }
         Component {
             id: translator

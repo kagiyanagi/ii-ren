@@ -15,7 +15,14 @@ Item { // Model indicator
 
     RowLayout {
         id: rowLayout
-        anchors.centerIn: parent
+        // Fills rather than centres so the item can be given a width and have the
+        // label elide inside it; at its implicit size this is identical to centring.
+        anchors.fill: parent
+        anchors.margins: 4
+        // DESIGN.md 5.2: 8 between an icon and its label. Left unset it inherited
+        // Qt's default 5, which is narrower than some Material Symbols glyphs
+        // overhang their advance -- service_toolbox was printing over its own count.
+        spacing: 8
 
         Loader {
             active: root.icon.length > 0
@@ -37,6 +44,9 @@ Item { // Model indicator
         
         StyledText {
             id: providerName
+            // elide only bites once the cell can actually be narrower than the text.
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: Appearance.m3colors.m3onSurface
             elide: Text.ElideRight

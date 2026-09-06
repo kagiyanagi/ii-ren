@@ -249,12 +249,15 @@ ColumnLayout {
                             }
                         }
 
-                        MouseArea { // Cursor only -- presses and the wheel pass through
+                        MouseArea { // Cursor, and the right button; the rest passes through
                             // Spelled out rather than left to TextEdit, which sets the
                             // cursor itself from `readOnly && !selectByMouse` and so was
                             // actively forcing an arrow over the code.
+                            // The right button is taken so Qt 6.9+'s stock editing menu
+                            // does not open over a read-only block -- the header already
+                            // has Copy and Save buttons for what it would offer.
                             anchors.fill: parent
-                            acceptedButtons: Qt.NoButton
+                            acceptedButtons: root.editing ? Qt.NoButton : Qt.RightButton
                             hoverEnabled: true
                             cursorShape: (root.enableMouseSelection || root.editing) ? Qt.IBeamCursor : Qt.ArrowCursor
                         }

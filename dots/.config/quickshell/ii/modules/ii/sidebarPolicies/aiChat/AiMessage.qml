@@ -22,7 +22,7 @@ Rectangle {
 
     // splitMarkdownBlocks() hands back a fresh array every call, so binding this
     // straight to `content` rebuilt every segment delegate on every streamed token.
-    // Re-split on a throttle instead -- same fix as ConduitTurn.qml.
+    // Re-split on a throttle instead -- same fix as HermesMessage.qml.
     property list<var> messageBlocks: []
 
     function resplit() {

@@ -177,9 +177,13 @@ ColumnLayout {
                 GlobalStates.sidebarLeftOpen = false
             }
 
-            MouseArea { // Pointing hand for links
+            MouseArea { // Pointing hand for links; also eats the stock context menu
                 anchors.fill: parent
-                acceptedButtons: Qt.NoButton // Only for hover
+                // Qt 6.9+ gives every TextArea a built-in editing menu. Over a
+                // read-only transcript it opens with Cut/Paste/Delete greyed out
+                // and in a style that is not this shell's, so the right button is
+                // taken here. While editing that menu is useful, so it is left.
+                acceptedButtons: root.editing ? Qt.NoButton : Qt.RightButton
                 hoverEnabled: true
                 cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : 
                     (enableMouseSelection || editing) ? Qt.IBeamCursor : Qt.ArrowCursor

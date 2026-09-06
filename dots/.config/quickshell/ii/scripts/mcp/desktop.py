@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MCP server: full desktop control for the agent running inside Conduit.
+MCP server: full desktop control for the agent running inside the shell.
 
 Speed is the whole point, so the design is about round trips, not about the
 speed of any one action:

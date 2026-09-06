@@ -112,6 +112,7 @@ Singleton {
                 property int wallpapers: 1 // 0: No | 1: Yes
                 property int translator: 0 // 0: No | 1: Yes
                 property int continuity: 1 // 0: No | 1: Yes
+                property int hermes: 1 // 0: No | 1: Yes
             }
 
             property JsonObject extensions: JsonObject {
@@ -162,27 +163,32 @@ Singleton {
                 ]
             }
 
-            // Conduit: a Claude Code / Antigravity CLI session in the sidebar.
-            property JsonObject conduit: JsonObject {
+            property JsonObject hermes: JsonObject {
                 property bool enable: true
-                property string provider: "claude-cli" // claude-cli | antigravity
-                property string model: "claude-sonnet-5"
-                property string effort: "" // low | medium | high | xhigh | max — empty: provider default
-                property string systemPrompt: "You are answering from a desktop shell sidebar. Keep replies concise and use markdown when it helps."
-                property bool enableTools: true
-                property bool desktopControl: true // Hands the agent the screen, pointer and keyboard over MCP
-                property string permissionMode: "bypassPermissions" // bypassPermissions | acceptEdits | dontAsk | plan
-                property string disallowedTools: ""
-                property string workingDir: "" // empty: $HOME
-                property string sttModel: ""
-                property string sttLanguage: "en" // en | auto
-                property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-vynx, Conduit, LaTeX, extension, sidebar, attachment, transcript."
-                property string sttSource: ""
-                property string sttQuality: "balanced" // fast | balanced | accurate | best
-                property string currentChatId: ""
+                property bool showToolCalls: true
+                property bool showStatusLine: true
+                // Slash completions come from the agent, which knows its own
+                // skills and plugins; this only bounds how many are offered.
+                property int maxSuggestions: 12
+
+                // Read the reply back after a turn that was started by voice, so a
+                // hands-free exchange works without looking at the screen. Uses the
+                // agent's own TTS (`voice.tts`).
+                property bool speakReplies: true
+
+                // Notify when a reply lands somewhere you cannot see it -- the panel
+                // shut, or open on another tab.
                 property bool notifyWhenAway: true
-                property bool restoreOnRestart: false
-                property string ttsVoice: ""
+
+                // Dictation from the mic button and Super+Shift+B runs on the
+                // agent's own capture and STT. The whisper settings below are for
+                // the wake-word path only, which hands over a finished WAV --
+                // the agent's VAD loop cannot transcribe a file.
+                property string sttQuality: "balanced" // fast | balanced | accurate | best
+                property string sttModel: ""           // explicit path wins over the preset
+                property string sttLanguage: "en"      // en | auto
+                property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, Hermes, LaTeX, extension, sidebar, attachment, transcript."
+                property string sttSource: ""
 
                 // Hands-free trigger. Off by default: it holds the microphone open
                 // for as long as the shell runs, which is a thing to opt into
@@ -193,7 +199,7 @@ Singleton {
                     // ~/.local/share/vynx-conduit/wakeword; see tools/wakeword.
                     property string phrase: "hey_scout"
                     // Score to fire at. Lower catches more and false-fires more.
-                    // Tune it by measurement, not by feel — wakeword.py --wav
+                    // Tune it by measurement, not by feel -- wakeword.py --wav
                     // scores a recording so you can see what a real miss costs.
                     property real threshold: 0.5
                     // "scout" on its own is one syllable and gives the classifier
@@ -205,7 +211,7 @@ Singleton {
                     // Keep this listener out of the privacy indicator. It holds the
                     // microphone for as long as it is enabled, so showing it there
                     // would light the indicator permanently and bury the case it
-                    // exists for — some *other* app opening the mic. Only this
+                    // exists for -- some *other* app opening the mic. Only this
                     // stream is hidden; every other recorder still shows.
                     property bool hideFromPrivacy: true
                 }

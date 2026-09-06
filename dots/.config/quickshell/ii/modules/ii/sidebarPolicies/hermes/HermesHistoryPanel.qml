@@ -1,28 +1,26 @@
 pragma ComponentBehavior: Bound
 
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 
 /**
- * Saved conversations: search, open, rename, delete.
+ * Stored conversations: search, open, delete.
  *
- * Rows come from the service's index rather than from the conversation files, so
- * opening the list never touches disk. Renaming and deleting happen in the row
- * itself: a sidebar is too narrow for a modal, and a dialog for "are you sure"
- * costs more attention than the action it guards.
+ * Rows come from the agent's own `session.list`, so this shows every Hermes
+ * session -- including ones started in the terminal or the desktop app, not just
+ * the ones opened here.
  */
 Rectangle {
     id: root
 
-    required property var service
-    signal requestClose()
+    signal requestClose
 
-    // Opaque. Note colLayer1 is NOT: it is an overlay colour carrying the alpha the
-    // shell composites over layer 0 with, so transparentizing it only ever made this
-    // more see-through. colLayer1Base is the solid surface underneath, which is what
-    // the shell itself reaches for when something must actually cover what is behind.
+    // Opaque. colLayer1 is NOT: it is an overlay colour carrying the alpha the
+    // shell composites over layer 0 with, so transparentizing it only ever made
+    // this more see-through. colLayer1Base is the solid surface underneath.
     readonly property color panelColor: Appearance.colors.colLayer1Base
 
     color: root.panelColor
@@ -30,79 +28,92 @@ Rectangle {
 
     property string query: ""
 
-    readonly property var chats: root.service?.chats ?? []
-    readonly property string currentId: root.service?.currentChatId ?? ""
+    readonly property var sessions: HermesService.recentSessions ?? []
+    readonly property string currentId: HermesService.storedSessionId
 
-    /** Flat list of section headers and chats, so one ListView renders both. */
+    /** Flat list of section headers and sessions, so one ListView renders both. */
     readonly property var rows: {
         const needle = root.query.trim().toLowerCase();
-        const matched = needle.length === 0 ? root.chats : root.chats.filter(chat =>
-            (chat.title ?? "").toLowerCase().includes(needle)
-            || (chat.preview ?? "").toLowerCase().includes(needle));
+        const matched = needle.length === 0 ? root.sessions : root.sessions.filter(session =>
+            (session.title ?? "").toLowerCase().includes(needle)
+            || (session.preview ?? "").toLowerCase().includes(needle));
 
         let out = [];
         let group = "";
-        for (const chat of matched) {
-            const label = root.groupFor(chat.updatedAt ?? 0);
+        for (const session of matched) {
+            // session.list reports seconds; the grouping works in milliseconds.
+            const label = root.groupFor((session.started_at ?? 0) * 1000);
             if (label !== group) {
                 group = label;
-                out.push({ "kind": "header", "label": label });
+                out.push({
+                    "kind": "header",
+                    "label": label
+                });
             }
-            out.push({ "kind": "chat", "chat": chat });
+            out.push({
+                "kind": "session",
+                "session": session
+            });
         }
         return out;
     }
 
-    function groupFor(stamp) {
+    function groupFor(stamp: real): string {
         const now = new Date();
         const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const day = 86400000;
-        if (stamp >= midnight) return "Today";
-        if (stamp >= midnight - day) return "Yesterday";
-        if (stamp >= midnight - 7 * day) return "Earlier this week";
-        if (stamp >= midnight - 30 * day) return "Earlier this month";
-        return "Older";
+        if (stamp >= midnight)
+            return Translation.tr("Today");
+        if (stamp >= midnight - day)
+            return Translation.tr("Yesterday");
+        if (stamp >= midnight - 7 * day)
+            return Translation.tr("Earlier this week");
+        if (stamp >= midnight - 30 * day)
+            return Translation.tr("Earlier this month");
+        return Translation.tr("Older");
     }
 
-    function focusSearch() {
+    function focusSearch(): void {
         searchField.forceActiveFocus();
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 12
         spacing: 8
 
         RowLayout { // Header
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 4
 
             MaterialTextField {
                 id: searchField
                 Layout.fillWidth: true
-                placeholderText: `Search ${root.chats.length} conversation${root.chats.length === 1 ? "" : "s"}…`
+                placeholderText: Translation.tr("Search %1 conversations…").arg(root.sessions.length)
                 onTextChanged: root.query = text
                 // Esc backs out of the search before it backs out of the panel, so a
                 // stray filter never leaves the list looking empty.
                 Keys.onEscapePressed: {
-                    if (text.length > 0) text = "";
-                    else root.requestClose();
+                    if (text.length > 0)
+                        text = "";
+                    else
+                        root.requestClose();
                 }
             }
 
             HistoryIconButton {
                 symbol: "add_comment"
-                tooltip: "Start a new conversation"
-                onClicked: {
-                    root.service?.newChat();
+                tooltip: Translation.tr("Start a new conversation")
+                onReleased: {
+                    HermesService.newSession();
                     root.requestClose();
                 }
             }
 
             HistoryIconButton {
                 symbol: "close"
-                tooltip: "Close history"
-                onClicked: root.requestClose()
+                tooltip: Translation.tr("Close history")
+                onReleased: root.requestClose()
             }
         }
 
@@ -132,8 +143,8 @@ Rectangle {
                         Component {
                             id: headerComponent
                             StyledText {
-                                topPadding: 10
-                                bottomPadding: 2
+                                topPadding: 12
+                                bottomPadding: 4
                                 leftPadding: 4
                                 text: row.modelData.label
                                 color: Appearance.colors.colSubtext
@@ -144,12 +155,11 @@ Rectangle {
 
                         Component {
                             id: cardComponent
-                            ChatHistoryRow {
-                                service: root.service
-                                chat: row.modelData.chat
-                                current: row.modelData.chat.id === root.currentId
+                            HermesHistoryRow {
+                                session: row.modelData.session
+                                current: row.modelData.session.id === root.currentId
                                 onOpenRequested: {
-                                    root.service?.openChat(row.modelData.chat.id);
+                                    HermesService.resumeSession(row.modelData.session.id);
                                     root.requestClose();
                                 }
                             }
@@ -158,8 +168,8 @@ Rectangle {
                 }
             }
 
-            // Rows dissolve into the panel at both ends instead of being sliced off by
-            // the clip, which is what makes a scrolling list read as scrollable.
+            // Rows dissolve into the panel at both ends instead of being sliced off
+            // by the clip, which is what makes a scrolling list read as scrollable.
             ScrollEdgeFade {
                 z: 1
                 target: listView
@@ -175,11 +185,9 @@ Rectangle {
 
             PagePlaceholder { // Nothing to show, for one of two quite different reasons
                 shown: root.rows.length === 0
-                icon: root.chats.length === 0 ? "forum" : "search_off"
-                title: root.chats.length === 0 ? "No conversations yet" : "No matches"
-                description: root.chats.length === 0
-                    ? "Chats are saved here as soon as you send a message."
-                    : `Nothing matching “${root.query}”.`
+                icon: root.sessions.length === 0 ? "forum" : "search_off"
+                title: root.sessions.length === 0 ? Translation.tr("No conversations yet") : Translation.tr("No matches")
+                description: root.sessions.length === 0 ? Translation.tr("Chats are saved as soon as you send a message.") : Translation.tr("Nothing matching “%1”.").arg(root.query)
             }
         }
     }

@@ -49,10 +49,10 @@ Singleton {
          *
          * Matched on the stream's own tag (set in scripts/wakeword/wakeword.py)
          * rather than on the pw-record binary, so a recording the user started by
-         * hand still shows up. Set conduit.wakeWord.hideFromPrivacy to false to
+         * hand still shows up. Set hermes.wakeWord.hideFromPrivacy to false to
          * see it like any other app.
          */
-        if ((Config.options?.conduit?.wakeWord?.hideFromPrivacy ?? true)
+        if ((Config.options?.hermes?.wakeWord?.hideFromPrivacy ?? true)
             && props["application.name"] === "quickshell-wakeword")
             return apps;
         const name = props["application.name"] || node.description || node.name;

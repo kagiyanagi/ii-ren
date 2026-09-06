@@ -37,12 +37,16 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
     <h2> what this fork adds (outdated: can't keepup) </h2>
 </div>
 
-- **Conduit** — an agent CLI (Claude Code or Antigravity) as a first-class sidebar
-  page and as a floating overlay you can pin over every window (`Super+Shift+G`),
-  with chat history and voice memo. It ships an MCP server that hands the agent real
-  desktop control: it reads the focused app's widget tree over AT-SPI and presses
-  controls through their own accessible action, so no screenshot round-trip and no
-  aiming a cursor.
+- **Hermes** — the [Hermes agent](https://github.com/NousResearch/hermes-agent) as a
+  first-class sidebar page and as a floating overlay you can pin over every window
+  (`Super+Shift+G`). It speaks JSON-RPC to the agent's own `tui_gateway` over stdio,
+  so its providers, models, slash commands, skills and tools are whatever Hermes
+  itself has loaded — nothing is mirrored in the shell. Voice input runs on the
+  agent's own capture and STT (`Super+Shift+B` to dictate), with an optional
+  hands-free wake word. It ships an MCP server that hands the agent real desktop
+  control: it reads the focused app's widget tree over AT-SPI and presses controls
+  through their own accessible action, so no screenshot round-trip and no aiming a
+  cursor.
 - **Continuity panel** — a left-sidebar tab with your phone over KDE Connect (battery,
   notifications with inline reply, ring / send file / messages / push clipboard),
   Bluetooth device battery, and your Tailscale peers with copy-IP, SSH, Taildrop and
