@@ -33,14 +33,21 @@ Singleton {
         const ry = Math.round(y);
         const rw = Math.round(width);
         const rh = Math.round(height);
-        const cropBase = `magick ${StringUtils.shellSingleQuoteEscape(screenshotPath)} `
+        // grim writes these screenshots as PPM - it is ~150ms faster than PNG -
+        // and magick keeps whatever format it was handed unless told otherwise.
+        // So every consumer has to name the format it wants: `png:-` for the
+        // pipes, a .png path for the files. Cropping onto the source path is
+        // the one case that legitimately stays PPM, because only tesseract
+        // reads it.
+        const cropBase = `magick '${StringUtils.shellSingleQuoteEscape(screenshotPath)}' `
             + `-crop ${rw}x${rh}+${rx}+${ry} +repage`
-        const cropToStdout = `${cropBase} -`
+        const cropToStdout = `${cropBase} png:-`
         const cropInPlace = `${cropBase} '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`
         const cleanup = `rm '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`
         const slurpRegion = `${rx},${ry} ${rw}x${rh}`
         const uploadAndGetUrl = (filePath) => {
-            return `curl -sF files[]=@'${StringUtils.shellSingleQuoteEscape(filePath)}' ${root.fileUploadApiEndpoint} | jq -r '.files[0].url'`
+            return `curl -sf -F 'files[]=@${StringUtils.shellSingleQuoteEscape(filePath)};type=image/png' `
+                + `${root.fileUploadApiEndpoint} | jq -r '.files[0].url // empty'`
         }
         const annotationCommand = `${Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy"} -f -`;
         switch (action) {
@@ -71,9 +78,42 @@ Singleton {
             case ScreenshotAction.Action.Edit:
                 return ["bash", "-c", `${cropToStdout} | ${annotationCommand} && ${cleanup}`]
                 break;
-            case ScreenshotAction.Action.Search:
-                return ["bash", "-c", `${cropInPlace} && xdg-open "${root.imageSearchEngineBaseUrl}$(${uploadAndGetUrl(screenshotPath)})" && ${cleanup}`]
-                break;
+            case ScreenshotAction.Action.Search: {
+                /*
+                 * The browser opens Lens. We never do.
+                 *
+                 * Uploading the crop to Google ourselves and opening the results
+                 * URL it hands back does not work, however correct that URL
+                 * looks: the visual-search session belongs to whoever uploaded,
+                 * so one minted by curl is not a session the browser may use. It
+                 * loads as "Expired visual search" and the page sits on
+                 * "Thinking a little longer" forever. Giving xdg-open the
+                 * uploadbyurl link instead lets the browser mint its own session
+                 * against its own cookies, which is the only arrangement that
+                 * returns results - and is what upstream has always done.
+                 *
+                 * The crop also has to be a real PNG. grim writes PPM here for
+                 * speed and magick's crop-in-place keeps that format, so the old
+                 * code uploaded raw Netpbm: Google accepted it, could not decode
+                 * it, and issued a stub session whose page never stops thinking.
+                 * Cropping to a .png path is what converts it - the extension
+                 * picks the encoder. Measured, same image, same second:
+                 *
+                 *     PPM  -> session type 1, no backend block, timestamp 0
+                 *     PNG  -> session type 2, backend block, real timestamp
+                 *
+                 * The upload is public for as long as the host keeps it, which
+                 * is the price of Lens being able to fetch it at all.
+                 */
+                const searchPath = `${screenshotPath}.png`
+                const searchFile = `'${StringUtils.shellSingleQuoteEscape(searchPath)}'`
+                return ["bash", "-c",
+                    `${cropBase} ${searchFile} && `
+                    + `imageUrl=$(${uploadAndGetUrl(searchPath)}) && `
+                    + `[ -n "$imageUrl" ] && `
+                    + `xdg-open "${root.imageSearchEngineBaseUrl}$imageUrl"; `
+                    + `rm -f ${searchFile} '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`]
+            }
             case ScreenshotAction.Action.AskAI:
                 return ["bash", "-c", `${cropToStdout} | wl-copy && ${cleanup}`]
                 break;
