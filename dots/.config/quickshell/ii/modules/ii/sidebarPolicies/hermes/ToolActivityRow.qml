@@ -20,7 +20,6 @@ Item {
     required property var part
 
     property bool expanded: false
-    property bool showOutput: root.hasFailed
 
     readonly property string commandText: {
         const full = (root.part?.toolFullInput ?? "").trim();
@@ -32,8 +31,39 @@ Item {
     readonly property bool hasFailed: root.part?.toolFailed ?? false
     readonly property bool canExpand: root.commandText.length > 0 || root.hasResult || root.isRunning
 
-    onHasFailedChanged: {
-        if (root.hasFailed) root.showOutput = true;
+    /*
+     * A command's output is the point of opening its row, so it is shown there
+     * rather than behind a second toggle -- but a single `pacman -Q` is sixteen
+     * hundred lines, which in a sidebar is the whole visible height and then
+     * some. Only the head is laid out until asked for, the way every agentic
+     * transcript handles a long return.
+     */
+    property bool outputExpanded: false
+    readonly property int previewLineCount: 12
+    // Ceiling on what is ever handed to a Text at once: past this the line count
+    // stops being the thing that costs, and the characters start to.
+    readonly property int maxShownChars: 8000
+
+    readonly property var resultLines: root.hasResult ? root.resultText.split("\n") : []
+    // Only when expanding would actually reveal something: one enormous single
+    // line reads the same either way, and says so with its own truncation mark.
+    readonly property bool resultClipped: root.resultLines.length > root.previewLineCount
+    readonly property string shownResult: {
+        const body = root.outputExpanded ? root.resultText : root.resultLines.slice(0, root.previewLineCount).join("\n");
+        return body.length > root.maxShownChars ? `${body.slice(0, root.maxShownChars)}\n${Translation.tr("… truncated")}` : body;
+    }
+
+    // What the call cost, for the expanded header. A zero exit is the silent
+    // default; only a failing one is worth the space.
+    readonly property string metaText: {
+        const parts = [];
+        const code = root.part?.toolExitCode ?? null;
+        if (code !== null && code !== 0)
+            parts.push(Translation.tr("exit %1").arg(code));
+        const seconds = root.part?.duration ?? 0;
+        if (seconds >= 0.05)
+            parts.push(seconds < 1 ? Translation.tr("%1 ms").arg(Math.round(seconds * 1000)) : Translation.tr("%1 s").arg(seconds.toFixed(1)));
+        return parts.join("  ·  ");
     }
 
     function toolIcon(name): string {
@@ -195,6 +225,9 @@ Item {
 
                 StyledText { // Argument summary
                     Layout.fillWidth: true
+                    // Without this the row is as wide as the untruncated command,
+                    // and a long one pushes the whole transcript card off-screen.
+                    Layout.minimumWidth: 0
                     text: root.part?.toolInput ?? ""
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     font.family: Appearance.font.family.monospace
@@ -234,73 +267,26 @@ Item {
 
                     MaterialSymbol {
                         iconSize: Appearance.font.pixelSize.normal
-                        text: "terminal"
+                        text: root.toolIcon(root.part?.toolName)
                         color: Appearance.colors.colSubtext
                     }
 
                     StyledText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
                         text: root.part?.toolName ?? Translation.tr("Command")
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.DemiBold
                         color: Appearance.colors.colOnLayer2
                     }
 
-                    Item { Layout.fillWidth: true }
-
-                    // Button to see what it returned to the assistant
-                    RippleButton {
-                        id: outputToggleButton
-                        visible: root.hasResult || root.isRunning
-                        enabled: root.hasResult
-                        implicitHeight: 28
-                        implicitWidth: outputButtonContent.implicitWidth + 16
-                        buttonRadius: Appearance.rounding.verysmall
-                        colBackground: root.showOutput
-                            ? (root.hasFailed ? Appearance.m3colors.m3errorContainer : Appearance.colors.colSecondaryContainer)
-                            : "transparent"
-                        onClicked: root.showOutput = !root.showOutput
-
-                        RowLayout {
-                            id: outputButtonContent
-                            anchors.centerIn: parent
-                            spacing: 4
-
-                            MaterialSymbol {
-                                iconSize: Appearance.font.pixelSize.small
-                                text: {
-                                    if (root.isRunning && !root.hasResult) return "pending";
-                                    if (root.showOutput) return "visibility_off";
-                                    if (root.hasFailed) return "error";
-                                    return "output";
-                                }
-                                color: {
-                                    if (root.hasFailed) return Appearance.colors.colError;
-                                    if (root.showOutput) return Appearance.colors.colOnSecondaryContainer;
-                                    return Appearance.colors.colSubtext;
-                                }
-                            }
-
-                            StyledText {
-                                text: {
-                                    if (root.isRunning && !root.hasResult) return Translation.tr("Running…");
-                                    if (root.hasFailed) return root.showOutput ? Translation.tr("Hide error") : Translation.tr("See error");
-                                    return root.showOutput ? Translation.tr("Hide return") : Translation.tr("See return");
-                                }
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: {
-                                    if (root.hasFailed) return Appearance.colors.colError;
-                                    if (root.showOutput) return Appearance.colors.colOnSecondaryContainer;
-                                    return Appearance.colors.colSubtext;
-                                }
-                            }
-                        }
-
-                        StyledToolTip {
-                            extraVisibleCondition: outputToggleButton.hovered
-                            text: root.hasFailed
-                                ? (root.showOutput ? Translation.tr("Hide error details") : Translation.tr("See error returned to model"))
-                                : (root.showOutput ? Translation.tr("Hide return output") : Translation.tr("See what was returned to model"))
-                        }
+                    StyledText { // What the call cost
+                        visible: root.metaText.length > 0
+                        text: root.metaText
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        font.family: Appearance.font.family.numbers
+                        color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
                     }
 
                     // Button to copy command
@@ -335,7 +321,7 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: commandDisplay.implicitHeight + 16
                     radius: Appearance.rounding.verysmall
-                    color: Appearance.colors.colLayer1Base
+                    color: Appearance.colors.colLayer3
 
                     StyledText {
                         id: commandDisplay
@@ -345,19 +331,19 @@ Item {
                         textFormat: Text.PlainText
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.family: Appearance.font.family.monospace
-                        color: Appearance.colors.colOnLayer2
+                        color: Appearance.colors.colOnLayer3
                         text: root.commandText
                     }
                 }
 
-                // Return value / output section
+                // What the tool returned, under the command that produced it.
                 Rectangle {
                     id: outputBox
-                    visible: root.showOutput && root.hasResult
+                    visible: root.hasResult || root.isRunning
                     Layout.fillWidth: true
                     implicitHeight: outputColumn.implicitHeight + 16
                     radius: Appearance.rounding.verysmall
-                    color: Appearance.colors.colLayer1Base
+                    color: Appearance.colors.colLayer3
 
                     ColumnLayout {
                         id: outputColumn
@@ -373,25 +359,33 @@ Item {
 
                             MaterialSymbol {
                                 iconSize: Appearance.font.pixelSize.small
-                                text: root.hasFailed ? "error" : "reply"
+                                text: root.hasFailed ? "error" : root.isRunning && !root.hasResult ? "pending" : "reply"
                                 color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
                             }
 
                             StyledText {
-                                text: root.hasFailed ? Translation.tr("Returned error") : Translation.tr("Returned output")
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                elide: Text.ElideRight
+                                text: {
+                                    if (root.hasFailed)
+                                        return Translation.tr("Returned error");
+                                    const lines = root.resultLines.length;
+                                    return lines > 1 ? Translation.tr("Output  ·  %1 lines").arg(lines) : Translation.tr("Output");
+                                }
                                 font.pixelSize: Appearance.font.pixelSize.smaller
                                 font.weight: Font.DemiBold
                                 color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
                             }
 
-                            Item { Layout.fillWidth: true }
-
                             ButtonGroup {
                                 AiMessageControlButton {
                                     id: copyOutputButton
+                                    visible: root.hasResult
                                     buttonIcon: activated ? "check" : "content_copy"
 
                                     onClicked: {
+                                        // The whole return, never the clipped preview.
                                         Quickshell.clipboardText = root.resultText;
                                         copyOutputButton.activated = true;
                                         copyOutputResetTimer.restart();
@@ -405,7 +399,7 @@ Item {
 
                                     StyledToolTip {
                                         extraVisibleCondition: copyOutputButton.hovered
-                                        text: copyOutputButton.activated ? Translation.tr("Copied output!") : Translation.tr("Copy returned output")
+                                        text: copyOutputButton.activated ? Translation.tr("Copied output!") : Translation.tr("Copy the whole output")
                                     }
                                 }
                             }
@@ -414,14 +408,64 @@ Item {
                         StyledText {
                             id: resultDisplay
                             Layout.fillWidth: true
-                            wrapMode: Text.WrapAnywhere
+                            // Wrapped output is as wide as its longest line unless the
+                            // layout is told it may be narrower, and one `ls -l` line
+                            // is enough to widen the card past the sidebar.
+                            Layout.minimumWidth: 0
+                            visible: root.hasResult
+                            // Breaks on spaces where it can and mid-token where it
+                            // cannot, so a long path wraps instead of overflowing.
+                            wrapMode: Text.Wrap
                             textFormat: Text.PlainText
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             font.family: Appearance.font.family.monospace
-                            color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
-                            text: {
-                                const full = root.resultText;
-                                return full.length > 8000 ? full.slice(0, 8000) + "\n\n… truncated" : full;
+                            color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colOnLayer3
+                            text: root.shownResult
+                        }
+
+                        StyledText { // Nothing back yet
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            visible: !root.hasResult && root.isRunning
+                            text: Translation.tr("Running…")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                        }
+
+                        RippleButton { // The rest of a long return
+                            id: moreOutputButton
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            visible: root.resultClipped
+                            implicitHeight: 32
+                            buttonRadius: Appearance.rounding.verysmall
+                            colBackground: "transparent"
+                            colBackgroundHover: Appearance.colors.colLayer3Hover
+                            colRipple: Appearance.colors.colLayer3Active
+                            onClicked: root.outputExpanded = !root.outputExpanded
+
+                            RowLayout {
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                MaterialSymbol {
+                                    iconSize: Appearance.font.pixelSize.small
+                                    text: root.outputExpanded ? "expand_less" : "expand_more"
+                                    color: Appearance.colors.colSubtext
+                                }
+
+                                StyledText {
+                                    text: {
+                                        if (root.outputExpanded)
+                                            return Translation.tr("Show less");
+                                        const lines = root.resultLines.length;
+                                        return lines > root.previewLineCount
+                                            ? Translation.tr("Show all %1 lines").arg(lines)
+                                            : Translation.tr("Show more");
+                                    }
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    color: Appearance.colors.colSubtext
+                                }
                             }
                         }
                     }

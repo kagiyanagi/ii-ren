@@ -375,7 +375,12 @@ Singleton {
                     toolName: entry.name ?? "tool",
                     toolInput: entry.context ?? "",
                     toolFullInput: root._formatToolArgs(entry.args ?? ({})),
+                    // session.resume returns a tool row as {role, name, context,
+                    // args} -- the gateway does not persist what the tool returned,
+                    // so a resumed chat can only ever show the call, not its output.
                     toolResult: "",
+                    toolExitCode: null,
+                    duration: 0,
                     toolRunning: false,
                     toolFailed: false
                 }];
@@ -1114,6 +1119,8 @@ Singleton {
             toolInput: payload.context ?? payload.preview ?? "",
             toolFullInput: root._formatToolArgs(args),
             toolResult: "",
+            toolExitCode: null,
+            duration: 0,
             toolRunning: true,
             toolFailed: false
         }];
@@ -1137,19 +1144,48 @@ Singleton {
         }
     }
 
+    /**
+     * What a tool handed back, as text for the expanded row.
+     *
+     * `result` is whatever the tool returned, JSON-parsed by the gateway when it
+     * could be: the terminal answers {output, exit_code, error}, but a search
+     * answers its own shape and a tool whose result would not parse arrives as a
+     * bare string. Reading `output` alone left the return box empty -- and so
+     * hidden -- for everything that is not a shell command.
+     */
+    function _resultText(result: var): string {
+        if (result === null || result === undefined)
+            return "";
+        if (typeof result !== "object")
+            return `${result}`;
+        if ((result.error ?? null) !== null)
+            return `${result.error}`;
+        if (typeof result.output === "string")
+            return result.output;
+        try {
+            return JSON.stringify(result, null, 2);
+        } catch (e) {
+            return "";
+        }
+    }
+
     function _completeToolCall(payload: var): void {
         const message = root.streamingMessage;
         if (!message)
             return;
         const result = payload.result ?? {};
-        const failed = (result.error ?? null) !== null || (result.exit_code ?? 0) !== 0;
+        const structured = result !== null && typeof result === "object";
+        const failed = structured && ((result.error ?? null) !== null || (result.exit_code ?? 0) !== 0);
         message.toolCalls = message.toolCalls.map(call => {
             if (call.toolId !== (payload.tool_id ?? ""))
                 return call;
             return Object.assign({}, call, {
                 toolRunning: false,
                 toolFailed: failed,
-                toolResult: (result.error ?? result.output ?? "").toString(),
+                toolResult: root._resultText(result),
+                // null when the tool has no notion of one, so the row can tell
+                // "exited 0" apart from "never reported a code".
+                toolExitCode: structured && (result.exit_code ?? null) !== null ? result.exit_code : null,
                 duration: payload.duration_s ?? 0
             });
         });
