@@ -38,8 +38,18 @@ Item {
             root.inputField.forceActiveFocus();
     }
 
+    // Type-anywhere: a stray keystroke goes to the composer rather than nowhere.
+    // It must not fire on a modifier's own key-down, though - Ctrl arrives here as
+    // Key_Control before the C does, and stealing focus on it wipes a selection in
+    // the transcript just as the user reaches for copy. Shortcut combinations are
+    // left alone for the same reason: they belong to whatever is focused.
+    readonly property var modifierKeys: [Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta,
+                                         Qt.Key_AltGr, Qt.Key_CapsLock, Qt.Key_NumLock, Qt.Key_Super_L, Qt.Key_Super_R]
+
     Keys.onPressed: event => {
-        messageInputField.forceActiveFocus();
+        const bareKey = (event.modifiers & ~Qt.ShiftModifier & ~Qt.KeypadModifier) === 0;
+        if (bareKey && root.modifierKeys.indexOf(event.key) === -1)
+            messageInputField.forceActiveFocus();
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
                 messageListView.contentY = Math.max(0, messageListView.contentY - messageListView.height / 2);
