@@ -236,8 +236,30 @@ QtObject {
                 const terminated = /[.!?]$/.test(hint) ? hint : `${hint}.`;
                 bias = ` --prompt '${CF.StringUtils.shellSingleQuoteEscape(terminated)}' --carry-initial-prompt`;
             }
+            /*
+             * --audio-ctx sized to the clip, which is most of the latency of
+             * dictation.
+             *
+             * Whisper's encoder always runs over a padded 30s window, so a 2s
+             * request costs exactly as much to encode as a 25s one - measured on
+             * this machine, 10.3s of a 14.6s transcription of 2.6s of speech was
+             * encoder time spent on silence. Shrinking the context to fit the audio
+             * cuts that proportionally: 2.6s of speech went 11.8s -> 2.7s on
+             * small.en and 3.3s -> 1.0s on base.en, with identical transcripts.
+             *
+             * It must be *scaled*, never fixed. The context is 50 positions per
+             * second of audio, and a clip longer than the context is silently
+             * truncated: a 9s request at a hard -ac 256 came back as 7 words of 30,
+             * and took 43s doing it as the decoder fell back over and over. So this
+             * is computed from the file size (16kHz mono s16, 32000 bytes/s) with
+             * 1.5s of headroom, and anything that would reach the full 1500 uses
+             * the full context instead.
+             */
             transcriber.command = ["bash", "-c",
-                `[ -s '${audio}' ] || exit 3; '${root.binary}' -m '${model}' -f '${audio}' -l '${root.language}' -t ${root.threads}${bias} -nt -np`];
+                `[ -s '${audio}' ] || exit 3; ` +
+                `sz=$(stat -c %s '${audio}'); ac=$(( (sz - 44) * 50 / 32000 + 75 )); ` +
+                `[ $ac -lt 256 ] && ac=256; [ $ac -ge 1500 ] && ac=0; ` +
+                `'${root.binary}' -m '${model}' -f '${audio}' -l '${root.language}' -t ${root.threads}${bias} -ac $ac -nt -np`];
             transcriber.running = true;
         }
 
