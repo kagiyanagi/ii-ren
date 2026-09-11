@@ -218,29 +218,23 @@ QtObject {
                 bias = ` --prompt '${CF.StringUtils.shellSingleQuoteEscape(terminated)}' --carry-initial-prompt`;
             }
             /*
-             * --audio-ctx sized to the clip, which is most of the latency of
-             * dictation.
+             * No --audio-ctx here, deliberately.
              *
-             * Whisper's encoder always runs over a padded 30s window, so a 2s
-             * request costs exactly as much to encode as a 25s one - measured on
-             * this machine, 10.3s of a 14.6s transcription of 2.6s of speech was
-             * encoder time spent on silence. Shrinking the context to fit the audio
-             * cuts that proportionally: 2.6s of speech went 11.8s -> 2.7s on
-             * small.en and 3.3s -> 1.0s on base.en, with identical transcripts.
+             * Shrinking the context does cut encoder time proportionally - the
+             * encoder always runs over a padded 30s window, so most of a short
+             * clip's cost is silence. But it is not a lossless crop: the encoder
+             * was only ever trained at the full 1500-position context, and running
+             * it shorter hands the decoder an off-distribution embedding. Whisper's
+             * failure mode there is not garbled text, it is fluent invented text -
+             * a 2.5s "Hello sir, what are you doing today?" came back as a
+             * confident unrelated sentence, and did so identically on every model
+             * size, because the damage is upstream of the decoder.
              *
-             * It must be *scaled*, never fixed. The context is 50 positions per
-             * second of audio, and a clip longer than the context is silently
-             * truncated: a 9s request at a hard -ac 256 came back as 7 words of 30,
-             * and took 43s doing it as the decoder fell back over and over. So this
-             * is computed from the file size (16kHz mono s16, 32000 bytes/s) with
-             * 1.5s of headroom, and anything that would reach the full 1500 uses
-             * the full context instead.
+             * Latency is worth less than a transcript that says what was said.
              */
             transcriber.command = ["bash", "-c",
                 `[ -s '${audio}' ] || exit 3; ` +
-                `sz=$(stat -c %s '${audio}'); ac=$(( (sz - 44) * 50 / 32000 + 75 )); ` +
-                `[ $ac -lt 256 ] && ac=256; [ $ac -ge 1500 ] && ac=0; ` +
-                `'${root.binary}' -m '${model}' -f '${audio}' -l '${root.language}' -t ${root.threads}${bias} -ac $ac -nt -np`];
+                `'${root.binary}' -m '${model}' -f '${audio}' -l '${root.language}' -t ${root.threads}${bias} -nt -np`];
             transcriber.running = true;
         }
 
