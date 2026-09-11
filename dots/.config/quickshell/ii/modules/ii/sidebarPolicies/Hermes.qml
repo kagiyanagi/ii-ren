@@ -683,15 +683,6 @@ Item {
                     tooltipText: Translation.tr("Current model: %1\nProvider: %2\nChange it below, or with %3model").arg(HermesService.currentModel).arg(HermesService.currentProvider).arg(root.commandPrefix)
                 }
 
-                ApiInputBoxIndicator {
-                    readonly property int toolCount: Object.values(HermesService.sessionTools ?? ({})).reduce((total, group) => total + (group?.length ?? 0), 0)
-
-                    visible: toolCount > 0
-                    icon: "service_toolbox"
-                    text: toolCount
-                    tooltipText: Translation.tr("%1 tools in this session\n%2tools lists the full fleet").arg(toolCount).arg(root.commandPrefix)
-                }
-
                 Item {
                     Layout.fillWidth: true
                 }
@@ -717,41 +708,6 @@ Item {
                         root.historyShown = false;
                         HermesService.newSession();
                         messageInputField.forceActiveFocus();
-                    }
-                }
-
-                ButtonGroup {
-                    padding: 0
-
-                    Repeater {
-                        // No bare "/" button: the placeholder already says what the
-                        // slash key does, and the row has to fit the history control
-                        // as well -- it was clipping /new.
-                        model: [
-                            {
-                                name: "tools",
-                                sendDirectly: true
-                            }
-                        ]
-
-                        delegate: ApiCommandButton {
-                            id: quickCommand
-                            required property var modelData
-
-                            readonly property string commandRepresentation: `${root.commandPrefix}${quickCommand.modelData.name}`
-                            buttonText: quickCommand.commandRepresentation
-
-                            downAction: () => {
-                                if (quickCommand.modelData.sendDirectly) {
-                                    messageInputField.text = "";
-                                    root.handleInput(quickCommand.commandRepresentation);
-                                    return;
-                                }
-                                messageInputField.text = quickCommand.commandRepresentation;
-                                messageInputField.cursorPosition = messageInputField.text.length;
-                                messageInputField.forceActiveFocus();
-                            }
-                        }
                     }
                 }
             }
