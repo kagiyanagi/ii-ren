@@ -43,12 +43,89 @@ Rectangle {
     // token. Re-split on a throttle instead (same fix as AiMessage.qml).
     property list<var> messageBlocks: []
 
+    readonly property bool showToolCalls: Config.options.hermes?.showToolCalls ?? true
+
+    /*
+     * Tool ids that have already played their entrance.
+     *
+     * resplit() runs on a 60ms throttle while text streams, and hands the model a
+     * freshly built array each pass. Tying the fade to delegate creation alone
+     * would replay it on every rebuild -- sixteen times a second -- so a row that
+     * has been seen once comes back already at full opacity. Mutated in place: this
+     * must not re-evaluate the bindings that read it.
+     */
+    property var seenTools: ({})
+
+    function toolSeen(key: string): bool {
+        return root.seenTools[key] ?? false;
+    }
+
+    function markToolSeen(key: string): void {
+        root.seenTools[key] = true;
+    }
+
+    /**
+     * A mark that would land inside a fenced code block is moved past the fence.
+     * Cutting there would hand the splitter an unterminated ``` on one side and an
+     * orphaned closer on the other, and render both halves as broken text.
+     */
+    function safeMark(content: string, mark: int): int {
+        const at = Math.max(0, Math.min(mark, content.length));
+        const fences = (content.slice(0, at).match(/```/g) ?? []).length;
+        if (fences % 2 === 0)
+            return at;
+        const close = content.indexOf("```", at);
+        return close === -1 ? content.length : close + 3;
+    }
+
+    /**
+     * The turn as one timeline, in the order it actually happened: prose, then the
+     * tools that prose led to, then the prose that followed them.
+     *
+     * Tool calls carry the content offset they fired at, so the text is cut at
+     * those offsets and the runs dropped into the gaps. Consecutive calls with no
+     * text between them stay one expandable group -- a sidebar is too narrow to
+     * spend nine rows on nine `read_file`s -- but a group only ever covers calls
+     * that really did run back to back.
+     */
     function resplit(): void {
-        root.messageBlocks = StringUtils.splitMarkdownBlocks(root.messageData?.content);
+        const content = root.messageData?.content ?? "";
+        const calls = root.showToolCalls ? (root.messageData?.toolCalls ?? []) : [];
+        if (calls.length === 0) {
+            root.messageBlocks = StringUtils.splitMarkdownBlocks(content);
+            return;
+        }
+
+        const groups = [];
+        calls.forEach(call => {
+            const at = root.safeMark(content, call.contentMark ?? content.length);
+            const last = groups[groups.length - 1];
+            if (last && last.at === at)
+                last.calls.push(call);
+            else
+                groups.push({ at: at, calls: [call] });
+        });
+
+        let timeline = [];
+        let cursor = 0;
+        groups.forEach(group => {
+            // Never walks backwards: an out-of-order mark would otherwise reprint
+            // text that has already been laid down.
+            const at = Math.max(cursor, group.at);
+            if (at > cursor)
+                timeline = timeline.concat(StringUtils.splitMarkdownBlocks(content.slice(cursor, at)));
+            timeline.push(group.calls.length === 1 ? { type: "tool", call: group.calls[0] } : { type: "tools", calls: group.calls });
+            cursor = at;
+        });
+        if (cursor < content.length)
+            timeline = timeline.concat(StringUtils.splitMarkdownBlocks(content.slice(cursor)));
+
+        root.messageBlocks = timeline;
     }
 
     Component.onCompleted: root.resplit()
     onMessageDataChanged: root.resplit()
+    onShowToolCallsChanged: root.resplit()
 
     Timer {
         id: resplitThrottle
@@ -61,6 +138,12 @@ Rectangle {
         function onContentChanged() {
             if (!resplitThrottle.running)
                 resplitThrottle.start();
+        }
+        // A tool starting or finishing changes the timeline, not just the text, and
+        // is rare enough to redraw at once rather than wait out the throttle.
+        function onToolCallsChanged() {
+            resplitThrottle.stop();
+            root.resplit();
         }
         // The last delta and `done` can arrive in either order, so a finished
         // message always gets one final split at the full text.
@@ -222,12 +305,6 @@ Rectangle {
             }
         }
 
-        HermesToolSummary { // The whole run as one line, expandable
-            Layout.fillWidth: true
-            visible: (root.messageData?.toolCalls?.length ?? 0) > 0 && (Config.options.hermes?.showToolCalls ?? true)
-            toolCalls: root.messageData?.toolCalls ?? []
-        }
-
         ColumnLayout { // Message content
             id: messageContentColumnLayout
             Layout.fillWidth: true
@@ -264,6 +341,49 @@ Rectangle {
                 delegate: DelegateChooser {
                     role: "type"
 
+                    DelegateChoice {
+                        roleValue: "tool"
+                        ToolActivityRow {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            Layout.bottomMargin: 4
+                            part: modelData.call
+
+                            // Fades in where it lands, like the text lines around
+                            // it -- a row appearing mid-stream at full opacity reads
+                            // as a jump in a transcript that is otherwise settling.
+                            readonly property string entranceKey: modelData.call?.toolId ?? ""
+                            opacity: root.toolSeen(entranceKey) ? 1 : 0
+                            Component.onCompleted: {
+                                opacity = 1;
+                                root.markToolSeen(entranceKey);
+                            }
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            }
+                        }
+                    }
+                    DelegateChoice {
+                        roleValue: "tools"
+                        HermesToolSummary {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.topMargin: 4
+                            Layout.bottomMargin: 4
+                            toolCalls: modelData.calls
+
+                            readonly property string entranceKey: modelData.calls[0]?.toolId ?? ""
+                            opacity: root.toolSeen(entranceKey) ? 1 : 0
+                            Component.onCompleted: {
+                                opacity = 1;
+                                root.markToolSeen(entranceKey);
+                            }
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            }
+                        }
+                    }
                     DelegateChoice {
                         roleValue: "code"
                         MessageCodeBlock {

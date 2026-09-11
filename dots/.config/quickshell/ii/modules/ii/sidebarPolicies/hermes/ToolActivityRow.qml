@@ -124,6 +124,13 @@ Item {
     implicitHeight: layout.implicitHeight
     implicitWidth: layout.implicitWidth
 
+    // Expanding is a size change, so it runs on a spatial spec. It matters more now
+    // that rows sit between paragraphs rather than in one block above them: without
+    // this, opening a row snaps every word below it down the page.
+    Behavior on implicitHeight {
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+    }
+
     ColumnLayout {
         id: layout
         width: root.width

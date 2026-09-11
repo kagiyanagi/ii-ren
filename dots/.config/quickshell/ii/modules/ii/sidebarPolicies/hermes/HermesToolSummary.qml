@@ -41,11 +41,11 @@ ColumnLayout {
         const others = root.total - files - commands;
         const parts = [];
         if (files > 0)
-            parts.push(Translation.tr("Explored %1 files").arg(files));
+            parts.push(files === 1 ? Translation.tr("Explored 1 file") : Translation.tr("Explored %1 files").arg(files));
         if (commands > 0)
-            parts.push(Translation.tr("ran %1 commands").arg(commands));
+            parts.push(commands === 1 ? Translation.tr("ran 1 command") : Translation.tr("ran %1 commands").arg(commands));
         if (others > 0)
-            parts.push(Translation.tr("used %1 tools").arg(others));
+            parts.push(others === 1 ? Translation.tr("used 1 tool") : Translation.tr("used %1 tools").arg(others));
         return parts.join(", ");
     }
 

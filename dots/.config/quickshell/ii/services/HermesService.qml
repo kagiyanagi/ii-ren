@@ -188,12 +188,43 @@ Singleton {
         root.messageByID = ({});
         root.messageIDs = [];
         root.streamingId = "";
+        root._releaseRun();
         root.pendingApproval = null;
         root.pendingClarify = null;
         root.transcriptCleared();
     }
 
     property var streamingMessage: root.messageByID[root.streamingId] ?? null
+
+    /*
+     * A run is everything the agent does to answer one request, and it is what the
+     * transcript shows as one card.
+     *
+     * The gateway's message.start/message.complete bracket a single *model* turn,
+     * not a run: an agentic answer is turn (text, calls tools) -> tools run -> turn
+     * (text) -> tools -> turn (final text). Opening a fresh bubble on every
+     * message.start split one answer into three stacked cards, each with its own
+     * header and its own copy/retry buttons, and left the reader to work out which
+     * commands belonged to which paragraph.
+     *
+     * So the run's card is held here and later turns continue it. It is released
+     * when the user speaks again, which is the only unambiguous end of a run --
+     * the gateway has no run-level event.
+     */
+    property string _runMessageId: ""
+    // Where the current model turn's text starts inside that card, so a
+    // message.complete carrying the turn's full text replaces its own segment
+    // instead of overwriting everything said before it.
+    property int _runSegmentStart: 0
+    // Whether this turn called anything. A turn that ends without tool calls is the
+    // end of the agent loop; one that ends with them is going to continue.
+    property bool _runSegmentUsedTools: false
+
+    function _releaseRun(): void {
+        root._runMessageId = "";
+        root._runSegmentStart = 0;
+        root._runSegmentUsedTools = false;
+    }
 
     // ── Session lifecycle ────────────────────────────────────────────────
 
@@ -337,6 +368,9 @@ Singleton {
                 if (!message)
                     return;
                 message.toolCalls = [...message.toolCalls, {
+                    // Stored rows arrive in order and attach to the turn they
+                    // followed, so the end of that turn's text is where they ran.
+                    contentMark: (message.content ?? "").length,
                     toolId: "",
                     toolName: entry.name ?? "tool",
                     toolInput: entry.context ?? "",
@@ -405,6 +439,8 @@ Singleton {
         root.messageIDs = kept;
         if (dropped.includes(root.streamingId))
             root.streamingId = "";
+        if (dropped.includes(root._runMessageId))
+            root._releaseRun();
     }
 
     /**
@@ -524,6 +560,8 @@ Singleton {
     property string _deferredPrompt: ""
 
     function _submit(text: string): void {
+        // The user's next request is the one unambiguous end of the previous run.
+        root._releaseRun();
         root.busy = true;
         root.statusText = "";
         // The gateway consumes whatever is staged on this turn, so the local list
@@ -561,6 +599,7 @@ Singleton {
             root.addMessage(message, root.interfaceRole);
         }
         root.streamingId = "";
+        root._releaseRun();
         root.busy = false;
         root.statusText = "";
     }
@@ -909,7 +948,22 @@ Singleton {
             root.speakingMessageId = "";
             root.busy = true;
             root.statusText = "";
-            root.streamingId = root._newMessage("assistant", "");
+            root._runSegmentUsedTools = false;
+            const continuing = root.messageByID[root._runMessageId] ?? null;
+            if (continuing) {
+                // Same answer, later turn: reopen the card rather than stacking a
+                // new one. A blank line keeps the resumed prose off the end of the
+                // sentence that preceded the tools.
+                if (continuing.content.length > 0)
+                    continuing.content += "\n\n";
+                continuing.done = false;
+                root._runSegmentStart = continuing.content.length;
+                root.streamingId = root._runMessageId;
+            } else {
+                root.streamingId = root._newMessage("assistant", "");
+                root._runMessageId = root.streamingId;
+                root._runSegmentStart = 0;
+            }
             break;
 
         case "message.delta":
@@ -933,8 +987,11 @@ Singleton {
             let finished = root.streamingMessage;
             let finishedId = root.streamingId;
             if (finished) {
+                // Only this turn's slice: the payload is the turn's full text, and
+                // assigning it whole would erase everything earlier turns in the
+                // same run had already put in the card.
                 if ((payload.text ?? "").length > 0)
-                    finished.content = payload.text;
+                    finished.content = finished.content.slice(0, root._runSegmentStart) + payload.text;
                 if (payload.status === "error")
                     finished.error = payload.text ?? "";
                 finished.usage = payload.usage ?? null;
@@ -944,13 +1001,17 @@ Singleton {
                 root.messageByID[id].done = true;
                 finished = root.messageByID[id];
                 finishedId = id;
+                root._runMessageId = id;
             }
             root.streamingId = "";
             root.busy = false;
             root.statusText = "";
             if (payload.usage)
                 root.usage = payload.usage;
-            root.notifyFinished(finished);
+            // A turn that called tools is mid-run, and the agent is about to speak
+            // again -- notifying on it would fire once per step of one answer.
+            if (!root._runSegmentUsedTools)
+                root.notifyFinished(finished);
             break;
 
         case "tool.generating":
@@ -1015,16 +1076,25 @@ Singleton {
     }
 
     function _addToolCall(payload: var): void {
+        root._runSegmentUsedTools = true;
         // A tool can fire before any assistant text, so the turn may not exist yet.
+        // It still belongs to the run in progress, if there is one.
         if (root.streamingId.length === 0)
-            root.streamingId = root._newMessage("assistant", "");
+            root.streamingId = root.messageByID[root._runMessageId] ? root._runMessageId : root._newMessage("assistant", "");
+        if (root._runMessageId.length === 0)
+            root._runMessageId = root.streamingId;
         const message = root.streamingMessage;
         if (!message)
             return;
         // Duck-typed to what ToolActivityRow reads, so a tool call is narrated
         // by the shared row rather than a renderer of its own.
         const args = payload.args ?? {};
+        // Where in the reply this fired. The transcript interleaves tool rows with
+        // the prose by this offset, so "I'll check the package list" stays above the
+        // command it was talking about instead of the whole run being hoisted into
+        // one block at the top of the turn.
         message.toolCalls = [...message.toolCalls, {
+            contentMark: (message.content ?? "").length,
             toolId: payload.tool_id ?? "",
             toolName: payload.name ?? "tool",
             toolInput: payload.context ?? payload.preview ?? "",
@@ -1223,6 +1293,9 @@ Singleton {
             property var queue: []
             // Everything played this turn, deleted once it is over.
             property var produced: []
+            // Which reading these clips belong to, so a fade finishing after the
+            // next reading has begun tidies up without cancelling it.
+            property int epoch: 0
 
             MediaDevices {
                 id: readerDevices
@@ -1500,6 +1573,7 @@ Singleton {
             root.starting = false;
             root.sessionId = "";
             root.streamingId = "";
+            root._releaseRun();
             root.busy = false;
             root.statusText = "";
             root.pendingApproval = null;
