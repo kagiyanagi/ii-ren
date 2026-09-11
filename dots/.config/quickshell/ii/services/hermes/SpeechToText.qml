@@ -50,9 +50,6 @@ QtObject {
     property bool modelReady: false
     readonly property bool available: root.binary.length > 0 && root.modelReady
 
-    // Armed by the keybinding path: that flow stops and sends in one press, whereas the
-    // mic button inserts the text for review first.
-    property bool autoSend: false
     property bool recording: false
     property bool transcribing: false
 
@@ -104,22 +101,6 @@ QtObject {
         root.recording = false;
         // SIGINT, so pw-record finalises the WAV header instead of leaving a stub.
         recorder.signal(2);
-    }
-
-    /**
-     * Transcribe a WAV somebody else recorded, skipping the recorder entirely.
-     *
-     * This is the wake word's path: that process owns the microphone for the whole
-     * cycle and hands over a finished file, because reopening the mic between
-     * detecting the phrase and capturing the request clips its first word.
-     */
-    function transcribeFile(path) {
-        if (root.recording || root.transcribing) return;
-        if (!root.available) {
-            root.failed(root.setupHint());
-            return;
-        }
-        transcriber.start(path);
     }
 
     /**
@@ -279,8 +260,7 @@ QtObject {
             root.transcribing = false;
 
             /*
-             * The recording has served its purpose the moment it has been read, and
-             * a wake word means these appear without anyone deciding to make one.
+             * The recording has served its purpose the moment it has been read.
              * Deleted on every path, including the failures - a transcript that
              * could not be read is not a reason to keep the audio lying in /tmp
              * until the next reboot, and re-recording costs a sentence.

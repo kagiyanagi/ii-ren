@@ -41,9 +41,9 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
   first-class sidebar page and as a floating overlay you can pin over every window
   (`Super+Shift+G`). It speaks JSON-RPC to the agent's own `tui_gateway` over stdio,
   so its providers, models, slash commands, skills and tools are whatever Hermes
-  itself has loaded — nothing is mirrored in the shell. Voice input runs on the
-  agent's own capture and STT (`Super+Shift+B` to dictate), with an optional
-  hands-free wake word. It ships an MCP server that hands the agent real desktop
+  itself has loaded — nothing is mirrored in the shell. Voice input records with
+  pw-record and transcribes locally with whisper.cpp (`Super+Shift+B` to dictate),
+  dropping the text in the composer to review. It ships an MCP server that hands the agent real desktop
   control: it reads the focused app's widget tree over AT-SPI and presses controls
   through their own accessible action, so no screenshot round-trip and no aiming a
   cursor.

@@ -64,15 +64,6 @@ ContentPage {
                 Config.options.hermes.notifyWhenAway = checked;
             }
         }
-        ConfigSwitch {
-            buttonIcon: "record_voice_over"
-            text: Translation.tr("Read the reply back after speaking to it")
-            checked: Config.options.hermes.speakReplies
-            onCheckedChanged: {
-                Config.options.hermes.speakReplies = checked;
-            }
-        }
-
         StyledText {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -82,113 +73,19 @@ ContentPage {
         }
 
         ContentSubsection {
-            title: Translation.tr("Wake word")
+            title: Translation.tr("Dictation accuracy")
 
-            ConfigSwitch {
-                buttonIcon: "record_voice_over"
-                text: Translation.tr("Answer when spoken to, hands-free")
-                checked: Config.options.hermes.wakeWord.enable
-                onCheckedChanged: {
-                    Config.options.hermes.wakeWord.enable = checked;
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                text: Translation.tr("Keeps the microphone open while the shell runs. Detection happens entirely on this machine and nothing is recorded until the phrase is heard.")
-            }
-
-            // Whatever is stopping it from arming, shown against the setting that
-            // caused it rather than announced in the chat on every shell start.
-            Rectangle {
-                Layout.fillWidth: true
-                visible: HermesService.wakeError.length > 0
-                implicitHeight: wakeErrorRow.implicitHeight + 12 * 2
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer2
-
-                RowLayout {
-                    id: wakeErrorRow
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        verticalCenter: parent.verticalCenter
-                        margins: 12
-                    }
-                    spacing: 8
-
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignTop
-                        iconSize: Appearance.font.pixelSize.large
-                        color: Appearance.m3colors.m3error
-                        text: "mic_off"
-                    }
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnLayer2
-                        text: HermesService.wakeError
-                    }
-                }
-            }
-
-            // Ready-made phrases first: they download on demand and work with no
-            // training. The Scout ones need a trained model in place and will say
-            // so if it is missing.
             ConfigSelectionArray {
-                currentValue: Config.options.hermes.wakeWord.phrase
+                currentValue: Config.options.hermes.sttQuality
                 onSelected: newValue => {
-                    Config.options.hermes.wakeWord.phrase = newValue;
+                    Config.options.hermes.sttQuality = newValue;
                 }
                 options: [
-                    { displayName: Translation.tr("Alexa"), value: "alexa" },
-                    { displayName: Translation.tr("Hey Mycroft"), value: "hey_mycroft" },
-                    { displayName: Translation.tr("Hey Rhasspy"), value: "hey_rhasspy" },
-                    { displayName: Translation.tr("Hey Scout"), value: "hey_scout" },
-                    { displayName: Translation.tr("Okay Scout"), value: "okay_scout" },
-                    { displayName: Translation.tr("Scout"), value: "scout" },
-                    { displayName: Translation.tr("Any Scout"), value: "any_scout" }
+                    { displayName: Translation.tr("Fast"), value: "fast" },
+                    { displayName: Translation.tr("Balanced"), value: "balanced" },
+                    { displayName: Translation.tr("Accurate"), value: "accurate" },
+                    { displayName: Translation.tr("Best"), value: "best" }
                 ]
-            }
-
-            // Sensitivity rather than the threshold it sets, because "more
-            // sensitive" is the thing being asked for; the model wants the
-            // opposite number, so it is inverted here rather than in the head of
-            // whoever is dragging it.
-            ConfigSlider {
-                buttonIcon: "sensors"
-                text: Translation.tr("Sensitivity")
-                from: 0.05
-                to: 0.9
-                value: 1 - Config.options.hermes.wakeWord.threshold
-                onMoved: value => {
-                    Config.options.hermes.wakeWord.threshold = 1 - value;
-                }
-            }
-
-            // Only the wake path transcribes a file, so this is the one place the
-            // shell's own whisper still runs; the mic button uses the agent's STT.
-            ContentSubsection {
-                title: Translation.tr("Wake transcription accuracy")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.hermes.sttQuality
-                    onSelected: newValue => {
-                        Config.options.hermes.sttQuality = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Fast"), value: "fast" },
-                        { displayName: Translation.tr("Balanced"), value: "balanced" },
-                        { displayName: Translation.tr("Accurate"), value: "accurate" },
-                        { displayName: Translation.tr("Best"), value: "best" }
-                    ]
-                }
             }
         }
     }

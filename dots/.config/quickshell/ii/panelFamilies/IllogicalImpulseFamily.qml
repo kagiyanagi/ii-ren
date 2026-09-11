@@ -29,7 +29,6 @@ import qs.modules.ii.sidebarPolicies
 import qs.modules.ii.sidebarDashboard
 import qs.modules.ii.overlay
 import qs.modules.ii.verticalBar
-import qs.modules.ii.wakeOverlay
 import qs.modules.ii.wallpaperSelector
 import qs.modules.ii.wrappedFrame
 
@@ -83,7 +82,6 @@ Scope {
     PanelLoader { component: SidebarPolicies {} }
     PanelLoader { component: SidebarDashboard {} }
     PanelLoader { extraCondition: Config.options.bar.vertical && barExtraCondition; component: VerticalBar {} }
-    PanelLoader { extraCondition: Config.options.hermes.enable && Config.options.hermes.wakeWord.enable; component: WakeOverlay {} }
     PanelLoader { component: WallpaperSelector {} }
     PanelLoader { component: WrappedFrame {} }
 }

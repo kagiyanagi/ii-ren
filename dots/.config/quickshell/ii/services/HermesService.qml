@@ -30,9 +30,9 @@ Singleton {
     id: root
 
     /**
-     * Instantiates the singleton at shell start so the global shortcuts, the IPC
-     * handler and the wake-word listener register without waiting for the page to
-     * be opened. The gateway process itself stays lazy -- see ensureStarted().
+     * Instantiates the singleton at shell start so the global shortcuts and the IPC
+     * handler register without waiting for the page to be opened. The gateway
+     * process itself stays lazy -- see ensureStarted().
      */
     function load(): void {}
 
@@ -816,7 +816,6 @@ Singleton {
      * The agent's TTS (`voice.tts`) is unaffected and still used for reading out.
      */
     function startDictation(): void {
-        root.speech.autoSend = false;
         root.speech.startRecording();
     }
 
@@ -929,8 +928,10 @@ Singleton {
 
         case "message.complete":
             // Held onto: streamingId is cleared just below, and the notification
-            // needs the turn that actually finished.
+            // needs the turn that actually finished. The id as well as the
+            // message, because a spoken reply has to claim it -- see below.
             let finished = root.streamingMessage;
+            let finishedId = root.streamingId;
             if (finished) {
                 if ((payload.text ?? "").length > 0)
                     finished.content = payload.text;
@@ -942,16 +943,13 @@ Singleton {
                 const id = root._newMessage("assistant", payload.text);
                 root.messageByID[id].done = true;
                 finished = root.messageByID[id];
+                finishedId = id;
             }
             root.streamingId = "";
             root.busy = false;
             root.statusText = "";
             if (payload.usage)
                 root.usage = payload.usage;
-            if (root.speakReply) {
-                root.speakReply = false;
-                root.speak(payload.text ?? "");
-            }
             root.notifyFinished(finished);
             break;
 
@@ -1073,14 +1071,12 @@ Singleton {
         });
     }
 
-    // ── Wake word ──────────────────────────────────────────────────
+    // ── Dictation ──────────────────────────────────────────────────
     //
-    // Detection is local ONNX (scripts/wakeword/wakeword.py) and the script owns the
-    // microphone for the whole cycle -- listen, detect, then keep recording the
-    // request and endpoint it on silence -- handing back a finished WAV. That is why
-    // this path uses whisper.cpp rather than the agent's own capture: `voice.record`
-    // opens its own stream and cannot transcribe a file, and waking QML *then*
-    // starting a recorder loses the first word of every request.
+    // The mic button and Super+Shift+B record with pw-record and transcribe with the
+    // shell's own whisper.cpp. Deliberately not the agent's `voice.record`: that
+    // opens its own stream, which on a Bluetooth headset drags the card from A2DP
+    // down to HSP and stops whatever is playing.
 
     readonly property var sttPresets: ({
         "fast":     { "file": "ggml-tiny.en.bin" },              //  78MB, ~2s per 11s of audio
@@ -1113,149 +1109,17 @@ Singleton {
         prompt: Config.options.hermes.sttPrompt
         source: Config.options.hermes.sttSource
 
-        onModelDownloaded: {
-            root.wakeError = "";
-            console.log("[Hermes] wake-word voice model ready:", root.sttQuality);
-        }
+        onModelDownloaded: console.log("[Hermes] dictation voice model ready:", root.sttQuality)
 
         onTranscribed: text => {
-            const wasWake = root.wakeTurn;
-            const spoken = wasWake ? root.stripWakePhrase(text) : text;
-            root.wakeTurn = false;
-
-            if (root.speech.autoSend) {
-                root.speech.autoSend = false;
-                // Voice in, voice out: a turn started hands-free is read back the same way.
-                root.speakReply = Config.options.hermes.speakReplies;
-                root.sendMessage(spoken);
-                return;
-            }
-            // Typed-by-voice: hand it to the composer to review, the same as any
-            // other dictation -- local STT mishears and a send cannot be undone.
-            root.dictationTranscript(spoken);
+            // Handed to the composer to review rather than sent: local STT mishears
+            // and a send cannot be undone.
+            root.dictationTranscript(text);
         }
         onFailed: reason => {
-            // Cleared here too, else a failed hands-free turn leaves the next one
-            // being treated as one.
-            root.wakeTurn = false;
             root.addMessage(reason, root.interfaceRole);
         }
     }
-
-    /*
-     * Which classifier files to load for each setting. "any" runs all three at
-     * once: the expensive part of detection is the shared frontend, which runs
-     * once no matter how many phrases are watched, so a second and third phrase
-     * cost about a megabyte each and no measurable CPU.
-     *
-     * hey_jarvis is openWakeWord's own pretrained model. It is deliberately *not*
-     * offered in settings and stays here only as a way to exercise the pipeline
-     * before a trained Scout model exists, by setting hermes.wakeWord.phrase to
-     * "hey_jarvis" in config.json by hand. Nothing in the UI leads here.
-     */
-    readonly property var wakePhrasePresets: ({
-        "hey_scout":  [{ "name": "hey_scout",  "file": "hey_scout.onnx",  "bare": false }],
-        "okay_scout": [{ "name": "okay_scout", "file": "okay_scout.onnx", "bare": false }],
-        "scout":      [{ "name": "scout",      "file": "scout.onnx",      "bare": true  }],
-        "any_scout":  [{ "name": "hey_scout",  "file": "hey_scout.onnx",  "bare": false },
-                       { "name": "okay_scout", "file": "okay_scout.onnx", "bare": false },
-                       { "name": "scout",      "file": "scout.onnx",      "bare": true  }],
-
-        // openWakeWord's own pretrained phrases. No training, no Colab - they are
-        // fetched straight from the release and work immediately, which is what
-        // makes the feature usable without a GPU anywhere in the picture.
-        // Not "bare" despite having no prefix: that flag exists for single-syllable
-        // triggers, and "Alexa" is three distinctive ones.
-        "alexa":       [{ "name": "alexa",       "file": "alexa_v0.1.onnx",       "bare": false }],
-        "hey_mycroft": [{ "name": "hey_mycroft", "file": "hey_mycroft_v0.1.onnx", "bare": false }],
-        "hey_rhasspy": [{ "name": "hey_rhasspy", "file": "hey_rhasspy_v0.1.onnx", "bare": false }],
-        "hey_jarvis":  [{ "name": "hey_jarvis",  "file": "hey_jarvis_v0.1.onnx",  "bare": false }]
-    })
-
-    readonly property var wakePhrases: {
-        const preset = root.wakePhrasePresets[Config.options.hermes.wakeWord.phrase]
-            ?? root.wakePhrasePresets["hey_scout"];
-        const wake = Config.options.hermes.wakeWord;
-        return preset.map(phrase => ({
-            "name": phrase.name,
-            "file": phrase.file,
-            "threshold": phrase.bare ? wake.bareThreshold : wake.threshold
-        }));
-    }
-
-    // Why the wake word is not listening, if it is not. Surfaced in settings rather
-    // than the transcript; empty once it arms.
-    property string wakeError: ""
-
-    // Marks the turn as hands-free, so the transcript gets the wake phrase trimmed
-    // off it and the reply is spoken.
-    property bool wakeTurn: false
-    property bool speakReply: false
-
-    /**
-     * Capture starts a fraction before the phrase is detected, so whatever the user
-     * said arrives with the tail of "hey scout" stuck to the front of it. Trimmed
-     * only when it is really there -- and never down to nothing, so a bare "Scout"
-     * with no request survives as something to answer.
-     */
-    function stripWakePhrase(text: string): string {
-        const stripped = text
-            .replace(/^[\s,.!?-]*(?:(?:hey|okay|ok)\s+)?(?:s?cout|jarvis)\b[\s,.!?-]*/i, "")
-            .trim();
-        return stripped.length > 0 ? stripped : text;
-    }
-
-    property WakeWord wake: WakeWord {
-        // Config.ready gates this: before the user's config loads, `phrase` still
-        // reads the schema default (hey_scout), whose models are custom-trained and
-        // genuinely absent -- so an ungated probe tries to fetch them, fails, and
-        // reports a problem about a phrase the user never selected. That race is
-        // what produced the wake-word complaint on every single start.
-        enabled: Config.ready && root.enabled && Config.options.hermes.wakeWord.enable
-        phrases: root.wakePhrases
-        source: Config.options.hermes.wakeWord.source
-
-        /*
-         * Deaf while the shell is talking, thinking, or locked. The first of those is
-         * not optional: TTS output reaches the microphone, so a reply containing the
-         * wake phrase would wake the shell with its own voice.
-         */
-        suspended: root.busy || root.dictating
-            || root.speech.recording || root.speech.transcribing
-            || (Config.options.hermes.wakeWord.pauseWhenLocked && GlobalStates.screenLocked)
-
-        // A phrase whose models are already on disk downloads nothing, so there is
-        // no completion event to clear a stale complaint -- it has to come off the
-        // moment the detector is armed, and go back on only if arming fails again.
-        onModelsReadyChanged: if (wake.modelsReady) root.wakeError = ""
-        onPhrasesChanged: root.wakeError = ""
-
-        onWoke: (phrase, score) => {
-            root.wakeError = "";
-            console.log(`[Hermes] Wake word "${phrase}" at ${score}`);
-            GlobalStates.policiesPanelOpen = true;
-            root.focusHermesTab();
-        }
-
-        onUtterance: path => {
-            root.wakeTurn = true;
-            root.speech.autoSend = true;
-            root.speech.transcribeFile(path);
-        }
-
-        // Not addMessage(): this fires at startup, every startup, whenever the
-        // configured phrase has no model on disk. Greeting an empty chat with a
-        // setup problem is noise -- it belongs beside the setting that caused it,
-        // so it is published here and rendered in Settings > Hermes > Wake word.
-        onFailed: reason => {
-            root.wakeError = reason;
-            console.log("[Hermes] wake word:", reason);
-        }
-    }
-
-    Binding { target: GlobalStates; property: "wakeListening"; value: root.wake.listening }
-    Binding { target: GlobalStates; property: "wakeCapturing"; value: root.wake.capturing }
-    Binding { target: GlobalStates; property: "wakeLevel"; value: root.wake.level }
 
     // ── Read-aloud ─────────────────────────────────────────────────
     //

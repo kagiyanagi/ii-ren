@@ -76,10 +76,6 @@ Singleton {
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool wallpaperSelectorOpen: false
-    // Wake word: armed and waiting, versus actively recording a request.
-    property bool wakeListening: false
-    property bool wakeCapturing: false
-    property real wakeLevel: 0
     property bool workspaceShowNumbers: false
 
     // Vertical space the notification popups currently take up, so other panels

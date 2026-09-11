@@ -41,20 +41,6 @@ Singleton {
         // A monitor capture (cava, screen recorders) is not the microphone.
         if (props["stream.capture.sink"])
             return apps;
-        /*
-         * The wake word listener holds the microphone for as long as it is
-         * switched on, so it would pin this indicator lit permanently and drown
-         * out the thing the indicator is actually for - noticing when something
-         * *else* opens the mic.
-         *
-         * Matched on the stream's own tag (set in scripts/wakeword/wakeword.py)
-         * rather than on the pw-record binary, so a recording the user started by
-         * hand still shows up. Set hermes.wakeWord.hideFromPrivacy to false to
-         * see it like any other app.
-         */
-        if ((Config.options?.hermes?.wakeWord?.hideFromPrivacy ?? true)
-            && props["application.name"] === "quickshell-wakeword")
-            return apps;
         const name = props["application.name"] || node.description || node.name;
         if (!name || apps.some(app => app.name === name))
             return apps;

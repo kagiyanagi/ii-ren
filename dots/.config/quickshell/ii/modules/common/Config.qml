@@ -171,50 +171,19 @@ Singleton {
                 // skills and plugins; this only bounds how many are offered.
                 property int maxSuggestions: 12
 
-                // Read the reply back after a turn that was started by voice, so a
-                // hands-free exchange works without looking at the screen. Uses the
-                // agent's own TTS (`voice.tts`).
-                property bool speakReplies: true
-
                 // Notify when a reply lands somewhere you cannot see it -- the panel
                 // shut, or open on another tab.
                 property bool notifyWhenAway: true
 
-                // Dictation from the mic button and Super+Shift+B runs on the
-                // agent's own capture and STT. The whisper settings below are for
-                // the wake-word path only, which hands over a finished WAV --
-                // the agent's VAD loop cannot transcribe a file.
+                // Dictation, from the mic button and Super+Shift+B, records with
+                // pw-record and transcribes with the shell's own whisper.cpp -- see
+                // services/hermes/SpeechToText.qml. These settings are that path.
                 property string sttQuality: "balanced" // fast | balanced | accurate | best
                 property string sttModel: ""           // explicit path wins over the preset
                 property string sttLanguage: "en"      // en | auto
                 property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, Hermes, LaTeX, extension, sidebar, attachment, transcript."
                 property string sttSource: ""
 
-                // Hands-free trigger. Off by default: it holds the microphone open
-                // for as long as the shell runs, which is a thing to opt into
-                // rather than to discover.
-                property JsonObject wakeWord: JsonObject {
-                    property bool enable: false
-                    // Which trained phrase listens. Files live in
-                    // ~/.local/share/vynx-conduit/wakeword; see tools/wakeword.
-                    property string phrase: "hey_scout"
-                    // Score to fire at. Lower catches more and false-fires more.
-                    // Tune it by measurement, not by feel -- wakeword.py --wav
-                    // scores a recording so you can see what a real miss costs.
-                    property real threshold: 0.5
-                    // "scout" on its own is one syllable and gives the classifier
-                    // very little to go on, so it is held to a stricter score than
-                    // the prefixed phrases.
-                    property real bareThreshold: 0.7
-                    property string source: "" // as sttSource
-                    property bool pauseWhenLocked: true
-                    // Keep this listener out of the privacy indicator. It holds the
-                    // microphone for as long as it is enabled, so showing it there
-                    // would light the indicator permanently and bury the case it
-                    // exists for -- some *other* app opening the mic. Only this
-                    // stream is hidden; every other recorder still shows.
-                    property bool hideFromPrivacy: true
-                }
             }
 
             property JsonObject appearance: JsonObject {
