@@ -5,8 +5,15 @@ itself through an `ffplay` child, and exposes no way to stop that playback. The
 shell needs the audio *file*, so it can play it through its own MediaPlayer where
 stop() drains the stream gracefully and can be faded first.
 
-Why it is a long-lived process: the piper model takes ~8s to load and ~1s to
-synthesize once loaded. A one-shot script pays the load on every request.
+Why it is a long-lived process: the provider is set up once per start -- the
+agent's import graph and the voice config -- and a one-shot script would pay that
+on every request. Measured on Edge: ~1.4s to a ready server, then ~0.6-1.2s per
+request, which is round-trip latency rather than compute. Local providers (piper,
+kokoro) trade that for a multi-second model load, which this also absorbs.
+
+The shell sends one request per sentence group rather than one per reply, so the
+first clip can start playing while the rest are still being made; replies are
+answered in the order they arrive, which is what keeps the clips in order.
 
 Protocol, JSON lines on stdin/stdout:
   -> {"id": "…", "text": "…", "out": "/path/file.mp3"}

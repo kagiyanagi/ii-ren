@@ -387,10 +387,24 @@ Singleton {
             if (body.trim().length === 0)
                 return; // No empty bubbles for rows that carry no prose.
 
-            const id = root._newMessage(role === "user" ? "user" : "assistant", body);
+            if (role === "user") {
+                const userId = root._newMessage("user", body);
+                root.messageByID[userId].done = true;
+                lastAssistantId = ""; // A request starts a new run.
+                return;
+            }
+
+            // Consecutive assistant rows are the turns of one run, so they rebuild
+            // into the single card the live stream would have produced.
+            const open = root.messageByID[lastAssistantId] ?? null;
+            if (open) {
+                open.content += open.content.length > 0 ? `\n\n${body}` : body;
+                open.done = true;
+                return;
+            }
+            const id = root._newMessage("assistant", body);
             root.messageByID[id].done = true;
-            if (role !== "user")
-                lastAssistantId = id;
+            lastAssistantId = id;
         });
 
         // Say so rather than silently showing a conversation that starts mid-thought.
@@ -1328,8 +1342,28 @@ Singleton {
                 }
             }
 
-            function start(paths: var): void {
+            /**
+             * Add clips to the reading. Starts playing if nothing is, appends if
+             * something is -- a reply is spoken as several chunks that arrive while
+             * the earlier ones are still playing, so this must never restart.
+             */
+            function enqueue(paths: var): void {
+                if (paths.length === 0)
+                    return;
+                // A new reading arriving mid-fade takes over immediately. The fade
+                // was the old reading's exit; letting it land afterwards would empty
+                // the queue this is filling and delete the clips with it.
+                if (fadeOut.running) {
+                    fadeOut.stop();
+                    readerPlayer.stop();
+                    reader.finish();
+                }
                 reader.produced = [...reader.produced, ...paths];
+                if (readerPlayer.playbackState === MediaPlayer.PlayingState || reader.queue.length > 0) {
+                    reader.queue = [...reader.queue, ...paths];
+                    return;
+                }
+                reader.epoch = root._speakEpoch;
                 reader.queue = paths.slice(1);
                 readerPlayer.source = `file://${paths[0]}`;
                 readerPlayer.play();
@@ -1356,7 +1390,10 @@ Singleton {
                     cleanup.running = true;
                     reader.produced = [];
                 }
-                root.speakingMessageId = "";
+                // Only if this is still the current reading: a later one has already
+                // claimed the id, and clearing it would stop it before it is heard.
+                if (reader.epoch === root._speakEpoch)
+                    root.speakingMessageId = "";
             }
 
             Process {
@@ -1386,6 +1423,50 @@ Singleton {
         }
     }
 
+    /**
+     * Sentence-boundary chunks, so speaking can begin before the whole reply has
+     * been synthesized.
+     *
+     * Synthesis cost scales with length -- a 250-character reply takes about four
+     * seconds -- and the reply is only handed over once it is finished, so a long
+     * answer sat in silence for all four. Split, the first chunk lands in about a
+     * second and the player's queue covers the rest while they render.
+     *
+     * Only real sentence ends are cut, and short ones are merged up to `minChunk`:
+     * a pause the listener does not expect is worse than waiting a moment longer,
+     * and every boundary here is one a person reading aloud would also pause at.
+     */
+    // The opening chunk is allowed to be short so speaking starts sooner; the rest
+    // are kept long, since by then the player is busy and only the total matters.
+    readonly property int _minFirstChunk: 60
+    readonly property int _minChunk: 140
+    readonly property int _maxChunks: 8
+
+    function _splitForSpeech(text: string): var {
+        const trimmed = (text ?? "").trim();
+        if (trimmed.length <= root._minFirstChunk)
+            return [trimmed];
+        // Split *after* the punctuation, keeping it with the sentence it ends.
+        const sentences = trimmed.split(/(?<=[.!?])\s+/);
+        const chunks = [];
+        sentences.forEach(sentence => {
+            const floor = chunks.length === 1 ? root._minFirstChunk : root._minChunk;
+            if (chunks.length > 0 && chunks[chunks.length - 1].length < floor)
+                chunks[chunks.length - 1] += ` ${sentence}`;
+            else
+                chunks.push(sentence);
+        });
+        // Past the cap the tail is spoken as one piece: more requests would not
+        // start the audio any sooner, and each one costs a round trip.
+        if (chunks.length > root._maxChunks)
+            return [...chunks.slice(0, root._maxChunks - 1), chunks.slice(root._maxChunks - 1).join(" ")];
+        return chunks;
+    }
+
+    // Bumped by every new reading, so replies to a superseded one are discarded
+    // rather than played over the top of it.
+    property int _speakEpoch: 0
+
     /** Read `text` out loud through the shell's own player. */
     function speak(text: string): void {
         if ((text ?? "").trim().length === 0)
@@ -1393,21 +1474,32 @@ Singleton {
         // A new reading replaces one in progress, silently: fade what is playing.
         if (readerLoader.item?.player.playing)
             readerLoader.item.fadeAndStop();
-        root._ttsRequest(text, reply => {
-            if (!(reply.ok ?? false) || (reply.paths ?? []).length === 0) {
+        const epoch = ++root._speakEpoch;
+        const chunks = root._splitForSpeech(text);
+        // Requested up front: the server answers them in order, so the clips queue
+        // up in order too, and chunk two is already rendering while chunk one plays.
+        chunks.forEach((chunk, index) => root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index)));
+    }
+
+    function _onSpoken(reply: var, epoch: int, index: int): void {
+        const stale = epoch !== root._speakEpoch || root.speakingMessageId.length === 0;
+        if (!(reply.ok ?? false) || (reply.paths ?? []).length === 0) {
+            // Only the opening chunk reports: a failure halfway through is a gap in
+            // the reading, not a reason to replace it with an error bubble.
+            if (!stale && index === 0) {
                 root.speakingMessageId = "";
                 root.addMessage(reply.error?.length > 0 ? reply.error : Translation.tr("Could not synthesize speech"), root.interfaceRole);
-                return;
             }
-            // Stopped while synthesis was still running: do not start playing now.
-            if (root.speakingMessageId.length === 0) {
-                cleanupOrphan.command = ["rm", "-f", ...reply.paths];
-                cleanupOrphan.running = true;
-                return;
-            }
-            readerLoader.active = true;
-            readerLoader.item.start(reply.paths);
-        });
+            return;
+        }
+        // Stopped or superseded while synthesis was still running: do not play now.
+        if (stale) {
+            cleanupOrphan.command = ["rm", "-f", ...reply.paths];
+            cleanupOrphan.running = true;
+            return;
+        }
+        readerLoader.active = true;
+        readerLoader.item.enqueue(reply.paths);
     }
 
     Process {
