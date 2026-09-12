@@ -90,15 +90,13 @@ Singleton {
 
     // ── Voice ──────────────────────────────────────────────────────
     //
-    // Hermes brings its own capture and STT (local faster-whisper by default), so
-    // dictation goes through the agent rather than a second recorder in the shell.
-    // `voice.record` is VAD-bounded -- it stops on silence and answers with
-    // `voice.transcript` -- so the mic button is a toggle, not a hold.
-
+    // The shell records (pw-record), Hermes transcribes with whatever `stt.provider`
+    // it is configured with. See the Dictation section below for why the capture is
+    // not the agent's own.
 
     // Dictation readiness is the shell's own recorder, which is what actually runs
     // when the mic button is pressed.
-    readonly property bool dictationAvailable: root.speech.modelReady || root.speech.downloading
+    readonly property bool dictationAvailable: root.speech.available || root.speech.downloading
     readonly property string voiceState: root.speech.recording ? "listening" : root.speech.transcribing ? "transcribing" : "idle"
     readonly property bool dictating: root.voiceState !== "idle"
 
@@ -1193,10 +1191,16 @@ Singleton {
 
     // ── Dictation ──────────────────────────────────────────────────
     //
-    // The mic button and Super+Shift+B record with pw-record and transcribe with the
-    // shell's own whisper.cpp. Deliberately not the agent's `voice.record`: that
-    // opens its own stream, which on a Bluetooth headset drags the card from A2DP
-    // down to HSP and stops whatever is playing.
+    // The mic button and Super+Shift+B record with pw-record, then hand the file to
+    // Hermes' own STT provider through scripts/hermes/stt.sh -- so `stt.provider` in
+    // ~/.hermes/config.yaml decides what transcribes, for the agent and for dictation
+    // alike. whisper.cpp is the fallback, and the settings below configure it.
+    //
+    // The capture is deliberately not the agent's `voice.record`: that opens its own
+    // stream, which on a Bluetooth headset drags the card from A2DP down to HSP and
+    // stops whatever is playing.
+
+    readonly property string sttScript: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hermes/stt.sh"))
 
     readonly property var sttPresets: ({
         "fast":     { "file": "ggml-tiny.en.bin" },              //  78MB, ~2s per 11s of audio
@@ -1223,6 +1227,8 @@ Singleton {
     }
 
     property SpeechToText speech: SpeechToText {
+        engine: Config.options.hermes.sttEngine
+        bridgeScript: root.sttScript
         modelPath: root.sttModel
         modelUrl: root.sttModelUrl
         language: Config.options.hermes.sttLanguage
@@ -1232,8 +1238,8 @@ Singleton {
         onModelDownloaded: console.log("[Hermes] dictation voice model ready:", root.sttQuality)
 
         onTranscribed: text => {
-            // Handed to the composer to review rather than sent: local STT mishears
-            // and a send cannot be undone.
+            // Handed to the composer to review rather than sent: STT mishears and a
+            // send cannot be undone.
             root.dictationTranscript(text);
         }
         onFailed: reason => {

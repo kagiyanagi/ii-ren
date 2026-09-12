@@ -73,7 +73,32 @@ ContentPage {
         }
 
         ContentSubsection {
-            title: Translation.tr("Dictation accuracy")
+            title: Translation.tr("Dictate with")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.hermes.sttEngine
+                onSelected: newValue => {
+                    Config.options.hermes.sttEngine = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Hermes' provider"), value: "hermes" },
+                    { displayName: Translation.tr("This machine"), value: "local" }
+                ]
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                text: Config.options.hermes.sttEngine === "local"
+                    ? Translation.tr("Transcribed here with whisper.cpp. Nothing is uploaded.")
+                    : Translation.tr("Transcribed by whichever provider Hermes is set to — its `stt.provider`, shared with the agent's own voice mode. Falls back to this machine when Hermes isn't installed.")
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Dictation accuracy on this machine")
 
             ConfigSelectionArray {
                 currentValue: Config.options.hermes.sttQuality

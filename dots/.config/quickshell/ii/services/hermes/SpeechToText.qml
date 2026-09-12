@@ -5,18 +5,45 @@ import Quickshell.Io
 import QtQuick
 
 /**
- * Local speech-to-text via whisper.cpp. Nothing is uploaded: recording and
- * transcription both run on this machine.
+ * Speech-to-text for dictation. The shell records; who transcribes is the
+ * `engine` property.
  *
- * Pipeline: pw-record captures 16 kHz mono s16 WAV (exactly what whisper.cpp
- * expects, so no resampling step is needed), then the whisper binary transcribes
- * it to stdout.
+ * Pipeline: pw-record captures 16 kHz mono s16 WAV (what both engines want, so no
+ * resampling step is needed), then either the Hermes bridge
+ * (scripts/hermes/stt.sh) or the local whisper.cpp binary reads it.
  *
- * The binary name is detected rather than assumed: whisper.cpp renamed `main` to
- * `whisper-cli` in 1.7, and distributions also ship it as `whisper-cpp`.
+ * The shell keeps the microphone in both cases. The agent's own `voice.record`
+ * opens a capture it never releases, which on a Bluetooth headset drags the card
+ * from A2DP down to HSP -- so only the transcription is delegated, never the mic.
+ *
+ * The whisper binary name is detected rather than assumed: whisper.cpp renamed
+ * `main` to `whisper-cli` in 1.7, and distributions also ship it as `whisper-cpp`.
  */
 QtObject {
     id: root
+
+    /**
+     * Where the audio is transcribed.
+     *   "hermes"  whichever provider Hermes itself is set to -- `stt.provider` in
+     *             ~/.hermes/config.yaml, so groq, openai, a command provider or
+     *             its local faster-whisper. Changing it there changes dictation
+     *             too, which is the point: one setting, in one place.
+     *   "local"   this machine only, via whisper.cpp. Nothing is uploaded.
+     * "hermes" falls back to "local" on its own when there is no agent checkout,
+     * and after the bridge dies holding a recording.
+     */
+    property string engine: "hermes"
+    property string bridgeScript: ""
+    // Whether an agent checkout exists at all; the bridge cannot run without one.
+    // Optimistic until the probe answers: it settles a moment after startup, and
+    // dictating in that moment must not be silently demoted to whisper.cpp. A
+    // wrong guess costs nothing -- the launcher exits 127 and the audio is read
+    // locally instead.
+    property bool bridgeAvailable: true
+    property bool bridgeReady: false
+    // Resolved provider name, for the status line ("groq", "openai", "local"…).
+    property string bridgeProvider: ""
+    readonly property bool usingHermes: root.engine !== "local" && root.bridgeAvailable && root.bridgeScript.length > 0
 
     property string modelPath: ""
     // Fetched on demand when modelPath is missing, so picking a higher accuracy level
@@ -48,7 +75,7 @@ QtObject {
 
     property string binary: ""
     property bool modelReady: false
-    readonly property bool available: root.binary.length > 0 && root.modelReady
+    readonly property bool available: root.usingHermes || (root.binary.length > 0 && root.modelReady)
 
     property bool recording: false
     property bool transcribing: false
@@ -66,17 +93,24 @@ QtObject {
 
     function startRecording() {
         if (root.recording || root.transcribing) return;
-        if (root.downloading) {
-            root.failed("Still downloading the voice model — try again in a moment.");
-            return;
-        }
-        if (root.binary.length > 0 && !root.modelReady && root.modelUrl.length > 0) {
-            root.downloadModel();
-            return;
-        }
-        if (!root.available) {
-            root.failed(root.setupHint());
-            return;
+        if (root.usingHermes) {
+            // Started now rather than when the recording ends: the agent's import
+            // graph and config resolution cost over a second, and paying it while
+            // the user is still speaking makes it free.
+            root.startBridge();
+        } else {
+            if (root.downloading) {
+                root.failed("Still downloading the voice model — try again in a moment.");
+                return;
+            }
+            if (root.binary.length > 0 && !root.modelReady && root.modelUrl.length > 0) {
+                root.downloadModel();
+                return;
+            }
+            if (!root.available) {
+                root.failed(root.setupHint());
+                return;
+            }
         }
         // The target is resolved inside the same command so this stays one process launch.
         // An empty TARGET expands to nothing, leaving pw-record on the system default.
@@ -194,7 +228,135 @@ QtObject {
 
         // pw-record exits non-zero when stopped by a signal, which is the normal path
         // here, so the recording is judged by whether a usable file exists.
-        onExited: transcriber.start()
+        onExited: root.transcribeRecording()
+    }
+
+    /** Hand the finished capture to whichever engine is in charge. */
+    function transcribeRecording(path) {
+        const audio = (path && path.length > 0) ? path : root.wavPath;
+        if (root.usingHermes) {
+            root.transcribing = true;
+            bridge.request(audio);
+            return;
+        }
+        transcriber.start(audio);
+    }
+
+    /*
+     * The recording has served its purpose the moment it has been read. Deleted on
+     * every path, including the failures - a transcript that could not be read is
+     * not a reason to keep the audio lying in /tmp until the next reboot, and
+     * re-recording costs a sentence.
+     */
+    function discardAudio(path) {
+        if (!path || path.length === 0) return;
+        Quickshell.execDetached(["rm", "-f", path]);
+    }
+
+    /* ---------- Transcribing through Hermes -------------------------------- */
+
+    // Switched to whisper.cpp: the server is holding the agent's whole import graph
+    // in memory for a path nothing takes any more.
+    onUsingHermesChanged: if (!root.usingHermes && bridge.running) bridge.running = false
+
+    function startBridge() {
+        if (!root.usingHermes || bridge.running) return;
+        bridge.running = true;
+    }
+
+    function finishBridgeReply(reply) {
+        root.transcribing = false;
+        root.discardAudio(bridge.audioPath);
+        bridge.audioPath = "";
+
+        const text = root.cleanTranscript(reply.text ?? "");
+        if (!reply.ok || text.length === 0) {
+            const reason = reply.error ?? "";
+            root.failed(reason.length > 0 ? reason : "Didn't catch anything — try again a bit closer to the mic.");
+            return;
+        }
+        root.transcribed(text);
+    }
+
+    property Process bridge: Process {
+        id: bridge
+
+        running: false
+        stdinEnabled: true
+        command: [root.bridgeScript]
+
+        // Which file this run is reading, so it can be shredded afterwards - or
+        // retried locally if the bridge dies still holding it.
+        property string audioPath: ""
+        // Sent as soon as the server says it is ready. The recording finishes first
+        // whenever the utterance was shorter than the agent's import graph.
+        property string pendingRequest: ""
+
+        function request(audio) {
+            bridge.audioPath = audio;
+            const frame = JSON.stringify({ id: `stt-${Date.now()}`, wav: audio }) + "\n";
+            if (!root.bridgeReady) {
+                bridge.pendingRequest = frame;
+                root.startBridge();
+                return;
+            }
+            bridge.write(frame);
+        }
+
+        stdout: SplitParser {
+            onRead: line => {
+                if (line.trim().length === 0) return;
+                let reply;
+                try {
+                    reply = JSON.parse(line);
+                } catch (e) {
+                    return;
+                }
+                if (reply.event === "ready") {
+                    root.bridgeReady = true;
+                    root.bridgeProvider = reply.provider ?? "";
+                    const queued = bridge.pendingRequest;
+                    bridge.pendingRequest = "";
+                    if (queued.length > 0) bridge.write(queued);
+                    return;
+                }
+                root.finishBridgeReply(reply);
+            }
+        }
+
+        stderr: SplitParser {
+            onRead: line => {
+                if (line.trim().length > 0) console.log("[Hermes/stt]", line.trim());
+            }
+        }
+
+        onExited: exitCode => {
+            root.bridgeReady = false;
+            bridge.pendingRequest = "";
+            // 127 is the launcher saying there is no agent checkout and no
+            // interpreter for one. Nothing will fix that before a restart, so stop
+            // routing through it instead of failing every utterance the same way.
+            if (exitCode === 127) root.bridgeAvailable = false;
+
+            if (bridge.audioPath.length === 0) return;
+
+            // Died holding a recording: read it here rather than lose what was said.
+            const audio = bridge.audioPath;
+            bridge.audioPath = "";
+            if (root.binary.length > 0 && root.modelReady) {
+                transcriber.start(audio);
+                return;
+            }
+            root.transcribing = false;
+            root.discardAudio(audio);
+            root.failed(`Transcription through Hermes stopped (exit ${exitCode}).`);
+        }
+    }
+
+    property Process bridgeProbe: Process {
+        command: ["test", "-d", `${Quickshell.env("HERMES_HOME") || `${Quickshell.env("HOME")}/.hermes`}/hermes-agent`]
+        running: true
+        onExited: exitCode => root.bridgeAvailable = (exitCode === 0)
     }
 
     property Process transcriber: Process {
@@ -253,16 +415,8 @@ QtObject {
         onExited: exitCode => {
             root.transcribing = false;
 
-            /*
-             * The recording has served its purpose the moment it has been read.
-             * Deleted on every path, including the failures - a transcript that
-             * could not be read is not a reason to keep the audio lying in /tmp
-             * until the next reboot, and re-recording costs a sentence.
-             */
-            if (transcriber.audioPath.length > 0) {
-                Quickshell.execDetached(["rm", "-f", transcriber.audioPath]);
-                transcriber.audioPath = "";
-            }
+            root.discardAudio(transcriber.audioPath);
+            transcriber.audioPath = "";
 
             if (exitCode === 3) {
                 root.failed("Nothing was recorded. Is an input device active?");

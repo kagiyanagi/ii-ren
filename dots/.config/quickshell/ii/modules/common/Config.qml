@@ -176,8 +176,14 @@ Singleton {
                 property bool notifyWhenAway: true
 
                 // Dictation, from the mic button and Super+Shift+B, records with
-                // pw-record and transcribes with the shell's own whisper.cpp -- see
-                // services/hermes/SpeechToText.qml. These settings are that path.
+                // pw-record -- see services/hermes/SpeechToText.qml.
+                //
+                // "hermes" transcribes with whatever provider Hermes is configured
+                // with (`stt.provider` in ~/.hermes/config.yaml), so changing it
+                // there changes dictation too. "local" pins dictation to whisper.cpp
+                // on this machine. The settings below configure whisper.cpp, and
+                // apply whenever it runs -- by choice, or as the fallback.
+                property string sttEngine: "hermes"    // hermes | local
                 property string sttQuality: "balanced" // fast | balanced | accurate | best
                 property string sttModel: ""           // explicit path wins over the preset
                 property string sttLanguage: "en"      // en | auto

@@ -80,7 +80,7 @@ Item {
     }
 
     // A finished transcript goes into the box rather than straight to the agent:
-    // local STT mishears, and an unreviewed send cannot be taken back.
+    // STT mishears, and an unreviewed send cannot be taken back.
     Connections {
         target: HermesService
         // A prefill directive (/undo) hands text back to edit, not to send.
