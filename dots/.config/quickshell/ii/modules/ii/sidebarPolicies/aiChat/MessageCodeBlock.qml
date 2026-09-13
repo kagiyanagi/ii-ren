@@ -236,6 +236,11 @@ ColumnLayout {
                             segmentContent = text
                         }
 
+                        // See MessageTextBlock: the transcript offers actions on
+                        // whatever is selected, and only this delegate knows.
+                        onSelectedTextChanged: TextSelectionService.report(codeTextArea)
+                        Component.onDestruction: TextSelectionService.release(codeTextArea)
+
                         Keys.onPressed: (event) => {
                             if (event.key === Qt.Key_Tab) {
                                 // Insert 4 spaces at cursor

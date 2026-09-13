@@ -79,6 +79,24 @@ Item {
         messageListView.positionViewAtEnd();
     }
 
+    /**
+     * Stage a quoted passage in the composer for the user to answer under.
+     *
+     * Goes in as a Markdown blockquote so the agent can tell the quote from the
+     * new question, and lands in the box rather than being sent: a quote is the
+     * opening of a reply, not the reply.
+     */
+    function quoteToComposer(text: string): void {
+        const quoted = text.trim();
+        if (quoted.length === 0)
+            return;
+        const block = quoted.split("\n").map(line => `> ${line}`).join("\n");
+        const existing = messageInputField.text.replace(/\s+$/, "");
+        messageInputField.text = existing.length > 0 ? `${existing}\n\n${block}\n\n` : `${block}\n\n`;
+        messageInputField.cursorPosition = messageInputField.text.length;
+        messageInputField.forceActiveFocus();
+    }
+
     // A finished transcript goes into the box rather than straight to the agent:
     // STT mishears, and an unreviewed send cannot be taken back.
     Connections {
@@ -322,6 +340,17 @@ Item {
             ScrollToBottomButton {
                 z: 3
                 target: messageListView
+            }
+
+            HermesSelectionActions {
+                z: 3
+                anchorItem: transcriptItem
+                // Scoped to this list so a selection made in a sibling tab's
+                // transcript does not raise Hermes' toolbar over Hermes' text.
+                scopeItem: messageListView
+                repositionTrigger: messageListView.contentY
+
+                onQuoteRequested: text => root.quoteToComposer(text)
             }
 
             HermesHistoryPanel {

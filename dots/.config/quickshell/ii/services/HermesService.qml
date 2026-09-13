@@ -441,6 +441,21 @@ Singleton {
         root.speak(body);
     }
 
+    // Marks a reading that belongs to no particular turn. `speakingMessageId`
+    // doubles as the "a reading is still wanted" flag that `_onSpoken` checks
+    // before it plays anything, so reading a selection has to set it too; a
+    // sentinel that cannot collide with a real id keeps every per-message speak
+    // button dark while a selection is the thing being read.
+    readonly property string selectionSpeechId: "__selection__"
+
+    /** Read an arbitrary passage out loud -- a selection rather than a whole turn. */
+    function speakText(text: string): void {
+        if ((text ?? "").trim().length === 0)
+            return;
+        root.speakingMessageId = root.selectionSpeechId;
+        root.speak(text);
+    }
+
 
     function removeMessagesFrom(index: int): void {
         if (index < 0 || index >= root.messageIDs.length)

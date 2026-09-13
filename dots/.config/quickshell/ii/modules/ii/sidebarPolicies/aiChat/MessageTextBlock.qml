@@ -172,6 +172,12 @@ ColumnLayout {
                 segmentContent = text
             }
 
+            // Reported upward so the transcript can offer actions on a selection:
+            // the highlight itself is confined to this one delegate, and a reply is
+            // split across many of them.
+            onSelectedTextChanged: TextSelectionService.report(textArea)
+            Component.onDestruction: TextSelectionService.release(textArea)
+
             onLinkActivated: (link) => {
                 Qt.openUrlExternally(link)
                 GlobalStates.sidebarLeftOpen = false
