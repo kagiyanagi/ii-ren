@@ -1359,8 +1359,10 @@ Singleton {
             id: reader
             readonly property alias player: readerPlayer
             readonly property alias output: readerOutput
-            // Files still to play after the current one: long-form replies come back as
-            // several clips.
+            // Clips still to play after the current one, as {path, chunk, share, span, marks}:
+            // long-form replies come back as several of them, and each one carries
+            // the text it says, and which slice of it, so the transcript can mark
+            // the word being spoken while it plays.
             property var queue: []
             // Everything played this turn, deleted once it is over.
             property var produced: []
@@ -1386,8 +1388,7 @@ Singleton {
                     if (reader.queue.length > 0) {
                         const next = reader.queue[0];
                         reader.queue = reader.queue.slice(1);
-                        readerPlayer.source = `file://${next}`;
-                        readerPlayer.play();
+                        reader.playEntry(next);
                         return;
                     }
                     reader.finish();
@@ -1404,9 +1405,20 @@ Singleton {
              * something is -- a reply is spoken as several chunks that arrive while
              * the earlier ones are still playing, so this must never restart.
              */
-            function enqueue(paths: var): void {
+            function enqueue(paths: var, chunk: string, marks: var): void {
                 if (paths.length === 0)
                     return;
+                // A chunk long enough to come back as several clips is assumed to
+                // divide evenly between them, so the mark keeps moving through it.
+                const entries = paths.map((path, index) => ({
+                    path: path,
+                    chunk: chunk,
+                    share: index / paths.length,
+                    span: 1 / paths.length,
+                    // Word timings belong to a single clip; a chunk that came back
+                    // as several has none, and falls back to the estimate.
+                    marks: paths.length === 1 ? marks : []
+                }));
                 // A new reading arriving mid-fade takes over immediately. The fade
                 // was the old reading's exit; letting it land afterwards would empty
                 // the queue this is filling and delete the clips with it.
@@ -1417,12 +1429,21 @@ Singleton {
                 }
                 reader.produced = [...reader.produced, ...paths];
                 if (readerPlayer.playbackState === MediaPlayer.PlayingState || reader.queue.length > 0) {
-                    reader.queue = [...reader.queue, ...paths];
+                    reader.queue = [...reader.queue, ...entries];
                     return;
                 }
                 reader.epoch = root._speakEpoch;
-                reader.queue = paths.slice(1);
-                readerPlayer.source = `file://${paths[0]}`;
+                reader.queue = entries.slice(1);
+                reader.playEntry(entries[0]);
+            }
+
+            /** Play one clip and say, for the highlight, what it is saying. */
+            function playEntry(entry: var): void {
+                root._speakingChunk = entry.chunk ?? "";
+                root._speakingShare = entry.share ?? 0;
+                root._speakingSpan = entry.span ?? 1;
+                root._speakingMarks = entry.marks ?? [];
+                readerPlayer.source = `file://${entry.path}`;
                 readerPlayer.play();
             }
 
@@ -1441,6 +1462,8 @@ Singleton {
             function finish(): void {
                 readerPlayer.source = "";
                 reader.queue = [];
+                root._speakingChunk = "";
+                root._speakingMarks = [];
                 readerOutput.volume = 1;
                 if (reader.produced.length > 0) {
                     cleanup.command = ["rm", "-f", ...reader.produced];
@@ -1520,6 +1543,56 @@ Singleton {
         return chunks;
     }
 
+    // What the clip now playing is saying, and which slice of that text it covers
+    // -- set by the player, read by `speakingPassage` and `speakingProgress`.
+    property string _speakingChunk: ""
+    property real _speakingShare: 0
+    property real _speakingSpan: 1
+    // [[start_ms, offset into the chunk], …] for the clip playing, when the
+    // provider reports word boundaries. Empty when it does not.
+    property var _speakingMarks: []
+
+    /** The chunk being read right now: the passage the transcript marks in. */
+    readonly property string speakingPassage: root._speakingChunk
+
+    /**
+     * Where in the chunk the word now being spoken starts, or -1 when the voice
+     * came back without timings and `speakingProgress` has to stand in.
+     *
+     * Exact: edge reports a boundary per word off the synthesis stream, aligned
+     * to this text before it was ever played (scripts/hermes/tts_marks.py). The
+     * only slack left is how often the player reports its position.
+     */
+    readonly property int speakingOffset: {
+        const marks = root._speakingMarks;
+        if (marks.length === 0 || root._speakingChunk.length === 0)
+            return -1;
+        const position = readerLoader.item?.player.position ?? 0;
+        let offset = marks[0][1];
+        for (let i = 0; i < marks.length && marks[i][0] <= position; i++)
+            offset = marks[i][1];
+        return offset;
+    }
+
+    /**
+     * How far into that chunk the voice is, 0..1, or -1 when nothing is read.
+     * The fallback for a provider that reports no word boundaries.
+     *
+     * The synth gives no word timings, so this is the clip's own playback
+     * position: speech runs at a near constant rate, so a character-proportional
+     * split of it lands on the right word. A duration is not known for the first
+     * moments of a clip, which reads as the start of the clip's own slice.
+     * ponytail: proportional estimate, swap in word timestamps if a provider offers them.
+     */
+    readonly property real speakingProgress: {
+        if (root._speakingChunk.length === 0)
+            return -1;
+        const player = readerLoader.item?.player ?? null;
+        const duration = player?.duration ?? 0;
+        const played = duration > 0 ? Math.max(0, Math.min(0.999, (player?.position ?? 0) / duration)) : 0;
+        return root._speakingShare + root._speakingSpan * played;
+    }
+
     // Bumped by every new reading, so replies to a superseded one are discarded
     // rather than played over the top of it.
     property int _speakEpoch: 0
@@ -1535,10 +1608,10 @@ Singleton {
         const chunks = root._splitForSpeech(text);
         // Requested up front: the server answers them in order, so the clips queue
         // up in order too, and chunk two is already rendering while chunk one plays.
-        chunks.forEach((chunk, index) => root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index)));
+        chunks.forEach((chunk, index) => root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index, chunk)));
     }
 
-    function _onSpoken(reply: var, epoch: int, index: int): void {
+    function _onSpoken(reply: var, epoch: int, index: int, chunk: string): void {
         const stale = epoch !== root._speakEpoch || root.speakingMessageId.length === 0;
         if (!(reply.ok ?? false) || (reply.paths ?? []).length === 0) {
             // Only the opening chunk reports: a failure halfway through is a gap in
@@ -1556,7 +1629,7 @@ Singleton {
             return;
         }
         readerLoader.active = true;
-        readerLoader.item.enqueue(reply.paths);
+        readerLoader.item.enqueue(reply.paths, chunk, reply.marks ?? []);
     }
 
     Process {

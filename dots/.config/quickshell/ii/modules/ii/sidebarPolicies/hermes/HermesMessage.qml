@@ -43,6 +43,23 @@ Rectangle {
     // token. Re-split on a throttle instead (same fix as AiMessage.qml).
     property list<var> messageBlocks: []
 
+    /*
+     * The passage to mark, when this turn is the one being read.
+     *
+     * Reading a selection belongs to no particular turn -- the service only has
+     * the text -- so every message offers the passage and the one whose own text
+     * holds it is the one that finds anything to mark. Two turns with the same
+     * sentence in them would both mark it; a transcript where that happens is
+     * one where either answer is the right place to look.
+     */
+    readonly property string speakingPhrase: (HermesService.speakingMessageId === root.messageId
+        || HermesService.speakingMessageId === HermesService.selectionSpeechId)
+        ? HermesService.speakingPassage : ""
+    // Only bound while this turn is the one being read: otherwise every message in
+    // the transcript re-checks itself ten times a second for a mark it cannot hold.
+    readonly property real speakingProgress: root.speakingPhrase.length > 0 ? HermesService.speakingProgress : -1
+    readonly property int speakingOffset: root.speakingPhrase.length > 0 ? HermesService.speakingOffset : -1
+
     readonly property bool showToolCalls: Config.options.hermes?.showToolCalls ?? true
 
     /*
@@ -416,6 +433,9 @@ Rectangle {
                             segmentContent: modelData.content
                             messageData: root.messageData
                             done: root.messageData?.done ?? false
+                            speakingPhrase: root.speakingPhrase
+                            speakingProgress: root.speakingProgress
+                            speakingOffset: root.speakingOffset
                             forceDisableChunkSplitting: root.messageData?.content.includes("```") ?? true
                         }
                     }

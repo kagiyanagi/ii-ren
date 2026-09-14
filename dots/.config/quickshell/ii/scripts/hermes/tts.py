@@ -15,13 +15,20 @@ The shell sends one request per sentence group rather than one per reply, so the
 first clip can start playing while the rest are still being made; replies are
 answered in the order they arrive, which is what keeps the clips in order.
 
+With edge -- the default provider -- the synthesis is streamed here rather than
+handed to the tool, because the word boundaries edge reports come only off that
+stream and are thrown away by anything that just saves the file. They are the
+only exact timing available, and they are what lets the shell mark the word being
+spoken instead of guessing from how far the clip has played.
+
 Protocol, JSON lines on stdin/stdout:
   -> {"id": "…", "text": "…", "out": "/path/file.mp3"}
-  <- {"id": "…", "ok": true, "paths": ["/path/file.mp3", …], "error": ""}
+  <- {"id": "…", "ok": true, "paths": ["/path/file.mp3", …], "marks": [[ms, offset], …], "error": ""}
   <- {"event": "ready"}                      once, after the warm-up synth
 Uses the agent's own text normalizer and `text_to_speech_tool`, so the voice is
 identical to what the agent would have spoken.
 """
+import asyncio
 import contextlib
 import json
 import os
@@ -36,6 +43,9 @@ hermes_bootstrap.harden_import_path()
 
 from hermes_constants import get_hermes_home  # noqa: E402
 from hermes_cli.env_loader import load_hermes_dotenv  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tts_marks  # noqa: E402
 
 
 def _emit(obj: dict) -> None:
@@ -53,12 +63,60 @@ def _spoken(text: str) -> str:
         return (text or "").strip()
 
 
+def _synthesize_edge(spoken: str, source: str, out_path: str) -> dict:
+    """edge-tts, streamed here for its word boundaries. None when it is not the
+    configured provider, or when anything at all goes wrong -- the tool below
+    synthesizes the same text the same way, only without the timings."""
+    try:
+        import edge_tts
+        from tools.tts_tool import _get_provider, _load_tts_config
+        from tools.tts_tool_providers import DEFAULT_EDGE_VOICE
+    except Exception:
+        return None
+
+    config = _load_tts_config()
+    if _get_provider(config) != "edge":
+        return None
+    # Same resolution as the agent's own `_generate_edge_tts`, so the voice does
+    # not change depending on which path synthesized the clip.
+    edge_config = config.get("edge") or {}
+    speed = float(edge_config.get("speed", config.get("speed", 1.0)))
+    # Sentence boundaries are the library's default; a word is what gets marked.
+    kwargs = {"voice": edge_config.get("voice", DEFAULT_EDGE_VOICE), "boundary": "WordBoundary"}
+    if speed != 1.0:
+        kwargs["rate"] = f"{round((speed - 1.0) * 100):+d}%"
+
+    boundaries = []
+
+    async def stream() -> None:
+        with open(out_path, "wb") as audio:
+            async for chunk in edge_tts.Communicate(spoken, **kwargs).stream():
+                if chunk["type"] == "audio":
+                    audio.write(chunk["data"])
+                elif chunk["type"] == "WordBoundary":
+                    boundaries.append((chunk["offset"] // 10_000, chunk["text"]))  # 100ns ticks
+
+    try:
+        asyncio.run(stream())
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(out_path)
+        return None
+    if not (os.path.isfile(out_path) and os.path.getsize(out_path) > 0):
+        return None
+    return {"ok": True, "paths": [out_path], "error": "",
+            "marks": tts_marks.marks(spoken, source, boundaries)}
+
+
 def _synthesize(text: str, out_path: str) -> dict:
     from tools.tts_tool import text_to_speech_tool
     spoken = _spoken(text)
     if not spoken.strip():
         return {"ok": False, "paths": [], "error": "nothing to say"}
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    timed = _synthesize_edge(spoken, text, out_path)
+    if timed is not None:
+        return timed
     raw = text_to_speech_tool(text=spoken, output_path=out_path)
     try:
         result = json.loads(raw) if isinstance(raw, str) else (raw or {})
@@ -68,7 +126,8 @@ def _synthesize(text: str, out_path: str) -> dict:
     paths = result.get("file_paths") or ([result.get("file_path")] if result.get("file_path") else [out_path])
     paths = [p for p in paths if p and os.path.isfile(p) and os.path.getsize(p) > 0]
     ok = bool(result.get("success")) and bool(paths)
-    return {"ok": ok, "paths": paths, "error": "" if ok else str(result.get("error") or "TTS produced no audio")}
+    return {"ok": ok, "paths": paths, "marks": [],
+            "error": "" if ok else str(result.get("error") or "TTS produced no audio")}
 
 
 def _warm_up() -> None:
@@ -101,7 +160,7 @@ def main() -> int:
         try:
             reply = _synthesize(str(req.get("text", "")), str(req.get("out", "")))
         except Exception as e:  # one bad request must not take the server down
-            reply = {"ok": False, "paths": [], "error": f"{type(e).__name__}: {e}"}
+            reply = {"ok": False, "paths": [], "marks": [], "error": f"{type(e).__name__}: {e}"}
         reply["id"] = rid
         _emit(reply)
     return 0

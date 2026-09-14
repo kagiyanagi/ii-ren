@@ -25,6 +25,12 @@ ColumnLayout {
     property var messageData: null
     property bool done: true
     property bool forceDisableChunkSplitting: false
+    /** Passage a read-aloud is speaking right now, marked live. Empty when silent. */
+    property string speakingPhrase: ""
+    /** How far into it the voice is, 0..1, or -1 when unknown. */
+    property real speakingProgress: -1
+    /** Where the word being spoken starts in it, or -1 without word timings. */
+    property int speakingOffset: -1
 
     property list<string> renderedLatexHashes: []
     property string renderedSegmentContent: ""
@@ -177,6 +183,13 @@ ColumnLayout {
             // split across many of them.
             onSelectedTextChanged: TextSelectionService.report(textArea)
             Component.onDestruction: TextSelectionService.release(textArea)
+
+            SpeechHighlight {
+                target: textArea
+                phrase: root.speakingPhrase
+                progress: root.speakingProgress
+                wordOffset: root.speakingOffset
+            }
 
             onLinkActivated: (link) => {
                 Qt.openUrlExternally(link)
