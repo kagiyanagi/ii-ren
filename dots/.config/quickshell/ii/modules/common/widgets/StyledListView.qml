@@ -72,11 +72,17 @@ ListView {
             Qt.callLater(root.jumpToEnd);
     }
 
-    // A drag or a flick, which is the reader's hand either way.
-    onMovementStarted: {
-        if (!root.atYEnd)
-            root.followingEnd = false;
-    }
+    /*
+     * A drag, a flick, or a wheel that Flickable handled itself -- the reader's
+     * hand either way, so the follow goes, and comes back only if they left the
+     * view at the end.
+     *
+     * Unconditionally: a reader who scrolls back is at the end when they start,
+     * so asking `atYEnd` here refused to let go of the one case that matters.
+     * `movementStarted` is the reader alone; the view's own positioning does not
+     * raise it.
+     */
+    onMovementStarted: root.followingEnd = false
     onMovementEnded: {
         if (root.atYEnd)
             root.followingEnd = true;
