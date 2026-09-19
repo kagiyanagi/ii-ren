@@ -24,6 +24,9 @@ ColumnLayout {
     // Running a block executes what a model wrote, so it is offered only where a
     // console exists to run it in and to show what it did. Off for every other caller.
     property bool enableRunActions: false
+    /** What a transcript search is looking for. A match in code counts like any other. */
+    property string searchQuery: ""
+    property bool searchCurrent: false
     property bool isCommandRequest: segmentLang === "command"
     property var displayLang: (isCommandRequest ? "bash" : segmentLang)
 
@@ -285,6 +288,13 @@ ColumnLayout {
                             acceptedButtons: root.editing ? Qt.NoButton : Qt.RightButton
                             hoverEnabled: true
                             cursorShape: (root.enableMouseSelection || root.editing) ? Qt.IBeamCursor : Qt.ArrowCursor
+                        }
+
+                        SpeechHighlight { // Search hits inside the code
+                            target: codeTextArea
+                            query: root.searchQuery
+                            // Both translucent: the stepped-to hit is stronger, not solid.
+                markColor: ColorUtils.applyAlpha(Appearance.colors.colPrimaryContainer, root.searchCurrent ? 0.4 : 0.18)
                         }
 
                         SyntaxHighlighter {

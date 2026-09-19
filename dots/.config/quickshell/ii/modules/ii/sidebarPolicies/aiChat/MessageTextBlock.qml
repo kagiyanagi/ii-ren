@@ -31,6 +31,10 @@ ColumnLayout {
     property real speakingProgress: -1
     /** Where the word being spoken starts in it, or -1 without word timings. */
     property int speakingOffset: -1
+    /** What a transcript search is looking for. Every occurrence here is marked. */
+    property string searchQuery: ""
+    /** Whether this block's turn is the one the search has stepped to. */
+    property bool searchCurrent: false
 
     property list<string> renderedLatexHashes: []
     property string renderedSegmentContent: ""
@@ -195,6 +199,15 @@ ColumnLayout {
                 phrase: root.speakingPhrase
                 progress: root.speakingProgress
                 wordOffset: root.speakingOffset
+            }
+
+            SpeechHighlight { // Search hits, marked alongside a read-aloud rather than instead of it
+                target: textArea
+                query: root.searchQuery
+                // The turn the search has stepped to is the one being looked at;
+                // the rest are marked only enough to say "also here".
+                // Both translucent: the stepped-to hit is stronger, not solid.
+                markColor: ColorUtils.applyAlpha(Appearance.colors.colPrimaryContainer, root.searchCurrent ? 0.4 : 0.18)
             }
 
             onLinkActivated: (link) => {

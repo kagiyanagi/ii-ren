@@ -60,6 +60,11 @@ Rectangle {
     readonly property real speakingProgress: root.speakingPhrase.length > 0 ? HermesService.speakingProgress : -1
     readonly property int speakingOffset: root.speakingPhrase.length > 0 ? HermesService.speakingOffset : -1
 
+    /** What a transcript search is looking for, passed down to every block. */
+    property string searchQuery: ""
+    /** Whether this turn is the hit the search has stepped to. */
+    property bool searchCurrent: false
+
     readonly property bool showToolCalls: Config.options.hermes?.showToolCalls ?? true
 
     /*
@@ -431,6 +436,8 @@ Rectangle {
                             messageData: root.messageData
                             // This page has the console a run would report into.
                             enableRunActions: true
+                            searchQuery: root.searchQuery
+                            searchCurrent: root.searchCurrent
                         }
                     }
                     DelegateChoice {
@@ -454,6 +461,8 @@ Rectangle {
                             segmentContent: modelData.content
                             messageData: root.messageData
                             done: root.messageData?.done ?? false
+                            searchQuery: root.searchQuery
+                            searchCurrent: root.searchCurrent
                             speakingPhrase: root.speakingPhrase
                             speakingProgress: root.speakingProgress
                             speakingOffset: root.speakingOffset

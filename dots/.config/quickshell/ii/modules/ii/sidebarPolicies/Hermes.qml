@@ -27,6 +27,75 @@ Item {
     property bool historyShown: false
     property bool workShown: false
 
+    // ── Finding something said earlier ───────────────────────────────
+    //
+    // The search bar takes over the pill already floating at the top of the
+    // transcript rather than arriving as a control of its own. That pill is the
+    // only surface over the list, it is where the eye already is when reading
+    // back, and status is exactly what you stop caring about while searching.
+    property bool searchShown: false
+    property string searchQuery: ""
+    property int searchIndex: 0
+
+    // The rows the list actually shows. Hits index into this and not into
+    // HermesService.messageIDs, or a hidden turn anywhere above would put every
+    // jump one row out.
+    readonly property var visibleIds: HermesService.messageIDs.filter(id => HermesService.messageByID[id]?.visibleToUser ?? true)
+
+    // One entry per occurrence, each holding the row it sits in: the count is
+    // then what a reader would count, and stepping still has a row to scroll to.
+    readonly property var searchHits: {
+        const needle = root.searchQuery.trim().toLowerCase();
+        if (needle.length === 0)
+            return [];
+        const hits = [];
+        root.visibleIds.forEach((id, row) => {
+            const hay = (HermesService.messageByID[id]?.content ?? "").toLowerCase();
+            for (let at = hay.indexOf(needle); at !== -1 && hits.length < 500; at = hay.indexOf(needle, at + needle.length))
+                hits.push(row);
+        });
+        return hits;
+    }
+
+    // Clamped, not raw: typing another character can shrink the hit list under a
+    // step that already happened, and "7/3" would be the visible result.
+    readonly property int searchPosition: root.searchHits.length > 0 ? Math.min(root.searchIndex, root.searchHits.length - 1) : -1
+    readonly property int searchRow: root.searchPosition >= 0 ? root.searchHits[root.searchPosition] : -1
+
+    onSearchQueryChanged: {
+        root.searchIndex = 0;
+        if (root.searchHits.length > 0)
+            root.showSearchRow(root.searchHits[0]);
+    }
+
+    function openSearch(): void {
+        root.searchShown = true;
+        searchField.forceActiveFocus();
+        searchField.selectAll();
+    }
+
+    function closeSearch(): void {
+        root.searchShown = false;
+        searchField.text = "";
+        root.searchQuery = "";
+        messageInputField.forceActiveFocus();
+    }
+
+    function showSearchRow(row: int): void {
+        // The list follows the end while a reply streams. Jumping to something
+        // forty turns back has to take that away, or it snaps straight back down.
+        messageListView.followingEnd = false;
+        messageListView.positionViewAtIndex(row, ListView.Contain);
+    }
+
+    /** Step to the next hit, wrapping at either end. */
+    function stepSearch(delta: int): void {
+        if (root.searchHits.length === 0)
+            return;
+        root.searchIndex = (root.searchIndex + delta + root.searchHits.length) % root.searchHits.length;
+        root.showSearchRow(root.searchHits[root.searchIndex]);
+    }
+
     // The gateway boots a Python agent and its MCP fleet, so it starts when this
     // page is first built rather than at login.
     Component.onCompleted: {
@@ -63,6 +132,10 @@ Item {
         }
         if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_O) {
             HermesService.newSession();
+            event.accepted = true;
+        }
+        if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_F) {
+            root.openSearch();
             event.accepted = true;
         }
     }
@@ -289,8 +362,17 @@ Item {
                     top: parent.top
                     topMargin: 4
                 }
-                implicitWidth: statusRowLayout.implicitWidth + 10 * 2
-                implicitHeight: Math.max(statusRowLayout.implicitHeight, 38)
+                implicitWidth: (root.searchShown ? searchRowLayout.width : statusRowLayout.implicitWidth) + 10 * 2
+                implicitHeight: Math.max(root.searchShown ? searchRowLayout.implicitHeight : statusRowLayout.implicitHeight, 38)
+
+                // One surface changing what it holds, so it resizes rather than
+                // one pill leaving and another arriving in the same spot.
+                Behavior on implicitWidth {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+                Behavior on implicitHeight {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
                 radius: Appearance.rounding.normal - root.padding
                 color: messageListView.atYBeginning ? Appearance.colors.colLayer2 : Appearance.colors.colLayer2Base
 
@@ -302,6 +384,12 @@ Item {
                     id: statusRowLayout
                     anchors.centerIn: parent
                     spacing: 10
+                    opacity: root.searchShown ? 0 : 1
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
 
                     StatusItem {
                         icon: HermesService.ready ? "cloud_done" : HermesService.missing ? "cloud_off" : "cloud_sync"
@@ -322,6 +410,81 @@ Item {
                         icon: "token"
                         statusText: HermesService.usage?.total ?? 0
                         description: Translation.tr("Tokens this session\nInput: %1\nOutput: %2").arg(HermesService.usage?.input ?? 0).arg(HermesService.usage?.output ?? 0)
+                    }
+                }
+
+                RowLayout {
+                    id: searchRowLayout
+                    anchors.centerIn: parent
+                    // Wide enough to type in, never wider than the transcript.
+                    width: Math.min(transcriptItem.width - 20, 320)
+                    spacing: 2
+                    opacity: root.searchShown ? 1 : 0
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+
+                    MaterialSymbol {
+                        Layout.leftMargin: 4
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colSubtext
+                        text: "search"
+                    }
+
+                    StyledTextArea {
+                        id: searchField
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        // Flat inside the pill: an outlined field would be a second
+                        // container drawn inside the one already there.
+                        background: null
+                        padding: 0
+                        wrapMode: TextArea.NoWrap
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colOnLayer2
+                        placeholderText: Translation.tr("Find in this chat")
+
+                        onTextChanged: root.searchQuery = text
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Escape) {
+                                root.closeSearch();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                // A find bar has one line; Enter is "next", never a newline.
+                                root.stepSearch((event.modifiers & Qt.ShiftModifier) ? -1 : 1);
+                                event.accepted = true;
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        visible: root.searchQuery.trim().length > 0
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: root.searchHits.length > 0 ? Appearance.colors.colSubtext : Appearance.m3colors.m3error
+                        text: root.searchHits.length > 0 ? `${root.searchPosition + 1}/${root.searchHits.length}` : Translation.tr("none")
+                    }
+
+                    InputIconButton {
+                        symbol: "keyboard_arrow_up"
+                        tooltip: Translation.tr("Previous match (Shift+Enter)")
+                        enabled: root.searchHits.length > 0
+                        releaseAction: () => root.stepSearch(-1)
+                    }
+
+                    InputIconButton {
+                        symbol: "keyboard_arrow_down"
+                        tooltip: Translation.tr("Next match (Enter)")
+                        enabled: root.searchHits.length > 0
+                        releaseAction: () => root.stepSearch(1)
+                    }
+
+                    InputIconButton {
+                        symbol: "close"
+                        tooltip: Translation.tr("Close search (Esc)")
+                        releaseAction: () => root.closeSearch()
                     }
                 }
             }
@@ -350,13 +513,16 @@ Item {
                 followsEnd: true
 
                 model: ScriptModel {
-                    values: HermesService.messageIDs.filter(id => HermesService.messageByID[id]?.visibleToUser ?? true)
+                    values: root.visibleIds
                 }
 
                 delegate: HermesMessage {
                     required property var modelData
+                    required property int index
                     messageData: HermesService.messageByID[modelData]
                     messageId: modelData
+                    searchQuery: root.searchShown ? root.searchQuery.trim() : ""
+                    searchCurrent: root.searchShown && index === root.searchRow
                 }
             }
 
@@ -664,6 +830,9 @@ Item {
                                     root.handleInput(inputText);
                                 }
                                 event.accepted = true;
+                            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_F) {
+                                root.openSearch();
+                                event.accepted = true;
                             } else if (event.modifiers === Qt.ControlModifier && event.key === Qt.Key_Z && messageInputField.text.length === 0) {
                                 // An empty box has nothing of its own to undo, so
                                 // Ctrl+Z there means the conversation: back up a
@@ -695,6 +864,9 @@ Item {
                                     event.accepted = true;
                                 } else if (HermesService.attachedImages.length > 0) {
                                     HermesService.detachAll();
+                                    event.accepted = true;
+                                } else if (root.searchShown) {
+                                    root.closeSearch();
                                     event.accepted = true;
                                 } else if (root.historyShown) {
                                     root.historyShown = false;

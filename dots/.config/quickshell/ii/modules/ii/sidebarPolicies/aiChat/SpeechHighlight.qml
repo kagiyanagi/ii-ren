@@ -35,6 +35,26 @@ Item {
      */
     property int wordOffset: -1
 
+    /**
+     * Mark every case-insensitive occurrence of this instead of looking `phrase`
+     * up, for transcript search. A reply is rendered as many views and the query
+     * can appear several times in one of them, so this finds all of them where
+     * the speech path wants exactly one.
+     */
+    property string query: ""
+
+    /** Marking colour, so a search hit does not look like a read-aloud mark. */
+    property color markColor: ColorUtils.applyAlpha(Appearance.colors.colTertiaryContainer, 0.45)
+
+    /**
+     * The mark is painted OVER the glyphs, so its alpha is not a style choice --
+     * an opaque one hides the very word it is pointing at. Capped here rather
+     * than trusted to every caller: reaching for a container colour hands you a
+     * full-strength one, and full strength on this side of the text means the
+     * text is gone.
+     */
+    readonly property color effectiveMark: ColorUtils.applyAlpha(root.markColor, Math.min(root.markColor.a, 0.55))
+
     property var rects: []
 
     anchors.fill: parent
@@ -45,7 +65,15 @@ Item {
 
     function update(): void {
         const view = root.target;
-        if (!view || root.phrase.trim().length === 0 || view.length === 0) {
+        if (!view || view.length === 0) {
+            root.rects = [];
+            return;
+        }
+        if (root.query.length > 0) {
+            root.rects = root.queryRects(view.getText(0, view.length));
+            return;
+        }
+        if (root.phrase.trim().length === 0) {
             root.rects = [];
             return;
         }
@@ -54,6 +82,18 @@ Item {
             : root.progress >= 0 ? SpeechMatch.findWordAt(text, root.phrase, root.progress)
             : SpeechMatch.findPhrase(text, root.phrase);
         root.rects = found ? root.lineRects(found.start, found.end) : [];
+    }
+
+    /** Every occurrence of `query` in `text`, as line rectangles. */
+    function queryRects(text: string): var {
+        const hay = text.toLowerCase();
+        const needle = root.query.toLowerCase();
+        const out = [];
+        // Bounded: a one-character query against a long reply would otherwise ask
+        // for a rectangle per character, inside a delegate.
+        for (let at = hay.indexOf(needle); at !== -1 && out.length < 40; at = hay.indexOf(needle, at + needle.length))
+            out.push(...root.lineRects(at, at + needle.length));
+        return out;
     }
 
     /**
@@ -86,6 +126,7 @@ Item {
     }
 
     onPhraseChanged: root.update()
+    onQueryChanged: root.update()
     // Word timings supersede the estimate: with them the mark moves per word, not
     // per position report, which is twenty times a second in every message shown.
     onProgressChanged: if (root.wordOffset < 0) root.update()
@@ -115,7 +156,7 @@ Item {
             width: modelData.width
             height: modelData.height
             radius: Appearance.rounding.verysmall
-            color: ColorUtils.applyAlpha(Appearance.colors.colTertiaryContainer, 0.45)
+            color: root.effectiveMark
         }
     }
 }
