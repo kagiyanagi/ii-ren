@@ -137,6 +137,11 @@ Singleton {
     // A `prefill` directive (e.g. /undo) hands text back to edit rather than send.
     signal composerPrefill(string text)
 
+    // A staged file's `@file:` reference. Appended rather than prefilled: dropping
+    // three files has to leave three refs in the box, and a prefill would keep
+    // only the last one.
+    signal composerAppend(string text)
+
     // ── Approvals ────────────────────────────────────────────────────────
 
     // Non-null while the agent is parked waiting for the user to allow a tool.
@@ -921,7 +926,7 @@ Singleton {
                 return;
             }
             // A staged file is referenced by text, not held as an attachment.
-            root.composerPrefill((result.ref ?? result.path ?? "").toString());
+            root.composerAppend((result.ref ?? result.path ?? "").toString());
         });
     }
 

@@ -109,6 +109,20 @@ Item {
             messageInputField.cursorPosition = messageInputField.text.length;
             messageInputField.forceActiveFocus();
         }
+        // Each staged file adds its own reference; dropping several has to leave
+        // all of them in the box, not just the last one to come back.
+        function onComposerAppend(text) {
+            const existing = messageInputField.text.replace(/\s+$/, "");
+            // A block -- anything carrying a line break, such as a command's
+            // output -- has to start its own line or a fence stops being a fence.
+            // A bare `@file:` ref just follows whatever was already typed.
+            const block = text.includes("\n");
+            const gap = block ? "\n\n" : " ";
+            const tail = block ? "\n" : " ";
+            messageInputField.text = (existing.length > 0 ? `${existing}${gap}${text}` : text) + tail;
+            messageInputField.cursorPosition = messageInputField.text.length;
+            messageInputField.forceActiveFocus();
+        }
         function onDictationTranscript(text) {
             const existing = messageInputField.text.trim();
             messageInputField.text = existing.length > 0 ? `${existing} ${text}` : text;
@@ -577,19 +591,6 @@ Item {
                 animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
-            DropArea {
-                id: dropArea
-                anchors.fill: parent
-
-                onDropped: drop => {
-                    if (!drop.hasUrls)
-                        return;
-                    for (var i = 0; i < drop.urls.length; i++)
-                        HermesService.attachImage(drop.urls[i]);
-                    drop.accept(Qt.CopyAction);
-                }
-            }
-
             RowLayout {
                 id: inputFieldRowLayout
                 anchors {
@@ -831,6 +832,82 @@ Item {
                         root.historyShown = false;
                         HermesService.newSession();
                         messageInputField.forceActiveFocus();
+                    }
+                }
+            }
+        }
+    }
+
+    // Drop a file anywhere on the page to attach it. `attachImage()` is the same
+    // funnel the paste and picker routes use, so an image, a PDF and a plain file
+    // each end up where they belong without this having to tell them apart.
+    DropArea {
+        id: fileDrop
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+
+        // A drag off a web page arrives as an http(s) url the agent cannot open,
+        // and trimFileProtocol hands those back unchanged. Refusing in onEntered
+        // means no onDropped fires, so such a drag falls through to whatever is
+        // underneath instead of being swallowed here.
+        function localPaths(urls: var): var {
+            return (urls ?? []).map(url => url.toString())
+                .filter(url => FileUtils.trimFileProtocol(url) !== url)
+                .map(url => decodeURIComponent(FileUtils.trimFileProtocol(url)));
+        }
+
+        property int pendingCount: 0
+
+        onEntered: drag => {
+            fileDrop.pendingCount = drag.hasUrls ? fileDrop.localPaths(drag.urls).length : 0;
+            if (fileDrop.pendingCount === 0)
+                drag.accepted = false;
+        }
+
+        onExited: fileDrop.pendingCount = 0
+
+        onDropped: drop => {
+            fileDrop.localPaths(drop.urls).forEach(path => HermesService.attachImage(path));
+            fileDrop.pendingCount = 0;
+            drop.acceptProposedAction();
+        }
+
+        FadeLoader {
+            anchors.fill: parent
+            shown: fileDrop.pendingCount > 0
+
+            sourceComponent: Rectangle {
+                // Not fully opaque: the transcript staying faintly visible is what
+                // says which conversation the file is about to land in.
+                color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.12)
+                radius: Appearance.rounding.normal
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignHCenter
+                        iconSize: 48
+                        color: Appearance.colors.colPrimary
+                        text: "upload_file"
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        font.pixelSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnLayer0
+                        text: fileDrop.pendingCount === 1 ? Translation.tr("Drop to attach") : Translation.tr("Drop %1 files to attach").arg(fileDrop.pendingCount)
+                    }
+
+                    StyledText {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.maximumWidth: root.width - 32
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.colors.colSubtext
+                        text: Translation.tr("Images and PDFs go to the agent; anything else is staged as a file reference.")
                     }
                 }
             }
