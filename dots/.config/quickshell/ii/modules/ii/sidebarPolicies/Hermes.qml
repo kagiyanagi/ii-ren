@@ -25,6 +25,7 @@ Item {
 
     property var suggestionList: []
     property bool historyShown: false
+    property bool workShown: false
 
     // The gateway boots a Python agent and its MCP fleet, so it starts when this
     // page is first built rather than at login.
@@ -176,6 +177,7 @@ Item {
         id: iconButton
         required property string symbol
         property string tooltip: ""
+        property int badge: 0
 
         implicitWidth: 32
         implicitHeight: 32
@@ -187,6 +189,35 @@ Item {
             iconSize: Appearance.font.pixelSize.larger
             color: iconButton.toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             text: iconButton.symbol
+        }
+
+        Rectangle {
+            id: badgeDot
+            anchors.top: parent.top
+            anchors.right: parent.right
+            implicitWidth: 16
+            implicitHeight: 16
+            radius: Appearance.rounding.full
+            color: Appearance.colors.colPrimary
+            visible: iconButton.badge > 0
+            // Grows out of the corner it sits in.
+            transformOrigin: Item.TopRight
+            scale: iconButton.badge > 0 ? 1 : 0
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: iconButton.badge > 0 ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: iconButton.badge > 0 ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                }
+            }
+
+            StyledText {
+                anchors.centerIn: parent
+                text: iconButton.badge
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                color: Appearance.m3colors.m3onPrimary
+            }
         }
 
         StyledToolTip {
@@ -261,11 +292,8 @@ Item {
                     StatusSeparator {
                         visible: HermesService.approvalMode.length > 0
                     }
-                    StatusItem {
+                    HermesApprovalModeMenu {
                         visible: HermesService.approvalMode.length > 0
-                        icon: HermesService.yolo ? "lock_open" : "verified_user"
-                        statusText: HermesService.approvalMode
-                        description: Translation.tr("Approval mode\nChange with %1approvals").arg(root.commandPrefix)
                     }
                     StatusSeparator {
                         visible: (HermesService.usage?.total ?? 0) > 0
@@ -372,6 +400,36 @@ Item {
                 }
 
                 onRequestClose: root.historyShown = false
+            }
+
+            HermesWorkPanel {
+                id: workPanel
+                z: 4
+                anchors.fill: parent
+
+                // Same enter/exit pairing and top origin as the history panel:
+                // both grow from under the control row that opens them.
+                opacity: root.workShown ? 1 : 0
+                scale: root.workShown ? 1 : 0.96
+                visible: opacity > 0
+                transformOrigin: Item.Top
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: root.workShown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: root.workShown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: root.workShown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                    }
+                }
+
+                onRequestClose: root.workShown = false
             }
         }
 
@@ -581,6 +639,13 @@ Item {
                             } else if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
                                 if (event.modifiers & Qt.ShiftModifier) {
                                     messageInputField.insert(messageInputField.cursorPosition, "\n");
+                                } else if (event.modifiers & Qt.ControlModifier) {
+                                    // Hand the whole turn to its own agent, leaving this
+                                    // conversation free to carry on while it runs.
+                                    const backgroundText = messageInputField.text;
+                                    messageInputField.clear();
+                                    HermesService.runInBackground(backgroundText);
+                                    root.suggestionList = [];
                                 } else {
                                     const inputText = messageInputField.text;
                                     messageInputField.clear();
@@ -615,6 +680,9 @@ Item {
                                     event.accepted = true;
                                 } else if (root.historyShown) {
                                     root.historyShown = false;
+                                    event.accepted = true;
+                                } else if (root.workShown) {
+                                    root.workShown = false;
                                     event.accepted = true;
                                 } else if (HermesService.pendingApproval !== null) {
                                     HermesService.respondToApproval("deny");
@@ -707,13 +775,32 @@ Item {
                 spacing: 4
 
                 ApiInputBoxIndicator {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.maximumWidth: implicitWidth
                     icon: "auto_awesome"
                     text: HermesService.currentModel
                     tooltipText: Translation.tr("Current model: %1\nProvider: %2\nChange it below, or with %3model").arg(HermesService.currentModel).arg(HermesService.currentProvider).arg(root.commandPrefix)
                 }
 
+
+                HermesContextMeter {}
+
                 Item {
                     Layout.fillWidth: true
+                }
+
+                InputIconButton {
+                    symbol: "play_circle"
+                    tooltip: HermesService.runningSideTasks > 0 ? Translation.tr("Hermes work — %1 still running").arg(HermesService.runningSideTasks) : Translation.tr("Hermes work")
+                    toggled: root.workShown
+                    badge: HermesService.runningSideTasks
+
+                    releaseAction: () => {
+                        root.workShown = !root.workShown;
+                        if (root.workShown)
+                            root.historyShown = false;
+                    }
                 }
 
                 InputIconButton {
@@ -724,6 +811,7 @@ Item {
                     releaseAction: () => {
                         root.historyShown = !root.historyShown;
                         if (root.historyShown) {
+                            root.workShown = false;
                             HermesService.refreshRecentSessions();
                             historyPanel.focusSearch();
                         }

@@ -108,6 +108,12 @@ ApplicationWindow {
             component: "modules/settings/AdvancedConfig.qml"
         },
         {
+            id: "hermes",
+            name: Translation.tr("Hermes"),
+            icon: "smart_toy",
+            component: "modules/settings/HermesConfig.qml"
+        },
+        {
             id: "about",
             name: Translation.tr("About"),
             icon: "info",

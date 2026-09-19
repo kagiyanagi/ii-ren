@@ -82,6 +82,37 @@ Singleton {
     property var slashCommands: []
     property var recentSessions: []
 
+    // ── Side work ────────────────────────────────────────────────────────
+    //
+    // A background turn or a `btw` question runs on its own agent thread and
+    // reports back as an event, so the composer stays free while it does. Both
+    // land in the same list; `kind` is what the card renders as.
+    // [{ taskId, kind: "bg"|"btw", text, startedAt, done, result, failed }]
+    property var sideTasks: []
+    readonly property int runningSideTasks: root.sideTasks.filter(task => !task.done).length
+
+    // Delegated children of the current turn, from subagent.list.
+    property var subagents: []
+    property bool spawnPaused: false
+
+    // ── Context ──────────────────────────────────────────────────────────
+    //
+    // The live percentage rides along on every usage payload, so the meter costs
+    // nothing; the breakdown is only fetched when the meter is actually opened.
+    readonly property int contextPercent: root.usage?.context_percent ?? 0
+    readonly property int contextUsed: root.usage?.context_used ?? 0
+    readonly property int contextMax: root.usage?.context_max ?? 0
+    property bool compressing: false
+    property var contextBreakdown: null
+
+    // ── Account / vault / processes ──────────────────────────────────────
+
+    property var billing: null
+    property var vaultItems: []
+    property var vaultSources: []
+    property var agentProcesses: []
+    property var spawnTrees: []
+
     // ── Transcript ───────────────────────────────────────────────────────
 
     property var messageIDs: []
@@ -424,6 +455,304 @@ Singleton {
         });
     }
 
+    // ── Side work: background turns and `btw` questions ───────────────────
+
+    function _startSideTask(method: string, kind: string, text: string): void {
+        const clean = (text ?? "").trim();
+        if (clean.length === 0 || root.sessionId.length === 0)
+            return;
+        root.call(method, { session_id: root.sessionId, text: clean }, (result, error) => {
+            if (error) {
+                root.addMessage(error.message ?? Translation.tr("Could not start that task."), root.interfaceRole);
+                return;
+            }
+            root.sideTasks = [...root.sideTasks, {
+                taskId: result.task_id ?? "",
+                kind: kind,
+                text: clean,
+                startedAt: Date.now(),
+                done: false,
+                failed: false,
+                result: ""
+            }];
+        });
+    }
+
+    /**
+     * Runs a whole turn on its own agent, leaving this conversation free to carry
+     * on. The answer arrives as `background.complete`, never in the transcript.
+     */
+    function runInBackground(text: string): void {
+        root._startSideTask("prompt.background", "bg", text);
+    }
+
+    /**
+     * A side question answered over a snapshot of this conversation. The thread's
+     * history, alternation and prompt cache are left untouched, so asking costs
+     * the main turn nothing.
+     */
+    function askBtw(text: string): void {
+        root._startSideTask("prompt.btw", "btw", text);
+    }
+
+    function _finishSideTask(taskId: string, text: string, question: string): void {
+        const answer = text ?? "";
+        const failed = answer.startsWith("error: ");
+        // `/bg` and `/btw` are gateway slash commands too, so a task can finish that
+        // this never started. Adopting it here is what keeps a slash-typed question
+        // from answering into nothing, which is what used to happen.
+        if (!root.sideTasks.some(task => task.taskId === taskId)) {
+            root.sideTasks = [...root.sideTasks, {
+                taskId: taskId,
+                kind: taskId.startsWith("btw_") ? "btw" : "bg",
+                text: question ?? "",
+                startedAt: Date.now(),
+                done: true,
+                failed: failed,
+                result: answer
+            }];
+            return;
+        }
+        root.sideTasks = root.sideTasks.map(task => task.taskId !== taskId ? task : Object.assign({}, task, {
+            done: true,
+            failed: failed,
+            result: answer
+        }));
+    }
+
+    function dismissSideTask(taskId: string): void {
+        root.sideTasks = root.sideTasks.filter(task => task.taskId !== taskId);
+    }
+
+    function clearFinishedSideTasks(): void {
+        root.sideTasks = root.sideTasks.filter(task => !task.done);
+    }
+
+    // ── Delegated children ────────────────────────────────────────────────
+
+    // Children seen so far in this run, keyed by id. A child that has already
+    // finished drops out of subagent.list, so the snapshot has to be built up
+    // as the run goes rather than read off the end of it.
+    property var _runSubagents: ({})
+    property real _runSubagentsStartedAt: 0
+
+    function refreshSubagents(): void {
+        if (root.sessionId.length === 0)
+            return;
+        root.call("subagent.list", { session_id: root.sessionId }, (result, error) => {
+            const live = error ? [] : (result.subagents ?? []);
+            root.subagents = live;
+            if (live.length === 0)
+                return;
+            if (root._runSubagentsStartedAt === 0)
+                root._runSubagentsStartedAt = Date.now() / 1000;
+            const seen = Object.assign({}, root._runSubagents);
+            live.forEach(subagent => {
+                const id = subagent.subagent_id ?? "";
+                if (id.length > 0)
+                    seen[id] = subagent;
+            });
+            root._runSubagents = seen;
+        });
+    }
+
+    /**
+     * Nothing in the backend writes spawn trees -- spawn_tree.save takes the
+     * subagent list from whoever was watching. So a run only ends up in the
+     * history if this saves it as the turn finishes.
+     */
+    function _saveSpawnTree(): void {
+        const collected = Object.values(root._runSubagents);
+        root._runSubagents = ({});
+        const startedAt = root._runSubagentsStartedAt;
+        root._runSubagentsStartedAt = 0;
+        if (collected.length === 0)
+            return;
+        root.call("spawn_tree.save", {
+            session_id: root.sessionId,
+            subagents: collected,
+            started_at: startedAt,
+            finished_at: Date.now() / 1000,
+            label: root.sessionTitle
+        }, (result, error) => {
+            if (!error)
+                root.refreshSpawnTrees();
+        });
+    }
+
+    onBusyChanged: {
+        if (!root.busy)
+            root._saveSpawnTree();
+    }
+
+    function refreshDelegation(): void {
+        root.call("delegation.status", {}, (result, error) => {
+            if (!error)
+                root.spawnPaused = result.paused ?? false;
+        });
+    }
+
+    function setSpawnPaused(paused: bool): void {
+        root.call("delegation.pause", { paused: paused }, (result, error) => {
+            if (!error)
+                root.spawnPaused = result.paused ?? paused;
+        });
+    }
+
+    /** Queues text into a live child. The tool call it is inside is never cut. */
+    function steerSubagent(subagentId: string, text: string): void {
+        const clean = (text ?? "").trim();
+        if (clean.length === 0)
+            return;
+        root.call("subagent.steer", { session_id: root.sessionId, subagent_id: subagentId, text: clean }, (result, error) => {
+            if (error || (result.status ?? "") === "rejected")
+                root.addMessage(Translation.tr("That task would not take the steer."), root.interfaceRole);
+        });
+    }
+
+    function interruptSubagent(subagentId: string): void {
+        root.call("subagent.interrupt", { session_id: root.sessionId, subagent_id: subagentId }, () => root.refreshSubagents());
+    }
+
+    function tailSubagent(subagentId: string, callback: var): void {
+        root.call("subagent.tail", { session_id: root.sessionId, subagent_id: subagentId }, (result, error) => {
+            if (callback)
+                callback(error ? "" : (result.text ?? ""), error ? false : (result.available ?? false));
+        });
+    }
+
+    function refreshSpawnTrees(): void {
+        root.call("spawn_tree.list", { session_id: root.sessionId, limit: 20 }, (result, error) => {
+            root.spawnTrees = error ? [] : (result.entries ?? []);
+        });
+    }
+
+    function loadSpawnTree(path: string, callback: var): void {
+        root.call("spawn_tree.load", { path: path }, (result, error) => {
+            if (callback)
+                callback(error ? null : result);
+        });
+    }
+
+    // ── Context ───────────────────────────────────────────────────────────
+
+    /** Folds the conversation down so a long session can keep going. */
+    function compressSession(focusTopic: string): void {
+        if (root.compressing || root.busy || root.sessionId.length === 0)
+            return;
+        root.compressing = true;
+        const params = { session_id: root.sessionId };
+        if ((focusTopic ?? "").trim().length > 0)
+            params.focus_topic = focusTopic.trim();
+        root.call("session.compress", params, (result, error) => {
+            root.compressing = false;
+            if (error) {
+                root.addMessage(error.message ?? Translation.tr("Could not compress this conversation."), root.interfaceRole);
+                return;
+            }
+            root.addMessage(result.message ?? Translation.tr("Compressed this conversation."), root.interfaceRole);
+            root.refreshContextBreakdown();
+        });
+    }
+
+    function refreshContextBreakdown(): void {
+        if (root.sessionId.length === 0)
+            return;
+        root.call("session.context_breakdown", { session_id: root.sessionId }, (result, error) => {
+            root.contextBreakdown = error ? null : result;
+        });
+    }
+
+    // ── Settings the gateway owns ─────────────────────────────────────────
+
+    function getConfig(key: string, callback: var): void {
+        root.call("config.get", { key: key, session_id: root.sessionId }, (result, error) => {
+            if (callback)
+                callback(error ? null : result);
+        });
+    }
+
+    function setConfig(key: string, value: var, callback: var): void {
+        root.call("config.set", { key: key, value: value, session_id: root.sessionId }, (result, error) => {
+            if (error)
+                root.addMessage(error.message ?? Translation.tr("Hermes would not take that setting."), root.interfaceRole);
+            if (callback)
+                callback(error ? null : result);
+        });
+    }
+
+    /** manual | smart | off. The session info event echoes the change back. */
+    function setApprovalMode(mode: string): void {
+        root.setConfig("approvals.mode", mode, null);
+    }
+
+    function setYolo(on: bool): void {
+        root.setConfig("yolo", on ? "on" : "off", null);
+    }
+
+    // ── Attachments ───────────────────────────────────────────────────────
+
+    function attachPdf(path: string, firstPage: int, lastPage: int): void {
+        const clean = FileUtils.trimFileProtocol((path ?? "").trim());
+        if (clean.length === 0 || root.sessionId.length === 0)
+            return;
+        const params = { session_id: root.sessionId, path: clean };
+        if (firstPage > 0)
+            params.first_page = firstPage;
+        if (lastPage > 0)
+            params.last_page = lastPage;
+        root.call("pdf.attach", params, (result, error) => {
+            if (error) {
+                root.addMessage(error.message ?? Translation.tr("Could not read that PDF."), root.interfaceRole);
+                return;
+            }
+            root.attachedImages = [...root.attachedImages, ...(result.pages ?? []).map(page => page.path ?? "")];
+        });
+    }
+
+    // ── Account, vault, processes ─────────────────────────────────────────
+
+    function refreshBilling(): void {
+        root.call("billing.state", {}, (result, error) => {
+            root.billing = error ? null : result;
+        });
+    }
+
+    function refreshAgentProcesses(): void {
+        root.call("agents.list", {}, (result, error) => {
+            root.agentProcesses = error ? [] : (result.processes ?? []);
+        });
+    }
+
+    function refreshVault(): void {
+        root.call("vault.list", {}, (result, error) => {
+            root.vaultItems = error ? [] : (result.items ?? []);
+        });
+        root.call("vault.sources", {}, (result, error) => {
+            root.vaultSources = error ? [] : (result.sources ?? []);
+        });
+    }
+
+    function setVaultSource(name: string, enabled: bool): void {
+        root.call("vault.source.set", { name: name, enabled: enabled }, () => root.refreshVault());
+    }
+
+    function unlockVaultSource(name: string, password: string, callback: var): void {
+        root.call("vault.unlock", { name: name, password: password }, (result, error) => {
+            root.refreshVault();
+            if (callback)
+                callback(!error, error ? (error.message ?? "") : "");
+        });
+    }
+
+    function lockVaultSource(name: string): void {
+        root.call("vault.lock", name.length > 0 ? { name: name } : {}, () => root.refreshVault());
+    }
+
+    function removeVaultItem(itemId: string): void {
+        root.call("vault.remove", { id: itemId }, () => root.refreshVault());
+    }
+
     // ── Per-message actions ────────────────────────────────────────
 
     // Which turn we asked to be read out. There is no "speech finished" event on
@@ -520,6 +849,13 @@ Singleton {
             return;
         if (root.sessionId.length === 0) {
             root.addMessage(Translation.tr("Still connecting — try the attachment again in a moment."), root.interfaceRole);
+            return;
+        }
+        // Every attachment route lands here, so PDFs are picked off once rather
+        // than in each caller. They go to the renderer instead of image.attach,
+        // which would only fail and fall through to a file the agent cannot read.
+        if (clean.toLowerCase().endsWith(".pdf")) {
+            root.attachPdf(clean, 0, 0);
             return;
         }
         root.call("image.attach", { session_id: root.sessionId, path: clean }, (result, error) => {
@@ -1099,6 +1435,12 @@ Singleton {
 
         case "error":
             root._failStream(payload.message ?? Translation.tr("Hermes reported an error"));
+            break;
+
+        case "background.complete":
+        case "btw.complete":
+            // btw.complete carries the question it answered; background.complete does not.
+            root._finishSideTask(payload.task_id ?? "", payload.text ?? "", payload.question ?? "");
             break;
 
         case "sessions.changed":
@@ -1815,6 +2157,16 @@ Singleton {
                 root.lastError = Translation.tr("Hermes gateway stopped (exit %1)").arg(exitCode);
             }
         }
+    }
+
+    // Children are watched here, not in the panel that shows them: a delegated
+    // run has to be recorded whether or not anyone happened to have the panel
+    // open, or it is missing from the live list AND from the saved history.
+    Timer {
+        interval: 2000
+        repeat: true
+        running: root.ready && root.busy && root.sessionId.length > 0
+        onTriggered: root.refreshSubagents()
     }
 
     Timer {
