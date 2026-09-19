@@ -836,6 +836,51 @@ Singleton {
         });
     }
 
+    /**
+     * Rewind the transcript to the user turn `messageId` names, dropping it and
+     * everything after it.
+     *
+     * `/undo` is the agent's own rewind: it soft-deletes the truncated rows on
+     * disk and rewinds the live history, so the model forgets exactly what this
+     * transcript stops showing. Reimplementing it here would only desync the two.
+     * It counts *user turns* rather than messages, which is why the turns from
+     * `messageId` on are counted instead of the index being sent.
+     *
+     * `prefill` hands the rewound turn back to the composer to be edited and sent
+     * again -- the gateway returns its text for exactly that.
+     */
+    function rewindTo(messageId: string, prefill: bool): void {
+        const index = root.messageIDs.indexOf(messageId);
+        if (index < 0 || root.busy || root.sessionId.length === 0)
+            return;
+        const turns = root.messageIDs.slice(index).filter(id => root.messageByID[id]?.role === "user").length;
+        if (turns === 0)
+            return;
+        root.call("command.dispatch", {
+            name: "undo",
+            arg: `${turns}`,
+            session_id: root.sessionId
+        }, (result, error) => {
+            if (error) {
+                root.addMessage(error.message ?? Translation.tr("Could not undo that far"), root.interfaceRole);
+                return;
+            }
+            // Only now: the agent is the authority on whether the rewind happened,
+            // and a transcript trimmed ahead of a refusal would be a lie.
+            root.removeMessagesFrom(index);
+            if (prefill)
+                root.composerPrefill((result?.message ?? "").toString());
+        });
+    }
+
+    /** Rewind `count` user turns back from the end, the way `/undo N` reads. */
+    function undoTurns(count: int): void {
+        const userTurns = root.messageIDs.filter(id => root.messageByID[id]?.role === "user");
+        if (userTurns.length === 0)
+            return;
+        root.rewindTo(userTurns[Math.max(0, userTurns.length - Math.max(1, count))], true);
+    }
+
     // ── Attachments ────────────────────────────────────────────────
     //
     // Images are staged on the agent's session and consumed by the next
@@ -1014,6 +1059,15 @@ Singleton {
 
         if (root.localCommands.includes(base)) {
             root.newSession();
+            return;
+        }
+
+        // `/undo` goes through the same rewind the message buttons drive. The
+        // generic dispatch path prefills the composer but leaves the transcript
+        // showing turns the agent has already forgotten, which reads as the
+        // command having done nothing.
+        if (base === "undo") {
+            root.undoTurns(parseInt(arg, 10) || 1);
             return;
         }
 

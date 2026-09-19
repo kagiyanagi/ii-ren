@@ -652,6 +652,12 @@ Item {
                                     root.handleInput(inputText);
                                 }
                                 event.accepted = true;
+                            } else if (event.modifiers === Qt.ControlModifier && event.key === Qt.Key_Z && messageInputField.text.length === 0) {
+                                // An empty box has nothing of its own to undo, so
+                                // Ctrl+Z there means the conversation: back up a
+                                // turn and put it in the composer to be reworded.
+                                HermesService.undoTurns(1);
+                                event.accepted = true;
                             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
                                 if (event.modifiers & Qt.ShiftModifier)
                                     return; // Shift+Ctrl+V stays a plain text paste.

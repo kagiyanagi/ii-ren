@@ -313,6 +313,21 @@ Rectangle {
                     }
 
                     AiMessageControlButton {
+                        // Editing a sent turn IS rewinding to it: the agent drops
+                        // this turn and everything after, and hands its text back
+                        // to the composer. The gateway refuses a rewind mid-run,
+                        // so this greys out rather than failing on the click.
+                        visible: root.isUser
+                        enabled: !HermesService.busy
+                        buttonIcon: "edit"
+                        onClicked: HermesService.rewindTo(root.messageId, true)
+
+                        StyledToolTip {
+                            text: Translation.tr("Edit and send again from here")
+                        }
+                    }
+
+                    AiMessageControlButton {
                         activated: !root.renderMarkdown
                         buttonIcon: "code"
                         onClicked: root.renderMarkdown = !root.renderMarkdown
