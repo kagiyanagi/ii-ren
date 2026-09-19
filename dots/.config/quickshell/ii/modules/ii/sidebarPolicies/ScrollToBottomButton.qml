@@ -6,7 +6,7 @@ import QtQuick.Layouts
 
 RippleButton {
     id: root
-    required property ListView target
+    required property StyledListView target
 
     anchors {
         bottom: parent.bottom
@@ -14,8 +14,33 @@ RippleButton {
         bottomMargin: 10
     }
 
-    opacity: !target.atYEnd ? 1 : 0
-    scale: !target.atYEnd ? 1 : 0.7
+    /*
+     * A list that follows its own end already knows whether the reader has left
+     * it. Anywhere else, `atYEnd` has to answer -- and it goes false the instant
+     * a streamed token grows the content, so it is given a beat to settle first:
+     * a gap that closes on the next frame is the view catching up to new
+     * content, not someone scrolling back to re-read.
+     */
+    readonly property bool away: target.followsEnd ? !target.followingEnd : !target.atYEnd
+    property bool shown: false
+
+    onAwayChanged: {
+        if (!root.away) {
+            settleTimer.stop();
+            root.shown = false;
+        } else if (!settleTimer.running) {
+            settleTimer.restart();
+        }
+    }
+
+    Timer {
+        id: settleTimer
+        interval: Appearance.animation.elementMoveFast.duration
+        onTriggered: root.shown = root.away
+    }
+
+    opacity: root.shown ? 1 : 0
+    scale: root.shown ? 1 : 0.7
     visible: opacity > 0
     Behavior on opacity {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -33,7 +58,7 @@ RippleButton {
     buttonRadius: Appearance.rounding.verysmall
 
     downAction: () => {
-        target.positionViewAtEnd()
+        target.jumpToEnd();
     }
 
     contentItem: Row {

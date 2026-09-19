@@ -26,17 +26,91 @@ ListView {
         root.dragDistance = 0
     }
 
+    /**
+     * Keeps the end of the list under the view as content grows into it -- a
+     * transcript during a streamed reply. Opt in with `followsEnd`.
+     *
+     * `followingEnd` is the live state: the reader takes it away by scrolling
+     * back, and gets it again by scrolling to the end, or through `jumpToEnd()`,
+     * which is what the Scroll to Bottom button calls.
+     *
+     * Decided from what the reader did, never from where the view ended up. A
+     * view that recycles delegates moves contentY itself once it has laid one
+     * out and can measure it, and re-estimates `contentHeight` as it goes, so
+     * both of those -- and `atYEnd`, which is built from them -- wander on their
+     * own while a reply streams. Reading any of them as intent dropped the
+     * follow a frame after every jump to the end, and yanked a reader who was
+     * scrolling back through a long answer down to the bottom again.
+     */
+    property bool followsEnd: false
+    property bool followingEnd: true
+
+    /**
+     * Puts the end of the list at the bottom of the view, at once.
+     *
+     * A view that follows streamed content re-pins every time that content
+     * grows. Letting each of those pins animate over `scroll.duration` -- which
+     * `alwaysRunToEnd` will not cut short -- leaves it chasing a bottom it never
+     * reaches, and permanently mid-animation. A scroll already in flight is
+     * landed first, or it would go on dragging the view back to wherever it was
+     * aimed for the rest of its duration.
+     *
+     * By item, not by contentY: `contentHeight` is an estimate for delegates the
+     * view has not laid out, so from far up the list a computed contentY lands
+     * past the real end, on nothing.
+     */
+    function jumpToEnd(): void {
+        scrollAnim.complete();
+        scrollBehavior.enabled = false;
+        root.positionViewAtEnd();
+        scrollBehavior.enabled = true;
+        root.followingEnd = true;
+    }
+
+    onContentHeightChanged: {
+        if (root.followsEnd && root.followingEnd && !root.atYEnd)
+            Qt.callLater(root.jumpToEnd);
+    }
+
+    // A drag or a flick, which is the reader's hand either way.
+    onMovementStarted: {
+        if (!root.atYEnd)
+            root.followingEnd = false;
+    }
+    onMovementEnded: {
+        if (root.atYEnd)
+            root.followingEnd = true;
+    }
+
     maximumFlickVelocity: 3500
     boundsBehavior: Flickable.DragOverBounds
-    ScrollBar.vertical: StyledScrollBar {}
+    ScrollBar.vertical: StyledScrollBar {
+        onPressedChanged: {
+            if (pressed && !root.atYEnd)
+                root.followingEnd = false;
+            else if (!pressed && root.atYEnd)
+                root.followingEnd = true;
+        }
+    }
 
     WheelScrollHandler {
         id: wheelHandler
         flickable: root
         scrollAnim: scrollAnim
+
+        // The clamp has already worked out whether this turn asked for the very
+        // end, against the same extent it scrolled to, so re-attaching needs no
+        // allowance for how far that end moved while the scroll played out.
+        onScrolled: (up, toEnd) => {
+            if (up)
+                root.followingEnd = false;
+            else if (toEnd)
+                root.followingEnd = true;
+        }
     }
 
     Behavior on contentY {
+        id: scrollBehavior
         NumberAnimation {
             id: scrollAnim
             alwaysRunToEnd: true

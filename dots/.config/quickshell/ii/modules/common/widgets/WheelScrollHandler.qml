@@ -21,6 +21,15 @@ MouseArea {
     // Accumulated scroll destination so wheel deltas stack while animating
     property real scrollTargetY: 0
 
+    /**
+     * One turn of the wheel, as intent rather than as a contentY that moved.
+     *
+     * `up` is a turn that took the view back toward the start; `toEnd` is one
+     * the clamp landed on the very end. A host that follows its end cannot read
+     * either off contentY, because its own layout moves contentY too.
+     */
+    signal scrolled(bool up, bool toEnd)
+
     // Android-style stretch overscroll. Wheel delta that would land past a bound piles up
     // here instead of being dropped (negative = past the top, positive = past the bottom);
     // the host scales its contentItem by it, and it springs back once the wheel stops.
@@ -77,6 +86,7 @@ MouseArea {
             overscrollRelease.restart();
         }
 
+        handler.scrolled(targetY < base, targetY >= maxY);
         handler.scrollTargetY = targetY;
         handler.flickable.contentY = targetY;
         wheelEvent.accepted = true;

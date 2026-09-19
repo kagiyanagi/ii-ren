@@ -52,6 +52,7 @@ Item {
             messageInputField.forceActiveFocus();
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
+                messageListView.followingEnd = false;
                 messageListView.contentY = Math.max(0, messageListView.contentY - messageListView.height / 2);
                 event.accepted = true;
             } else if (event.key === Qt.Key_PageDown) {
@@ -297,20 +298,9 @@ Item {
 
                 add: null // Keeps streaming from looking janky
 
-                // Follow the stream, but only when the view was already at the
-                // bottom *before* the content grew. Reading `atYEnd` after the fact
-                // is useless -- it goes false the instant a token lands -- and
-                // forcing the scroll while busy (what the assist overlay does)
-                // fights anyone who scrolled up to re-read a long answer.
-                property real previousContentHeight: 0
-                readonly property real followThreshold: 40
-
-                onContentHeightChanged: {
-                    const gapBeforeGrowth = messageListView.previousContentHeight - (messageListView.contentY + messageListView.height);
-                    messageListView.previousContentHeight = messageListView.contentHeight;
-                    if (gapBeforeGrowth < messageListView.followThreshold)
-                        Qt.callLater(messageListView.positionViewAtEnd);
-                }
+                // Follows the reply as it streams; the reader takes that away by
+                // scrolling up, and gets it back at the end or from the button.
+                followsEnd: true
 
                 model: ScriptModel {
                     values: HermesService.messageIDs.filter(id => HermesService.messageByID[id]?.visibleToUser ?? true)
