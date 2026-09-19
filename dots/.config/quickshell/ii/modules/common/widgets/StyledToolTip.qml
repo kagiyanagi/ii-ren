@@ -9,7 +9,9 @@ ToolTip {
     property bool extraVisibleCondition: true
     property bool alternativeVisibleCondition: false
 
-    readonly property bool internalVisibleCondition: (extraVisibleCondition && (parent.hovered === undefined || parent?.hovered)) || alternativeVisibleCondition
+    // parent is briefly null while a tooltip's owner is still being parented,
+    // and the unguarded read threw there. Nothing to hover yet means hidden.
+    readonly property bool internalVisibleCondition: (extraVisibleCondition && parent !== null && (parent.hovered === undefined || parent.hovered)) || alternativeVisibleCondition
     verticalPadding: 5
     horizontalPadding: 10
     background: null

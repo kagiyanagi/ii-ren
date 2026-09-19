@@ -71,6 +71,10 @@ Item {
             id: widgetDescriptionText
             visible: description !== ""
             Layout.fillWidth: true
+            // centerIn leaves the column unconstrained, so the text was setting
+            // the layout's width and wrapMode never had a bound to wrap at --
+            // a long description simply ran past the panel and clipped.
+            Layout.maximumWidth: root.width - 32
             font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.m3colors.m3outline
             horizontalAlignment: Text.AlignLeft
