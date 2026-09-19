@@ -1642,6 +1642,32 @@ Singleton {
         return `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${root.sttPresets[root.sttQuality].file}`;
     }
 
+    /**
+     * Shell commands the user runs themselves -- `!` in the composer, Run on a
+     * code block. Separate from the agent's own tools: this is the user's hand on
+     * the keyboard, not the model's.
+     */
+    property CommandRunner runner: CommandRunner {
+        // Same directory the agent is working in, so a `!git status` answers about
+        // the project being discussed rather than about wherever the shell started.
+        workingDirectory: root.cwd
+    }
+
+    /**
+     * Hand a finished command's output to the agent.
+     *
+     * `prompt.submit` is the only route into the model's history and it answers,
+     * so there is no way to quietly add context to a turn that has not happened
+     * yet. The output goes to the composer instead: it rides along with whatever
+     * is asked next, and a `!ls` run for the user's own eyes costs no context
+     * until they decide it should.
+     */
+    function shareCommandOutput(command: string, output: string, exitCode: int): void {
+        const body = (output ?? "").trim();
+        const status = exitCode === 0 ? "" : `\n(exit ${exitCode})`;
+        root.composerAppend("```console\n$ " + command + "\n" + (body.length > 0 ? body : "(no output)") + status + "\n```");
+    }
+
     property SpeechToText speech: SpeechToText {
         engine: Config.options.hermes.sttEngine
         bridgeScript: root.sttScript

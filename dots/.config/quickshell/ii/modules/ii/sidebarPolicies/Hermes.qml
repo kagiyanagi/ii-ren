@@ -72,7 +72,12 @@ Item {
         if (text.length === 0)
             return;
 
-        if (text.startsWith(root.commandPrefix))
+        // `!cmd` runs here rather than going to the agent -- the same split a
+        // terminal-shaped assistant makes. Nothing about it reaches the model
+        // until the console's own button puts it in the box.
+        if (text.startsWith("!"))
+            HermesService.runner.run(text.slice(1).trim(), HermesService.cwd);
+        else if (text.startsWith(root.commandPrefix))
             HermesService.runSlashCommand(text);
         else
             HermesService.sendMessage(text);
@@ -576,6 +581,12 @@ Item {
                     onRemove: HermesService.detachImage(modelData)
                 }
             }
+        }
+
+        HermesConsole { // A `!` command, while it runs and once it has
+            Layout.fillWidth: true
+            Layout.bottomMargin: visible ? 4 : 0
+            maxOutputHeight: root.height * 2 / 5
         }
 
         Rectangle { // Input area

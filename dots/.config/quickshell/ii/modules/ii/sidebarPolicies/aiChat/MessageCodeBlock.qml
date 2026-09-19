@@ -21,6 +21,9 @@ ColumnLayout {
     property var segmentContent: ({})
     property var segmentLang: "txt"
     property var messageData: {}
+    // Running a block executes what a model wrote, so it is offered only where a
+    // console exists to run it in and to show what it did. Off for every other caller.
+    property bool enableRunActions: false
     property bool isCommandRequest: segmentLang === "command"
     property var displayLang: (isCommandRequest ? "bash" : segmentLang)
 
@@ -91,15 +94,12 @@ ColumnLayout {
                     buttonIcon: activated ? "check" : "save"
 
                     onClicked: {
-                        const downloadPath = FileUtils.trimFileProtocol(Directories.downloads)
-                        Quickshell.execDetached(["bash", "-c", 
-                            `echo '${StringUtils.shellSingleQuoteEscape(segmentContent)}' > '${downloadPath}/code.${segmentLang || "txt"}'`
-                        ])
-                        Quickshell.execDetached(["notify-send", 
-                            Translation.tr("Code saved to file"), 
-                            Translation.tr("Saved to %1").arg(`${downloadPath}/code.${segmentLang || "txt"}`),
-                            "-a", "Shell"
-                        ])
+                        // Every block used to be written to the same `code.<ext>`,
+                        // so saving a second one silently replaced the first. The
+                        // name carries a timestamp now, and the write is a heredoc
+                        // rather than an `echo` that mangled backslashes.
+                        HermesService.runner.saveToFile(segmentContent, segmentLang,
+                            FileUtils.trimFileProtocol(Directories.downloads))
                         saveCodeButton.activated = true
                         saveIconTimer.restart()
                     }
@@ -114,6 +114,26 @@ ColumnLayout {
                     }
                     StyledToolTip {
                         text: Translation.tr("Save to Downloads")
+                    }
+                }
+                AiMessageControlButton {
+                    buttonIcon: "open_in_new"
+                    onClicked: HermesService.runner.openInEditor(segmentContent, segmentLang)
+
+                    StyledToolTip {
+                        text: Translation.tr("Open in editor")
+                    }
+                }
+                AiMessageControlButton {
+                    // Hidden, not greyed, when nothing here can run this language:
+                    // a button that could only ever fail is worse than no button.
+                    visible: root.enableRunActions && HermesService.runner.canRun(root.segmentLang)
+                    enabled: !HermesService.runner.running
+                    buttonIcon: "play_arrow"
+                    onClicked: HermesService.runner.runCode(segmentContent, segmentLang)
+
+                    StyledToolTip {
+                        text: Translation.tr("Run this")
                     }
                 }
             }

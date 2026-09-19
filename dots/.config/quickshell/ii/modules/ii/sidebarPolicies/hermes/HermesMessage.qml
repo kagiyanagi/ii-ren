@@ -429,6 +429,8 @@ Rectangle {
                             segmentContent: modelData.content
                             segmentLang: modelData.lang
                             messageData: root.messageData
+                            // This page has the console a run would report into.
+                            enableRunActions: true
                         }
                     }
                     DelegateChoice {
