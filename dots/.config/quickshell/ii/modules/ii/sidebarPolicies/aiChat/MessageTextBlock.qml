@@ -123,8 +123,14 @@ ColumnLayout {
         id: textLinesRepeater
         property list<real> textLineOpacities: []
         model: ScriptModel {
+            // Keyed by position: the last line grows with every streamed token, and
+            // a bare string model rebuilds its whole delegate each time -- retyping
+            // the text, and destroying the MouseArea under the pointer, which is
+            // what made the cursor flicker while a reply came in.
+            objectProp: "key"
             // Split by either double newlines or single newlines in a list
-            values: root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g).filter(line => line.trim() !== "") : [root.shownText]
+            values: (root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g).filter(line => line.trim() !== "") : [root.shownText])
+                .map((line, i) => ({ key: i, text: line }))
             onValuesChanged: {
                 while (textLinesRepeater.textLineOpacities.length < values.length) {
                     textLinesRepeater.textLineOpacities.push(root.messageData?.done ? 1 : 0);
@@ -134,7 +140,7 @@ ColumnLayout {
         delegate: TextArea {
             id: textArea
             required property int index
-            required property string modelData
+            required property var modelData
 
             // Fade in animation
             visible: opacity > 0
@@ -171,7 +177,7 @@ ColumnLayout {
             wrapMode: TextEdit.Wrap
             color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer1
             textFormat: renderMarkdown ? TextEdit.MarkdownText : TextEdit.PlainText
-            text: modelData
+            text: modelData.text
 
             onTextChanged: {
                 if (!root.editing) return

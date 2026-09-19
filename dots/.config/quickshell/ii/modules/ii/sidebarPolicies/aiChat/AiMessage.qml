@@ -319,6 +319,7 @@ Rectangle {
             }
             Repeater {
                 model: ScriptModel {
+                    objectProp: "key"
                     values: root.messageBlocks
                 }
                 delegate: DelegateChooser {

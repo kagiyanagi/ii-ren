@@ -137,6 +137,9 @@ Rectangle {
         if (cursor < content.length)
             timeline = timeline.concat(StringUtils.splitMarkdownBlocks(content.slice(cursor)));
 
+        // splitMarkdownBlocks() keys each slice from zero and tool rows carry no
+        // key at all, so the assembled timeline is keyed as a whole.
+        timeline.forEach((block, i) => block.key = block.type + "-" + i);
         root.messageBlocks = timeline;
     }
 
@@ -353,6 +356,7 @@ Rectangle {
 
             Repeater {
                 model: ScriptModel {
+                    objectProp: "key"
                     values: root.messageBlocks
                 }
                 delegate: DelegateChooser {

@@ -144,6 +144,10 @@ Singleton {
                 });
             }
         }
+        // ScriptModel matches rows by this, so the block a stream is still
+        // growing keeps its delegate instead of being destroyed and rebuilt --
+        // with its text relaid and its code re-highlighted -- on every update.
+        result.forEach((block, i) => block.key = block.type + "-" + i);
         // console.log(JSON.stringify(result, null, 2));
         return result;
     }
