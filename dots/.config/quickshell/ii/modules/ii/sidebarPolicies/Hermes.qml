@@ -8,6 +8,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
 /**
  * Hermes agent page.
@@ -140,6 +141,48 @@ Item {
         }
     }
 
+    /**
+     * What the question is about, as `class — title`.
+     *
+     * Hyprland hands over the class and title for free, but opening this
+     * sidebar deactivates the window they belong to, so the last activated
+     * toplevel is latched while it is still the real one and read back only
+     * when there is no live one left to ask.
+     */
+    property string lastFocusedWindow: ""
+
+    Connections {
+        target: ToplevelManager
+        function onActiveToplevelChanged() {
+            const toplevel = ToplevelManager.activeToplevel;
+            if (!toplevel?.activated || !toplevel.appId)
+                return;
+            root.lastFocusedWindow = `${toplevel.appId} — ${toplevel.title}`;
+        }
+    }
+
+    function focusedWindow(): string {
+        const toplevel = ToplevelManager.activeToplevel;
+        if (toplevel?.activated && toplevel.appId)
+            return `${toplevel.appId} — ${toplevel.title}`;
+        return root.lastFocusedWindow;
+    }
+
+    /**
+     * `@window` stands for the window the question is about.
+     *
+     * "why is this failing" means nothing to an agent that cannot see the
+     * screen, and the class and title are the part that can be handed over
+     * without a screenshot. Left as typed when nothing is focused: naming the
+     * wrong window is worse than naming none.
+     */
+    function expandWindowToken(text: string): string {
+        const focused = root.focusedWindow();
+        if (focused.length === 0)
+            return text;
+        return text.replace(/@window\b/g, `the focused window (${focused})`);
+    }
+
     function handleInput(inputText: string): void {
         const text = inputText.trim();
         if (text.length === 0)
@@ -153,7 +196,7 @@ Item {
         else if (text.startsWith(root.commandPrefix))
             HermesService.runSlashCommand(text);
         else
-            HermesService.sendMessage(text);
+            HermesService.sendMessage(root.expandWindowToken(text));
 
         root.suggestionList = [];
         messageListView.positionViewAtEnd();
@@ -822,7 +865,7 @@ Item {
                                     // conversation free to carry on while it runs.
                                     const backgroundText = messageInputField.text;
                                     messageInputField.clear();
-                                    HermesService.runInBackground(backgroundText);
+                                    HermesService.runInBackground(root.expandWindowToken(backgroundText));
                                     root.suggestionList = [];
                                 } else {
                                     const inputText = messageInputField.text;
