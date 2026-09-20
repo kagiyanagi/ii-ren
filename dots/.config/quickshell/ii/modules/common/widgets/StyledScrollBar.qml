@@ -9,7 +9,11 @@ ScrollBar {
     policy: ScrollBar.AsNeeded
     topPadding: Appearance.rounding.normal
     bottomPadding: Appearance.rounding.normal
-    active: hovered || pressed
+    // `ScrollBar.vertical:` reparents the bar into the Flickable it scrolls, which is
+    // where the movement flags live. What QQC2 binds itself, minus the drop: a wheel or
+    // a flick shows the bar too, not only the pointer being on it.
+    readonly property Flickable host: root.parent as Flickable
+    active: (root.host?.movingVertically ?? false) || hovered || pressed
 
     contentItem: Rectangle {
         implicitWidth: 4
