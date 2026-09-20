@@ -21,7 +21,8 @@ Singleton {
         CharRecognition,
         Record,
         RecordWithSound,
-        AskAI
+        AskAI,
+        QrScan
     }
 
     property string imageSearchEngineBaseUrl: Config.options.search.imageSearch.imageSearchEngineBaseUrl
@@ -126,6 +127,26 @@ Singleton {
             case ScreenshotAction.Action.RecordWithSound:
                 return ["bash", "-c", `${Directories.recordScriptPath} --region '${slurpRegion}' --sound`]
                 break;
+            case ScreenshotAction.Action.QrScan: {
+                // zbarimg exits 4 with no output when the crop holds no code, so
+                // the empty case is a notification, not an empty clipboard - and
+                // a missing zbar says so instead of claiming there was no code.
+                const copiedTitle = StringUtils.shellSingleQuoteEscape(Translation.tr("QR code copied"))
+                const emptyTitle = StringUtils.shellSingleQuoteEscape(Translation.tr("No QR code found"))
+                const emptyBody = StringUtils.shellSingleQuoteEscape(Translation.tr("Nothing in that region decoded"))
+                const missingTitle = StringUtils.shellSingleQuoteEscape(Translation.tr("QR scanning needs zbar"))
+                const missingBody = StringUtils.shellSingleQuoteEscape(Translation.tr("Install zbar, then try again"))
+                // Notification bodies are parsed as markup, so a scanned URL with
+                // a bare `&` in its query is dropped by the daemon unescaped.
+                const escapeMarkup = `sed 's/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g'`
+                return ["bash", "-c",
+                    `command -v zbarimg > /dev/null 2>&1 || { ${cleanup}; notify-send -a Shell '${missingTitle}' '${missingBody}'; exit 0; }; `
+                    + `text=$(${cropToStdout} | zbarimg -q --raw -1 -); ${cleanup}; `
+                    // `-- "$text"`: decoded text starting with a dash is an
+                    // option to notify-send otherwise, and nothing is shown.
+                    + `if [ -n "$text" ]; then printf '%s' "$text" | wl-copy && notify-send -a Shell '${copiedTitle}' -- "$(printf '%s' "$text" | ${escapeMarkup})"; `
+                    + `else notify-send -a Shell '${emptyTitle}' '${emptyBody}'; fi`]
+            }
             default:
                 console.warn("[Region Selector] Unknown snip action, skipping snip.");
                 return;

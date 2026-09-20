@@ -149,7 +149,8 @@ packages = [
   "tesseract",
   "tesseract-langpack-eng",
   "tesseract-langpack-chi_sim",
-  "wf-recorder"
+  "wf-recorder",
+  "zbar"
 ]
 
 # Toolkit

@@ -166,6 +166,8 @@ Tips:
   - Used in Quickshell config for translating kernel keycodes through the active Hyprland keyboard layout.
 - `wf-recorder`
   - Used in Quickshell config.
+- `zbar`
+  - Used in Quickshell config for the QR code scan snip (`zbarimg`).
 
 
 ## illogical-impulse-toolkit

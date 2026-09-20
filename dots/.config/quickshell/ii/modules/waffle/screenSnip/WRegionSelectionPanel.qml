@@ -25,7 +25,8 @@ PanelWindow {
         Copy,
         Menu,
         CharRecognition,
-        Search
+        Search,
+        QrScan
     }
     enum VideoAction {
         Record,
@@ -98,6 +99,8 @@ PanelWindow {
                 return ScreenshotAction.Action.CharRecognition;
             case WRegionSelectionPanel.ImageAction.Search:
                 return ScreenshotAction.Action.Search;
+            case WRegionSelectionPanel.ImageAction.QrScan:
+                return ScreenshotAction.Action.QrScan;
             default:
                 return ScreenshotAction.Action.Copy;
             }

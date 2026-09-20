@@ -353,6 +353,19 @@ Singleton {
                 Qt.openUrlExternally(url);
             }
         });
+        // A tool, not a /action: "qr scan" is what someone types when they want
+        // to scan something, not a command they have to remember the prefix for.
+        const qrQuery = root.query.trim().toLowerCase();
+        const qrToolObjects = (qrQuery.length >= 2 && ["qr", "qr scan", "qr code", "scan qr", "scan qr code", "qrcode", "barcode"].some(keyword => keyword.startsWith(qrQuery))) ? [root.createResult({
+            name: Translation.tr("Scan QR code"),
+            verb: Translation.tr("Select region"),
+            type: Translation.tr("Tool"),
+            iconName: 'qr_code_scanner',
+            iconType: LauncherSearchResult.IconType.Material,
+            execute: () => {
+                qrScanTimer.restart();
+            }
+        })] : [];
         const launcherActionObjects = root.allActions.map(action => {
             const actionString = `${Config.options.search.prefix.action}${action.action}`;
             if (actionString.startsWith(root.query) || root.query.startsWith(actionString)) {
@@ -384,6 +397,9 @@ Singleton {
             result.push(webSearchResultObject);
         }
 
+        //////////////// Tools /////////////////
+        result = result.concat(qrToolObjects);
+
         //////////////// Files /////////////////
         result = result.concat(fileResultsObject);
 
@@ -404,6 +420,15 @@ Singleton {
         }
 
         return result;
+    }
+
+    // The launcher window is still on screen for its closing animation, and the
+    // region selector freezes the screen the moment it opens - fire once the
+    // launcher is gone, or the snip is a picture of the launcher.
+    Timer {
+        id: qrScanTimer
+        interval: Appearance.animation.elementMove.duration
+        onTriggered: Hyprland.dispatch(`hl.dsp.global("quickshell:regionQrScan")`)
     }
 
     function createResult(obj) {

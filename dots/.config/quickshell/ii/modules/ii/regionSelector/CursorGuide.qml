@@ -17,6 +17,8 @@ Item {
             return { symbol: "image_search", description: Translation.tr("Use Google Lens (LMB) or ask AI (RMB)"), duration: 1500 };
         case RegionSelection.SnipAction.CharRecognition:
             return { symbol: "document_scanner", description: Translation.tr("Recognize text"), duration: 1000 };
+        case RegionSelection.SnipAction.QrScan:
+            return { symbol: "qr_code_scanner", description: Translation.tr("Scan QR code"), duration: 1000 };
         case RegionSelection.SnipAction.Record:
         case RegionSelection.SnipAction.RecordWithSound:
             return { symbol: "videocam", description: Translation.tr("Record region"), duration: 1000 };

@@ -17,4 +17,5 @@ RDEPEND="
 	gui-apps/swappy
 	app-text/tesseract
 	gui-apps/wf-recorder
+	media-gfx/zbar
 "

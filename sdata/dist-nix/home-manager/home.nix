@@ -151,6 +151,7 @@ quickshell, home_attrs, ... }:
       tesseract #tesseract
       #tesseract-data-eng (TODO: Seems not available as nixpkg)
       wf-recorder #wf-recorder
+      zbar #zbar
 
 
       ### illogical-impulse-toolkit

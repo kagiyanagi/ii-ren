@@ -1,7 +1,7 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-screencapture
 pkgver=1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Illogical Impulse Screenshot and Recording Dependencies'
 arch=(any)
 license=(None)
@@ -14,4 +14,5 @@ depends=(
   tesseract
   tesseract-data-eng
   wf-recorder
+  zbar
 )

@@ -124,6 +124,10 @@ Scope {
         root.trigger(RegionSelection.SnipAction.CharRecognition, RegionSelection.SelectionMode.RectCorners)
     }
 
+    function qrScan() {
+        root.trigger(RegionSelection.SnipAction.QrScan, RegionSelection.SelectionMode.RectCorners)
+    }
+
     function record() {
         root.trigger(RegionSelection.SnipAction.Record, RegionSelection.SelectionMode.RectCorners, true)
     }
@@ -143,6 +147,9 @@ Scope {
         }
         function ocr() {
             root.ocr()
+        }
+        function qrScan() {
+            root.qrScan()
         }
         function record() {
             root.record()
@@ -166,6 +173,11 @@ Scope {
         name: "regionOcr"
         description: "Recognizes text in the selected region"
         onPressed: root.ocr()
+    }
+    GlobalShortcut {
+        name: "regionQrScan"
+        description: "Scans a QR code in the selected region"
+        onPressed: root.qrScan()
     }
     GlobalShortcut {
         name: "regionRecord"

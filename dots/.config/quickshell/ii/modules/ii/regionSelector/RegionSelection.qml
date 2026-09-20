@@ -34,7 +34,7 @@ PanelWindow {
         bottom: true
     }
 
-    enum SnipAction { Copy, Edit, Search, CharRecognition, Record, RecordWithSound, AskAI } 
+    enum SnipAction { Copy, Edit, Search, CharRecognition, Record, RecordWithSound, AskAI, QrScan } 
     enum SelectionMode { RectCorners, Circle }
     enum Phase { Select, Post }
     property var action: RegionSelection.SnipAction.Copy

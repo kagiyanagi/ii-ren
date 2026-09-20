@@ -40,6 +40,12 @@ Scope {
         regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.CharRecognition;
     }
 
+    function qrScan() {
+        GlobalStates.regionSelectorOpen = true;
+        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
+        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.QrScan;
+    }
+
     function record() {
         GlobalStates.regionSelectorOpen = true;
         regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Video;
@@ -67,6 +73,9 @@ Scope {
         function ocr() {
             root.ocr();
         }
+        function qrScan() {
+            root.qrScan();
+        }
         function record() {
             root.record();
         }
@@ -92,6 +101,11 @@ Scope {
         name: "regionOcr"
         description: "Recognizes text in the selected region"
         onPressed: root.ocr()
+    }
+    GlobalShortcut {
+        name: "regionQrScan"
+        description: "Scans a QR code in the selected region"
+        onPressed: root.qrScan()
     }
     GlobalShortcut {
         name: "regionRecord"
