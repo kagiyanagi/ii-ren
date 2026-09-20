@@ -14,11 +14,10 @@ import Quickshell.Io
 Item { // Bar content region
     id: root
 
+    // Kept for the widgets in the lists, which can resolve it by scope; nothing
+    // in this file reads it since the shortened-form machinery below went.
     property var screen: root.QsWindow.window?.screen
     property int monitorIndex
-    property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
-    property real useShortenedForm: (Appearance.sizes.barHellaShortenScreenWidthThreshold >= screen?.width) ? 2 : (Appearance.sizes.barShortenScreenWidthThreshold >= screen?.width) ? 1 : 0
-    readonly property int centerSideModuleWidth: (useShortenedForm == 2) ? Appearance.sizes.barCenterSideModuleWidthHellaShortened : (useShortenedForm == 1) ? Appearance.sizes.barCenterSideModuleWidthShortened : Appearance.sizes.barCenterSideModuleWidth
 
     property bool hasActiveWindows: false
     property bool showBarBackground: root.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1
@@ -81,6 +80,11 @@ Item { // Bar content region
         border.color: root.showBarBackground ? Appearance.colors.colLayer0Border : "transparent"
 
         Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+        // The outline is drawn from the same showBarBackground flip as the fill;
+        // without this it snapped while the fill faded under it.
+        Behavior on border.color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
     }

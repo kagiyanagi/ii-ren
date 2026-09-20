@@ -14,16 +14,17 @@ Revealer { // Scroll hint
         anchors.left: root.side === "right" ? parent.left : undefined
         implicitWidth: contentColumn.implicitWidth
         implicitHeight: contentColumn.implicitHeight
-        property bool hovered: false
+        // PopupToolTip reads `parent.hovered`; containsMouse already is that, and
+        // it cannot be left stuck true when the revealer collapses under the
+        // pointer without an exit event.
+        readonly property bool hovered: mouseArea.containsMouse
 
         hoverEnabled: true
-        onEntered: hovered = true
-        onExited: hovered = false
         acceptedButtons: Qt.NoButton
 
         PopupToolTip {
-            extraVisibleCondition: tooltipText.length > 0
-            text: tooltipText
+            extraVisibleCondition: root.tooltipText.length > 0
+            text: root.tooltipText
         }
 
         Column {
@@ -31,7 +32,9 @@ Revealer { // Scroll hint
             anchors {
                 fill: parent
             }
-            spacing: -5
+            // Negative: the arrows tuck into the icon's line box, which is taller
+            // than the 14px glyph. On the grid (DESIGN.md 5.1).
+            spacing: -4
             MaterialSymbol {
                 text: "keyboard_arrow_up"
                 iconSize: 14

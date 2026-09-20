@@ -5,12 +5,23 @@ import QtQuick.Layouts
 Item {
     id: root
     property bool vertical: false
-    property real padding: 5
+    property real padding: 4
     implicitWidth: vertical ? Appearance.sizes.baseVerticalBarWidth : (gridLayout.implicitWidth + padding * 2)
     implicitHeight: vertical ? (gridLayout.implicitHeight + padding * 2) : Appearance.sizes.baseBarHeight
     default property alias items: gridLayout.children
-    property var startRadius // left - top
-    property var endRadius // right - bottom
+    property real startRadius // left - top
+    property real endRadius // right - bottom
+
+    // A group's corners go pill <-> verysmall as its neighbours come and go,
+    // which is a shape change: it morphs on the small spatial spec rather than
+    // snapping (DESIGN.md 4.3). Typed real so the Behavior has something to
+    // interpolate -- as `var` a NumberAnimation would snap silently.
+    Behavior on startRadius {
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+    }
+    Behavior on endRadius {
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+    }
 
     property color colBackground: Appearance.m3colors.m3surfaceContainerLow
 

@@ -19,22 +19,68 @@ Item {
     property bool vertical: false
     property bool highlighted: false
 
-    implicitWidth: wrapper.implicitWidth
-    implicitHeight: wrapper.implicitHeight
-
     // Seed from the layout entry so a rebuilt delegate already matches the config;
     // otherwise it defaults to true and the widget writes `false` back on every
     // rebuild, which re-evaluates the Repeater's model and rebuilds it again.
     // toggleVisible() overwrites this imperatively on a real change.
-    visible: modelData?.visible !== false
+    property bool shown: modelData?.visible !== false
+
+    /**
+     * A widget that comes and goes -- the record, screenshare and privacy
+     * indicators, the timer, a tray that empties -- used to pop out of the row
+     * with nothing in either direction (DESIGN.md 2.5, anti-pattern 10). It
+     * collapses along the bar's axis instead: in on fast spatial, out on fast
+     * effects at about a third, staying in the layout until the collapse has
+     * finished so the row does not swallow it mid-animation.
+     *
+     * The spec is assigned from inside the binding that writes the size, which
+     * looks backwards and is the only order that holds: a Behavior bakes
+     * duration and curve at the instant the write happens, so a spec read from
+     * a binding of its own is a frame late and the exit runs on the enter's
+     * curve (2.9, the shape Revealer already uses).
+     */
+    property AnimSpec sizeSpec: Appearance.animation.elementResize
+
+    function pickSizeSpec(): void {
+        rootItem.sizeSpec = rootItem.shown ? Appearance.animation.elementResize : Appearance.animation.elementMoveExit;
+    }
+
+    implicitWidth: {
+        rootItem.pickSizeSpec();
+        return (rootItem.shown || rootItem.vertical) ? wrapper.implicitWidth : 0;
+    }
+    implicitHeight: {
+        rootItem.pickSizeSpec();
+        return (rootItem.shown || !rootItem.vertical) ? wrapper.implicitHeight : 0;
+    }
+    visible: rootItem.shown || (rootItem.vertical ? rootItem.implicitHeight > 0 : rootItem.implicitWidth > 0)
+    // Only while a collapse is under way. A permanent scissor on every bar
+    // delegate costs more than the frames it is wanted for (DESIGN.md 8).
+    clip: rootItem.vertical ? (rootItem.implicitHeight < wrapper.implicitHeight) : (rootItem.implicitWidth < wrapper.implicitWidth)
+
+    Behavior on implicitWidth {
+        enabled: !rootItem.vertical
+        SizeAnim {}
+    }
+    Behavior on implicitHeight {
+        enabled: rootItem.vertical
+        SizeAnim {}
+    }
+
+    component SizeAnim: NumberAnimation {
+        alwaysRunToEnd: false
+        duration: rootItem.sizeSpec.duration
+        easing.type: rootItem.sizeSpec.type
+        easing.bezierCurve: rootItem.sizeSpec.bezierCurve
+    }
 
     function toggleVisible(visibility) {
         // This writes the layout back, and the layout is the Repeater's model, so
         // an unconditional write rebuilds every delegate and calls us again.
         // Callers (SysTray, timer, record/screenshare/privacy indicators) fire on
         // every update, so only write on a real change.
-        if (visible === visibility) return;
-        visible = visibility
+        if (rootItem.shown === visibility) return;
+        rootItem.shown = visibility
         const section = barSection == 0 ? Config.options.bar.layouts.left : barSection == 1 ? Config.options.bar.layouts.center : Config.options.bar.layouts.right;
         if (section?.[originalIndex]) section[originalIndex].visible = visibility;
     }
@@ -125,10 +171,12 @@ Item {
     BarGroup {
         id: wrapper
         vertical: rootItem.vertical
-        padding: rootItem.isSpacer ? 0 : 5
+        padding: rootItem.isSpacer ? 0 : 4
         anchors {
-            verticalCenter: root.vertical ? rootItem.verticalCenter : undefined
-            horizontalCenter: root.vertical ? undefined : rootItem.horizontalCenter
+            // `root` here was BarContent's id, not this file's -- it has no
+            // `vertical`, so the group took the horizontal branch in both bars.
+            verticalCenter: rootItem.vertical ? rootItem.verticalCenter : undefined
+            horizontalCenter: rootItem.vertical ? undefined : rootItem.horizontalCenter
         }
         
         startRadius: rootItem.startRadius

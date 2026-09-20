@@ -125,22 +125,55 @@ Scope {
 
                     BarContent {
                         id: barContent
-                        
+
                         implicitHeight: Appearance.sizes.barHeight
+
+                        /**
+                         * Auto-hide is a screen-edge panel, so it enters from its own
+                         * edge on the default spatial spec and leaves accelerating on
+                         * the fast effects one, about a quarter as long (DESIGN.md 2.5,
+                         * 2.6). Both directions used to run on elementMoveFast -- an
+                         * effects spec driving position, identical in and out.
+                         *
+                         * The spec is assigned from inside the binding that writes the
+                         * margin, which looks backwards and is the only order that
+                         * holds: a Behavior bakes duration and curve at the instant the
+                         * write happens, and a spec read from a binding of its own is
+                         * a frame late, so the exit runs on the enter's curve (2.9,
+                         * the shape Revealer and PopupToolTip already use). Reversible
+                         * mid-flight because it is hover-driven (2.7).
+                         */
+                        readonly property bool revealed: !(Config?.options.bar.autoHide.enable) || barRoot.mustShow
+                        property AnimSpec revealSpec: Appearance.animation.elementMoveEnter
+                        readonly property real edgeOffset: {
+                            barContent.revealSpec = barContent.revealed ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                            return barContent.revealed ? 0 : -Appearance.sizes.barHeight;
+                        }
+
                         anchors {
                             right: parent.right
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.barHeight : 0
+                            topMargin: barContent.edgeOffset
                             bottomMargin: (Config.options.interactions.deadPixelWorkaround.enable && barRoot.anchors.bottom) * -1
                             rightMargin: (Config.options.interactions.deadPixelWorkaround.enable && barRoot.anchors.right) * -1
                         }
                         Behavior on anchors.topMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            NumberAnimation {
+                                alwaysRunToEnd: false
+                                duration: barContent.revealSpec.duration
+                                easing.type: barContent.revealSpec.type
+                                easing.bezierCurve: barContent.revealSpec.bezierCurve
+                            }
                         }
                         Behavior on anchors.bottomMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            NumberAnimation {
+                                alwaysRunToEnd: false
+                                duration: barContent.revealSpec.duration
+                                easing.type: barContent.revealSpec.type
+                                easing.bezierCurve: barContent.revealSpec.bezierCurve
+                            }
                         }
 
                         states: State {
@@ -158,7 +191,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.barHeight : 0
+                                anchors.bottomMargin: barContent.edgeOffset
                             }
                         }
                     }
