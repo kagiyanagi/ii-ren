@@ -8,7 +8,6 @@ import QtQuick.Layouts
 
 StyledPopup {
     id: root
-    popupRadius: Appearance.rounding.large
     stickyHover: true
 
     required property bool compact

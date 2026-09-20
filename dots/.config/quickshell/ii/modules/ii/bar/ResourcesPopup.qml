@@ -7,7 +7,6 @@ import qs.modules.common.functions
 
 StyledPopup {
     id: root
-    popupRadius: Appearance.rounding.large
     stickyHover: true
 
     readonly property int graphPointCount: 13
