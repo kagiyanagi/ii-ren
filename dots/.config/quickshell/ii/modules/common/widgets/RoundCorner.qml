@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
+import qs.modules.common
 
 Item {
     id: root
@@ -11,8 +12,11 @@ Item {
     property alias rightVisualMargin: shape.anchors.rightMargin
     property alias bottomVisualMargin: shape.anchors.bottomMargin
 
-    property int implicitSize: 25
-    property color color: "#000000"
+    property int implicitSize: Appearance.rounding.screenRounding
+    // Nothing set means paint nothing. This used to default to solid black, which
+    // is only ever right for the fake-screen-rounding mask -- ScreenCorners now
+    // says so itself.
+    property color color: "transparent"
 
     implicitWidth: implicitSize
     implicitHeight: implicitSize

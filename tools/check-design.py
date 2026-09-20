@@ -2,7 +2,7 @@
 """Check the shell's QML against .github/DESIGN.md.
 
 Only the mechanically detectable rules live here -- literal numbers where a token
-exists, animation types that do not match their property, the crash and
+exists, animation specs that do not match their property, the crash and
 shadowing patterns. Judgement calls (is this the right transform origin, is this
 spatial or effects, does the spacing read) still need a human or a read-through.
 
@@ -111,6 +111,28 @@ def rule_anim_type_mismatch(lines):
             yield i, f"Behavior on {prop} (a real) using a ColorAnimation -- it will snap"
 
 
+# Every AnimSpec whose curve overshoots past 1. Safe on position/size/shape,
+# never on opacity or colour -- those clip (DESIGN.md 2.1, 10.6).
+SPATIAL_SPEC = re.compile(
+    r"\b(elementMove|elementMoveSmall|elementMoveEnter|elementResize|clickBounce)\b"
+    r"|\bexpressive(Fast|Default|Slow)Spatial\b"
+)
+NO_OVERSHOOT = re.compile(r"^(opacity|\w*Opacity|col[A-Z]\w*|colou?r|\w*Colou?r)$")
+
+
+def rule_spatial_on_effects(lines):
+    """A spatial spec driving opacity or colour overshoots past the target."""
+    for i, ln in enumerate(lines):
+        m = re.search(r"Behavior on (\w+)", ln)
+        if not m or not NO_OVERSHOOT.match(m.group(1)) or cited(lines, i):
+            continue
+        block = re.sub(r"//.*", "", behavior_block(lines, i))  # a spec named in a comment is not one
+        spec = SPATIAL_SPEC.search(block)
+        if spec:
+            yield i, (f"Behavior on {m.group(1)} using {spec.group(0)}, a spatial spec "
+                      "-- it overshoots and clips; use elementMoveFast or elementMoveExit")
+
+
 def rule_spring_animation(lines):
     for i, ln in enumerate(lines):
         if "SpringAnimation" in ln and not ln.lstrip().startswith("//"):
@@ -193,6 +215,7 @@ RULES = [
     ("off-grid-spacing", "warn", rule_off_grid_spacing),
     ("bare-text", "warn", rule_bare_text),
     ("anim-type-mismatch", "error", rule_anim_type_mismatch),
+    ("spatial-on-effects", "error", rule_spatial_on_effects),
     ("spring-animation", "error", rule_spring_animation),
     ("shadowed-property", "error", rule_shadowed_property),
     ("async-connections", "warn", rule_async_connections),
@@ -283,8 +306,8 @@ def main():
     if not args.diff and total:
         print("Full-repo run is informational -- it counts legacy debt too.")
         print("Use --diff to gate only what you just wrote.")
-    print("Not checkable here: transform origin, spatial-vs-effects choice,")
-    print("enter/exit pairing, layer nesting, effect-in-delegate. Read DESIGN.md.")
+    print("Not checkable here: transform origin, enter/exit pairing, layer nesting,")
+    print("effect-in-delegate. Read DESIGN.md.")
     return 1 if (args.diff and errors) else 0
 
 

@@ -11,7 +11,9 @@ Image {
     visible: opacity > 0
     opacity: (status === Image.Ready) ? 1 : 0
     Behavior on opacity {
-        animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+        // elementMoveEnter is a spatial spec and its curve overshoots past 1, which
+        // on opacity clips into a flash (DESIGN.md 2.1, 10.6).
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     property list<string> fallbacks: []

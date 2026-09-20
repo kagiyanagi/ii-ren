@@ -96,6 +96,7 @@ Rectangle {
         anchors.fill: image
         sourceComponent: GaussianBlur {
             source: image
+            // design-ok: a Gaussian blur radius in px, not a corner radius
             radius: 35
             samples: radius * 2 + 1
 
@@ -113,7 +114,7 @@ Rectangle {
                         visible: width <= image.width
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: "visibility_off"
-                        font.pixelSize: 28
+                        iconSize: Appearance.font.pixelSize.hugeass
                     }
                     StyledText {
                         visible: width <= image.width

@@ -7,6 +7,10 @@ StyledText {
     property real fill: 0
     property real truncatedFill: fill.toFixed(1) // Reduce memory consumption spikes from constant font remapping
     renderType: Text.NativeRendering
+    // One glyph: elided it measures 0 wide and vanishes rather than showing an
+    // ellipsis, so a squeezed row would drop the icon. Opt out of StyledText's
+    // ElideRight. Measured, not assumed.
+    elide: Text.ElideNone
     font {
         hintingPreference: Font.PreferNoHinting
         family: Appearance?.font.family.iconMaterial ?? "Material Symbols Rounded"
@@ -21,10 +25,6 @@ StyledText {
     }
 
     Behavior on fill { // Leaky leaky, no good
-        NumberAnimation {
-            duration: Appearance?.animation.elementMoveFast.duration ?? 200
-            easing.type: Appearance?.animation.elementMoveFast.type ?? Easing.BezierSpline
-            easing.bezierCurve: Appearance?.animation.elementMoveFast.bezierCurve ?? [0.34, 0.80, 0.34, 1.00, 1, 1]
-        }
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 }

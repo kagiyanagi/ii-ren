@@ -9,19 +9,15 @@ Loader {
     property real iconSize: Appearance.font.pixelSize.larger
     Layout.alignment: Qt.AlignVCenter
 
-    active: root.icon && root.icon.length > 0
+    active: root.icon.length > 0
     visible: active
 
-    sourceComponent: Item {
-        implicitWidth: materialSymbol.implicitWidth
-
-        MaterialSymbol {
-            id: materialSymbol
-            anchors.centerIn: parent
-
-            iconSize: root.iconSize
-            color: root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-            text: root.icon
-        }
+    // The symbol is the loaded item, not a child of a bare Item: that wrapper
+    // declared no implicitHeight, so the Loader reported 0 and a row sized
+    // itself as if the icon were not there.
+    sourceComponent: MaterialSymbol {
+        iconSize: root.iconSize
+        color: Appearance.colors.colOnSecondaryContainer
+        text: root.icon
     }
 }

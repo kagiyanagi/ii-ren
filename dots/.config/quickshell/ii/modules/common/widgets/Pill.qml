@@ -2,6 +2,8 @@ import QtQuick
 import qs.modules.common
 
 Rectangle {
-    // small tweak for no rounding mode
-    radius: Config.options.appearance.sharpMode ? 0 : Math.min(width, height) / 2
+    // `full` is 9999 and Rectangle clamps it to half the shorter side, and it is
+    // already 0 in sharp mode -- so this is the pill radius, without a second
+    // copy of the sharpMode branch.
+    radius: Appearance.rounding.full
 }

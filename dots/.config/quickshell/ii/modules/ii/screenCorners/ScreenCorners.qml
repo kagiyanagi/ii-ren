@@ -57,6 +57,9 @@ Scope {
             bottomVisualMargin: (Config.options.interactions.deadPixelWorkaround.enable && cornerPanelWindow.anchors.bottom) * 1
 
             implicitSize: Appearance.rounding.screenRounding
+            // The void outside the rounded screen, so M3's scrim rather than a
+            // widget default nobody else wants.
+            color: Appearance.m3colors.m3scrim
             implicitHeight: Math.max(implicitSize, sidebarCornerOpenInteractionLoader.implicitHeight)
             implicitWidth: Math.max(implicitSize, sidebarCornerOpenInteractionLoader.implicitWidth)
 

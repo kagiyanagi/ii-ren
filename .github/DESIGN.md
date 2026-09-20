@@ -55,8 +55,8 @@ Host is `https://android.googlesource.com/platform/<repo>/+/refs/heads/main/<fil
 
 **`/design-check`** is the entry point. It runs the script below for the
 mechanical rules, then reads the diff for the ones no regex can see — transform
-origin, spatial-vs-effects, enter/exit pairing, layer nesting, effects inside
-repeated delegates, a widget that should have been reused. Pass it a git ref or a
+origin, enter/exit pairing, layer nesting, effects inside repeated delegates, a
+widget that should have been reused. Pass it a git ref or a
 path; bare, it reviews uncommitted changes.
 
 Underneath:
@@ -67,6 +67,10 @@ Underneath:
   and counts legacy debt too. `--rule <id>` expands one rule.
 - `tools/check-m3-tokens.py` — asserts the Hyprland spring curves and the state
   layer mix factors still match AOSP. Run after touching either.
+- `tools/check-button-states.py`, `tools/check-text-primitives.py` — the shared
+  roots' own contracts, for the defaults that are invisible when broken: all four
+  button states, and the elide/no-elide split between `StyledText` and
+  `MaterialSymbol`.
 
 ---
 

@@ -20,11 +20,11 @@ widgets are rooted in `RippleButton`, then by caller count.
 |---|---|---|---:|---:|---:|---|---|---|---|
 | `common-widgets` | `modules/common/widgets` | shared-widgets | 1 | 169 | 14176 | n/a | done | 2026-09-20 | tranche split only, no QML changed — see `families.md`, `brief.md`, `notes.md` |
 | `cw-buttons` | `modules/common/widgets` | shared-widgets | 1 | 21 | 1471 | `qs -p ~/.config/quickshell/ii/settings.qml` · any `RippleButton` caller | done | 2026-09-20 | focus + pressed at the root; `check-button-states.py`. See `notes.md` before changing a state default |
-| `cw-primitives` | `modules/common/widgets` | shared-widgets | 1 | 18 | 1017 | everywhere | todo | | `StyledText` 471 callers, `MaterialSymbol` 398 |
-| `cw-scaffolding` | `modules/common/widgets` | shared-widgets | 1 | 14 | 1044 | `qs -c ii settings.qml` | todo | | `ContentSection` 177, `ContentPage` 175, `PagePlaceholder` 71 |
-| `cw-config-rows` | `modules/common/widgets` | shared-widgets | 1 | 12 | 1517 | `qs -c ii settings.qml` | todo | | `ConfigSwitch` 129; §5.7 label-above-track, §5.6 card owns the row |
-| `cw-inputs` | `modules/common/widgets` | shared-widgets | 1 | 16 | 1648 | `qs -c ii settings.qml` | todo | | sliders, combos, text fields; combo popups take §9 popup motion |
-| `cw-navigation` | `modules/common/widgets` | shared-widgets | 1 | 13 | 830 | `qs -c ii settings.qml` | todo | | tabs, nav rail, toolbar; densest untokenised motion per line |
+| `cw-primitives` | `modules/common/widgets` | shared-widgets | 1 | 18 | 1017 | everywhere | done | 2026-09-20 | `StyledText` elides, `MaterialSymbol` must not; `check-text-primitives.py`. See `notes.md` — 8 `spatial-on-effects` hits left for other rows |
+| `cw-scaffolding` | `modules/common/widgets` | shared-widgets | 1 | 14 | 1044 | `qs -p ~/.config/quickshell/ii/settings.qml` | todo | | `ContentSection` 177, `ContentPage` 175, `PagePlaceholder` 71 |
+| `cw-config-rows` | `modules/common/widgets` | shared-widgets | 1 | 12 | 1517 | `qs -p ~/.config/quickshell/ii/settings.qml` | todo | | `ConfigSwitch` 129; §5.7 label-above-track, §5.6 card owns the row |
+| `cw-inputs` | `modules/common/widgets` | shared-widgets | 1 | 16 | 1648 | `qs -p ~/.config/quickshell/ii/settings.qml` | todo | | sliders, combos, text fields; combo popups take §9 popup motion |
+| `cw-navigation` | `modules/common/widgets` | shared-widgets | 1 | 13 | 830 | `qs -p ~/.config/quickshell/ii/settings.qml` | todo | | tabs, nav rail, toolbar; densest untokenised motion per line |
 | `cw-dialogs` | `modules/common/widgets` | shared-widgets | 1 | 14 | 929 | `ipc call session`, hotspot/bluetooth dialogs | todo | | deletes `WindowDialogSeparator` (0 callers, §5.5) |
 | `cw-progress` | `modules/common/widgets` | shared-widgets | 1 | 13 | 1060 | `ipc call osdVolume`, bar cards | todo | | `CircularProgress` exports `animationDuration`/`easingType` — knobs go |
 | `cw-notifications` | `modules/common/widgets` | shared-widgets | 1 | 6 | 612 | `notify-send test` | todo | | `NotificationGroup` is a bare `MouseArea`; `SwipeDismissible` dismissal |

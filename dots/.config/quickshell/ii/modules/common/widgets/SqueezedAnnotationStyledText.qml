@@ -70,5 +70,8 @@ Item {
 
         renderType: Text.QtRendering
         wrapMode: Text.Wrap
+        // updateText() fits the whole string by binary-searching the font size;
+        // eliding would let it declare a fit it does not have.
+        elide: Text.ElideNone
     }    
 }
