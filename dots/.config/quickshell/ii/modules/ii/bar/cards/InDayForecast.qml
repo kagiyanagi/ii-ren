@@ -4,40 +4,37 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 
 SectionCard {
     id: inDayForecastCard
-    property int forecastCardHeight: 125
+    property int forecastCardHeight: 124
 
     // Internal animation control
     property bool startAnim: false
 
     onStartAnimChanged: {
-        if (startAnim) {
-            flickable.contentX = 0;
-
-            // Reset all cards
-            for (var i = 0; i < dayRepeater.count; i++) {
-                var item = dayRepeater.itemAt(i);
-                if (item) {
-                    item.cardOpacity = 0.0;
-                    item.cardTranslateX = 50;
-                    item.iconScale = 0.7;
-                }
-            }
-            
-            // Start staggered animations with initial delay
-            Qt.callLater(function() {
-                for (var j = 0; j < dayRepeater.count; j++) {
-                    var cardItem = dayRepeater.itemAt(j);
-                    if (cardItem) {
-                        cardItem.cardAnimDelay = 200 + (j * 120);
-                        cardItem.startCardAnim();
-                    }
-                }
-            });
+        if (!inDayForecastCard.startAnim) return;
+        flickable.contentX = 0;
+        for (let i = 0; i < dayRepeater.count; i++) {
+            const item = dayRepeater.itemAt(i);
+            if (!item) continue;
+            item.cardOpacity = 0.0;
+            item.cardTranslateX = inDayForecastCard.enterTravel;
         }
+        Qt.callLater(() => {
+            for (let j = 0; j < dayRepeater.count; j++) {
+                const card = dayRepeater.itemAt(j);
+                if (!card) continue;
+                // staggerStep apart, capped (DESIGN.md 2.8).
+                card.cardAnimDelay = Appearance.animation.staggerStep * Math.min(j, Appearance.animation.staggerCap);
+                card.startCardAnim();
+            }
+        });
     }
+
+    // One transform per entering card, toward its resting place (2.8).
+    readonly property int enterTravel: 24
 
     Flickable {
         id: flickable
@@ -68,31 +65,44 @@ SectionCard {
 
                 Rectangle {
                     id: dayCard
-                    width: 85
+                    width: 84
                     height: inDayForecastCard.forecastCardHeight
                     radius: Appearance.rounding.normal
-                    
+
                     // Animation properties
                     property real cardOpacity: 1.0
                     property real cardTranslateX: 0
-                    property real iconScale: 1.0
                     property int cardAnimDelay: 0
-                    
+
                     function startCardAnim() {
                         // Force a real running:false->true transition; calling start() while
                         // already running (e.g. popup reopened before the previous entrance
                         // animation finished) is a no-op and leaves the card stuck invisible.
-                        cardAnim.stop();
-                        cardAnim.start();
+                        cardAnim.restart();
                     }
 
-                    SequentialAnimation {
+                    ParallelAnimation {
                         id: cardAnim
-                        PauseAnimation { duration: dayCard.cardAnimDelay }
-                        ParallelAnimation {
-                            NumberAnimation { target: dayCard; property: "cardOpacity"; from: 0.0; to: 1.0; duration: 400 }
-                            NumberAnimation { target: dayCard; property: "cardTranslateX"; from: 50; to: 0; duration: 500; easing.type: Easing.OutCubic }
-                            NumberAnimation { target: dayCard; property: "iconScale"; from: 0.7; to: 1.0; duration: 450; easing.type: Easing.OutBack }
+
+                        DelayedPropertyAnimation {
+                            target: dayCard
+                            property: "cardOpacity"
+                            from: 0
+                            to: 1
+                            delay: dayCard.cardAnimDelay
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                        DelayedPropertyAnimation {
+                            target: dayCard
+                            property: "cardTranslateX"
+                            from: inDayForecastCard.enterTravel
+                            to: 0
+                            delay: dayCard.cardAnimDelay
+                            duration: Appearance.animation.elementMoveEnter.duration
+                            easing.type: Appearance.animation.elementMoveEnter.type
+                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
                         }
                     }
 
@@ -134,7 +144,6 @@ SectionCard {
                             }
                             implicitSize: 48
                             color: Qt.rgba(dayCard.textColor.r, dayCard.textColor.g, dayCard.textColor.b, 0.15)
-                            scale: dayCard.iconScale
 
                             Image {
                                 anchors.centerIn: parent
@@ -175,5 +184,8 @@ SectionCard {
         loading: root.forecastLoading
         loadingText: Translation.tr("Loading forecast...")
         emptyText: Translation.tr("No forecast data")
+        // A fetch ran and came back with nothing: say so, rather than leaving
+        // the card reading as "loading forever".
+        errorText: Weather.lastFetchTimestamp > 0 ? Translation.tr("Couldn't load the forecast") : ""
     }
 }

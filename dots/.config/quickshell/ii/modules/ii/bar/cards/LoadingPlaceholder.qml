@@ -14,6 +14,10 @@ Rectangle {
     property bool loading: false
     property string loadingText: ""
     property string emptyText: ""
+    // A fetch that failed used to read as "loading forever". One honest line,
+    // in the secondary text colour -- a card that has no data is not an error
+    // worth colError shouting about.
+    property string errorText: ""
     property double indicatorSize: 48
 
     Layout.preferredHeight: implicitHeight
@@ -32,7 +36,7 @@ Rectangle {
 
         StyledText {
             Layout.alignment: Qt.AlignHCenter
-            text: root.loading ? root.loadingText : root.emptyText
+            text: root.loading ? root.loadingText : (root.errorText !== "" ? root.errorText : root.emptyText)
             font.pixelSize: Appearance.font.pixelSize.small
             color: Appearance.colors.colOnSurfaceVariant
         }

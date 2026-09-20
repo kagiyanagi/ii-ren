@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
@@ -10,7 +11,6 @@ SectionCard {
     icon: "attach_file"
     shapeColor: Appearance.colors.colPrimaryContainer
     symbolColor: Appearance.colors.colOnPrimaryContainer
-    showDivider: false
 
     ColumnLayout {
         spacing: 16 // Generous vertical breathing room
@@ -30,7 +30,7 @@ SectionCard {
                 delegate: Rectangle {
                     id: fileRect
                     Layout.fillWidth: true
-                    implicitHeight: 46
+                    implicitHeight: 48
                     radius: Appearance.rounding.normal
                     color: Appearance.colors.colSurfaceContainerLow
                     border.width: 1
@@ -105,7 +105,7 @@ SectionCard {
             RippleButton {
                 id: addBtn
                 Layout.fillWidth: true
-                implicitHeight: 38
+                implicitHeight: 40
                 buttonRadius: Appearance.rounding.normal
                 colBackground: Appearance.colors.colSecondaryContainer
                 colBackgroundHover: Appearance.colors.colSecondaryContainerHover
@@ -132,7 +132,7 @@ SectionCard {
 
             RippleButton {
                 id: scanBtn
-                implicitHeight: 38
+                implicitHeight: 40
                 implicitWidth: 100
                 buttonRadius: Appearance.rounding.normal
                 colBackground: "transparent"
@@ -157,6 +157,8 @@ SectionCard {
                             iconSize: 16
                             color: LocalSend.scanning ? Appearance.colors.colPrimary : Appearance.colors.colPrimary
 
+                            // design-ok: one turn per second is a scan rate, not
+                            // a motion token -- this spins for as long as the scan runs.
                             RotationAnimation on rotation {
                                 loops: Animation.Infinite
                                 from: 0
@@ -217,7 +219,7 @@ SectionCard {
 
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 1
+                            spacing: 2
 
                             StyledText {
                                 text: modelData.name
@@ -272,7 +274,7 @@ SectionCard {
         Rectangle {
             visible: LocalSend.sending
             Layout.fillWidth: true
-            implicitHeight: 42
+            implicitHeight: 40
             radius: Appearance.rounding.normal
             color: Appearance.colors.colPrimaryContainer
             border.width: 1

@@ -2,7 +2,9 @@ import QtQuick
 import QtQuick.Layouts
 
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 
 Rectangle {
     id: root
@@ -21,12 +23,12 @@ Rectangle {
     property color shapeColor: Appearance.colors.colSecondary
     property color symbolColor: Appearance.colors.colOnSecondary
     property color textColor: Appearance.colors.colOnSecondaryContainer
-    
+
     // Left Circle Interaction
     property bool leftInteractive: false
-    property bool leftHovered: leftMa.containsMouse
+    property bool leftHovered: leftButton.hovered
     property real iconFill: 1
-    signal leftClicked()
+    signal leftClicked
 
     // Right Circle Action Button
     property bool showRightShape: false
@@ -35,37 +37,48 @@ Rectangle {
     property real rightIconFill: 1
     property color rightShapeColor: Appearance.colors.colErrorContainer
     property color rightSymbolColor: Appearance.colors.colOnErrorContainer
-    property bool rightHovered: rightMa.containsMouse
-    signal rightClicked()
-    
+    property bool rightHovered: rightButton.hovered
+    signal rightClicked
+
     // Internal animation control
     property bool startAnim: false
-    
+
+    // Siblings enter staggerStep apart (DESIGN.md 2.8): shape, text, action.
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset elements
-            shapeTranslate.x = -30;
-            shapeItem.scale = 0.8;
-            shapeItem.rotation = -10;
-            if (showRightShape) {
-                rightShapeTranslate.x = 30;
-                rightShapeItem.scale = 0.8;
-            }
-            pillText.opacity = 0.0;
-            textContainer.opacity = 0.0;
-            
-            // Start animations
-            Qt.callLater(function() {
-                shapeAnim.start();
-                if (showRightShape && rightShapeContainer.visible) rightShapeAnim.start();
-                textAnim.start();
-            });
-        }
+        if (!root.startAnim) return;
+        shapeTranslate.x = -root.enterTravel;
+        rightShapeTranslate.x = root.enterTravel;
+        textContainer.opacity = 0;
+        Qt.callLater(() => {
+            shapeAnim.restart();
+            textAnim.restart();
+            if (root.showRightShape && rightShapeContainer.visible)
+                rightShapeAnim.restart();
+        });
     }
+
+    // One transform per entering child, toward its resting place (2.8).
+    readonly property int enterTravel: 24
 
     default property alias shapeContent: shapeItem.children
     property alias text: pillText.text
     property alias textContent: textContainer.children
+
+    component EnterFade: DelayedPropertyAnimation {
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Appearance.animation.elementMoveFast.duration
+        easing.type: Appearance.animation.elementMoveFast.type
+        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+    }
+
+    component EnterMove: DelayedPropertyAnimation {
+        to: 0
+        duration: Appearance.animation.elementMoveEnter.duration
+        easing.type: Appearance.animation.elementMoveEnter.type
+        easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+    }
 
     Item {
         id: shapeContainer
@@ -76,37 +89,25 @@ Rectangle {
             leftMargin: 12
             verticalCenter: parent.verticalCenter
         }
-        
+
         transform: Translate {
             id: shapeTranslate
             x: 0
         }
-        
-        SequentialAnimation {
+
+        EnterMove {
             id: shapeAnim
-            PauseAnimation { duration: 60 }
-            ParallelAnimation {
-                NumberAnimation { target: shapeTranslate; property: "x"; from: -30; to: 0; duration: 350; easing.type: Easing.OutCubic }
-                NumberAnimation { target: shapeItem; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-                NumberAnimation { target: shapeItem; property: "rotation"; from: -10; to: 0; duration: 350; easing.type: Easing.OutCubic }
-            }
+            target: shapeTranslate
+            property: "x"
+            from: -root.enterTravel
         }
 
         MaterialShape {
             id: shapeItem
             shapeString: root.shapeString
             implicitSize: root.shapeSize
-            color: root.leftInteractive && root.leftHovered ? Qt.lighter(root.shapeColor, 1.15) : root.shapeColor
+            color: root.shapeColor
             anchors.centerIn: parent
-            scale: root.leftInteractive && root.leftHovered ? 1.08 : 1.0
-            rotation: 0
-
-            Behavior on scale {
-                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-            }
-            Behavior on color {
-                ColorAnimation { duration: 150 }
-            }
 
             MaterialSymbol {
                 id: iconSymbol
@@ -119,12 +120,22 @@ Rectangle {
             }
         }
 
-        MouseArea {
-            id: leftMa
+        // Hover 0.08 / focus 0.10 / pressed 0.10 as a film over the shape, plus
+        // ripple, pointing-hand cursor and the disabled 0.4, all from
+        // RippleButton (DESIGN.md 3.1, 9 "Icon button"). The visual stays a
+        // MaterialShape; the button only supplies the states, so its own fill is
+        // the transparent base the film composites onto.
+        RippleButton {
+            id: leftButton
             anchors.fill: parent
+            visible: root.leftInteractive
             enabled: root.leftInteractive
-            hoverEnabled: root.leftInteractive
-            cursorShape: Qt.PointingHandCursor
+            buttonRadius: Appearance.rounding.full
+            colBackground: ColorUtils.transparentize(root.symbolColor, 1)
+            colBackgroundHover: ColorUtils.transparentize(root.symbolColor, 0.92)
+            colBackgroundActive: ColorUtils.transparentize(root.symbolColor, 0.90)
+            colRipple: ColorUtils.transparentize(root.symbolColor, 0.90)
+            colStateLayer: root.symbolColor
             onClicked: root.leftClicked()
         }
     }
@@ -145,29 +156,20 @@ Rectangle {
             x: 0
         }
 
-        SequentialAnimation {
+        EnterMove {
             id: rightShapeAnim
-            PauseAnimation { duration: 60 }
-            ParallelAnimation {
-                NumberAnimation { target: rightShapeTranslate; property: "x"; from: 30; to: 0; duration: 350; easing.type: Easing.OutCubic }
-                NumberAnimation { target: rightShapeItem; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-            }
+            target: rightShapeTranslate
+            property: "x"
+            from: root.enterTravel
+            delay: Appearance.animation.staggerStep * 2
         }
 
         MaterialShape {
             id: rightShapeItem
             shapeString: root.rightShapeString
             implicitSize: root.shapeSize
-            color: root.rightHovered ? Qt.lighter(root.rightShapeColor, 1.15) : root.rightShapeColor
+            color: root.rightShapeColor
             anchors.centerIn: parent
-            scale: root.rightHovered ? 1.08 : 1.0
-
-            Behavior on scale {
-                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-            }
-            Behavior on color {
-                ColorAnimation { duration: 150 }
-            }
 
             MaterialSymbol {
                 id: rightIconSymbol
@@ -180,12 +182,16 @@ Rectangle {
             }
         }
 
-        MouseArea {
-            id: rightMa
+        RippleButton {
+            id: rightButton
             anchors.fill: parent
             enabled: root.showRightShape
-            hoverEnabled: root.showRightShape
-            cursorShape: Qt.PointingHandCursor
+            buttonRadius: Appearance.rounding.full
+            colBackground: ColorUtils.transparentize(root.rightSymbolColor, 1)
+            colBackgroundHover: ColorUtils.transparentize(root.rightSymbolColor, 0.92)
+            colBackgroundActive: ColorUtils.transparentize(root.rightSymbolColor, 0.90)
+            colRipple: ColorUtils.transparentize(root.rightSymbolColor, 0.90)
+            colStateLayer: root.rightSymbolColor
             onClicked: root.rightClicked()
         }
     }
@@ -195,18 +201,18 @@ Rectangle {
         anchors {
             verticalCenter: parent.verticalCenter
             horizontalCenter: parent.horizontalCenter
-            horizontalCenterOffset: root.showRightShape ? 0 : 9
+            horizontalCenterOffset: root.showRightShape ? 0 : 8
         }
         opacity: 1.0
-        
+
         Behavior on anchors.horizontalCenterOffset {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
-        SequentialAnimation {
+        EnterFade {
             id: textAnim
-            PauseAnimation { duration: 120 }
-            NumberAnimation { target: textContainer; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
+            target: textContainer
+            delay: Appearance.animation.staggerStep
         }
 
         StyledText {
@@ -220,4 +226,3 @@ Rectangle {
         }
     }
 }
-

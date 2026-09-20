@@ -3,6 +3,7 @@ import QtQuick.Layouts
 
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 
 Rectangle {
     id: root
@@ -23,20 +24,40 @@ Rectangle {
     // Internal animation control
     property bool startAnim: false
     property int animDelay: 0
-    
+
+    // One entrance for the whole tile: opacity on an effects spec, one
+    // transform on the enter spec (DESIGN.md 2.1/2.5). The icon, title and
+    // value used to enter separately inside a tile that is itself entering
+    // inside a popup that is itself scaling open -- three choreographies deep.
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset internal elements
-            iconShape.scale = 0.8;
-            iconShape.rotation = -10;
-            title.opacity = 0.0;
-            value.opacity = 0.0;
-            
-            Qt.callLater(function() {
-                iconAnim.start();
-                titleAnim.start();
-                valueAnim.start();
-            });
+        if (!root.startAnim) return;
+        root.opacity = 0;
+        root.scale = 0.9;
+        Qt.callLater(() => enterAnim.restart());
+    }
+
+    ParallelAnimation {
+        id: enterAnim
+
+        DelayedPropertyAnimation {
+            target: root
+            property: "opacity"
+            from: 0
+            to: 1
+            delay: root.animDelay
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Appearance.animation.elementMoveFast.type
+            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+        }
+        DelayedPropertyAnimation {
+            target: root
+            property: "scale"
+            from: 0.9
+            to: 1
+            delay: root.animDelay
+            duration: Appearance.animation.elementMoveEnter.duration
+            easing.type: Appearance.animation.elementMoveEnter.type
+            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
         }
     }
 
@@ -63,31 +84,16 @@ Rectangle {
                 iconSize: Appearance.font.pixelSize.normal
                 color: root.symbolColor
             }
-            
-            SequentialAnimation {
-                id: iconAnim
-                PauseAnimation { duration: root.animDelay + 60 }
-                ParallelAnimation {
-                    NumberAnimation { target: iconShape; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-                    NumberAnimation { target: iconShape; property: "rotation"; from: -10; to: 0; duration: 350; easing.type: Easing.OutCubic }
-                }
-            }
         }
 
         ColumnLayout {
-            spacing: -2
+            spacing: 0
 
             StyledText {
                 id: title
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colOnSurfaceVariant
                 font.weight: Font.DemiBold
-                
-                SequentialAnimation {
-                    id: titleAnim
-                    PauseAnimation { duration: root.animDelay + 120 }
-                    NumberAnimation { target: title; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
-                }
             }
 
             StyledText {
@@ -95,14 +101,8 @@ Rectangle {
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnSurface
                 font.weight: Font.Bold
-                
-                SequentialAnimation {
-                    id: valueAnim
-                    PauseAnimation { duration: root.animDelay + 180 }
-                    NumberAnimation { target: value; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
-                }
             }
-            
+
             Item {
                 Layout.fillWidth: true
             }

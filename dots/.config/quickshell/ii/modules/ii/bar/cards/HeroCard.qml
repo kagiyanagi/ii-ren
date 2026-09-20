@@ -3,6 +3,7 @@ import QtQuick.Layouts
 
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 
 Rectangle {
     id: heroCardRoot
@@ -18,26 +19,42 @@ Rectangle {
     
     // Internal animation control
     property bool startAnim: false
-    
+
+    // One transform per entering child, siblings staggerStep apart and capped
+    // (DESIGN.md 2.8). The shape's old 1120ms scale was more than twice the
+    // longest spec in the table, on something the size of a coaster.
+    readonly property int enterTravel: 24
+
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset all internal elements
-            shapeItem.scale = 0.8;
-            shapeItem.rotation = -15;
-            pill.opacity = 0.0;
-            pillTranslate.x = 30;
-            mainText.opacity = 0.0;
-            mainText.scale = 0.9;
-            subtitleText.opacity = 0.0;
-            
-            // Start animations after reset
-            Qt.callLater(function() {
-                shapeAnim.start();
-                pillAnim.start();
-                titleAnim.start();
-                subtitleAnim.start();
-            });
-        }
+        if (!heroCardRoot.startAnim) return;
+        shapeItem.scale = 0.8;
+        pill.opacity = 0.0;
+        pillTranslate.x = heroCardRoot.enterTravel;
+        mainText.opacity = 0.0;
+        mainText.scale = 0.9;
+        subtitleText.opacity = 0.0;
+        Qt.callLater(() => {
+            shapeAnim.restart();
+            pillAnim.restart();
+            titleAnim.restart();
+            subtitleAnim.restart();
+        });
+    }
+
+    component EnterFade: DelayedPropertyAnimation {
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Appearance.animation.elementMoveFast.duration
+        easing.type: Appearance.animation.elementMoveFast.type
+        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+    }
+
+    component EnterMove: DelayedPropertyAnimation {
+        to: 0
+        duration: Appearance.animation.elementMoveEnter.duration
+        easing.type: Appearance.animation.elementMoveEnter.type
+        easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
     }
 
     radius: Appearance.rounding.normal
@@ -94,14 +111,13 @@ Rectangle {
             implicitSize: heroCardRoot.iconSize
             color: heroCardRoot.shapeColor
             anchors.centerIn: parent
-            
-            SequentialAnimation {
+
+            EnterMove {
                 id: shapeAnim
-                PauseAnimation { duration: 80 }
-                ParallelAnimation {
-                    NumberAnimation { target: shapeItem; property: "scale"; from: 0.8; to: 1.0; duration: 1120; easing.type: Easing.OutBack }
-                    NumberAnimation { target: shapeItem; property: "rotation"; from: -15; to: 0; duration: 1120; easing.type: Easing.OutCubic }
-                }
+                target: shapeItem
+                property: "scale"
+                from: 0.8
+                to: 1
             }
         }
 
@@ -142,13 +158,19 @@ Rectangle {
         transform: Translate {
             id: pillTranslate
         }
-        
-        SequentialAnimation {
+
+        ParallelAnimation {
             id: pillAnim
-            PauseAnimation { duration: 120 }
-            ParallelAnimation {
-                NumberAnimation { target: pill; property: "opacity"; from: 0.0; to: 1.0; duration: 280 }
-                NumberAnimation { target: pillTranslate; property: "x"; from: 30; to: 0; duration: 350; easing.type: Easing.OutCubic }
+
+            EnterFade {
+                target: pill
+                delay: Appearance.animation.staggerStep
+            }
+            EnterMove {
+                target: pillTranslate
+                property: "x"
+                from: heroCardRoot.enterTravel
+                delay: Appearance.animation.staggerStep
             }
         }
 
@@ -174,7 +196,6 @@ Rectangle {
                 color: heroCardRoot.pillTextColor
                 elide: Text.ElideRight
                 Layout.maximumWidth: 120
-                Layout.topMargin: 1 // to center the text
             }
         }
     }
@@ -235,13 +256,20 @@ Rectangle {
                     }
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideRight
-                    
-                    SequentialAnimation {
+
+                    ParallelAnimation {
                         id: titleAnim
-                        PauseAnimation { duration: 160 }
-                        ParallelAnimation {
-                            NumberAnimation { target: mainText; property: "opacity"; from: 0.0; to: 1.0; duration: 300 }
-                            NumberAnimation { target: mainText; property: "scale"; from: 0.9; to: 1.0; duration: 380; easing.type: Easing.OutBack }
+
+                        EnterFade {
+                            target: mainText
+                            delay: Appearance.animation.staggerStep * 2
+                        }
+                        EnterMove {
+                            target: mainText
+                            property: "scale"
+                            from: 0.9
+                            to: 1
+                            delay: Appearance.animation.staggerStep * 2
                         }
                     }
                 }
@@ -262,11 +290,11 @@ Rectangle {
                 color: heroCardRoot.textColor
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
-                
-                SequentialAnimation {
+
+                EnterFade {
                     id: subtitleAnim
-                    PauseAnimation { duration: 200 }
-                    NumberAnimation { target: subtitleText; property: "opacity"; from: 0.0; to: 1.0; duration: 320 }
+                    target: subtitleText
+                    delay: Appearance.animation.staggerStep * 3
                 }
             }
         }

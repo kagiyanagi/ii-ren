@@ -69,7 +69,7 @@ SectionCard {
                 colBackgroundHover: Appearance.colors.colPrimaryHover
                 onClicked: LocalSend.acceptTransfer()
                 contentItem: RowLayout {
-                    spacing: 18
+                    spacing: 8
                     anchors.centerIn: parent
                     MaterialSymbol {
                         text: "check_circle"
@@ -91,7 +91,7 @@ SectionCard {
                 colBackgroundHover: Appearance.colors.colErrorHover
                 onClicked: LocalSend.denyTransfer()
                 contentItem: RowLayout {
-                    spacing: 18
+                    spacing: 8
                     anchors.centerIn: parent
                     MaterialSymbol {
                         text: "cancel"

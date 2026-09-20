@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 import qs.services
 
 Item {
@@ -19,56 +19,29 @@ Item {
     // Internal animation control
     property bool startAnim: false
 
-    onStartAnimChanged: {
-        if (startAnim) {
-            // Reset all cards
-            for (var i = 0; i < listView.count; i++) {
-                var item = listView.itemAtIndex(i);
-                if (item) {
-                    item.cardOpacity = 0.0;
-                    item.cardTranslateX = 50;
-                    item.iconScale = 0.8;
-                    item.iconRotation = -15;
-                    item.offsetOpacity = 0.0;
-                    item.offsetTranslateX = -30;
-                    item.timeOpacity = 0.0;
-                    item.timeScale = 0.9;
-                }
-            }
-            
-            // Start staggered animations
-            Qt.callLater(function() {
-                for (var j = 0; j < listView.count; j++) {
-                    var cardItem = listView.itemAtIndex(j);
-                    if (cardItem) {
-                        cardItem.cardAnimDelay = 200 + (j * 120);
-                        cardItem.startCardAnim();
-                    }
-                }
-            });
-        }
-    }
+    // The card enters as one thing -- opacity on an effects spec plus one
+    // transform on the enter spec (DESIGN.md 2.1, 2.5). Its icon, offset badge
+    // and clock used to each enter separately, inside a card that is itself
+    // entering inside a popup that is itself scaling open.
+    readonly property int enterTravel: 24
 
-    Connections {
-        target: root
-        function onPopupOpenProgressChanged() {
-            if (root && root.popupOpenProgress === 0.0) {
-                for (var k = 0; k < listView.count; k++) {
-                    var resetItem = listView.itemAtIndex(k);
-                    if (resetItem) {
-                        resetItem.stopCardAnim();
-                        resetItem.cardOpacity = 0.0;
-                        resetItem.cardTranslateX = 50;
-                        resetItem.iconScale = 0.8;
-                        resetItem.iconRotation = -15;
-                        resetItem.offsetOpacity = 0.0;
-                        resetItem.offsetTranslateX = -30;
-                        resetItem.timeOpacity = 0.0;
-                        resetItem.timeScale = 0.9;
-                    }
-                }
-            }
+    onStartAnimChanged: {
+        if (!root.startAnim) return;
+        for (let i = 0; i < listView.count; i++) {
+            const item = listView.itemAtIndex(i);
+            if (!item) continue;
+            item.cardOpacity = 0.0;
+            item.cardTranslateX = root.enterTravel;
         }
+        Qt.callLater(() => {
+            for (let j = 0; j < listView.count; j++) {
+                const card = listView.itemAtIndex(j);
+                if (!card) continue;
+                // staggerStep apart, capped (DESIGN.md 2.8).
+                card.cardAnimDelay = Appearance.animation.staggerStep * Math.min(j, Appearance.animation.staggerCap);
+                card.startCardAnim();
+            }
+        });
     }
 
     Layout.fillWidth: true
@@ -101,47 +74,40 @@ Item {
             color: Appearance.colors.colLayer2
             clip: true
 
-            layer.enabled: true
-            layer.smooth: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: card.width
-                    height: card.height
-                    radius: card.radius
-                    antialiasing: true
-                }
-            }
-
             required property var modelData
             required property int index
-            
+
             // Animation properties
             property real cardOpacity: 1.0
             property real cardTranslateX: 0
-            property real iconScale: 1.0
-            property real iconRotation: 0
-            property real offsetOpacity: 1.0
-            property real offsetTranslateX: 0
-            property real timeOpacity: 1.0
-            property real timeScale: 1.0
             property int cardAnimDelay: 0
-            
+
             function startCardAnim() {
-                cardAnim.start();
+                cardAnim.restart();
             }
 
-            SequentialAnimation {
+            ParallelAnimation {
                 id: cardAnim
-                PauseAnimation { duration: card.cardAnimDelay }
-                ParallelAnimation {
-                    NumberAnimation { target: card; property: "cardOpacity"; from: 0.0; to: 1.0; duration: 400 }
-                    NumberAnimation { target: card; property: "cardTranslateX"; from: 50; to: 0; duration: 500; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: card; property: "iconScale"; from: 0.8; to: 1.0; duration: 450; easing.type: Easing.OutBack }
-                    NumberAnimation { target: card; property: "iconRotation"; from: -15; to: 0; duration: 450; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: card; property: "offsetOpacity"; from: 0.0; to: 1.0; duration: 350 }
-                    NumberAnimation { target: card; property: "offsetTranslateX"; from: -30; to: 0; duration: 400; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: card; property: "timeOpacity"; from: 0.0; to: 1.0; duration: 350 }
-                    NumberAnimation { target: card; property: "timeScale"; from: 0.9; to: 1.0; duration: 400; easing.type: Easing.OutBack }
+
+                DelayedPropertyAnimation {
+                    target: card
+                    property: "cardOpacity"
+                    from: 0
+                    to: 1
+                    delay: card.cardAnimDelay
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+                DelayedPropertyAnimation {
+                    target: card
+                    property: "cardTranslateX"
+                    from: root.enterTravel
+                    to: 0
+                    delay: card.cardAnimDelay
+                    duration: Appearance.animation.elementMoveEnter.duration
+                    easing.type: Appearance.animation.elementMoveEnter.type
+                    easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
                 }
             }
 
@@ -150,18 +116,29 @@ Item {
                 x: card.cardTranslateX
             }
 
-            // Decorative background circle on the right side
+            // Decorative blob behind the day/night glyph. It used to be an
+            // oversized circle bled past the card's corners and clipped back with
+            // a per-delegate layer + OpacityMask -- an extra framebuffer for every
+            // world clock on screen (DESIGN.md 8, law 8). Native per-corner radii
+            // do the same read with no effect at all: round on the inside, the
+            // card's own corners on the outside.
             Rectangle {
-                width: parent.height * 1.66
-                height: width
-                radius: width / 2
-                color: Appearance.colors.colLayer3
+                id: dayNightBlob
+                // Twice the glyph column's inset from the right edge, so the
+                // glyph sits dead centre in the blob at any card height.
+                width: card.height * 1.32
                 anchors {
                     right: parent.right
-                    rightMargin: -width * 0.2
                     top: parent.top
-                    topMargin: -width * 0.2
+                    bottom: parent.bottom
                 }
+                color: Appearance.colors.colLayer3
+                // rounding.scale is 0 in sharp mode, so the blob flattens with
+                // everything else instead of keeping a lone arc.
+                topLeftRadius: Appearance.rounding.scale * dayNightBlob.height / 2
+                bottomLeftRadius: dayNightBlob.topLeftRadius
+                topRightRadius: card.radius
+                bottomRightRadius: card.radius
             }
 
             // Right side weather/day-night info inside the circle
@@ -189,8 +166,6 @@ Item {
                     iconSize: card.height * 0.58
                     fill: 1
                     color: text === "light_mode" ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
-                    scale: card.iconScale
-                    rotation: card.iconRotation
                 }
 
                 StyledText {
@@ -215,12 +190,10 @@ Item {
 
                     // Offset pill badge
                     Rectangle {
-                        implicitWidth: offsetText.implicitWidth + 18
+                        implicitWidth: offsetText.implicitWidth + 16
                         implicitHeight: 20
                         radius: Appearance.rounding.full
                         color: Appearance.colors.colSurfaceContainerHighest
-                        opacity: card.offsetOpacity
-                        transform: Translate { x: card.offsetTranslateX }
 
                         StyledText {
                             id: offsetText
@@ -229,7 +202,7 @@ Item {
                                 let offset = root.getTimezoneOffsetString(card.modelData.tz, DateTime.clock.date);
                                 return offset === "" ? "+0h" : offset;
                             }
-                            font.pixelSize: 14
+                            font.pixelSize: Appearance.font.pixelSize.smaller
                             font.weight: Font.Thin
                             color: Appearance.colors.colOnSurface
                         }
@@ -249,8 +222,6 @@ Item {
                     font.family: Appearance.font.family.title
                     font.weight: 1000
                     color: Appearance.colors.colOnSurface
-                    opacity: card.timeOpacity
-                    scale: card.timeScale
                 }
             }
         }

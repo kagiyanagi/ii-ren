@@ -4,37 +4,33 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 
 SectionCard {
     id: hourlyForecastCard
-    property int hourlyChartHeight: 145
-    
+    property int hourlyChartHeight: 144
+
     // Internal animation control
     property bool startAnim: false
 
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset all bars to 0 height first
-            for (var i = 0; i < barRepeater.count; i++) {
-                var item = barRepeater.itemAt(i);
-                if (item) {
-                    item.barOpacity = 0.0;
-                    item.barScale = 0.8;
-                    item.barHeightAnim = 0;
-                }
-            }
-            
-            // Start staggered animations after a brief delay
-            Qt.callLater(function() {
-                for (var j = 0; j < barRepeater.count; j++) {
-                    var barItem = barRepeater.itemAt(j);
-                    if (barItem) {
-                        barItem.barAnimDelay = j * 60;
-                        barItem.startBarAnim();
-                    }
-                }
-            });
+        if (!hourlyForecastCard.startAnim) return;
+        for (let i = 0; i < barRepeater.count; i++) {
+            const item = barRepeater.itemAt(i);
+            if (!item) continue;
+            item.barOpacity = 0.0;
+            item.barHeightAnim = 0;
         }
+        Qt.callLater(() => {
+            for (let j = 0; j < barRepeater.count; j++) {
+                const bar = barRepeater.itemAt(j);
+                if (!bar) continue;
+                // Siblings staggerStep apart, capped (DESIGN.md 2.8): a 24-hour
+                // forecast past the cap reads as broken, not choreographed.
+                bar.barAnimDelay = Appearance.animation.staggerStep * Math.min(j, Appearance.animation.staggerCap);
+                bar.startBarAnim();
+            }
+        });
     }
 
     Item {
@@ -66,28 +62,50 @@ SectionCard {
                     property real temp: Weather.useUSCS ? parseInt(modelData.tempF) : parseInt(modelData.tempC)
                     property var parentTempRange: root.getHourlyTempRange()
                     property real parentTempSpan: Math.max(parentTempRange.max - parentTempRange.min, 1)
-                    property real normalized: (temp - parentTempRange.min) / parentTempSpan
+                    // A missing or unparseable temperature makes this NaN, and a
+                    // NaN bar height draws nothing and warns every frame. Clamp,
+                    // and fall back to the bottom of the range.
+                    property real normalized: {
+                        const n = (barItem.temp - barItem.parentTempRange.min) / barItem.parentTempSpan;
+                        return isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+                    }
                     // Bar height: 45% min to 100% max for better visual contrast
-                    property real availableBarSpace: parent.height - timeLabel.height + 10
+                    property real availableBarSpace: Math.max(0, barItem.parent.height - timeLabel.height + 10)
                     property real barHeight: availableBarSpace * (0.45 + normalized * 0.55)
-                    
+
                     // Animation properties
                     property real barOpacity: 1.0
-                    property real barScale: 1.0
                     property real barHeightAnim: barHeight
                     property int barAnimDelay: 0
-                    
+
                     function startBarAnim() {
-                        barAnim.start();
+                        barAnim.restart();
                     }
 
-                    SequentialAnimation {
+                    // Opacity on an effects spec, one transform -- the bar's own
+                    // growth -- on the enter spec (DESIGN.md 2.1, 2.5).
+                    ParallelAnimation {
                         id: barAnim
-                        PauseAnimation { duration: barItem.barAnimDelay }
-                        ParallelAnimation {
-                            NumberAnimation { target: barItem; property: "barOpacity"; from: 0.0; to: 1.0; duration: 280 }
-                            NumberAnimation { target: barItem; property: "barScale"; from: 0.8; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                            NumberAnimation { target: barItem; property: "barHeightAnim"; from: 0; to: barItem.barHeight; duration: 450; easing.type: Easing.OutCubic }
+
+                        DelayedPropertyAnimation {
+                            target: barItem
+                            property: "barOpacity"
+                            from: 0
+                            to: 1
+                            delay: barItem.barAnimDelay
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                        DelayedPropertyAnimation {
+                            target: barItem
+                            property: "barHeightAnim"
+                            from: 0
+                            to: barItem.barHeight
+                            delay: barItem.barAnimDelay
+                            duration: Appearance.animation.elementMoveEnter.duration
+                            easing.type: Appearance.animation.elementMoveEnter.type
+                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
                         }
                     }
 
@@ -112,7 +130,6 @@ SectionCard {
                         radius: Appearance.rounding.normal
                         color: isCurrentHour ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSecondaryContainer
                         opacity: barItem.barOpacity
-                        scale: barItem.barScale
                         transformOrigin: Item.Bottom
 
                         ColumnLayout {
@@ -128,7 +145,6 @@ SectionCard {
                                 source: WeatherIcons.getWeatherIcon(modelData.code ?? 113, modelData.isNight ?? false)
                                 sourceSize: Qt.size(Appearance.font.pixelSize.large, Appearance.font.pixelSize.large)
                                 opacity: barItem.barOpacity
-                                scale: barItem.barScale
                             }
 
                             StyledText {
@@ -148,7 +164,7 @@ SectionCard {
                             anchors.bottomMargin: 6
                             width: 20
                             height: 20
-                            radius: 10
+                            radius: Appearance.rounding.full
                             color: Appearance.colors.colPrimary
                             opacity: barItem.barOpacity
 
@@ -156,7 +172,7 @@ SectionCard {
                                 anchors.centerIn: parent
                                 width: 8
                                 height: 8
-                                radius: 4
+                                radius: Appearance.rounding.full
                                 color: Appearance.colors.colOnPrimary
                             }
                         }
@@ -172,5 +188,8 @@ SectionCard {
         loading: root.forecastLoading
         loadingText: Translation.tr("Loading forecast...")
         emptyText: Translation.tr("No forecast data")
+        // A fetch ran and came back with nothing: say so, rather than leaving
+        // the card reading as "loading forever".
+        errorText: Weather.lastFetchTimestamp > 0 ? Translation.tr("Couldn't load the forecast") : ""
     }
 }

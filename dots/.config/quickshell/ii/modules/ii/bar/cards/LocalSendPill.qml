@@ -1,10 +1,13 @@
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 import qs.services
 import QtQuick
 import QtQuick.Layouts
 
 Rectangle {
+    id: root
+
     Layout.fillWidth: true
     implicitHeight: 64
     radius: Appearance.rounding.full
@@ -12,24 +15,37 @@ Rectangle {
 
     // Internal animation control
     property bool startAnim: false
-    
+
+    // Shape, label, action: one transform each, staggerStep apart (2.8).
+    readonly property int enterTravel: 24
+
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset elements
-            shapeTranslate.x = -30;
-            shapeItem.scale = 0.8;
-            shapeItem.rotation = -10;
-            statusText.opacity = 0.0;
-            toggleBtn.scale = 0.8;
-            toggleBtn.opacity = 0.0;
-            
-            // Start animations
-            Qt.callLater(function() {
-                shapeAnim.start();
-                textAnim.start();
-                btnAnim.start();
-            });
-        }
+        if (!root.startAnim) return;
+        shapeTranslate.x = -root.enterTravel;
+        statusText.opacity = 0.0;
+        toggleBtn.scale = 0.8;
+        toggleBtn.opacity = 0.0;
+        Qt.callLater(() => {
+            shapeAnim.restart();
+            textAnim.restart();
+            btnAnim.restart();
+        });
+    }
+
+    component EnterFade: DelayedPropertyAnimation {
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Appearance.animation.elementMoveFast.duration
+        easing.type: Appearance.animation.elementMoveFast.type
+        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+    }
+
+    component EnterMove: DelayedPropertyAnimation {
+        to: 0
+        duration: Appearance.animation.elementMoveEnter.duration
+        easing.type: Appearance.animation.elementMoveEnter.type
+        easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
     }
 
     Item {
@@ -46,15 +62,12 @@ Rectangle {
             id: shapeTranslate
             x: 0
         }
-        
-        SequentialAnimation {
+
+        EnterMove {
             id: shapeAnim
-            PauseAnimation { duration: 60 }
-            ParallelAnimation {
-                NumberAnimation { target: shapeTranslate; property: "x"; from: -30; to: 0; duration: 350; easing.type: Easing.OutCubic }
-                NumberAnimation { target: shapeItem; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-                NumberAnimation { target: shapeItem; property: "rotation"; from: -10; to: 0; duration: 350; easing.type: Easing.OutCubic }
-            }
+            target: shapeTranslate
+            property: "x"
+            from: -root.enterTravel
         }
 
         MaterialShape {
@@ -63,8 +76,6 @@ Rectangle {
             implicitSize: 40
             color: LocalSend.serverRunning ? Appearance.colors.colPrimary : Appearance.colors.colError
             anchors.centerIn: parent
-            scale: 1.0
-            rotation: 0
 
             MaterialSymbol {
                 anchors.centerIn: parent
@@ -89,11 +100,11 @@ Rectangle {
             color: LocalSend.serverRunning ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSecondaryContainer
             horizontalAlignment: Text.AlignHCenter
             opacity: 1.0
-            
-            SequentialAnimation {
+
+            EnterFade {
                 id: textAnim
-                PauseAnimation { duration: 120 }
-                NumberAnimation { target: statusText; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
+                target: statusText
+                delay: Appearance.animation.staggerStep
             }
         }
     }
@@ -108,16 +119,24 @@ Rectangle {
         colBackgroundHover: LocalSend.serverRunning ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryHover
         scale: 1.0
         opacity: 1.0
-        
-        SequentialAnimation {
+
+        ParallelAnimation {
             id: btnAnim
-            PauseAnimation { duration: 180 }
-            ParallelAnimation {
-                NumberAnimation { target: toggleBtn; property: "scale"; from: 0.8; to: 1.0; duration: 320; easing.type: Easing.OutBack }
-                NumberAnimation { target: toggleBtn; property: "opacity"; from: 0.0; to: 1.0; duration: 280 }
+
+            EnterFade {
+                target: toggleBtn
+                delay: Appearance.animation.staggerStep * 2
+            }
+            EnterMove {
+                target: toggleBtn
+                property: "scale"
+                from: 0.8
+                to: 1
+                delay: Appearance.animation.staggerStep * 2
             }
         }
-        
+
+
         onClicked: {
             if (LocalSend.serverRunning) LocalSend.stopServer()
             else LocalSend.startServer()

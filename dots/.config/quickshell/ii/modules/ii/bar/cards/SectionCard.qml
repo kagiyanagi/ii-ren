@@ -23,7 +23,6 @@ Rectangle {
     property alias subtitle: subtitleText.text
     property color shapeColor: Appearance.colors.colTertiaryContainer
     property color symbolColor: Appearance.colors.colOnTertiaryContainer
-    property bool showDivider: true
     property string headerExtraText: ""
 
     default property alias content: contentColumn.data
@@ -79,14 +78,8 @@ Rectangle {
             }
         }
 
-        Rectangle {
-            visible: sectionCardRoot.showDivider
-            Layout.fillWidth: true
-            height: 2
-            color: Appearance.colors.colSurfaceContainerHighest
-            radius: 1
-        }
-
+        // No divider between the header and the content (design law 11 / 5.5):
+        // the column's own 12 of whitespace is the separation.
         ColumnLayout {
             id: contentColumn
             Layout.fillWidth: true

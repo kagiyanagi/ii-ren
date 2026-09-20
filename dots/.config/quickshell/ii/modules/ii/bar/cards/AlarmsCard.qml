@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.modules.common.widgets.animations
 import qs.services
 
 Rectangle {
@@ -17,44 +19,55 @@ Rectangle {
     // Internal animation control
     property bool startAnim: false
 
+    // Icon, title, count, then the two header actions: staggerStep apart and
+    // capped (DESIGN.md 2.8), each opacity on an effects spec plus at most one
+    // transform on the enter spec (2.1, 2.5).
+    readonly property int enterTravel: 24
+
     onStartAnimChanged: {
-        if (startAnim) {
-            // Reset header elements
-            alarmIcon.scale = 0.8;
-            alarmIconRotation.angle = -10;
-            alarmsTitle.opacity = 0.0;
-            alarmsCount.opacity = 0.0;
-            deleteButton.scale = 0.8;
-            deleteButton.opacity = 0.0;
-            addButton.scale = 0.8;
-            addButton.opacity = 0.0;
-            
-            // Reset alarm cards
-            for (var i = 0; i < listView.count; i++) {
-                var item = listView.itemAtIndex(i);
-                if (item) {
-                    item.cardOpacity = 0.0;
-                    item.cardTranslateX = 80;
-                }
-            }
-            
-            // Start animations
-            Qt.callLater(function() {
-                alarmIconAnim.start();
-                alarmsTitleAnim.start();
-                alarmsCountAnim.start();
-                deleteBtnAnim.start();
-                addBtnAnim.start();
-                
-                for (var j = 0; j < listView.count; j++) {
-                    var cardItem = listView.itemAtIndex(j);
-                    if (cardItem) {
-                        cardItem.cardAnimDelay = 100 + (j * 80);
-                        cardItem.startCardAnim();
-                    }
-                }
-            });
+        if (!root.startAnim) return;
+        alarmIcon.scale = 0.8;
+        alarmsTitle.opacity = 0.0;
+        alarmsCount.opacity = 0.0;
+        deleteButton.scale = 0.8;
+        deleteButton.opacity = 0.0;
+        addButton.scale = 0.8;
+        addButton.opacity = 0.0;
+        for (let i = 0; i < listView.count; i++) {
+            const item = listView.itemAtIndex(i);
+            if (!item) continue;
+            item.cardOpacity = 0.0;
+            item.cardTranslateX = root.enterTravel;
         }
+        Qt.callLater(() => {
+            alarmIconAnim.restart();
+            alarmsTitleAnim.restart();
+            alarmsCountAnim.restart();
+            deleteBtnAnim.restart();
+            addBtnAnim.restart();
+            for (let j = 0; j < listView.count; j++) {
+                const card = listView.itemAtIndex(j);
+                if (!card) continue;
+                card.cardAnimDelay = Appearance.animation.staggerStep * Math.min(j, Appearance.animation.staggerCap);
+                card.startCardAnim();
+            }
+        });
+    }
+
+    component EnterFade: DelayedPropertyAnimation {
+        property: "opacity"
+        from: 0
+        to: 1
+        duration: Appearance.animation.elementMoveFast.duration
+        easing.type: Appearance.animation.elementMoveFast.type
+        easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+    }
+
+    component EnterMove: DelayedPropertyAnimation {
+        to: 0
+        duration: Appearance.animation.elementMoveEnter.duration
+        easing.type: Appearance.animation.elementMoveEnter.type
+        easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
     }
 
     property string mode: "list" // "list", "add", "edit"
@@ -216,26 +229,18 @@ Rectangle {
                     fill: 1
                     color: AlarmService.ringingAlarmIndex !== -1 ? Appearance.colors.colError : Appearance.colors.colPrimary
                     scale: 1.0
-                    
-                    transform: Rotation {
-                        id: alarmIconRotation
-                        origin.x: alarmIcon.width / 2
-                        origin.y: alarmIcon.height / 2
-                        angle: 0
-                    }
-                    
-                    SequentialAnimation {
+
+                    EnterMove {
                         id: alarmIconAnim
-                        PauseAnimation { duration: 80 }
-                        ParallelAnimation {
-                            NumberAnimation { target: alarmIcon; property: "scale"; from: 0.8; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-                            NumberAnimation { target: alarmIconRotation; property: "angle"; from: -10; to: 0; duration: 350; easing.type: Easing.OutCubic }
-                        }
+                        target: alarmIcon
+                        property: "scale"
+                        from: 0.8
+                        to: 1
                     }
                 }
 
                 ColumnLayout {
-                    spacing: 1
+                    spacing: 2
                     StyledText {
                         id: alarmsTitle
                         text: Translation.tr("Alarms")
@@ -243,11 +248,11 @@ Rectangle {
                         font.pixelSize: Appearance.font.pixelSize.normal
                         color: Appearance.colors.colOnSurface
                         opacity: 1.0
-                        
-                        SequentialAnimation {
+
+                        EnterFade {
                             id: alarmsTitleAnim
-                            PauseAnimation { duration: 120 }
-                            NumberAnimation { target: alarmsTitle; property: "opacity"; from: 0.0; to: 1.0; duration: 300 }
+                            target: alarmsTitle
+                            delay: Appearance.animation.staggerStep
                         }
                     }
 
@@ -258,11 +263,11 @@ Rectangle {
                         font.pixelSize: Appearance.font.pixelSize.small
                         color: Appearance.colors.colSubtext
                         opacity: 1.0
-                        
-                        SequentialAnimation {
+
+                        EnterFade {
                             id: alarmsCountAnim
-                            PauseAnimation { duration: 160 }
-                            NumberAnimation { target: alarmsCount; property: "opacity"; from: 0.0; to: 1.0; duration: 300 }
+                            target: alarmsCount
+                            delay: Appearance.animation.staggerStep * 2
                         }
                     }
                 }
@@ -276,18 +281,25 @@ Rectangle {
                     id: deleteButton
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
-                    buttonRadius: 16
+                    buttonRadius: Appearance.rounding.full
                     colBackground: root.deleteMode ? Appearance.colors.colError : Appearance.colors.colErrorContainer
                     colBackgroundHover: root.deleteMode ? Appearance.colors.colErrorHover : Appearance.colors.colErrorContainerHover
                     scale: 1.0
                     opacity: 1.0
-                    
-                    SequentialAnimation {
+
+                    ParallelAnimation {
                         id: deleteBtnAnim
-                        PauseAnimation { duration: 200 }
-                        ParallelAnimation {
-                            NumberAnimation { target: deleteButton; property: "scale"; from: 0.8; to: 1.0; duration: 320; easing.type: Easing.OutBack }
-                            NumberAnimation { target: deleteButton; property: "opacity"; from: 0.0; to: 1.0; duration: 280 }
+
+                        EnterFade {
+                            target: deleteButton
+                            delay: Appearance.animation.staggerStep * 3
+                        }
+                        EnterMove {
+                            target: deleteButton
+                            property: "scale"
+                            from: 0.8
+                            to: 1
+                            delay: Appearance.animation.staggerStep * 3
                         }
                     }
 
@@ -308,18 +320,25 @@ Rectangle {
                     id: addButton
                     Layout.preferredWidth: 32
                     Layout.preferredHeight: 32
-                    buttonRadius: 16
+                    buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colPrimaryContainer
                     colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                     scale: 1.0
                     opacity: 1.0
-                    
-                    SequentialAnimation {
+
+                    ParallelAnimation {
                         id: addBtnAnim
-                        PauseAnimation { duration: 240 }
-                        ParallelAnimation {
-                            NumberAnimation { target: addButton; property: "scale"; from: 0.8; to: 1.0; duration: 320; easing.type: Easing.OutBack }
-                            NumberAnimation { target: addButton; property: "opacity"; from: 0.0; to: 1.0; duration: 280 }
+
+                        EnterFade {
+                            target: addButton
+                            delay: Appearance.animation.staggerStep * 4
+                        }
+                        EnterMove {
+                            target: addButton
+                            property: "scale"
+                            from: 0.8
+                            to: 1
+                            delay: Appearance.animation.staggerStep * 4
                         }
                     }
 
@@ -346,14 +365,38 @@ Rectangle {
                 clip: true
                 model: AlarmService.alarms
 
+                // Scale and opacity are split because they are different kinds of
+                // motion: the scale is spatial and may overshoot, the fade is
+                // effects and clips if it does (DESIGN.md 2.1, 10.6). Leaving is
+                // the exit spec, faster than the enter (2.5).
                 add: Transition {
-                    NumberAnimation { properties: "scale,opacity"; from: 0; to: 1.0; duration: 250; easing.type: Easing.OutQuad }
+                    animations: [
+                        Appearance.animation.elementMoveEnter.numberAnimation.createObject(this, {
+                            property: "scale",
+                            from: 0,
+                            to: 1
+                        }),
+                        Appearance.animation.elementMoveFast.numberAnimation.createObject(this, {
+                            property: "opacity",
+                            from: 0,
+                            to: 1
+                        })
+                    ]
                 }
                 remove: Transition {
-                    NumberAnimation { properties: "scale,opacity"; to: 0; duration: 200; easing.type: Easing.OutQuad }
+                    animations: [
+                        Appearance.animation.elementMoveExit.numberAnimation.createObject(this, {
+                            properties: "scale,opacity",
+                            to: 0
+                        })
+                    ]
                 }
                 displaced: Transition {
-                    NumberAnimation { properties: "x,y"; duration: 250; easing.type: Easing.OutQuad }
+                    animations: [
+                        Appearance.animation.elementMove.numberAnimation.createObject(this, {
+                            properties: "x,y"
+                        })
+                    ]
                 }
 
                 delegate: Rectangle {
@@ -375,40 +418,63 @@ Rectangle {
                     property int cardAnimDelay: 0
                     
                     function startCardAnim() {
-                        cardAnim.start();
+                        cardAnim.restart();
                     }
 
-                    SequentialAnimation {
+                    ParallelAnimation {
                         id: cardAnim
-                        PauseAnimation { duration: alarmCard.cardAnimDelay }
-                        ParallelAnimation {
-                            NumberAnimation { target: alarmCard; property: "cardOpacity"; from: 0.0; to: 1.0; duration: 350 }
-                            NumberAnimation { target: alarmCard; property: "cardTranslateX"; from: 80; to: 0; duration: 450; easing.type: Easing.OutCubic }
-                        }
-                    }
 
-                    Behavior on opacity {
-                        id: opacityBehavior
-                        enabled: AlarmService.ringingAlarmIndex !== index
-                        NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+                        DelayedPropertyAnimation {
+                            target: alarmCard
+                            property: "cardOpacity"
+                            from: 0
+                            to: 1
+                            delay: alarmCard.cardAnimDelay
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                        }
+                        DelayedPropertyAnimation {
+                            target: alarmCard
+                            property: "cardTranslateX"
+                            from: root.enterTravel
+                            to: 0
+                            delay: alarmCard.cardAnimDelay
+                            duration: Appearance.animation.elementMoveEnter.duration
+                            easing.type: Appearance.animation.elementMoveEnter.type
+                            easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                        }
                     }
 
                     required property var modelData
                     required property int index
 
-                    // Clickable area for editing (on label & time side)
-                    MouseArea {
+                    // Tapping the label/time side opens the editor. A RippleButton
+                    // rather than a bare MouseArea, so the row renders hover,
+                    // focus, pressed and disabled instead of nothing (3.1, 3.4).
+                    // The card paints colSurfaceContainerLow, which is layer 1, so
+                    // the films are that layer's own siblings (6.1).
+                    RippleButton {
                         anchors {
                             left: parent.left
                             right: controlsColumn.left
                             top: parent.top
                             bottom: parent.bottom
                         }
-                        onClicked: {
-                            if (!root.deleteMode && AlarmService.ringingAlarmIndex === -1) {
-                                root.openEdit(alarmCard.index, alarmCard.modelData);
-                            }
-                        }
+                        enabled: !root.deleteMode && AlarmService.ringingAlarmIndex === -1
+                        // It reaches the card's left edge but stops short of the
+                        // right, so it takes the card's left corners and squares
+                        // the right ones rather than floating a rounded slab
+                        // inside the card (DESIGN.md 10.13).
+                        topLeftRadius: alarmCard.radius
+                        bottomLeftRadius: alarmCard.radius
+                        topRightRadius: 0
+                        bottomRightRadius: 0
+                        colBackground: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 1)
+                        colBackgroundHover: Appearance.colors.colLayer1Hover
+                        colBackgroundActive: Appearance.colors.colLayer1Active
+                        colStateLayer: Appearance.colors.colOnLayer1
+                        onClicked: root.openEdit(alarmCard.index, alarmCard.modelData)
                     }
 
                     ColumnLayout {
@@ -476,7 +542,7 @@ Rectangle {
                                 delegate: Rectangle {
                                     width: 8
                                     height: 8
-                                    radius: 4
+                                    radius: Appearance.rounding.full
                                     color: alarmCard.modelData.days[index] ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
                                     opacity: alarmCard.modelData.days[index] ? 1.0 : 0.2
                                 }
@@ -484,38 +550,19 @@ Rectangle {
                         }
                     }
 
-                    // Pulse animation for ringing card
-                    SequentialAnimation {
-                        running: AlarmService.ringingAlarmIndex === alarmCard.index
-                        loops: Animation.Infinite
-
-                        NumberAnimation {
-                            target: alarmCard
-                            property: "opacity"
-                            from: 1.0
-                            to: 0.5
-                            duration: 500
-                            easing.type: Easing.InOutQuad
-                        }
-                        NumberAnimation {
-                            target: alarmCard
-                            property: "opacity"
-                            from: 0.5
-                            to: 1.0
-                            duration: 500
-                            easing.type: Easing.InOutQuad
-                        }
-                        onStopped: {
-                            alarmCard.opacity = 1.0;
-                        }
-                    }
+                    // A ringing alarm already reads as one: the card turns
+                    // colErrorContainer, the header icon turns colError, the
+                    // switch becomes a red STOP and the weekday dots hide. The
+                    // half-second opacity strobe on top of that wrote opacity
+                    // imperatively over the `opacity: cardOpacity` binding
+                    // (DESIGN.md 10.4) and ran forever while the popup was open.
 
                     Component {
                         id: stopButtonComponent
                         RippleButton {
                             width: 64
                             height: 32
-                            buttonRadius: 16
+                            buttonRadius: Appearance.rounding.full
                             colBackground: Appearance.colors.colError
                             colBackgroundHover: Appearance.colors.colErrorHover
 
@@ -539,7 +586,7 @@ Rectangle {
                         RippleButton {
                             width: 32
                             height: 32
-                            buttonRadius: 16
+                            buttonRadius: Appearance.rounding.full
                             colBackground: Appearance.colors.colErrorContainer
                             colBackgroundHover: Appearance.colors.colErrorContainerHover
 
@@ -651,7 +698,7 @@ Rectangle {
                         id: dayButton
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
-                        buttonRadius: 16
+                        buttonRadius: Appearance.rounding.full
 
                         property bool selected: root.editDays[index]
                         property string dayText: {
@@ -699,7 +746,7 @@ Rectangle {
                     visible: root.mode === "edit"
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
-                    buttonRadius: 18
+                    buttonRadius: Appearance.rounding.full
                     colBackground: Appearance.colors.colErrorContainer
                     colBackgroundHover: Appearance.colors.colErrorContainerHover
 
@@ -724,9 +771,9 @@ Rectangle {
                  RippleButton {
                     colBackground: Appearance.colors.colSurfaceContainerHighest
                     colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover
-                    Layout.preferredWidth: 110
+                    Layout.preferredWidth: 112
                     Layout.preferredHeight: 40
-                    buttonRadius: 20
+                    buttonRadius: Appearance.rounding.full
 
                     contentItem: RowLayout {
                         spacing: 6
@@ -755,9 +802,9 @@ Rectangle {
                     colBackground: Appearance.colors.colPrimaryContainer
                     colBackgroundHover: Appearance.colors.colPrimaryContainerHover
                     Layout.fillWidth: root.mode === "add"
-                    Layout.preferredWidth: root.mode === "edit" ? 110 : -1
+                    Layout.preferredWidth: root.mode === "edit" ? 112 : -1
                     Layout.preferredHeight: 40
-                    buttonRadius: 20
+                    buttonRadius: Appearance.rounding.full
 
                     contentItem: RowLayout {
                         spacing: 6
