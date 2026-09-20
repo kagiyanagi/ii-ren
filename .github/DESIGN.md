@@ -198,8 +198,12 @@ timing. Growth starts where the thing came from:
 - Panel anchored to a screen edge → that edge (`Item.Bottom` for a bottom dock,
   `Item.Left` for a left sidebar).
 - Press feedback → `Item.Center`.
-- Overscroll stretch → the far edge, pinned so the content the finger is on
-  stays put.
+- Overscroll stretch → **the edge being pushed**, so that edge stays put and the
+  content stretches in the direction of the scroll. The far edge is the one that
+  moves, by the full overscroll distance. (This bullet said "the far edge" until
+  2026-09-20, 3.6 said the opposite, and the two flickables implemented this
+  one — at the bottom of a list the content slid downwards while the scroll
+  pushed up.)
 
 ### 2.7 Interruption
 
