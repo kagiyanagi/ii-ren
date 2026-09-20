@@ -1,0 +1,59 @@
+refactor(cw-battery): a red on the right layer, and easings that stop spelling themselves out
+
+`CustomBatteryMeter.qml` carried the worst design-check hit count in the
+library (10), but the brief's four categories don't map cleanly onto what was
+actually there: no bare `duration:` and no `"#hex"` string anywhere in the
+file, both already routed through `Appearance.animation.*`/`.animationCurves.*`.
+What the checker's regex can't see is where a token is used in the wrong form,
+or the wrong layer.
+
+`highlightColor`/`contentColor` read `Appearance.m3colors.m3error` directly —
+the generated palette, not the semantic layer DESIGN.md 6.1 says to use.
+`colError` is declared as `m3colors.m3error` verbatim, so this is a
+zero-value-change fix to the right token, and the correct role besides
+("`colError` for destructive and failure").
+
+Four `Behavior on X { NumberAnimation/ColorAnimation { duration: ...;
+easing.type: Easing.BezierSpline; easing.bezierCurve: ... } }` blocks
+hand-assembled what `Appearance.animation.<spec>.numberAnimation`/
+`.colorAnimation.createObject(this)` already builds — the form DESIGN.md 2.3
+documents and 28+ other widgets in this library already use. Verified the
+numbers match before swapping: `elementMove` duration/curve is exactly what
+was spelled out for `animatedPercentage`, `elementMoveFast` exactly what the
+three dot/bar colour Behaviors used. Net -16 lines, identical render.
+
+The 10 mechanical hits (2 `literal-radius`, 8 `off-grid-spacing`) are real
+icon-glyph geometry, not layout spacing or corner radii wearing a
+coincidental property name:
+
+- `dotRadius: 7.5`/`9.5` are polar placement radii for the dotted-circle
+  styles' dots, deliberately equal to the plain circle styles' arc radius on
+  the same canvas so the two styles trace the same ring. `Appearance.rounding`
+  has nothing near either value, and borrowing one would both be a category
+  error (corner radius vs. trig radius) and break that alignment.
+- `spacing: 1` (×4, nub-to-body gap) and `anchors.margins: 1.5` (×4, fill
+  inset/bezel) are hand-tuned pixel metrics on 14-26px pictograms. Rounding
+  them onto the 4dp grid changes the icons, which is redesign, not
+  tokenisation, for a brief that asks for the opposite.
+
+All ten are cited (`// design-ok: ...`) with the specific reason instead of
+forced onto a nearby allowed number or a made-up token — the same treatment
+`CliphistImage`/`FileSearchImage` (a blur radius, not a corner radius) and
+`LightDarkPreferenceButton` (no honest token exists) already use elsewhere in
+this library. Nothing needed adding to `Appearance.qml`.
+
+Edge states: charging (bolt overlay + pulse timer) and low-battery (now the
+correct token) already render deliberately. Critical does not — `isCritical`
+is wired end-to-end from `Battery.isCritical` through `BarConfig.qml`'s
+settings preview, but nothing in this file ever reads it, so critical and
+merely-low render identically. No DESIGN.md recipe exists for what critical
+should look like, so it's flagged in notes.md rather than guessed at.
+Unknown-percentage fails toward a calm 100%, mirroring `Battery.qml`'s own
+fallback.
+
+Filtered `check-design.py --diff` and a full-file `-v` scope are both clean.
+`check-m3-tokens.py` passes (no token values touched, only reference form).
+qmllint against an isolated shadow tree: no new warnings at any changed line,
+checked line by line against the pre-existing `unqualified`/`missing-property`
+noise every `Appearance.*`/`Config.options.*` access in this file already
+produces.

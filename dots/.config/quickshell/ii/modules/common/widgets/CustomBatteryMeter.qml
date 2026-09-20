@@ -20,9 +20,9 @@ Item {
     property bool isCritical: percentage <= (Config.options.battery.critical / 100)
     property bool vertical: false
 
-    property color highlightColor: (isLow && !isCharging) ? Appearance.m3colors.m3error : Appearance.colors.colOnSecondaryContainer
+    property color highlightColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
     property color trackColor: Appearance.colors.colSecondaryContainer
-    property color contentColor: (isLow && !isCharging) ? Appearance.m3colors.m3error : Appearance.colors.colOnSecondaryContainer
+    property color contentColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
 
     readonly property int percentageInt: Math.round(percentage * 100)
     readonly property string percentageText: percentageInt.toString() + (showPercentSign ? "%" : "")
@@ -52,11 +52,7 @@ Item {
     // Spatial animation for smooth battery level fill transitions
     property real animatedPercentage: percentage
     Behavior on animatedPercentage {
-        NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-        }
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
     }
 
     // Charging animation pulse timer for dotted/circle effects
@@ -268,7 +264,7 @@ Item {
                     anchors.centerIn: parent
 
                     readonly property real angleRad: (index * 30 - 90) * (Math.PI / 180)
-                    readonly property real dotRadius: 7.5
+                    readonly property real dotRadius: 7.5 // design-ok: dot-placement radius matching circleComponent's arc, not a corner radius
                     readonly property real dotCenterX: 10 + dotRadius * Math.cos(angleRad)
                     readonly property real dotCenterY: 10 + dotRadius * Math.sin(angleRad)
 
@@ -288,11 +284,7 @@ Item {
                         color: dotWrapper.isActive ? root.highlightColor : root.trackColor
 
                         Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-                            }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
                     }
                 }
@@ -489,7 +481,7 @@ Item {
                     anchors.centerIn: parent
 
                     readonly property real angleRad: (index * 22.5 - 90) * (Math.PI / 180)
-                    readonly property real dotRadius: 9.5
+                    readonly property real dotRadius: 9.5 // design-ok: dot-placement radius matching bigCircleComponent's arc, not a corner radius
                     readonly property real dotCenterX: 12 + dotRadius * Math.cos(angleRad)
                     readonly property real dotCenterY: 12 + dotRadius * Math.sin(angleRad)
 
@@ -509,11 +501,7 @@ Item {
                         color: bigDotWrapper.isActive ? root.highlightColor : root.trackColor
 
                         Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-                            }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
                     }
                 }
@@ -552,7 +540,7 @@ Item {
 
             Column {
                 anchors.centerIn: parent
-                spacing: 1
+                spacing: 1 // design-ok: nub-to-body gap on the icon glyph, not layout spacing
 
                 // Top terminal / nub
                 Rectangle {
@@ -579,7 +567,7 @@ Item {
                         anchors.bottom: parent.bottom
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.margins: 1.5
+                        anchors.margins: 1.5 // design-ok: fill inset on the icon glyph body, not layout spacing
                         height: Math.max(0, (vertBody.height - 3) * root.animatedPercentage)
                         radius: Appearance.rounding.small
                         color: root.highlightColor
@@ -606,7 +594,7 @@ Item {
 
             Row {
                 anchors.centerIn: parent
-                spacing: 1
+                spacing: 1 // design-ok: nub-to-body gap on the icon glyph, not layout spacing
 
                 // Battery body
                 Rectangle {
@@ -623,7 +611,7 @@ Item {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        anchors.margins: 1.5
+                        anchors.margins: 1.5 // design-ok: fill inset on the icon glyph body, not layout spacing
                         width: Math.max(0, (battBody.width - 3) * root.animatedPercentage)
                         radius: Appearance.rounding.small
                         color: root.highlightColor
@@ -658,7 +646,7 @@ Item {
 
             Row {
                 anchors.centerIn: parent
-                spacing: 1
+                spacing: 1 // design-ok: nub-to-body gap on the icon glyph, not layout spacing
 
                 // Positive terminal / nub on left
                 Rectangle {
@@ -683,7 +671,7 @@ Item {
                         anchors.left: parent.left
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
-                        anchors.margins: 1.5
+                        anchors.margins: 1.5 // design-ok: fill inset on the icon glyph body, not layout spacing
                         width: Math.max(0, (battBodyLeft.width - 3) * root.animatedPercentage)
                         radius: Appearance.rounding.small
                         color: root.highlightColor
@@ -709,7 +697,7 @@ Item {
 
             Row {
                 anchors.centerIn: parent
-                spacing: 1
+                spacing: 1 // design-ok: nub-to-body gap on the icon glyph, not layout spacing
 
                 Rectangle {
                     id: iosBody
@@ -813,7 +801,7 @@ Item {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
-                    anchors.margins: 1.5
+                    anchors.margins: 1.5 // design-ok: fill inset on the icon glyph body, not layout spacing
                     width: Math.max(0, (parent.width - 3) * root.animatedPercentage)
                     radius: Appearance.rounding.small
                     color: root.highlightColor
@@ -914,11 +902,7 @@ Item {
                         color: isActive ? root.highlightColor : root.trackColor
 
                         Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-                            }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
                     }
                 }
