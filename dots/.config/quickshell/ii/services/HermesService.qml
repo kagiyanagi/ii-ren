@@ -205,7 +205,8 @@ Singleton {
             role: role,
             content: content ?? "",
             model: root.currentModel,
-            done: role !== "assistant"
+            done: role !== "assistant",
+            createdAt: Date.now()
         });
         const id = `hermes-${root.messageIDs.length}-${Date.now()}`;
         root.messageByID[id] = message;
@@ -320,6 +321,8 @@ Singleton {
     function resumeSession(storedId: string): void {
         if (storedId.length === 0)
             return;
+        if (root.busy)
+            root.interrupt();
         root.clearMessages();
         root.call("session.resume", { session_id: storedId }, (result, error) => {
             if (error) {
@@ -390,6 +393,14 @@ Singleton {
     function _restoreTranscript(result: var): void {
         let lastAssistantId = "";
 
+        const restored = (role, body) => {
+            const id = root._newMessage(role, body);
+            const message = root.messageByID[id];
+            message.createdAt = 0;
+            message.completedAt = 0;
+            return id;
+        };
+
         (result.messages ?? []).forEach(entry => {
             const role = entry.role ?? "";
 
@@ -397,7 +408,7 @@ Singleton {
                 // Attach to the turn that called it, so it renders in the same
                 // ToolActivityRow the live stream produces.
                 if (lastAssistantId.length === 0)
-                    lastAssistantId = root._newMessage("assistant", "");
+                    lastAssistantId = restored("assistant", "");
                 const message = root.messageByID[lastAssistantId];
                 if (!message)
                     return;
@@ -427,7 +438,7 @@ Singleton {
                 return; // No empty bubbles for rows that carry no prose.
 
             if (role === "user") {
-                const userId = root._newMessage("user", body);
+                const userId = restored("user", body);
                 root.messageByID[userId].done = true;
                 lastAssistantId = ""; // A request starts a new run.
                 return;
@@ -441,7 +452,7 @@ Singleton {
                 open.done = true;
                 return;
             }
-            const id = root._newMessage("assistant", body);
+            const id = restored("assistant", body);
             root.messageByID[id].done = true;
             lastAssistantId = id;
         });
@@ -1288,6 +1299,11 @@ Singleton {
     /** Stop the capture and transcribe what was said. */
     function stopDictation(): void {
         root.speech.stopRecording();
+    }
+
+    /** Drop what is being recorded without transcribing it. */
+    function cancelDictation(): void {
+        root.speech.cancelRecording();
     }
 
     function toggleDictation(): void {

@@ -129,11 +129,7 @@ Button {
                     implicitWidth: contextMenuColumnLayout.implicitWidth
 
                     Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                     }
 
                     ColumnLayout {

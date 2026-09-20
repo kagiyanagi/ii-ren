@@ -11,7 +11,6 @@ Rectangle {
     id: root
     property int messageIndex
     property var messageData
-    property var messageInputField
 
     property real messagePadding: 7
     property real contentSpacing: 3
@@ -59,20 +58,17 @@ Rectangle {
     implicitHeight: columnLayout.implicitHeight + root.messagePadding * 2
 
     radius: Appearance.rounding.normal
-    color: Appearance.colors.colLayer1
+    color: Appearance.colors.colLayer2
 
     function saveMessage() {
         if (!root.editing) return;
-        // Get all Loader children (each represents a segment)
         const segments = messageContentColumnLayout.children
             .map(child => child.segment)
             .filter(segment => (segment));
 
-        // Reconstruct markdown
         const newContent = segments.map(segment => {
             if (segment.type === "code") {
                 const lang = segment.lang ? segment.lang : "";
-                // Remove trailing newlines
                 const code = segment.content.replace(/\n+$/, "");
                 return "```" + lang + "\n" + code + "\n```";
             } else {
@@ -192,7 +188,7 @@ Rectangle {
                     implicitHeight: 30
                     Layout.alignment: Qt.AlignVCenter
 
-                    background: Item
+                    background: null
 
                     MaterialSymbol {
                         id: notVisibleToModelText
@@ -311,7 +307,7 @@ Rectangle {
                 FadeLoader {
                     id: loadingIndicatorLoader
                     anchors.centerIn: parent
-                    shown: (root.messageBlocks.length < 1) && (!root.messageData.done)
+                    shown: (root.messageBlocks.length < 1) && !(root.messageData?.done ?? true)
                     sourceComponent: MaterialLoadingIndicator {
                         loading: true
                     }

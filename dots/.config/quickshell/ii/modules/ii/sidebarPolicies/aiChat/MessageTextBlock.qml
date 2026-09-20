@@ -56,8 +56,7 @@ ColumnLayout {
     }
 
     function renderLatex() {
-        // Regex for $...$, $$...$$, \[...\]
-        // Note: This is a simple approach and may need refinement for edge cases
+        // $...$, $$...$$, \[...\] and \(...\)
         let regex = /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
         let match;
         while ((match = regex.exec(segmentContent)) !== null) {
@@ -90,13 +89,11 @@ ColumnLayout {
         if (!editing) {
             renderLatex()
         } else {
-            // console.log("Editing mode enabled", segmentContent)
             root.shownText = segmentContent
         }
     }
 
     onSegmentContentChanged: {
-        // console.log("Segment content changed: " + segmentContent);
         renderedSegmentContent = segmentContent;
         if (!root.editing && segmentContent) {
             root.renderLatex();
@@ -104,20 +101,14 @@ ColumnLayout {
     }
 
     onRenderedSegmentContentChanged: {
-        // console.log("Rendered segment content changed: " + renderedSegmentContent);
         if (renderedSegmentContent) {
             root.shownText = renderedSegmentContent;
         }
     }
 
-    // When something finishes rendering
-    // 1. Check if the hash is in the list
-    // 2. If it is, replace the expression with the image path
     Connections {
         target: LatexRenderer
-        function onRenderFinished(hash, imagePath) {
-            const expression = LatexRenderer.processedExpressions[hash];
-            // console.log("Render finished: " + hash + " " + expression);
+        function onRenderFinished(hash) {
             handleRenderedLatex(hash);
         }
     }
@@ -179,7 +170,7 @@ ColumnLayout {
             selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
             selectionColor: Appearance.colors.colSecondaryContainer
             wrapMode: TextEdit.Wrap
-            color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer1
+            color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2
             textFormat: renderMarkdown ? TextEdit.MarkdownText : TextEdit.PlainText
             text: modelData.text
 
@@ -223,16 +214,9 @@ ColumnLayout {
                 // taken here. While editing that menu is useful, so it is left.
                 acceptedButtons: root.editing ? Qt.NoButton : Qt.RightButton
                 hoverEnabled: true
-                cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : 
+                cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor :
                     (enableMouseSelection || editing) ? Qt.IBeamCursor : Qt.ArrowCursor
             }
-
-            // Rectangle {
-            //     anchors.fill: parent
-            //     color: "#22786378"
-            //     border.width: 1
-            //     border.color: "#7E7E7E"
-            // }
         }
     }
 }

@@ -6,17 +6,16 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
-import Qt.labs.synchronizer
 
 Item {
     id: root
     required property var scopeRoot
     property int sidebarPadding: 10
     anchors.fill: parent
-    property bool aiChatEnabled: Config.options.policies.ai !== 0  
+    property bool aiChatEnabled: Config.options.policies.ai !== 0
     property bool translatorEnabled: Config.options.policies.translator !== 0
-    property bool animeEnabled: Config.options.policies.weeb !== 0  
-    property bool animeCloset: Config.options.policies.weeb === 2  
+    property bool animeEnabled: Config.options.policies.weeb !== 0
+    property bool animeCloset: Config.options.policies.weeb === 2
     property bool continuityEnabled: Config.options.policies.continuity !== 0
     property bool hermesEnabled: Config.options.policies.hermes !== 0 && (Config.options.hermes?.enable ?? false)
 
@@ -55,19 +54,14 @@ Item {
         }
     }
 
-    property var tabButtonList: [  
+    property var tabButtonList: [
         ...(root.hermesEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Hermes")}] : []),
         ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
-        ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []), 
+        ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
         ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
-    property int tabCount: swipeView.count
-
-    function focusActiveItem() {
-        swipeView.currentItem.forceActiveFocus()
-    }
 
     function createExtensionPage(page) {
         let loader = Qt.createQmlObject('import QtQuick; Loader { active: true }', swipeView)

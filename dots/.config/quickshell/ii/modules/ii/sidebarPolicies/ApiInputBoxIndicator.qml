@@ -10,6 +10,8 @@ Item { // Model indicator
     property string symbol: ""
     property string text: ""
     property string tooltipText: ""
+    /** Optional. Left unset this stays what it has always been: a readout. */
+    property var clickAction: null
     implicitHeight: rowLayout.implicitHeight + 4 * 2
     implicitWidth: rowLayout.implicitWidth + 4 * 2
 
@@ -56,11 +58,14 @@ Item { // Model indicator
     }
 
     Loader {
-        active: root.tooltipText?.length > 0
+        active: root.tooltipText?.length > 0 || root.clickAction !== null
         anchors.fill: parent
         sourceComponent: MouseArea {
             id: mouseArea
             hoverEnabled: true
+            cursorShape: root.clickAction ? Qt.PointingHandCursor : Qt.ArrowCursor
+            acceptedButtons: root.clickAction ? Qt.LeftButton : Qt.NoButton
+            onClicked: root.clickAction?.()
 
             StyledToolTip {
                 id: toolTip

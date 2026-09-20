@@ -137,6 +137,21 @@ QtObject {
         recorder.signal(2);
     }
 
+    /*
+     * Throw the capture away instead of transcribing it.
+     *
+     * Stopping and cancelling are the same signal to pw-record, so which one
+     * happened is remembered here and read back in onExited -- there is no way to
+     * ask the process after the fact.
+     */
+    property bool cancelled: false
+
+    function cancelRecording() {
+        if (!root.recording) return;
+        root.cancelled = true;
+        root.stopRecording();
+    }
+
     /**
      * Turns whisper's stderr into something actionable. The common one is worth
      * special-casing: distributions split the ggml compute backends into their own
@@ -228,7 +243,14 @@ QtObject {
 
         // pw-record exits non-zero when stopped by a signal, which is the normal path
         // here, so the recording is judged by whether a usable file exists.
-        onExited: root.transcribeRecording()
+        onExited: {
+            if (root.cancelled) {
+                root.cancelled = false;
+                root.discardAudio(root.wavPath);
+                return;
+            }
+            root.transcribeRecording();
+        }
     }
 
     /** Hand the finished capture to whichever engine is in charge. */

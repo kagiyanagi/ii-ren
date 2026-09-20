@@ -49,14 +49,12 @@ RippleButton {
 
     readonly property string tooltipText: {
         if (!root.modeKnown)
-            return Translation.tr("Waiting to hear how this session is set up.");
+            return Translation.tr("This session is set to “%1”, which this shell has no setting for. Pick one below.").arg(HermesService.approvalMode);
         if (HermesService.yolo && HermesService.approvalMode !== "off")
             return Translation.tr("%1\nYolo is also on, so nothing is asked regardless.").arg(root.currentInfo.description);
         return root.currentInfo.description;
     }
 
-    enabled: root.modeKnown
-    pointingHandCursor: root.modeKnown
     buttonRadius: Appearance.rounding.full
 
     // Hugs its content so the hover state is a compact chip around the label,
@@ -94,7 +92,7 @@ RippleButton {
             elide: Text.ElideRight
             font.pixelSize: Appearance.font.pixelSize.small
             color: root.hot ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colSubtext
-            text: root.currentInfo?.label ?? Translation.tr("Approvals")
+            text: root.currentInfo?.label ?? HermesService.approvalMode
             animateChange: true
             Behavior on color {
                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -221,33 +219,31 @@ RippleButton {
 
         transformOrigin: Item.TopLeft
 
-        // ArrowPopup motion (DESIGN.md 9 / DockFolderPopup): open scale
-        // 0.5->1.02->1 decelerating, close scale 1->0.5 accelerating, alpha
-        // riding along underneath rather than driving the shape.
+        // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
         enter: Transition {
             ParallelAnimation {
                 SequentialAnimation {
                     NumberAnimation {
                         property: "scale"
-                        from: 0.5
-                        to: 1.02
-                        duration: 200
+                        from: Appearance.animationCurves.arrowPopupScale
+                        to: Appearance.animationCurves.arrowPopupOvershoot
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
                         easing.type: Easing.Bezier
                         easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
                     }
                     NumberAnimation {
                         property: "scale"
                         to: 1
-                        duration: 200
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
                         easing.type: Easing.Bezier
-                        easing.bezierCurve: [0.3, 0, 0.33, 1, 1, 1]
+                        easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
                     }
                 }
                 NumberAnimation {
                     property: "opacity"
                     from: 0
                     to: 1
-                    duration: 83
+                    duration: Appearance.animationCurves.arrowPopupFadeDuration
                 }
             }
         }
@@ -256,19 +252,19 @@ RippleButton {
             ParallelAnimation {
                 NumberAnimation {
                     property: "scale"
-                    to: 0.5
-                    duration: 233
+                    to: Appearance.animationCurves.arrowPopupScale
+                    duration: Appearance.animationCurves.arrowPopupCloseDuration
                     easing.type: Easing.Bezier
                     easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
                 }
                 SequentialAnimation {
                     PauseAnimation {
-                        duration: 150
+                        duration: Appearance.animationCurves.arrowPopupFadeHold
                     }
                     NumberAnimation {
                         property: "opacity"
                         to: 0
-                        duration: 83
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
                     }
                 }
             }

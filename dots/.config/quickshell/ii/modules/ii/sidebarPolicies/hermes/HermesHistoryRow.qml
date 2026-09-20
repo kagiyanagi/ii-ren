@@ -23,6 +23,23 @@ RippleButton {
     // else or by the timer -- so a mis-click cannot delete a conversation.
     property bool confirmingDelete: false
 
+    /*
+     * When it was started. The list's own headers only group by day, so inside
+     * "Earlier this month" or "Older" every row read the same.
+     *
+     * A time for the last week, where the header already gives the day; a date
+     * beyond that, where it does not.
+     */
+    readonly property string startedText: {
+        const stamp = (root.session?.started_at ?? 0) * 1000;
+        if (stamp <= 0)
+            return "";
+        const now = new Date();
+        const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const recent = stamp >= midnight - 6 * 86400000;
+        return Qt.formatDateTime(new Date(stamp), recent ? "HH:mm" : "MMM d");
+    }
+
     implicitHeight: contentColumn.implicitHeight + 10 * 2
     buttonRadius: Appearance.rounding.small
 
@@ -73,6 +90,8 @@ RippleButton {
                     const count = root.session?.message_count ?? 0;
                     const source = root.session?.source ?? "";
                     const parts = [];
+                    if (root.startedText.length > 0)
+                        parts.push(root.startedText);
                     if (count > 0)
                         parts.push(Translation.tr("%1 messages").arg(count));
                     if (source.length > 0)

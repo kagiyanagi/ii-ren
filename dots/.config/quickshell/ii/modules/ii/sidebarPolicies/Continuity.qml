@@ -111,7 +111,7 @@ Item {
         // Android gives its own quick-settings chips.
         scale: down ? 0.94 : (hovered ? 1.04 : 1.0)
         Behavior on scale {
-            NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.5 }
+            animation: Appearance.animation.clickBounce.numberAnimation.createObject(this)
         }
     }
 

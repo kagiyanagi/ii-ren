@@ -14,7 +14,9 @@ Item {
     property bool renderMarkdown: true
     property bool enableMouseSelection: true
     property var segmentContent: ({})
-    property var messageData: {}
+    // `{}` parses as an empty block, not an empty object, so this was undefined
+    // and every read of it threw -- same fix as MessageTextBlock.qml.
+    property var messageData: null
     property bool done: true
     property bool completed: false
 
@@ -99,10 +101,10 @@ Item {
                     visible: root.completed
                     implicitWidth: 22
                     implicitHeight: 22
-                    colBackground: headerMouseArea.containsMouse ? Appearance.colors.colLayer2Hover
-                        : ColorUtils.transparentize(Appearance.colors.colLayer2, 1)
-                    colBackgroundHover: Appearance.colors.colLayer2Hover
-                    colRipple: Appearance.colors.colLayer2Active
+                    colBackground: headerMouseArea.containsMouse ? Appearance.colors.colLayer3Hover
+                        : ColorUtils.transparentize(Appearance.colors.colLayer3, 1)
+                    colBackgroundHover: Appearance.colors.colLayer3Hover
+                    colRipple: Appearance.colors.colLayer3Active
 
                     onClicked: { root.collapsed = !root.collapsed }
                     
@@ -112,14 +114,10 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         iconSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colOnLayer2
+                        color: Appearance.colors.colOnLayer3
                         rotation: root.collapsed ? 0 : 180
                         Behavior on rotation {
-                            NumberAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                         }
                     }
 
@@ -150,7 +148,7 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 implicitHeight: messageTextBlock.implicitHeight
-                color: Appearance.colors.colLayer2
+                color: Appearance.colors.colLayer3
                 topLeftRadius: Appearance.rounding.unsharpen
                 topRightRadius: Appearance.rounding.unsharpen
                 bottomLeftRadius: thinkBlockBackgroundRounding

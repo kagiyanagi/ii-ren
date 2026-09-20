@@ -14,21 +14,15 @@ import Quickshell.Io
 Item {
     id: root
 
-    // Sizes
     property real padding: 4
-
-    // Widgets
     property var inputField: inputCanvas.inputTextArea
 
-    // Widget variables
     property string translatedText: ""
     property list<string> languages: []
 
-    // Options
     property string targetLanguage: Config.options.language.translator.targetLanguage
     property string sourceLanguage: Config.options.language.translator.sourceLanguage
 
-    // States
     property bool showLanguageSelector: false
     property bool languageSelectorTarget: false // true for target language, false for source language
 
@@ -49,10 +43,11 @@ Item {
         repeat: false
         onTriggered: () => {
             if (root.inputField.text.trim().length > 0) {
-                // console.log("Translating with command:", translateProc.command);
+                // Restarted rather than started: a keystroke during a run has to
+                // replace it, and the buffer belongs to the run that is ending.
                 translateProc.running = false;
-                translateProc.buffer = ""; // Clear the buffer
-                translateProc.running = true; // Restart the process
+                translateProc.buffer = "";
+                translateProc.running = true;
             } else {
                 root.translatedText = "";
             }
@@ -71,10 +66,7 @@ Item {
                 translateProc.buffer += data + "\n";
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            // With -brief mode, we get output with no metadata
-            root.translatedText = translateProc.buffer.trim();
-        }
+        onExited: () => root.translatedText = translateProc.buffer.trim()
     }
 
     Process {
@@ -87,14 +79,14 @@ Item {
                 getLanguagesProc.bufferList.push(data.trim());
             }
         }
-        onExited: (exitCode, exitStatus) => {
-            // Ensure "auto" is always the first language
+        onExited: () => {
+            // "auto" first, then the rest alphabetically.
             let langs = getLanguagesProc.bufferList
                 .filter(lang => lang.trim().length > 0 && lang !== "auto")
                 .sort((a, b) => a.localeCompare(b));
             langs.unshift("auto");
             root.languages = langs;
-            getLanguagesProc.bufferList = []; // Clear the buffer
+            getLanguagesProc.bufferList = [];
         }
     }
 
@@ -165,7 +157,7 @@ Item {
                     }
                 }
 
-            }    
+            }
         }
 
         LanguageSelectorButton { // Source language button
@@ -192,7 +184,7 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     iconSize: Appearance.font.pixelSize.larger
                     text: "content_paste"
-                    color: deleteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
+                    color: pasteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
                 }
                 onClicked: {
                     root.inputField.text = Quickshell.clipboardText
@@ -232,17 +224,17 @@ Item {
             }
             onSelected: (result) => {
                 root.showLanguageSelector = false;
-                if (!result || result.length === 0) return; // No selection made
+                if (!result || result.length === 0) return;
 
                 if (root.languageSelectorTarget) {
                     root.targetLanguage = result;
-                    Config.options.language.translator.targetLanguage = result; // Save to config
+                    Config.options.language.translator.targetLanguage = result;
                 } else {
                     root.sourceLanguage = result;
-                    Config.options.language.translator.sourceLanguage = result; // Save to config
+                    Config.options.language.translator.sourceLanguage = result;
                 }
 
-                translateTimer.restart(); // Restart translation after language change
+                translateTimer.restart();
             }
         }
     }

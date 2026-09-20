@@ -2,7 +2,6 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.widgets.animations
 import qs.modules.common.functions
 import qs.modules.ii.sidebarPolicies.aiChat
 import QtQuick
@@ -71,7 +70,6 @@ Item {
             name: "tool",
             description: Translation.tr("Set the tool to use for the model."),
             execute: args => {
-                // console.log(args)
                 if (args.length == 0 || args[0] == "get") {
                     Ai.addMessage(Translation.tr("Usage: %1tool TOOL_NAME").arg(root.commandPrefix), Ai.interfaceRole);
                 } else {
@@ -133,7 +131,6 @@ Item {
             name: "clear",
             description: Translation.tr("Clear chat history"),
             execute: () => {
-
                 Ai.clearMessages();
             }
         },
@@ -141,7 +138,6 @@ Item {
             name: "temp",
             description: Translation.tr("Set temperature (randomness) of the model. Values range between 0 to 2 for Gemini, 0 to 1 for other models. Default is 0.5."),
             execute: args => {
-                // console.log(args)
                 if (args.length == 0 || args[0] == "get") {
                     Ai.printTemperature();
                 } else {
@@ -245,45 +241,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         }
     }
 
-    component StatusItem: MouseArea {
-        id: statusItem
-        property string icon
-        property string statusText
-        property string description
-        hoverEnabled: true
-        implicitHeight: statusItemRowLayout.implicitHeight
-        implicitWidth: statusItemRowLayout.implicitWidth
-
-        RowLayout {
-            id: statusItemRowLayout
-            spacing: 0
-            MaterialSymbol {
-                text: statusItem.icon
-                iconSize: Appearance.font.pixelSize.huge
-                color: Appearance.colors.colSubtext
-            }
-            StyledText {
-                font.pixelSize: Appearance.font.pixelSize.small
-                text: statusItem.statusText
-                color: Appearance.colors.colSubtext
-                animateChange: true
-            }
-        }
-
-        StyledToolTip {
-            text: statusItem.description
-            extraVisibleCondition: false
-            alternativeVisibleCondition: statusItem.containsMouse
-        }
-    }
-
-    component StatusSeparator: Rectangle {
-        implicitWidth: 4
-        implicitHeight: 4
-        radius: implicitWidth / 2
-        color: Appearance.colors.colOutlineVariant
-    }
-
     ColumnLayout {
         id: columnLayout
         anchors {
@@ -368,17 +325,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 touchpadScrollFactor: Config.options.interactions.scrolling.touchpadScrollFactor * 1.4
                 mouseScrollFactor: Config.options.interactions.scrolling.mouseScrollFactor * 1.4
 
-                property int lastResponseLength: 0
-                // onContentHeightChanged: {
-                //     if (atYEnd)
-                //         Qt.callLater(positionViewAtEnd);
-                // }
-                // onCountChanged: {
-                //     // Auto-scroll when new messages are added
-                //     if (atYEnd)
-                //         Qt.callLater(positionViewAtEnd);
-                // }
-
                 add: null // Prevent function calls from being janky
 
                 model: ScriptModel {
@@ -391,10 +337,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                     required property var modelData
                     required property int index
                     messageIndex: index
-                    messageData: {
-                        Ai.messageByID[modelData];
-                    }
-                    messageInputField: root.inputField
+                    messageData: Ai.messageByID[modelData]
                 }
             }
 
@@ -454,26 +397,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                             Persistent.states.ai.provider = newValue;
                             Persistent.states.ai.model = Ai.modelsOfProviders[providerSelector.currentValue][0].value
                         }
-                        
-                        
-                        property var allProviderOptions: ({
-                            "google": {
-                                displayName: "Google",
-                                symbol: "spark-symbolic",
-                                value: "google"
-                            },
-                            "openrouter": {
-                                displayName: "OpenRouter",
-                                symbol: "openrouter-symbolic",
-                                value: "openrouter"
-                            },
-                            "others": {
-                                displayName: Translation.tr("Others"),
-                                icon: "more_horiz",
-                                value: "others"
-                            }
-                        })
-                        
+
                         options: [
                             {
                                 displayName: "Google",
@@ -492,7 +416,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                             }
                         ]
                     }
-
 
                     StyledComboBox {
                         id: modelSelector
@@ -658,7 +581,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 onDropped: (drop) => {
                     if (drop.hasUrls) {
                         for (var i = 0; i < drop.urls.length; i++) {
-                            console.log("[AI Chat] Dropped file:", drop.urls[i])
                             Ai.attachFile(drop.urls[i])
                         }
                         drop.accept(Qt.CopyAction)
@@ -895,64 +817,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         }
                     }
                 }
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Tab) {
-                                suggestions.acceptSelectedWord();
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Up && suggestions.visible) {
-                                suggestions.selectedIndex = Math.max(0, suggestions.selectedIndex - 1);
-                                event.accepted = true;
-                            } else if (event.key === Qt.Key_Down && suggestions.visible) {
-                                suggestions.selectedIndex = Math.min(root.suggestionList.length - 1, suggestions.selectedIndex + 1);
-                                event.accepted = true;
-                            } else if ((event.key === Qt.Key_Enter || event.key === Qt.Key_Return)) {
-                                if (event.modifiers & Qt.ShiftModifier) {
-                                    // Insert newline
-                                    messageInputField.insert(messageInputField.cursorPosition, "\n");
-                                    event.accepted = true;
-                                } else {
-                                    // Accept text
-                                    const inputText = messageInputField.text;
-                                    messageInputField.clear();
-                                    root.handleInput(inputText);
-                                    event.accepted = true;
-                                }
-                            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
-                                // Intercept Ctrl+V to handle image/file pasting
-                                if (event.modifiers & Qt.ShiftModifier) {
-                                    // Let Shift+Ctrl+V = plain paste
-                                    messageInputField.text += Quickshell.clipboardText;
-                                    event.accepted = true;
-                                    return;
-                                }
-                                // Try image paste first
-                                const currentClipboardEntry = Cliphist.entries[0];
-                                const cleanCliphistEntry = StringUtils.cleanCliphistEntry(currentClipboardEntry);
-                                if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(currentClipboardEntry)) {
-                                    // First entry = currently copied entry = image?
-                                    decodeImageAndAttachProc.handleEntry(currentClipboardEntry);
-                                    event.accepted = true;
-                                    return;
-                                } else if (cleanCliphistEntry.startsWith("file://")) {
-                                    // First entry = currently copied entry = image?
-                                    const fileName = decodeURIComponent(cleanCliphistEntry);
-                                    Ai.attachFile(fileName);
-                                    event.accepted = true;
-                                    return;
-                                }
-                                event.accepted = false; // No image, let text pasting proceed
-                            } else if (event.key === Qt.Key_Escape) {
-                                // Esc to detach file
-                                if (Ai.pendingFilePath.length > 0) {
-                                    Ai.attachFile("");
-                                    event.accepted = true;
-                                } else {
-                                    event.accepted = false;
-                                }
-                            }
-                        }
-                    
-                
+
                 RippleButton { // Send button
                     id: sendButton
                     Layout.alignment: Qt.AlignBottom

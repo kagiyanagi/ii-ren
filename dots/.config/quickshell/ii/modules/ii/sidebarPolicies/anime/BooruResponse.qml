@@ -29,10 +29,9 @@ Rectangle {
     anchors.right: parent?.right
     implicitHeight: columnLayout.implicitHeight + root.responsePadding * 2
 
-    Component.onCompleted: {
-        // Break property bind to prevent aggressive updates
-        availableWidth = parent.width
-    }
+    // Assigned rather than bound: a bound width re-laid out every row on every
+    // frame of a sidebar resize. The timer below picks the new width up once.
+    Component.onCompleted: availableWidth = parent.width
 
     Connections {
         target: parent
@@ -90,7 +89,6 @@ Rectangle {
                     anchors.centerIn: parent
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colOnLayer2
-                    // text: `Page ${root.responseData.page}`
                     text: Translation.tr("Page %1").arg(root.responseData.page)
                 }
             }
@@ -240,8 +238,6 @@ Rectangle {
         }
 
         RippleButton { // Next page button
-            id: button
-            property string buttonText
             visible: root.responseData.page != "" && root.responseData.page > 0
 
             Layout.alignment: Qt.AlignRight
@@ -257,7 +253,7 @@ Rectangle {
             buttonRadius: Appearance.rounding.small
             colBackground: Appearance.colors.colSurfaceContainerHighest
             colBackgroundHover: Appearance.colors.colSurfaceContainerHighestHover
-            colRipple: Appearance.colors.colSurfaceContainerHighestActive            
+            colRipple: Appearance.colors.colSurfaceContainerHighestActive
 
             contentItem: Item {
                 anchors.fill: parent
@@ -271,7 +267,7 @@ Rectangle {
                     StyledText {
                         Layout.alignment: Qt.AlignVCenter
                         verticalAlignment: Text.AlignVCenter
-                        text: "Next page"
+                        text: Translation.tr("Next page")
                         color: Appearance.m3colors.m3onSurface
                     }
                     MaterialSymbol {

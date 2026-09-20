@@ -20,7 +20,9 @@ ColumnLayout {
     property bool enableMouseSelection: true
     property var segmentContent: ({})
     property var segmentLang: "txt"
-    property var messageData: {}
+    // `{}` parses as an empty block, not an empty object, so this was undefined
+    // and every read of it threw -- same fix as MessageTextBlock.qml.
+    property var messageData: null
     // Running a block executes what a model wrote, so it is offered only where a
     // console exists to run it in and to show what it did. Off for every other caller.
     property bool enableRunActions: false
@@ -155,7 +157,7 @@ ColumnLayout {
             bottomLeftRadius: codeBlockBackgroundRounding
             topRightRadius: Appearance.rounding.unsharpen
             bottomRightRadius: Appearance.rounding.unsharpen
-            color: Appearance.colors.colLayer2
+            color: Appearance.colors.colLayer3
 
             ColumnLayout {
                 id: lineNumberColumnLayout
@@ -190,7 +192,7 @@ ColumnLayout {
             bottomLeftRadius: Appearance.rounding.unsharpen
             topRightRadius: Appearance.rounding.unsharpen
             bottomRightRadius: codeBlockBackgroundRounding
-            color: Appearance.colors.colLayer2
+            color: Appearance.colors.colLayer3
             implicitHeight: codeColumnLayout.implicitHeight
 
             ColumnLayout {
@@ -227,17 +229,13 @@ ColumnLayout {
                         visible: opacity > 0
 
                         Behavior on opacity {
-                            NumberAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                         }
-                        
+
                         contentItem: Rectangle {
                             implicitHeight: 6
                             radius: Appearance.rounding.small
-                            color: Appearance.colors.colLayer2Active
+                            color: Appearance.colors.colLayer3Active
                         }
                     }
 
@@ -251,8 +249,7 @@ ColumnLayout {
                         font.pixelSize: Appearance.font.pixelSize.small
                         selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
                         selectionColor: Appearance.colors.colSecondaryContainer
-                        // wrapMode: TextEdit.Wrap
-                        color: messageData.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer1
+                        color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer3
 
                         text: segmentContent
                         onTextChanged: {
@@ -294,7 +291,7 @@ ColumnLayout {
                             target: codeTextArea
                             query: root.searchQuery
                             // Both translucent: the stepped-to hit is stronger, not solid.
-                markColor: ColorUtils.applyAlpha(Appearance.colors.colPrimaryContainer, root.searchCurrent ? 0.4 : 0.18)
+                            markColor: ColorUtils.applyAlpha(Appearance.colors.colPrimaryContainer, root.searchCurrent ? 0.4 : 0.18)
                         }
 
                         SyntaxHighlighter {
@@ -307,7 +304,7 @@ ColumnLayout {
                     }
                 }
                 Loader {
-                    active: root.isCommandRequest && root.messageData.functionPending
+                    active: root.isCommandRequest && (root.messageData?.functionPending ?? false)
                     visible: active
                     Layout.fillWidth: true
                     Layout.margins: 6

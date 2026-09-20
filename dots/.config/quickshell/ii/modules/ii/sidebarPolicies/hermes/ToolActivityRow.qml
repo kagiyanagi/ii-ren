@@ -21,6 +21,23 @@ Item {
 
     property bool expanded: false
 
+    /*
+     * What a transcript search is looking for.
+     *
+     * A row whose command or output matches opens itself: the search counts hits
+     * in tool text, so a hit that stayed folded away would be a number pointing at
+     * nothing. The text is not marked -- these draw in StyledText, which
+     * SpeechHighlight has no selection API to work with.
+     */
+    property string searchQuery: ""
+    readonly property bool matchesSearch: {
+        const needle = root.searchQuery.trim().toLowerCase();
+        if (needle.length === 0)
+            return false;
+        return `${root.part?.toolName ?? ""} ${root.commandText} ${root.resultText}`.toLowerCase().includes(needle);
+    }
+    readonly property bool open: root.expanded || root.matchesSearch
+
     readonly property string commandText: {
         const full = (root.part?.toolFullInput ?? "").trim();
         return full.length > 0 ? full : (root.part?.toolInput ?? "").trim();
@@ -64,6 +81,14 @@ Item {
         if (seconds >= 0.05)
             parts.push(seconds < 1 ? Translation.tr("%1 ms").arg(Math.round(seconds * 1000)) : Translation.tr("%1 s").arg(seconds.toFixed(1)));
         return parts.join("  ·  ");
+    }
+
+    /** `read_file` as "Read file": the row names what ran, not its identifier. */
+    function toolLabel(name): string {
+        const raw = (name ?? "").replace(/[_-]+/g, " ").trim();
+        if (raw.length === 0)
+            return "";
+        return raw.charAt(0).toUpperCase() + raw.slice(1);
     }
 
     function toolIcon(name): string {
@@ -132,8 +157,6 @@ Item {
         case "ask_permission":
         case "ask_custom_permission":
             return "contact_support";
-        case "write_to_file":
-            return "edit_document";
         case "manage_task":
         case "schedule":
             return "schedule";
@@ -184,7 +207,6 @@ Item {
                 anchors.rightMargin: 8
                 spacing: 8
 
-                // Tool icon with tiny status dot overlay
                 Item {
                     implicitWidth: Appearance.font.pixelSize.normal
                     implicitHeight: Appearance.font.pixelSize.normal
@@ -200,9 +222,8 @@ Item {
                         }
                     }
 
-                    // Small state overlay dot: only shown during running or failure
                     Rectangle {
-                        visible: root.isRunning || root.hasFailed
+                        visible: root.isRunning && !root.hasFailed
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         anchors.rightMargin: -2
@@ -210,17 +231,29 @@ Item {
                         width: 7
                         height: 7
                         radius: Appearance.rounding.full
-                        color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
+                        color: Appearance.colors.colSubtext
                         border.width: 1
-                        border.color: Appearance.colors.colLayer1Base
+                        border.color: Appearance.colors.colLayer2Base
+                    }
+
+                    MaterialSymbol {
+                        visible: root.hasFailed
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.rightMargin: -4
+                        anchors.bottomMargin: -4
+                        iconSize: Appearance.font.pixelSize.smaller
+                        fill: 1
+                        color: Appearance.colors.colError
+                        text: "error"
                     }
                 }
 
                 StyledText { // Tool name
-                    text: root.part?.toolName ?? ""
+                    text: root.toolLabel(root.part?.toolName)
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     font.weight: Font.DemiBold
-                    color: Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colOnLayer2
                 }
 
                 StyledText { // Argument summary
@@ -237,9 +270,14 @@ Item {
 
                 MaterialSymbol {
                     visible: headerButton.enabled
-                    text: root.expanded ? "expand_less" : "expand_more"
+                    text: "keyboard_arrow_down"
                     iconSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
+
+                    rotation: root.open ? 180 : 0
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                 }
             }
         }
@@ -247,10 +285,10 @@ Item {
         Rectangle { // Expanded command details & return value
             id: detailsCard
             Layout.fillWidth: true
-            visible: root.expanded
+            visible: root.open
             implicitHeight: detailsColumn.implicitHeight + 16
             radius: Appearance.rounding.small
-            color: Appearance.colors.colLayer2
+            color: Appearance.colors.colLayer3
 
             ColumnLayout {
                 id: detailsColumn
@@ -260,7 +298,6 @@ Item {
                 anchors.margins: 8
                 spacing: 8
 
-                // Header bar of the command box
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -275,10 +312,10 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         elide: Text.ElideRight
-                        text: root.part?.toolName ?? Translation.tr("Command")
+                        text: root.toolLabel(root.part?.toolName) || Translation.tr("Command")
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer2
+                        color: Appearance.colors.colOnLayer4
                     }
 
                     StyledText { // What the call cost
@@ -289,7 +326,6 @@ Item {
                         color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colSubtext
                     }
 
-                    // Button to copy command
                     ButtonGroup {
                         AiMessageControlButton {
                             id: copyCommandButton
@@ -316,12 +352,11 @@ Item {
                     }
                 }
 
-                // Full command content
                 Rectangle {
                     Layout.fillWidth: true
                     implicitHeight: commandDisplay.implicitHeight + 16
                     radius: Appearance.rounding.verysmall
-                    color: Appearance.colors.colLayer3
+                    color: Appearance.colors.colLayer4
 
                     StyledText {
                         id: commandDisplay
@@ -331,7 +366,7 @@ Item {
                         textFormat: Text.PlainText
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.family: Appearance.font.family.monospace
-                        color: Appearance.colors.colOnLayer3
+                        color: Appearance.colors.colOnLayer4
                         text: root.commandText
                     }
                 }
@@ -343,7 +378,7 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: outputColumn.implicitHeight + 16
                     radius: Appearance.rounding.verysmall
-                    color: Appearance.colors.colLayer3
+                    color: Appearance.colors.colLayer4
 
                     ColumnLayout {
                         id: outputColumn
@@ -440,8 +475,8 @@ Item {
                             implicitHeight: 32
                             buttonRadius: Appearance.rounding.verysmall
                             colBackground: "transparent"
-                            colBackgroundHover: Appearance.colors.colLayer3Hover
-                            colRipple: Appearance.colors.colLayer3Active
+                            colBackgroundHover: Appearance.colors.colLayer4Hover
+                            colRipple: Appearance.colors.colLayer4Active
                             onClicked: root.outputExpanded = !root.outputExpanded
 
                             RowLayout {

@@ -16,7 +16,8 @@ import Quickshell
  * Content rendering is the AiChat message pipeline unchanged -- the same block
  * splitter and the same text/code/think blocks -- so markdown, LaTeX and code
  * fences behave identically across both agents. What differs is the header
- * (Hermes reports its own model per turn), the tool rows, and the usage footer.
+ * (Hermes reports its own model per turn), the tool rows, and the run time a
+ * finished reply carries.
  */
 Rectangle {
     id: root
@@ -184,8 +185,28 @@ Rectangle {
     anchors.right: parent?.right
     implicitHeight: columnLayout.implicitHeight + root.messagePadding * 2
 
+    /** How long the reply took, once it is finished. */
+    readonly property real elapsedSeconds: {
+        const started = root.messageData?.createdAt ?? 0;
+        const finished = root.messageData?.completedAt ?? 0;
+        return started > 0 && finished > started ? (finished - started) / 1000 : -1;
+    }
+
+    // Same scale ToolActivityRow reports a call's cost on, so a turn and the
+    // tools inside it read in the same units.
+    readonly property string elapsedText: {
+        const seconds = root.elapsedSeconds;
+        if (seconds < 0)
+            return "";
+        if (seconds < 1)
+            return Translation.tr("%1 ms").arg(Math.round(seconds * 1000));
+        if (seconds < 60)
+            return Translation.tr("%1 s").arg(seconds.toFixed(1));
+        return Translation.tr("%1m %2s").arg(Math.floor(seconds / 60)).arg(Math.round(seconds % 60));
+    }
+
     radius: Appearance.rounding.normal
-    color: Appearance.colors.colLayer1
+    color: Appearance.colors.colLayer2
 
     ColumnLayout {
         id: columnLayout
@@ -232,6 +253,16 @@ Rectangle {
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
                     text: root.isUser ? (SystemInfo.username.length > 0 ? SystemInfo.username : Translation.tr("You")) : root.isInterface ? Translation.tr("Hermes") : (root.messageData?.model ?? Translation.tr("Hermes"))
+                }
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: root.isUser && text.length > 0
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.family: Appearance.font.family.numbers
+                    color: Appearance.colors.colSubtext
+                    text: (root.messageData?.createdAt ?? 0) > 0
+                        ? Qt.formatDateTime(new Date(root.messageData.createdAt), "HH:mm") : ""
                 }
 
                 MaterialSymbol {
@@ -390,6 +421,7 @@ Rectangle {
                             Layout.topMargin: 4
                             Layout.bottomMargin: 4
                             part: modelData.call
+                            searchQuery: root.searchQuery
 
                             // Fades in where it lands, like the text lines around
                             // it -- a row appearing mid-stream at full opacity reads
@@ -413,6 +445,7 @@ Rectangle {
                             Layout.topMargin: 4
                             Layout.bottomMargin: 4
                             toolCalls: modelData.calls
+                            searchQuery: root.searchQuery
 
                             readonly property string entranceKey: modelData.calls[0]?.toolId ?? ""
                             opacity: root.toolSeen(entranceKey) ? 1 : 0
@@ -508,23 +541,15 @@ Rectangle {
             }
         }
 
-        StyledText { // Usage footer
+        StyledText { // How long it took
             Layout.fillWidth: true
             Layout.minimumWidth: 0
-            visible: root.messageData?.usage?.total > 0
+            visible: !root.isUser && text.length > 0
             elide: Text.ElideRight
             font.pixelSize: Appearance.font.pixelSize.smaller
             font.family: Appearance.font.family.numbers
             color: Appearance.colors.colSubtext
-            text: {
-                const usage = root.messageData?.usage;
-                if (!usage)
-                    return "";
-                const parts = [Translation.tr("%1 in / %2 out").arg(usage.input ?? 0).arg(usage.output ?? 0)];
-                if ((usage.context_percent ?? 0) > 0)
-                    parts.push(Translation.tr("%1% context").arg(usage.context_percent));
-                return parts.join("  ·  ");
-            }
+            text: root.elapsedText
         }
     }
 }

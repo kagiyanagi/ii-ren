@@ -28,6 +28,13 @@ Item {
     property bool historyShown: false
     property bool workShown: false
 
+    // The work panel holds delegated children and background processes as well
+    // as side tasks. A badge counting only the last of those read as "nothing
+    // running" while three subagents were.
+    readonly property int liveWorkCount: HermesService.runningSideTasks
+        + (HermesService.subagents?.length ?? 0)
+        + (HermesService.agentProcesses?.length ?? 0)
+
     // ── Finding something said earlier ───────────────────────────────
     //
     // The search bar takes over the pill already floating at the top of the
@@ -43,6 +50,23 @@ Item {
     // jump one row out.
     readonly property var visibleIds: HermesService.messageIDs.filter(id => HermesService.messageByID[id]?.visibleToUser ?? true)
 
+    // Enough hits to step through; past this the count stops being useful and
+    // the scan starts to cost. Reported as "500+" rather than a wrong total.
+    readonly property int searchHitLimit: 500
+
+    /** A turn's prose plus what its tools ran and returned. */
+    function searchHaystack(id: string): string {
+        const message = HermesService.messageByID[id];
+        if (!message)
+            return "";
+        // Tool text is searched but cannot be marked -- a tool row draws in
+        // StyledText, which SpeechHighlight has no selection API to work with.
+        // A row that matches opens itself instead, so the hit is at least visible.
+        const tools = (message.toolCalls ?? []).map(call =>
+            `${call.toolName ?? ""} ${call.toolInput ?? ""} ${call.toolFullInput ?? ""} ${call.toolResult ?? ""}`);
+        return [message.content ?? ""].concat(tools).join("\n").toLowerCase();
+    }
+
     // One entry per occurrence, each holding the row it sits in: the count is
     // then what a reader would count, and stepping still has a row to scroll to.
     readonly property var searchHits: {
@@ -51,8 +75,8 @@ Item {
             return [];
         const hits = [];
         root.visibleIds.forEach((id, row) => {
-            const hay = (HermesService.messageByID[id]?.content ?? "").toLowerCase();
-            for (let at = hay.indexOf(needle); at !== -1 && hits.length < 500; at = hay.indexOf(needle, at + needle.length))
+            const hay = root.searchHaystack(id);
+            for (let at = hay.indexOf(needle); at !== -1 && hits.length < root.searchHitLimit; at = hay.indexOf(needle, at + needle.length))
                 hits.push(row);
         });
         return hits;
@@ -69,17 +93,27 @@ Item {
             root.showSearchRow(root.searchHits[0]);
     }
 
+    // Whether the transcript was riding the live end when the search opened, so
+    // a search that found nothing can hand it back.
+    property bool searchResumeAtEnd: false
+
     function openSearch(): void {
+        root.searchResumeAtEnd = messageListView.followingEnd;
         root.searchShown = true;
         searchField.forceActiveFocus();
         searchField.selectAll();
     }
 
     function closeSearch(): void {
+        const wentSomewhere = root.searchRow >= 0;
         root.searchShown = false;
         searchField.text = "";
         root.searchQuery = "";
         messageInputField.forceActiveFocus();
+        // Closing on a hit means you went there to read it. Closing without one
+        // means the search was a detour, so give the live end back.
+        if (root.searchResumeAtEnd && !wentSomewhere)
+            messageListView.jumpToEnd();
     }
 
     function showSearchRow(row: int): void {
@@ -274,39 +308,6 @@ Item {
         }
     }
 
-    component StatusItem: MouseArea {
-        id: statusItem
-        property string icon
-        property string statusText
-        property string description
-        hoverEnabled: true
-        implicitHeight: statusItemRowLayout.implicitHeight
-        implicitWidth: statusItemRowLayout.implicitWidth
-
-        RowLayout {
-            id: statusItemRowLayout
-            spacing: 0
-
-            MaterialSymbol {
-                text: statusItem.icon
-                iconSize: Appearance.font.pixelSize.huge
-                color: Appearance.colors.colSubtext
-            }
-            StyledText {
-                font.pixelSize: Appearance.font.pixelSize.small
-                text: statusItem.statusText
-                color: Appearance.colors.colSubtext
-                animateChange: true
-            }
-        }
-
-        StyledToolTip {
-            text: statusItem.description
-            extraVisibleCondition: false
-            alternativeVisibleCondition: statusItem.containsMouse
-        }
-    }
-
     /** The compact icon controls that sit beside the command buttons. */
     component InputIconButton: RippleButton {
         id: iconButton
@@ -361,13 +362,6 @@ Item {
         }
     }
 
-    component StatusSeparator: Rectangle {
-        implicitWidth: 4
-        implicitHeight: 4
-        radius: implicitWidth / 2
-        color: Appearance.colors.colOutlineVariant
-    }
-
     ColumnLayout {
         id: columnLayout
         anchors {
@@ -380,6 +374,10 @@ Item {
             id: transcriptItem
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Six conditional strips sit under this one -- activity line, hints,
+            // model picker, suggestions, attachments, console -- plus two cards.
+            // Left to fill alone the transcript was whatever they had not taken.
+            Layout.minimumHeight: 100
             // A ListView does not clip, so delegates keep painting past the
             // viewport and show through the input bar -- colLayer2 is deliberately
             // semi-transparent so it composites onto colLayer1. A scissor rect is
@@ -507,7 +505,9 @@ Item {
                         visible: root.searchQuery.trim().length > 0
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: root.searchHits.length > 0 ? Appearance.colors.colSubtext : Appearance.m3colors.m3error
-                        text: root.searchHits.length > 0 ? `${root.searchPosition + 1}/${root.searchHits.length}` : Translation.tr("none")
+                        text: root.searchHits.length > 0
+                            ? `${root.searchPosition + 1}/${root.searchHits.length}${root.searchHits.length >= root.searchHitLimit ? "+" : ""}`
+                            : Translation.tr("none")
                     }
 
                     InputIconButton {
@@ -577,7 +577,9 @@ Item {
 
                 rotateIconWithShape: true
                 shown: HermesService.messageIDs.length === 0
-                description: HermesService.missing ? Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab") : Translation.tr("Ask anything, or type %1 for commands\nThe agent brings its own tools, skills and providers").arg(root.commandPrefix)
+                description: HermesService.missing
+                    ? Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab")
+                    : Translation.tr("Ask anything, or type %1 for commands\nStart a line with ! to run a shell command, or write @window to mean the window you were just in\nEnter sends · Shift+Enter is a new line · Ctrl+Enter hands the turn to a background agent").arg(root.commandPrefix)
 
                 triggerAnimationOn: GlobalStates.policiesPanelOpen
                 rotateToRight: GlobalStates.policiesOnLeft
@@ -671,38 +673,72 @@ Item {
             request: HermesService.pendingClarify
         }
 
-        RowLayout { // Activity line
+        Item { // Activity line
+            id: activityLine
             Layout.fillWidth: true
             // Shown for the whole of a turn, not only while there is a caption:
             // it is now the only "working" indicator, so a gap in it would read as
             // the agent having stopped.
-            visible: (Config.options.hermes?.showStatusLine ?? true) && (HermesService.busy || HermesService.dictating || HermesService.speakingMessageId.length > 0)
-            spacing: 8
+            readonly property bool shown: (Config.options.hermes?.showStatusLine ?? true)
+                && (HermesService.busy || HermesService.dictating || HermesService.speakingMessageId.length > 0)
 
-            MaterialLoadingIndicator {
-                // implicitSize drives both the layout box and the shape it paints
-                // (baseShapeSize is 0.7 of it) -- setting implicitWidth/Height only
-                // shrinks the box and leaves a 34px blob spilling out of it.
-                // 20 is the inline icon size, so the shape lands at 14 next to the
-                // 12px caption beside it.
-                implicitSize: 20
-                loading: true
+            // This fires on every turn, which makes it the most frequent
+            // transition on the page -- the one thing that must not snap. Same
+            // pairing as the cards above: height spatial, opacity effects.
+            implicitHeight: activityLine.shown ? activityRow.implicitHeight : 0
+            opacity: activityLine.shown ? 1 : 0
+            visible: implicitHeight > 0
+            clip: true
+
+            Behavior on implicitHeight {
+                NumberAnimation {
+                    duration: activityLine.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: activityLine.shown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                }
+            }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: activityLine.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
             }
 
-            StyledText {
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                elide: Text.ElideRight
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                text: HermesService.voiceState === "listening" ? Translation.tr("Listening…") : HermesService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : HermesService.speakingMessageId.length > 0 && !HermesService.busy ? Translation.tr("Reading aloud…") : HermesService.statusText.length > 0 ? HermesService.statusText : Translation.tr("Working…")
-            }
+            RowLayout {
+                id: activityRow
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+                spacing: 8
 
-            InputIconButton { // Silence playback without hunting for the message
-                visible: HermesService.speakingMessageId.length > 0
-                symbol: "stop"
-                tooltip: Translation.tr("Stop reading")
-                releaseAction: () => HermesService.stopSpeaking()
+                MaterialLoadingIndicator {
+                    // implicitSize drives both the layout box and the shape it paints
+                    // (baseShapeSize is 0.7 of it) -- setting implicitWidth/Height only
+                    // shrinks the box and leaves a 34px blob spilling out of it.
+                    // 20 is the inline icon size, so the shape lands at 14 next to the
+                    // 12px caption beside it.
+                    implicitSize: 20
+                    loading: true
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    text: HermesService.voiceState === "listening" ? Translation.tr("Listening…") : HermesService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : HermesService.speakingMessageId.length > 0 && !HermesService.busy ? Translation.tr("Reading aloud…") : HermesService.statusText.length > 0 ? HermesService.statusText : Translation.tr("Working…")
+                }
+
+                InputIconButton { // Silence playback without hunting for the message
+                    visible: HermesService.speakingMessageId.length > 0
+                    symbol: "stop"
+                    tooltip: Translation.tr("Stop reading")
+                    releaseAction: () => HermesService.stopSpeaking()
+                }
             }
         }
 
@@ -711,11 +747,44 @@ Item {
             showArrows: root.suggestionList.length > 1
         }
 
-        HermesModelPicker { // Only worth the room before a conversation starts
+        Item { // Only worth the room before a conversation starts
+            id: modelPickerSlot
             Layout.fillWidth: true
             Layout.maximumWidth: 330
             Layout.alignment: Qt.AlignHCenter
-            visible: HermesService.messageIDs.length === 0 && HermesService.providers.length > 0
+            readonly property bool shown: HermesService.messageIDs.length === 0 && HermesService.providers.length > 0
+
+            // Collapsed rather than dropped: this goes the instant the first
+            // message is sent, which is exactly when the eye is on the transcript
+            // waiting for a reply, and ninety pixels leaving at once reads as a jump.
+            implicitHeight: modelPickerSlot.shown ? modelPicker.implicitHeight : 0
+            opacity: modelPickerSlot.shown ? 1 : 0
+            visible: implicitHeight > 0
+            clip: true
+
+            Behavior on implicitHeight {
+                NumberAnimation {
+                    duration: modelPickerSlot.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: modelPickerSlot.shown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                }
+            }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: modelPickerSlot.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
+            }
+
+            HermesModelPicker {
+                id: modelPicker
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                }
+            }
         }
 
         FlowButtonGroup {
@@ -795,7 +864,7 @@ Item {
         HermesConsole { // A `!` command, while it runs and once it has
             Layout.fillWidth: true
             Layout.bottomMargin: visible ? 4 : 0
-            maxOutputHeight: root.height * 2 / 5
+            maxOutputHeight: root.height / 3
         }
 
         Rectangle { // Input area
@@ -902,7 +971,10 @@ Item {
                                 }
                                 event.accepted = false;
                             } else if (event.key === Qt.Key_Escape) {
-                                if (HermesService.speakingMessageId.length > 0) {
+                                if (HermesService.voiceState === "listening") {
+                                    HermesService.cancelDictation();
+                                    event.accepted = true;
+                                } else if (HermesService.speakingMessageId.length > 0) {
                                     HermesService.stopSpeaking();
                                     event.accepted = true;
                                 } else if (HermesService.attachedImages.length > 0) {
@@ -916,9 +988,6 @@ Item {
                                     event.accepted = true;
                                 } else if (root.workShown) {
                                     root.workShown = false;
-                                    event.accepted = true;
-                                } else if (HermesService.pendingApproval !== null) {
-                                    HermesService.respondToApproval("deny");
                                     event.accepted = true;
                                 } else if (root.suggestionList.length > 0) {
                                     root.suggestionList = [];
@@ -941,12 +1010,9 @@ Item {
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.small
 
-                    // Unknown until the gateway answers voice.toggle; offering it
-                    // greyed out before then would read as broken.
                     // Always offered: the recorder downloads its model on first use
                     // and reports its own failure, which is more useful than a
                     // greyed-out button with no explanation.
-                    enabled: true
                     toggled: HermesService.dictating
 
                     releaseAction: () => HermesService.toggleDictation()
@@ -972,11 +1038,22 @@ Item {
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.small
 
-                    enabled: HermesService.busy || messageInputField.text.length > 0
+                    /*
+                     * Stop only while there is nothing to send.
+                     *
+                     * This button used to become stop for the whole of a turn, so
+                     * typing a follow-up while a reply streamed left the control
+                     * under the cursor meaning the opposite of what it looked
+                     * like it meant. Sending mid-run is defined anyway -- the
+                     * gateway takes the next request as the end of the last one.
+                     */
+                    readonly property bool stops: HermesService.busy && messageInputField.text.length === 0
+
+                    enabled: sendButton.stops || messageInputField.text.length > 0
                     toggled: enabled
 
                     releaseAction: () => {
-                        if (HermesService.busy) {
+                        if (sendButton.stops) {
                             HermesService.interrupt();
                             return;
                         }
@@ -990,7 +1067,14 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         iconSize: 22
                         color: sendButton.enabled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2Disabled
-                        text: HermesService.busy ? "stop" : "arrow_upward"
+                        text: sendButton.stops ? "stop" : "arrow_upward"
+                    }
+
+                    // The three ways to send are otherwise written down nowhere.
+                    StyledToolTip {
+                        text: sendButton.stops
+                            ? Translation.tr("Stop this turn")
+                            : Translation.tr("Send (Enter)\nShift+Enter for a new line\nCtrl+Enter runs it in the background")
                     }
                 }
             }
@@ -1013,9 +1097,19 @@ Item {
                     Layout.maximumWidth: implicitWidth
                     icon: "auto_awesome"
                     text: HermesService.currentModel
-                    tooltipText: Translation.tr("Current model: %1\nProvider: %2\nChange it below, or with %3model").arg(HermesService.currentModel).arg(HermesService.currentProvider).arg(root.commandPrefix)
+                    // "below" was only ever true before the first message: the
+                    // picker is gone by the second time anyone reads this.
+                    tooltipText: Translation.tr("Current model: %1\nProvider: %2\nClick to change it").arg(HermesService.currentModel).arg(HermesService.currentProvider)
+                    // Its neighbours in this row open things when pressed. Rather
+                    // than be the one readout that looks the same and does
+                    // nothing, it writes the command whose completions the agent
+                    // itself supplies.
+                    clickAction: () => {
+                        messageInputField.text = `${root.commandPrefix}model `;
+                        messageInputField.cursorPosition = messageInputField.text.length;
+                        messageInputField.forceActiveFocus();
+                    }
                 }
-
 
                 HermesContextMeter {}
 
@@ -1025,9 +1119,9 @@ Item {
 
                 InputIconButton {
                     symbol: "play_circle"
-                    tooltip: HermesService.runningSideTasks > 0 ? Translation.tr("Hermes work — %1 still running").arg(HermesService.runningSideTasks) : Translation.tr("Hermes work")
+                    tooltip: root.liveWorkCount > 0 ? Translation.tr("Hermes work — %1 still running").arg(root.liveWorkCount) : Translation.tr("Hermes work")
                     toggled: root.workShown
-                    badge: HermesService.runningSideTasks
+                    badge: root.liveWorkCount
 
                     releaseAction: () => {
                         root.workShown = !root.workShown;

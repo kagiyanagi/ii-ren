@@ -23,6 +23,18 @@ ColumnLayout {
 
     property bool expanded: false
 
+    /** Passed down; a group holding a search hit opens so the hit can be seen. */
+    property string searchQuery: ""
+    readonly property bool matchesSearch: {
+        const needle = root.searchQuery.trim().toLowerCase();
+        if (needle.length === 0)
+            return false;
+        return (root.toolCalls ?? []).some(call =>
+            `${call.toolName ?? ""} ${call.toolInput ?? ""} ${call.toolFullInput ?? ""} ${call.toolResult ?? ""}`
+                .toLowerCase().includes(needle));
+    }
+    readonly property bool open: root.expanded || root.matchesSearch
+
     readonly property int total: root.toolCalls?.length ?? 0
     readonly property bool anyRunning: (root.toolCalls ?? []).some(call => call.toolRunning ?? false)
     readonly property bool anyFailed: (root.toolCalls ?? []).some(call => call.toolFailed ?? false)
@@ -85,7 +97,7 @@ ColumnLayout {
                 color: Appearance.colors.colSubtext
                 text: "keyboard_arrow_down"
 
-                rotation: root.expanded ? 180 : 0
+                rotation: root.open ? 180 : 0
                 Behavior on rotation {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
@@ -93,21 +105,30 @@ ColumnLayout {
         }
     }
 
-    ColumnLayout { // The calls themselves, once asked for
+    // The calls themselves, once asked for. Revealed rather than shown: each row
+    // inside already animates its own height, and a group that appeared instantly
+    // around rows that slide is two motions for one press.
+    Revealer {
         Layout.fillWidth: true
-        Layout.leftMargin: 8
-        spacing: 4
-        visible: root.expanded
+        vertical: true
+        reveal: root.open
 
-        Repeater {
-            model: ScriptModel {
-                values: root.expanded ? (root.toolCalls ?? []) : []
-            }
+        ColumnLayout {
+            x: 8
+            width: root.width - x
+            spacing: 4
 
-            delegate: ToolActivityRow {
-                required property var modelData
-                Layout.fillWidth: true
-                part: modelData
+            Repeater {
+                model: ScriptModel {
+                    values: root.open ? (root.toolCalls ?? []) : []
+                }
+
+                delegate: ToolActivityRow {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    part: modelData
+                    searchQuery: root.searchQuery
+                }
             }
         }
     }

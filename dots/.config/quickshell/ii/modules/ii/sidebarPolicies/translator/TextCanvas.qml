@@ -20,7 +20,7 @@ Rectangle {
     color: Appearance.colors.colLayer2
     radius: Appearance.rounding.normal
 
-    signal inputTextChanged(); // Signal emitted when text changes
+    signal inputTextChanged();
 
     ColumnLayout {
         id: inputColumn
@@ -32,8 +32,7 @@ Rectangle {
             active: root.isInput
             visible: root.isInput
             Layout.fillWidth: true
-            sourceComponent: StyledTextArea { // Input area
-                id: inputTextArea
+            sourceComponent: StyledTextArea {
                 placeholderText: root.placeholderText
                 wrapMode: TextEdit.Wrap
                 textFormat: TextEdit.PlainText
@@ -50,8 +49,7 @@ Rectangle {
             active: !root.isInput
             visible: !root.isInput
             Layout.fillWidth: true
-            sourceComponent: StyledText { // Output area
-                id: outputTextArea
+            sourceComponent: StyledText {
                 padding: 15
                 wrapMode: Text.Wrap
                 font.pixelSize: Appearance.font.pixelSize.small
@@ -60,7 +58,7 @@ Rectangle {
             }
         }
 
-        Item { Layout.fillHeight: true } 
+        Item { Layout.fillHeight: true }
 
         RowLayout { // Status row
             Layout.fillWidth: true

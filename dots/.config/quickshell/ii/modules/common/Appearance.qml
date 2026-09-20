@@ -284,6 +284,24 @@ Singleton {
         readonly property real expressiveEffectsDuration: 200
         readonly property real expressiveFastEffectsDuration: 130
         readonly property real expressiveSlowEffectsDuration: 280
+
+        /*
+         * AOSP's ArrowPopup open/close, for surfaces that grow out of the
+         * control that opened them.
+         *
+         * Not an AnimSpec: it is a composite -- a scale that overshoots and
+         * settles on its own curve, with alpha riding underneath and held back
+         * on the way out -- so the parts are named here and assembled by each
+         * caller. DockFolderPopup, DesktopMenu, HermesContextMeter and
+         * HermesApprovalModeMenu all build the same thing out of these.
+         */
+        readonly property list<real> arrowPopupSettle: [0.3, 0, 0.33, 1, 1, 1]
+        readonly property real arrowPopupOvershoot: 1.02
+        readonly property real arrowPopupScale: 0.5
+        readonly property real arrowPopupScaleDuration: 200
+        readonly property real arrowPopupCloseDuration: 233
+        readonly property real arrowPopupFadeDuration: 83
+        readonly property real arrowPopupFadeHold: 150
     }
 
     animation: QtObject {

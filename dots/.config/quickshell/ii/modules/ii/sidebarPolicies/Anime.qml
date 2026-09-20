@@ -7,7 +7,6 @@ import qs.modules.ii.sidebarPolicies.anime
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 
 Item {
@@ -152,15 +151,9 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: swipeView.width
-                    height: swipeView.height
-                    radius: Appearance.rounding.small
-                }
-            }
+            // No layer mask here. It masked to `swipeView`, an id that lives in
+            // SidebarPoliciesContent.qml and so resolves to nothing from this
+            // file, and that page's SwipeView already rounds and clips every tab.
 
             ScrollEdgeFade {
                 z: 1
@@ -235,11 +228,7 @@ Item {
                     bottom: parent.bottom
                     bottomMargin: 20 + (root.pullLoading ? 0 : Math.max(0, (root.normalizedPullDistance - 0.5) * 50))
                     Behavior on bottomMargin {
-                        NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-                        }
+                        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                     }
                 }
                 loading: root.pullLoading || Booru.runningRequests > 0

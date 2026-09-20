@@ -222,15 +222,11 @@ Item {
                 color: Appearance.colors.colLayer1Base
 
                 opacity: 0
-                scale: 0.5
+                scale: Appearance.animationCurves.arrowPopupScale
                 // Grows out of the pill that opened it, per ArrowPopup's pivot.
                 transformOrigin: Item.Bottom
 
-                // ArrowPopup.animateOpen(): scale 0.5 -> 1.02 over 200ms
-                // emphasizedDecel, then settles 1.02 -> 1 over 200ms on
-                // PathInterpolator(0.3, 0, 0.33, 1). Card fades in linearly
-                // over 83ms. DockFolderPopup and DesktopMenu are this recipe's
-                // other two callers.
+                // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
                 ParallelAnimation {
                     id: openAnim
                     running: true
@@ -238,9 +234,9 @@ Item {
                         NumberAnimation {
                             target: card
                             property: "scale"
-                            from: 0.5
-                            to: 1.02
-                            duration: 200
+                            from: Appearance.animationCurves.arrowPopupScale
+                            to: Appearance.animationCurves.arrowPopupOvershoot
+                            duration: Appearance.animationCurves.arrowPopupScaleDuration
                             easing.type: Easing.Bezier
                             easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
                         }
@@ -248,9 +244,9 @@ Item {
                             target: card
                             property: "scale"
                             to: 1
-                            duration: 200
+                            duration: Appearance.animationCurves.arrowPopupScaleDuration
                             easing.type: Easing.Bezier
-                            easing.bezierCurve: [0.3, 0, 0.33, 1, 1, 1]
+                            easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
                         }
                     }
                     NumberAnimation {
@@ -258,31 +254,29 @@ Item {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: 83
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
                     }
                 }
 
-                // ArrowPopup.animateClose(): scale 1 -> 0.5 over 233ms
-                // emphasizedAccel, fade held back 150ms then out over 83ms.
                 ParallelAnimation {
                     id: closeAnim
                     NumberAnimation {
                         target: card
                         property: "scale"
-                        to: 0.5
-                        duration: 233
+                        to: Appearance.animationCurves.arrowPopupScale
+                        duration: Appearance.animationCurves.arrowPopupCloseDuration
                         easing.type: Easing.Bezier
                         easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
                     }
                     SequentialAnimation {
                         PauseAnimation {
-                            duration: 150
+                            duration: Appearance.animationCurves.arrowPopupFadeHold
                         }
                         NumberAnimation {
                             target: card
                             property: "opacity"
                             to: 0
-                            duration: 83
+                            duration: Appearance.animationCurves.arrowPopupFadeDuration
                         }
                     }
                     onFinished: overlay.destroy()
