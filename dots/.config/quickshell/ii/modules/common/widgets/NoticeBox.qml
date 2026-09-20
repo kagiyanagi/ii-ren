@@ -10,6 +10,13 @@ Rectangle {
     property alias textColor: noticeText.color
     default property alias boxData: buttonRow.data
 
+    // This is the shell's failure surface and every one of it looked like a
+    // neutral notice. Material Symbols' "error" means one thing, and the callers
+    // that are reporting a failure already pass it, so the severity comes from
+    // there rather than from 38 call sites repeating a flag. Override to force
+    // either tone. colError is the role for failure (DESIGN.md 6.1).
+    property bool error: root.materialIcon === "error"
+
     readonly property int itemIndex: {
         var p = parent;
         if (!p) return 0;
@@ -168,7 +175,12 @@ Rectangle {
     Behavior on bottomLeftRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root) }
     Behavior on bottomRightRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root) }
 
-    color: Appearance.colors.colTertiaryContainer
+    color: root.error ? Appearance.colors.colErrorContainer : Appearance.colors.colTertiaryContainer
+    // A notice with nothing to say is an empty coloured slab with an icon in it.
+    // Several callers hand-write this guard beside a text binding that can come
+    // back empty; it belongs to the widget, and a caller that sets `visible` for
+    // its own reason still wins.
+    visible: root.text.length > 0 || buttonRow.children.length > 0
     Layout.fillWidth: true
     implicitWidth: mainRowLayout.implicitWidth + mainRowLayout.anchors.margins * 2
     implicitHeight: mainRowLayout.implicitHeight + mainRowLayout.anchors.margins * 2
@@ -177,7 +189,7 @@ Rectangle {
         id: mainRowLayout
         anchors.fill: parent
         anchors.margins: 16
-        spacing: 14
+        spacing: 12
 
         MaterialShapeWrappedMaterialSymbol {
             id: icon
@@ -187,8 +199,8 @@ Rectangle {
             shape: MaterialShape.Shape.Circle
             iconSize: 22
             padding: 8
-            color: Appearance.colors.colTertiary
-            colSymbol: Appearance.colors.colOnTertiary
+            color: root.error ? Appearance.colors.colError : Appearance.colors.colTertiary
+            colSymbol: root.error ? Appearance.colors.colOnError : Appearance.colors.colOnTertiary
         }
 
         RowLayout {
@@ -199,7 +211,7 @@ Rectangle {
                 id: noticeText
                 Layout.fillWidth: true
                 text: "Notice message"
-                color: Appearance.colors.colOnTertiaryContainer
+                color: root.error ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnTertiaryContainer
                 wrapMode: Text.WordWrap
             }
 

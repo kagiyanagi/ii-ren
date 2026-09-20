@@ -112,7 +112,12 @@ Rectangle {
         animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
-    color: mouseArea.containsMouse ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer
+    // The hover tint used to be swapped in here, on colSecondaryContainerHover --
+    // which is the 0.10 mix, so a hover rendered at the pressed token's strength
+    // and there was no pressed or focus state at all. A StateOverlay composites
+    // all three at the right opacity and keeps hover -> press -> release
+    // continuous (DESIGN.md 3.1).
+    color: Appearance.colors.colSecondaryContainer
     implicitWidth: mainRowLayout.implicitWidth + 32
     implicitHeight: mainRowLayout.implicitHeight + 32
 
@@ -129,11 +134,26 @@ Rectangle {
         }
     }
 
+    // Declared before the content so the film sits behind it, and it takes the
+    // box's four corner radii so it follows the press morph instead of squaring
+    // off inside it.
+    StateOverlay {
+        anchors.fill: parent
+        topLeftRadius: root.topLeftRadius
+        topRightRadius: root.topRightRadius
+        bottomLeftRadius: root.bottomLeftRadius
+        bottomRightRadius: root.bottomRightRadius
+        contentColor: Appearance.colors.colOnSecondaryContainer
+        hover: mouseArea.containsMouse
+        focused: mouseArea.activeFocus
+        press: mouseArea.pressed
+    }
+
     RowLayout {
         id: mainRowLayout
         anchors.fill: parent
         anchors.margins: 16
-        spacing: 14
+        spacing: 12
 
         MaterialShapeWrappedMaterialSymbol {
             id: icon
@@ -160,7 +180,8 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             text: root.linkText
             font.pixelSize: Appearance.font.pixelSize.small
-            font.bold: true
+            // Weight goes through the wght axis, not font.bold (DESIGN.md 7).
+            font.variableAxes: Appearance.font.variableAxes.title
             color: Appearance.colors.colPrimary
         }
 
@@ -177,7 +198,15 @@ Rectangle {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: true
+        // Everything reachable by mouse is reachable by keyboard (DESIGN.md 3.7),
+        // and this lives in the settings app, which is navigated that way.
+        activeFocusOnTab: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.navigateToTarget()
+        Keys.onPressed: event => {
+            if (event.key !== Qt.Key_Space && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter) return;
+            root.navigateToTarget();
+            event.accepted = true;
+        }
     }
 }

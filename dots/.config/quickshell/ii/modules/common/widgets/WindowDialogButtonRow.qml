@@ -9,7 +9,9 @@ RowLayout {
     id: root
     spacing: 4
 
-    // These shouldn't be needed but it would be a terrible waste of space to follow the spec
-    Layout.margins: -8
-    Layout.topMargin: 0
+    // The confirming action sits at the dialog's right edge (DESIGN.md 9), which
+    // it only can if the row spans the dialog: every caller already puts a
+    // filler Item beside its buttons, and without this the filler had no width
+    // to take and the whole group sat at the left.
+    Layout.fillWidth: true
 }

@@ -4,11 +4,12 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Widgets
 
 Item {
     id: root
-    property real dialogPadding: 15
-    property real dialogMargin: 30
+    property real dialogPadding: 16
+    property real dialogMargin: 32
     property string titleText: "Selection Dialog"
     property alias items: choiceModel.values
     property int selectedId: choiceListView.currentIndex
@@ -30,86 +31,85 @@ Item {
         }
     }
 
+    // A dialog sits at elevation 5 (DESIGN.md 6.2), and declared before the
+    // surface so it paints behind it.
+    StyledRectangularShadow {
+        target: dialog
+    }
+
     Rectangle { // The dialog
         id: dialog
         color: Appearance.m3colors.m3surfaceContainerHigh
-        radius: Appearance.rounding.normal
+        radius: Appearance.rounding.verylarge
         anchors.fill: parent
-        anchors.margins: dialogMargin
+        anchors.margins: root.dialogMargin
         implicitHeight: dialogColumnLayout.implicitHeight
-        
+
         ColumnLayout {
             id: dialogColumnLayout
             anchors.fill: parent
+            anchors.margins: root.dialogPadding
             spacing: 16
 
-            StyledText {
+            WindowDialogTitle {
                 id: dialogTitle
-                Layout.topMargin: dialogPadding
-                Layout.leftMargin: dialogPadding
-                Layout.rightMargin: dialogPadding
-                Layout.alignment: Qt.AlignLeft
-                color: Appearance.m3colors.m3onSurface
-                font.pixelSize: Appearance.font.pixelSize.larger
+                horizontalAlignment: Text.AlignLeft
                 text: root.titleText
             }
 
-            Rectangle {
-                color: Appearance.m3colors.m3outline
-                implicitHeight: 1
-                Layout.fillWidth: true
-                Layout.leftMargin: dialogPadding
-                Layout.rightMargin: dialogPadding
-            }
-
-            StyledListView {
-                id: choiceListView
+            // The list used to be fenced in by a hairline above and below it.
+            // DESIGN.md 5.5 replaces those with one card -- whitespace around it,
+            // its own rounding, rows clipped to its corners -- which is what the
+            // Wi-Fi and Bluetooth dialogs already do. ClippingRectangle, not
+            // `clip`: plain clip only clips to the bounding box, so a row's hover
+            // fill would square off the corners this rounds.
+            ClippingRectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
-                currentIndex: root.defaultChoice !== undefined ? root.items.indexOf(root.defaultChoice) : -1
-                spacing: 6
+                radius: Appearance.rounding.large
+                color: Appearance.colors.colSurfaceContainerHigh
 
-                model: ScriptModel {
-                    id: choiceModel
-                }
+                StyledListView {
+                    id: choiceListView
+                    anchors.fill: parent
+                    topMargin: 8
+                    bottomMargin: 8
+                    currentIndex: root.defaultChoice !== undefined ? root.items.indexOf(root.defaultChoice) : -1
+                    spacing: 6
 
-                delegate: StyledRadioButton {
-                    id: radioButton
-                    required property var modelData
-                    required property int index
-                    anchors {
-                        left: parent?.left
-                        right: parent?.right
-                        leftMargin: root.dialogPadding
-                        rightMargin: root.dialogPadding
+                    model: ScriptModel {
+                        id: choiceModel
                     }
 
-                    description: modelData.toString()
-                    checked: index === choiceListView.currentIndex
+                    delegate: StyledRadioButton {
+                        id: radioButton
+                        required property var modelData
+                        required property int index
+                        anchors {
+                            left: parent?.left
+                            right: parent?.right
+                            leftMargin: 12
+                            rightMargin: 12
+                        }
 
-                    onCheckedChanged: {
-                        if (checked) {
-                            choiceListView.currentIndex = index;
+                        description: modelData.toString()
+                        checked: index === choiceListView.currentIndex
+
+                        onCheckedChanged: {
+                            if (checked) {
+                                choiceListView.currentIndex = index;
+                            }
                         }
                     }
                 }
             }
 
-            Rectangle {
-                color: Appearance.m3colors.m3outline
-                implicitHeight: 1
-                Layout.fillWidth: true
-                Layout.leftMargin: dialogPadding
-                Layout.rightMargin: dialogPadding
-            }
-
-            RowLayout {
+            WindowDialogButtonRow {
                 id: dialogButtonsRowLayout
-                Layout.bottomMargin: dialogPadding
-                Layout.leftMargin: dialogPadding
-                Layout.rightMargin: dialogPadding
-                Layout.alignment: Qt.AlignRight
+
+                Item {
+                    Layout.fillWidth: true
+                }
 
                 DialogButton {
                     buttonText: Translation.tr("Cancel")

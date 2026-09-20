@@ -1,0 +1,50 @@
+refactor(cw-dialogs): a tooltip that waits, and a divider that is gone
+
+The dialog family against DESIGN.md 9's two recipes.
+
+Tooltips, which is where the volume is -- 139 callers on StyledToolTip alone.
+They appeared on the first pixel of hover, grew out of nothing (a size animated
+on an effects spec, which reads as the scale the recipe forbids), and then the
+QQC2 Basic style animated them again underneath, 300ms OutQuad in and the same
+300ms InQuad back out. Now: a 500ms hover wait, one fade, 200 in and 130 out,
+nothing that scales. StyledToolTipContent goes back to being a box -- both call
+sites fade it from outside, so its own `shown`, `isVisible`, three Behaviors and
+clip are gone with it. PopupToolTip gets the same wait and, for the first time,
+an animation in either direction: its loader used to unmap the window the
+instant the pointer left.
+
+Dialogs: radius verylarge, the elevation 5 shadow the recipe has always asked
+for, and an exit that is no longer the enter -- emphasizedAccel at half the
+duration, with the body's fade on the effects specs and picked inside the
+binding that writes it (2.9). Padding stopped being the container radius: it
+came from Appearance.rounding, which sharp mode zeroes, so every dialog and
+every DialogListItem row lost all of its padding the moment sharp mode was on.
+16 now, which is also 5.2's number for a dialog. WindowDialogButtonRow fills its
+width, so the filler Item that all seven callers already declare finally has
+width to take and the confirming action sits at the right edge instead of the
+left. Its Layout.margins: -8 -- negative margins, design law 11 -- is deleted.
+
+WindowDialogSeparator dies. Zero callers, 5.5 forbids it, and SelectionDialog
+was hand-rolling two more of them around its list: those become one card, the
+way the Wi-Fi and Bluetooth dialogs already do it. WindowDialogSectionHeader and
+WindowDialogParagraph take the whitespace half of that replacement, and both
+they and the title now fill their width, without which Text.Wrap did nothing.
+
+Finding 1, the focus layer, lands on ShortcutBox -- a raw MouseArea that had no
+focus state, no pressed state, and a hover painted with colSecondaryContainer-
+Hover, which is the 0.10 mix, so its hover rendered at the pressed token's
+strength. One StateOverlay does all three at the right opacity, plus tab focus
+and Space/Return. DialogListItem inherits its four states from RippleButton and
+only needed its state film pointed at layer 3.
+
+NoticeBox is the shell's failure surface and every one of them looked like a
+neutral notice. It reads the severity off the Material Symbol the callers
+already pass, so the three that say "error" say it in colError without 38 call
+sites repeating a flag, and a notice with nothing to say now hides itself
+instead of drawing an empty coloured slab.
+
+tools/check-dialog-surfaces.py holds the contract: the delay, the fade-only
+rule, both tooltip transitions from named specs, the popup outliving its own
+condition, the dialog's scrim/shadow/radius/half-duration exit, no padding from
+a rounding token, no hairlines, and a focus film on anything answering a click.
+Mutation-tested against eleven single-line regressions.

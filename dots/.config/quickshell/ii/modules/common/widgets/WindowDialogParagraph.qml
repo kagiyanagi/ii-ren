@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import Quickshell
 import qs.modules.common
 import qs.modules.common.functions
@@ -9,4 +10,6 @@ StyledText {
     color: Appearance.colors.colOnSurfaceVariant
     font.pixelSize: Appearance.font.pixelSize.small
     wrapMode: Text.Wrap
+    // Same as the title: Text.Wrap does nothing without a width to wrap at.
+    Layout.fillWidth: true
 }
