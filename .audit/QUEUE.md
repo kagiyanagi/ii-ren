@@ -17,6 +17,17 @@ rather than designing them. `.audit/settings-widgets/families.md` has the eviden
 The `cw-*` rows run in the order listed: `cw-buttons` first because fourteen library
 widgets are rooted in `RippleButton`, then by caller count.
 
+`ii-bar-root` was a 36-file / 9,535-line row, which is nearly four times the 2,500-line
+split rule, so it is now the five `ii-bar-chrome` / `ii-bar-widgets` / `ii-bar-tray` /
+`ii-bar-popups` / `ii-bar-resources` rows, cut by widget group exactly as the unit-of-work
+table in `AUDIT.md` said it would be. Those five plus `ii-bar-cards` and `ii-bar-weather`
+share one brief — `.audit/ii-bar/brief.md` — because the bar and its hover popups are one
+surface family; each row's own `brief.md` is the slice. They ran as seven parallel
+sessions behind the same four fences the `cw-*` and `sw-*` rows used, with two extra: the
+popup shell (`StyledPopup`) and the card kit are frozen-API for every row that does not
+own them, and no session may run `tools/audit/smoke.sh`, which `pkill`s every quickshell
+on the machine.
+
 The `sw-*` rows have exactly two orderings that matter: `sw-dead` first, so every later
 pack is generated from 70 files rather than 190, and `sw-clock-configs` second, because it
 is what puts the page header on `ContentPage`. The remaining eight are independent — their
@@ -59,9 +70,13 @@ fenced the same way the twelve `cw-*` rows were.
 | `ii-altTab` | `modules/ii/altTab` | ii | 1 | 1 | 243 | `ipc call altTab` | done | 2026-09-21 | ran lane 1, not 2. The card now waits 150ms before it draws anything, which is what let every invented number go; tiles wrap into a balanced `Grid` (`check-alttab-grid.py`). See `notes.md` before driving it — `currentWorkspaceOnly` is `true` on this machine |
 | `ii-background-widgets` | `modules/ii/background/widgets` | background | 2 | 122 | 27746 | ? | skip | 2026-09-20 | **out permanently** — vendored and rsynced with `--delete`; decided in `DECISIONS.md` 3 and `AUDIT.md`'s re-port hazard |
 | `ii-background-root` | `modules/ii/background/*.qml` | background | 2 | 3 | 1437 | always on screen; `hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })'` for a bare one | done | 2026-09-21 | ran lane 1, not 2. Parallax was NaN whenever every window sat in one workspace chunk, and the wallpaper plane ran on different timings from the widget canvas over it (`check-desktop-parallax.py`). Seven dead properties gone. **Still frames prove nothing here** — see `notes.md` for the 60fps list and for two findings left to `ii-overview` and the re-port |
-| `ii-bar-cards` | `modules/ii/bar/cards` | bar | 1 | 14 | 3204 | ? | todo | |  |
-| `ii-bar-weather` | `modules/ii/bar/weather` | bar | 1 | 2 | 385 | ? | todo | |  |
-| `ii-bar-root` | `modules/ii/bar/*.qml` | bar | 1 | 36 | 9541 | `ipc call bar` | todo | | top-level files only |
+| `ii-bar-cards` | `modules/ii/bar/cards` | bar | 1 | 14 | 3204 | hover any bar item with a popup | briefed | | the kit every bar popup composes |
+| `ii-bar-weather` | `modules/ii/bar/weather` | bar | 1 | 2 | 385 | hover the weather widget | briefed | |  |
+| `ii-bar-chrome` | `modules/ii/bar/*.qml` | bar | 1 | 6 | 971 | `ipc call bar` | briefed | | `ii-bar-root` split 1/5 — the strip, its layout and its auto-hide |
+| `ii-bar-widgets` | `modules/ii/bar/*.qml` | bar | 1 | 16 | 2287 | `ipc call bar` | briefed | | `ii-bar-root` split 2/5 — the readouts in the strip |
+| `ii-bar-tray` | `modules/ii/bar/*.qml` | bar | 1 | 7 | 1259 | hover or click a tray icon | briefed | | `ii-bar-root` split 3/5 — tray + the three privacy indicators |
+| `ii-bar-popups` | `modules/ii/bar/*.qml` | bar | 1 | 5 | 2286 | hover the battery / clock / media / network widget | briefed | | `ii-bar-root` split 4/5 — **owns `StyledPopup`**, the shell the other six popups inherit |
+| `ii-bar-resources` | `modules/ii/bar/*.qml` | bar | 1 | 2 | 2732 | hover the resources widget | briefed | | `ii-bar-root` split 5/5 — the 2k-line popup and its docker section |
 | `ii-cheatsheet` | `modules/ii/cheatsheet` | ii | 2 | 6 | 1122 | `ipc call cheatsheet` | todo | |  |
 | `ii-clipboardToast` | `modules/ii/clipboardToast` | ii | 1 | 1 | 497 | `wl-copy "text-$RANDOM"` | done | 2026-09-20 | pilot; ran lane 1 end to end. See notes.md before driving it |
 | `ii-desktopMenu` | `modules/ii/desktopMenu` | ii | 2 | 2 | 843 | `ipc call desktopMenu` | todo | |  |

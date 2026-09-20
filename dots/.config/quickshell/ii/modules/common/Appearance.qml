@@ -348,6 +348,15 @@ Singleton {
             duration: 200
             bezierCurve: root.animationCurves.standardDecel
         }
+
+        /*
+         * Stagger for siblings entering together (DESIGN.md 2.8): ~25-50ms
+         * apart, capped at about six items, past which the tail reads as broken
+         * rather than choreographed. One name so a popup and the cards inside
+         * it cannot drift apart.
+         */
+        readonly property int staggerStep: 30
+        readonly property int staggerCap: 6
     }
 
     sizes: QtObject {
