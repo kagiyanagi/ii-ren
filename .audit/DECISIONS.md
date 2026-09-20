@@ -12,8 +12,8 @@ says **declined**, the reason is the whole point of writing it down.
 
 | # | Question | Decision | State |
 |---:|---|---|---|
-| 1 | The M3 stretch overscroll was dead for everyone — `WheelScrollHandler` gated its own `visible` on `interactions.scrolling.fasterTouchpadScroll`, which is `false` by default, and an invisible `MouseArea` gets no wheel events | **Decouple, do not flip the default.** The key is a *speed* preference; the stretch is design law (3.6) and is not optional. The handler is always live now and hands the wheel back to the Flickable unless the key is on — except at a bound, where the Flickable has nothing to do and the leftover becomes stretch | **done** |
-| 2 | `cw-overscroll`: a drag past the end *translates* the content, where 3.6 says stretch | **Do it now, with `boundsMovement: StopAtBounds`.** Qt's documented hook: the content stops, `verticalOvershoot` still reports the overhang. No new code to measure the drag, and the 500ms `Behavior` that would have fought a live drag is gone — the drag tracks 1:1 and only the release animates | **done** |
+| 1 | The M3 stretch overscroll was dead for everyone — `WheelScrollHandler` gated its own `visible` on `interactions.scrolling.fasterTouchpadScroll`, which is `false` by default, and an invisible `MouseArea` gets no wheel events | **Decouple, do not flip the default.** The key is a *speed* preference; the stretch is design law (3.6) and is not optional. The handler is always live now and hands the wheel back to the Flickable unless the key is on — except at a bound, where the Flickable has nothing to do and the leftover becomes stretch | **reversed by 24** |
+| 2 | `cw-overscroll`: a drag past the end *translates* the content, where 3.6 says stretch | **Do it now, with `boundsMovement: StopAtBounds`.** Qt's documented hook: the content stops, `verticalOvershoot` still reports the overhang. No new code to measure the drag, and the 500ms `Behavior` that would have fought a live drag is gone — the drag tracks 1:1 and only the release animates | **reversed by 24** |
 | 3 | The vendored p3drovfx trees (`ii-background-widgets`, 122 files / 27.7k lines) — redesign them or leave them out | **Leave them out permanently.** `port-widgets.sh` rsyncs with `--delete`, so a redesign is reverted by the next re-port, and re-porting is worth more than owning 27.7k lines that are not ours. Cost, accepted: the 8 `[undefined]` assignments and the worst of the 21 effects-in-delegates stay. Queue row `skip`, not `todo` | **done** (`AUDIT.md` scope) |
 | 4 | Perf never entered the audit — no pack facts, no brief heading, no gate | **Take the cheap half.** `pack.py` now emits an **Effect budget** (every `layer.enabled` / `MultiEffect` / `OpacityMask` / `ShaderEffect` / shadow / `Canvas` and every sub-100ms `Timer`, flagged when it sits inside something that repeats) and the brief template gained a `**Cost.**` line. No new gate: `check-effect-budget.py` already fails on a new nested effect | **done** |
 | 5 | `RippleButton`'s `StateOverlay` drives focus and press but not hover, so callers hand-mix a film — two ship 0.05 where the token is 0.08 | **Fix the two, not the base.** 261 files set a hover colour; making hover a film at the root is a redesign of the library's hover model and wants a measured before/after, not a default flip. `ToolbarTabButton`'s two alphas are now 0.08 / 0.10 | **done** + revisit queued |
@@ -33,6 +33,7 @@ says **declined**, the reason is the whole point of writing it down.
 | 19 | `services/Ai.qml:396` called `addUserModels()`, which was never written | **Delete the call.** Both config-fed model lists (`modelsOfProviders`, `otherModels`) are bindings and already update when the config arrives | **done** |
 | 20 | `modules/settings/widgets/LauncherResultsConfig.qml` assigns five properties `ConfigListView` never declared | **Delete the file; drop the three stray assignments in `BarLayoutConfig`.** It has zero callers, and its `SearchResultSectionRegistry` singleton and `Config.options.search.sectionOrder` path do not exist anywhere in the repo. **Measured, and the earlier `FINDINGS.md` claim was wrong:** re-adding one bogus assignment and opening the page shows it loads and works — QML accepted it silently — so this was dead weight, not a dead page | **done** |
 | 22 | 120 of the 190 files in `modules/settings/widgets` — 25,071 lines, 71% of the tranche — are reached by nothing: not instantiated, not named by any `Qt.resolvedUrl`, not in the widget registry | **Delete them, as row `sw-dead`, before any design row runs.** Same call as 20, at 120× the scale and with the same evidence: 486 of the 904 `Config.options.*` paths this directory reads do not exist in `Config.qml` (whole absent feature backends — `bar.portWatcher`, `phone.scrcpy`, `search.browserSites`, `calendar.timetable`, `appStats`), 66 of the 77 `check-design.py` hits are in those files, and every effect in the tranche is too. `git revert` is the undo, and the settings app is gated by the new `smoke-settings.sh` because `smoke.sh` never covered it | **queued** (`sw-dead`) |
+| 24 | The stretch overscroll, once it was finally watched on a real desktop rather than measured | **Remove it entirely.** Glitchy at both anchors — decisions 1 and 2 are reversed, `verticalOvershoot`, `boundsMovement: StopAtBounds`, the `Scale` on `contentItem` and `WheelScrollHandler`'s whole accumulator are gone, and a drag past the end is Qt's own `DragOverBounds` rubber-band again. This is the shell's one deliberate departure from Android 16, so it is written into DESIGN.md 3.6 as an exception and `check-scaffold-containers.py` now fails if either flickable scales its content — the thing had already been built twice | **done** |
 | 23 | The 62 registry-fed `Desktop*Config.qml` pages configure a vendored tree that is permanently out of scope — are they out too | **No, they are in.** `port-widgets.sh` rsyncs `modules/ii/background/widgets` and the assets and never touches `modules/settings/`, so unlike decision 3 a redesign here survives the next re-port. The standing cost is the other direction: a re-port can add a registry entry whose `configPage` names a file we do not have. `reachable.py` after a re-port is what catches it | **done** (recorded, `notes.md`) |
 
 ## Found after the fact
@@ -60,8 +61,6 @@ From the rows that retimed something and could not drive the shell:
 - The **40dp switch halo**, now on ~129 `ConfigSwitch` rows (`cw-config-rows`).
 - **Notification group expansion**, which lands `contentHeight` in steps
   (`cw-notifications`).
-- The **stretch overscroll** on a real touchpad: measured at 47px peak on a 750px viewport
-  through a wheel, but the feel of the release is a hand judgement (this pass).
 - **Swipe-to-dismiss** on the clipboard toast — `dismissFraction` and `escapeVelocity` are
   the two knobs, and synthetic drags cannot judge them (`ii-clipboardToast`).
 
@@ -69,8 +68,8 @@ From the rows that retimed something and could not drive the shell:
 
 - **Scroll speed.** `fasterTouchpadScroll` still defaults `false`, and now means only what
   its name says. If the shell's own factors (mouse 120, touchpad 450) feel better than
-  Qt's, turn it on in Settings → Interface; nothing about the stretch depends on it any
-  more.
+  Qt's, turn it on in Settings → Interface. With the stretch gone (24) that key is the only
+  thing `WheelScrollHandler` still does.
 - **Whether the two bar spacers should exist at all.** They are `empty` now, so they are
   8px of whitespace rather than pipes. Removing them entirely is one click each in
   Settings → Bar → layout.

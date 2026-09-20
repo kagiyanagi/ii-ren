@@ -198,12 +198,6 @@ timing. Growth starts where the thing came from:
 - Panel anchored to a screen edge → that edge (`Item.Bottom` for a bottom dock,
   `Item.Left` for a left sidebar).
 - Press feedback → `Item.Center`.
-- Overscroll stretch → **the edge being pushed**, so that edge stays put and the
-  content stretches in the direction of the scroll. The far edge is the one that
-  moves, by the full overscroll distance. (This bullet said "the far edge" until
-  2026-09-20, 3.6 said the opposite, and the two flickables implemented this
-  one — at the bottom of a list the content slid downwards while the scroll
-  pushed up.)
 
 ### 2.7 Interruption
 
@@ -378,11 +372,15 @@ would fight the ripple's.
 
 - Swipe-to-dismiss: `SwipeDismissible` — 70px confirm threshold, neighbours
   follow at 0.3 and 0.1 of the drag.
-- Scroll overscroll: `WheelScrollHandler` accumulates past the end
-  (`overscrollMax` 0.12 of viewport, diminishing, 60ms release) and
-  `StyledListView`/`StyledFlickable` turn it into an Android-style stretch — a
-  `Scale` on `contentItem` with the origin pinned at the edge being pushed. Do
-  not translate the content; stretch it.
+- Scroll overscroll: **none. Do not build one.** A drag past the end is Qt's own
+  `DragOverBounds` rubber-band and a wheel turn at a bound does nothing at all.
+  The Android stretch was built here — a `Scale` on `contentItem` fed by
+  `WheelScrollHandler`'s accumulator and by `verticalOvershoot` — and removed on
+  2026-09-20 after it was finally watched on a real desktop: glitchy, whichever
+  edge it was anchored to. This is the one place this shell does not imitate
+  Android 16, and it is a deliberate exception, not an oversight to be corrected
+  by the next row that reads §2.6. `check-scaffold-containers.py` fails if either
+  flickable scales its content again.
 - Drag state gets the 0.16 layer, and the dragged item should lift (elevation),
   not fade.
 

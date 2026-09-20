@@ -14,11 +14,11 @@ reports at runtime and nowhere else:
 3. The two show/hide containers name a different spec for entering than for
    leaving (2.5). One shared spec is the easy "simplification" that puts the
    asymmetry back on the floor.
-4. The overscroll stretch is anchored at the edge being pushed (3.6), so the
-   content stretches the way the scroll is going. Anchored at the far edge it
-   still "works" -- it just slides the content away from the push, which is a
-   still-frame-invisible wrong that shipped once already, helped by DESIGN.md
-   2.6 saying the opposite of 3.6 until this was found.
+4. Neither flickable scales its content. The Android stretch overscroll was
+   built here, anchored the wrong way, fixed, watched on a real desktop and
+   removed as glitchy on 2026-09-20 (DESIGN.md 3.6). It is the one deliberate
+   departure from Android in this shell, so it needs a check that says so --
+   otherwise the next reader of 2.6 builds it again.
 5. An Item wrapping a child for a layout reports both implicit dimensions. The
    header rewrite in (2) reported only a height, and a section is sized by its
    header: every `ConfigRow` cell with `Layout.fillWidth: false` collapsed to
@@ -213,37 +213,32 @@ for n in SECTIONS:
     check_wrapper_implicit_size(n)
 
 
-# --- 5. the overscroll stretch pins the edge being pushed --------------------
+# --- 5. no overscroll stretch ------------------------------------------------
 
 STRETCHERS = ["StyledFlickable", "StyledListView"]
 
 
-def check_stretch_origin(name):
+def check_no_stretch(name):
     s = src(name)
-    m = re.search(r"contentItem\.transform:\s*Scale\s*\{(.*?)\}", s, re.S)
-    if not m:
-        fail(f"{name}: no `contentItem.transform: Scale` -- the overscroll stretch is gone (3.6)")
-        return
-    body = m.group(1)
-    origin = re.search(r"origin\.y:\s*(.+)", body)
-    if not origin:
-        fail(f"{name}: the stretch Scale sets no origin.y -- it would pin the content's top, "
-             "not an edge of the viewport")
-        return
-    expr = origin.group(1).strip()
-    # totalOverscroll is negative past the top, positive past the bottom. Past the top the
-    # pushed edge is the viewport's top (contentY); past the bottom it is contentY + height.
-    if not re.search(r"totalOverscroll\s*<\s*0\s*\?\s*\w+\.contentY\s*:\s*\w+\.contentY\s*\+\s*\w+\.height", expr):
-        fail(f"{name}: stretch origin.y is {expr!r} -- it has to be "
-             "`totalOverscroll < 0 ? contentY : contentY + height`, the edge being pushed. "
-             "Swapped, the content slides away from the scroll instead of stretching with it")
-    if "Math.abs" not in body:
-        fail(f"{name}: yScale must use the magnitude -- a signed overscroll shrinks the "
-             "content at one of the two bounds")
+    if re.search(r"contentItem\.transform", s):
+        fail(f"{name}: sets `contentItem.transform` -- the overscroll stretch was removed on "
+             "2026-09-20 for being glitchy (DESIGN.md 3.6). Scaling the content is what it was")
+    if "verticalOvershoot" in s:
+        fail(f"{name}: reads `verticalOvershoot` -- that only ever fed the stretch, and with "
+             "`boundsMovement` back at its default a drag past the end already rubber-bands")
+    if "StopAtBounds" in s:
+        fail(f"{name}: sets `boundsMovement: StopAtBounds` -- that was the hook the stretch "
+             "drew from, and it holds the content still during a drag past the end")
 
 
 for n in STRETCHERS:
-    check_stretch_origin(n)
+    check_no_stretch(n)
+
+
+WHEEL = (WIDGETS / "WheelScrollHandler.qml").read_text()
+if re.search(r"(?<![A-Za-z])[oO]verscroll", WHEEL):
+    fail("WheelScrollHandler still accumulates overscroll -- nothing draws it any more, and "
+         "piling it up means eating wheel turns at a bound for nothing")
 
 
 if failures:
@@ -256,4 +251,4 @@ print(f"ok: {len(SECTIONS)} collapsible headers render hover, focus and pressed 
 print(f"ok: {len(FAMILY)} scaffolding files anchor nothing a layout manages")
 print("ok: Revealer and PagePlaceholder specify both directions")
 print(f"ok: {len(SECTIONS)} sections report an implicit width, so a non-filling cell keeps its card")
-print(f"ok: {len(STRETCHERS)} flickables pin the overscroll stretch at the edge being pushed")
+print(f"ok: {len(STRETCHERS)} flickables scale nothing -- no overscroll stretch (3.6)")
