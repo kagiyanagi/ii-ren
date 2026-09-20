@@ -239,6 +239,30 @@ stagger inside a scrolling delegate; the offsets fire on recycle.
   `target: foo ?? null`, or keep the loader synchronous.
 - **Do not animate `x`/`y` of an anchored item.** Animate the anchor margin, or
   drop the anchor.
+- **A `Behavior` cannot read its own direction from a binding.** The obvious way
+  to give one property an enter spec and an exit spec is
+  `duration: shown ? enter.duration : exit.duration`. It does not work. The
+  Behavior bakes duration and curve at the instant the binding that *writes* its
+  property runs, and the other bindings on `shown` have not necessarily been
+  re-evaluated by then — so the exit runs on the enter's spec. Declaration order
+  does not fix it: traced in `PagePlaceholder`, `opacity`'s binding beat a spec
+  property declared above it, while the same shape in `Revealer` happened to
+  come out the other way. Assign the spec **from inside the binding that drives
+  the animation**, which by construction runs first:
+
+  ```qml
+  property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+  opacity: {
+      root.fadeSpec = root.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit
+      return root.shown ? 1 : 0
+  }
+  Behavior on opacity { NumberAnimation { duration: root.fadeSpec.duration; /* … */ } }
+  ```
+
+  Setting it from a `ScriptAction` inside the animation does not work either —
+  the job is built from the declarative object before the script runs, so the
+  values land one trigger late. `Revealer` and `PagePlaceholder` are the worked
+  examples; `tools/check-scaffold-containers.py` guards the shape.
 
 ### 2.10 Hyprland side
 

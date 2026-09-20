@@ -8,7 +8,7 @@ import QtQuick.Controls
  */
 ListView {
     id: root
-    spacing: 5
+    spacing: 4
     property real removeOvershoot: 20 // Account for gaps and bouncy animations
     property int dragIndex: -1
     property real dragDistance: 0
@@ -136,14 +136,24 @@ ListView {
         yScale: 1 + Math.abs(wheelHandler.overscroll) / Math.max(1, root.height)
     }
 
+    // Opacity and scale are split because they are different kinds of motion:
+    // the scale is spatial and is meant to overshoot, the fade is effects and
+    // clips if it does -- on one shared spatial spec the row finished fading at
+    // ~60% of the duration and then sat there (2.1, 10.6).
     add: Transition {
-        animations: animateAppearance ? [
-            Appearance?.animation.elementMove.numberAnimation.createObject(this, {
-                properties: popin ? "opacity,scale" : "opacity",
+        animations: !root.animateAppearance ? [] : [
+            Appearance?.animation.elementMoveFast.numberAnimation.createObject(this, {
+                property: "opacity",
                 from: 0,
                 to: 1,
             }),
-        ] : []
+        ].concat(!root.popin ? [] : [
+            Appearance?.animation.elementMove.numberAnimation.createObject(this, {
+                property: "scale",
+                from: 0,
+                to: 1,
+            }),
+        ])
     }
 
     addDisplaced: Transition {
@@ -193,13 +203,15 @@ ListView {
         ] : []
     }
 
+    // Leaving is the exit spec, not the enter one: faster, and monotone, so the
+    // fade does not dip past 0 and blank the row before the slide lands (2.5).
     remove: Transition {
         animations: animateAppearance ? [
-            Appearance?.animation.elementMove.numberAnimation.createObject(this, {
+            Appearance?.animation.elementMoveExit.numberAnimation.createObject(this, {
                 property: "x",
                 to: root.width + root.removeOvershoot,
             }),
-            Appearance?.animation.elementMove.numberAnimation.createObject(this, {
+            Appearance?.animation.elementMoveExit.numberAnimation.createObject(this, {
                 property: "opacity",
                 to: 0,
             })

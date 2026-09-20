@@ -130,6 +130,6 @@ Item {
     ColumnLayout {
         id: column
         anchors.fill: parent
-        spacing: 3
+        spacing: 4
     }
 }

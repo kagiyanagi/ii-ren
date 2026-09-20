@@ -31,6 +31,9 @@ you touched; they are the only automated gate.
   interaction states (a missing state has no line for `check-design.py` to flag)
 - `python3 tools/check-text-primitives.py` — `StyledText` still elides and `MaterialSymbol`
   still does not, and the text-swap animation still moves a `Translate` on named specs
+- `python3 tools/check-scaffold-containers.py` — the page/section/scroll containers keep
+  their header states, specify both motion directions, and anchor nothing a layout
+  manages (Qt calls that undefined behavior and only says so at runtime)
 
 Non-trivial logic that would otherwise only be verifiable by watching the shell gets a
 new `tools/check-*.py` in the same shape: pure asserts, no framework, one concern.

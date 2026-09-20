@@ -28,64 +28,96 @@ ColumnLayout {
         searchString: root.title
     }
 
-    RowLayout {
-        id: headerRow
-        Layout.leftMargin: 6
-        ContentSubsectionLabel {
-            opacity: 1 - highlightOverlay.opacity
-            visible: root.title && root.title.length > 0
-            text: root.title
+    // The header is its own Item, not a bare RowLayout: a MouseArea anchored
+    // inside a layout is undefined behaviour (Qt says so out loud), and the
+    // state film needs to sit behind the row without taking a cell in it.
+    Item {
+        Layout.fillWidth: true
+        // A collapsible header is a hit target and takes 3.4's 32px minimum; a
+        // plain label header stays as tall as its text, so the 63 callers that
+        // never collapse keep their spacing.
+        implicitHeight: root.collapsible ? Math.max(headerRow.implicitHeight, 32) : headerRow.implicitHeight
+
+        StateOverlay {
+            anchors.fill: parent
+            visible: root.collapsible
+            radius: Appearance.rounding.small
+            contentColor: Appearance.colors.colOnLayer1
+            hover: headerArea.containsMouse
+            focused: headerArea.activeFocus
+            press: headerArea.pressed
         }
-        MaterialSymbol {
-            opacity: 1 - highlightOverlay.opacity
-            visible: root.tooltip && root.tooltip.length > 0
-            text: "info"
-            iconSize: Appearance.font.pixelSize.large
-            
-            color: Appearance.colors.colSubtext
-            MouseArea {
-                id: infoMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.WhatsThisCursor
-                StyledToolTip {
-                    extraVisibleCondition: false
-                    alternativeVisibleCondition: infoMouseArea.containsMouse
-                    text: root.tooltip
+
+        // Declared before the row so the info icon's own area still wins the
+        // pointer: nothing in the row accepts a press, so one falls through.
+        MouseArea {
+            id: headerArea
+            anchors.fill: parent
+            visible: root.collapsible
+            hoverEnabled: true
+            activeFocusOnTab: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.expanded = !root.expanded
+            Keys.onPressed: event => {
+                if (event.key !== Qt.Key_Space && event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter) return
+                root.expanded = !root.expanded
+                event.accepted = true
+            }
+        }
+
+        RowLayout {
+            id: headerRow
+            anchors.fill: parent
+            anchors.leftMargin: 6
+
+            ContentSubsectionLabel {
+                opacity: 1 - highlightOverlay.opacity
+                visible: root.title && root.title.length > 0
+                text: root.title
+            }
+            MaterialSymbol {
+                opacity: 1 - highlightOverlay.opacity
+                visible: root.tooltip && root.tooltip.length > 0
+                text: "info"
+                iconSize: Appearance.font.pixelSize.large
+
+                color: Appearance.colors.colSubtext
+                MouseArea {
+                    id: infoMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.WhatsThisCursor
+                    StyledToolTip {
+                        extraVisibleCondition: false
+                        alternativeVisibleCondition: infoMouseArea.containsMouse
+                        text: root.tooltip
+                    }
+                }
+            }
+            HighlightOverlay {
+                id: highlightOverlay
+                visible: false
+            }
+            Item { Layout.fillWidth: true }
+
+            MaterialSymbol {
+                visible: root.collapsible
+                text: "keyboard_arrow_down"
+                iconSize: Appearance.font.pixelSize.large
+                color: Appearance.colors.colOnLayer1
+                rotation: root.expanded ? 0 : -90
+                Behavior on rotation {
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
             }
         }
-        HighlightOverlay {
-            id: highlightOverlay
-            visible: false
-        }
-        Item { Layout.fillWidth: true }
-
-        MaterialSymbol {
-            visible: root.collapsible
-            text: "keyboard_arrow_down"
-            iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
-            rotation: root.expanded ? 0 : -90
-            Behavior on rotation {
-                NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-            }
-        }
     }
 
-    MouseArea {
-        parent: headerRow
-        anchors.fill: parent
-        enabled: root.collapsible
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.expanded = !root.expanded
-    }
-    
     Item {
         Layout.fillWidth: true
         implicitHeight: root.expanded || !root.collapsible ? sectionContent.implicitHeight : 0
         visible: root.expanded || !root.collapsible
-        
+
         ContentGroup {
             id: sectionContent
             anchors.top: parent.top
