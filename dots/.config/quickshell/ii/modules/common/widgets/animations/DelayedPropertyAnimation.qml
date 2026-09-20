@@ -1,6 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.modules.common
 
+// Duration/easing are parameterised on purpose (a caller runs this on whatever
+// property needs a head start), but an unparameterised caller should not fall
+// through to Qt's bare 250ms-linear PropertyAnimation default -- that is a
+// duration nobody chose. elementMove ("the default for position and size",
+// DESIGN.md 2.3) is the neutral default; callers still override freely.
 SequentialAnimation {
     id: root
 
@@ -19,5 +25,8 @@ SequentialAnimation {
 
     PropertyAnimation {
         id: anim
+        duration: Appearance.animation.elementMove.duration
+        easing.type: Appearance.animation.elementMove.type
+        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
     }
 }

@@ -1,0 +1,26 @@
+refactor(cw-motion): a rotation that composes instead of clobbers, and a curve that finally has a name
+
+Tokenises the design-check hits across the transitions/animations family
+(ErrorShakeAnimation 5, PlaceholderOpeningAnimation 2, Carousel 3 durations
+plus 3 incomplete BezierSpline curves) and fixes the one inherited bug filed
+by cw-scaffolding: PlaceholderOpeningAnimation's icon swing wrote directly to
+iconWidget.rotation, a property PagePlaceholder already binds to `shown`, so
+the first trigger permanently cleared that binding and every show/hide after
+it stopped rotating the icon (DESIGN.md 2.9, 10.4). The swing now animates
+its own iconRotationOffset instead and never touches the external property;
+PagePlaceholder needs one line added to its own rotation expression to make
+the swing visible again (recorded in notes.md as a cross-family follow-up,
+since that file belongs to cw-scaffolding).
+
+Also: BounceAnimation and DelayedPropertyAnimation's caller-facing durations
+now default from Appearance.animation.* instead of a bare literal or Qt's own
+250ms/Linear fallback, so an unparameterised caller is already correct. The
+wipes (Crossfade/RevealWipe/Wipe) keep their caller-set duration but default
+it too, and RevealWipe/Wipe's shared hand-fit inline bezier is now
+Appearance.animationCurves.emphasizedDecel. Outer/Radial's maskRadius: 100
+is Appearance.rounding.full, which self-adjusts if the mask size ever
+changes instead of assuming it stays 200x200.
+
+Leaves tools/check-motion-defaults.py behind: asserts the five files where a
+caller-supplied duration is legitimate still default to Appearance.* and
+never regress to an inline curve.

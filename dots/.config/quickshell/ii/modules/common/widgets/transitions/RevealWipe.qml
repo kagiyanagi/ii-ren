@@ -1,5 +1,6 @@
 import QtQuick
 import Qt5Compat.GraphicalEffects
+import qs.modules.common
 
 // Shared OpacityMask reveal wipe. The named transitions (Diamond, Outer,
 // Radial, Slash) are thin wrappers that only set the mask geometry and the
@@ -8,7 +9,11 @@ Item {
     id: effect
     property Item frontImg
     property Item backImg
-    property int duration
+    // Parameterised on purpose -- TransitionImage always binds this from
+    // Config.options.background, so the default only matters for a caller
+    // that instantiates a wipe directly. expressiveSlowSpatialDuration: this
+    // is a full-screen crossing, same category as Crossfade/Wipe.
+    property int duration: Appearance.animationCurves.expressiveSlowSpatialDuration
 
     property bool hideFront: true
     signal finished()
@@ -71,7 +76,7 @@ Item {
         property: "scale"
         duration: effect.duration
         easing.type: Easing.BezierSpline
-        easing.bezierCurve: [0.227, 0.877, 0.959, 0.310, 1.0, 1.0]
+        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel // "entering, appearing, expanding" -- DESIGN.md 2.4
         onFinished: effect.finished()
     }
 

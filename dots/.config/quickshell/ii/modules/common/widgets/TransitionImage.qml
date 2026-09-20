@@ -12,7 +12,7 @@ Item {
 
     property string transitionType: Config.options.background.transitionType ?? "radial"
 
-    property int animationDuration: transitionType === "radial" ? 1100 : 1000
+    property int animationDuration: transitionType === "radial" ? 1100 : 1000 // design-ok: full-screen wallpaper crossing, screen-sized per DESIGN.md 2.4 -- no Appearance spec covers this scale
     property var fillMode: Image.PreserveAspectCrop
     property bool animated: Config.options.background.animateWallpaperChanges
 
@@ -143,7 +143,7 @@ Item {
         }
         
         Connections {
-            target: effectLoader.item
+            target: effectLoader.item ?? null
             function onFinished() {
                 root.cleanupTransition()
             }

@@ -160,8 +160,9 @@ Item {
                     opacity: itemContainer.width >= root._largeW - 20 ? 1 : 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 350
-                            easing.type: Easing.BezierSpline
+                            duration: Appearance.animation.elementMoveFast.duration
+                            easing.type: Appearance.animation.elementMoveFast.type
+                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                         }
                     }
 
@@ -224,19 +225,24 @@ Item {
         id: snapAnim
         target: flickable
         property: "contentX"
-        duration: 400
-        easing.type: Easing.BezierSpline
+        duration: Appearance.animation.scroll.duration
+        easing.type: Appearance.animation.scroll.type
+        easing.bezierCurve: Appearance.animation.scroll.bezierCurve
         onFinished: {
             updateCurrentIndex()
         }
     }
 
+    // Unused by any caller today (nothing calls .start()/.restart() on this),
+    // but a duration/curve is still a token, not a guess, whether the code
+    // path is exercised yet or not.
     PropertyAnimation {
         id: expandAnimation
         target: root
         property: "height"
-        duration: 300
-        easing.type: Easing.BezierSpline
+        duration: Appearance.animation.elementMove.duration
+        easing.type: Appearance.animation.elementMove.type
+        easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
     }
 
     function updateCurrentIndex() {

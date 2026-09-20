@@ -1,10 +1,15 @@
 import QtQuick
+import qs.modules.common
 
 Item {
     id: effect
     property Item frontImg
     property Item backImg
-    property int duration
+    // Parameterised on purpose -- TransitionImage always binds this from
+    // Config.options.background, so the default only matters for a caller
+    // that instantiates the effect directly. expressiveSlowSpatialDuration:
+    // this is a full-screen crossing, same category as the other wipes.
+    property int duration: Appearance.animationCurves.expressiveSlowSpatialDuration
 
     property bool hideFront: false
     property bool waitForReady: false
@@ -26,7 +31,8 @@ Item {
         from: 0
         to: 1
         duration: effect.duration
-        easing.type: Easing.InOutQuad
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.animationCurves.expressiveEffects // opacity: never overshoot
         onFinished: effect.finished()
     }
 }
