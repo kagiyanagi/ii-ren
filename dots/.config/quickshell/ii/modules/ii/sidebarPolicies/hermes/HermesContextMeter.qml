@@ -445,15 +445,28 @@ Item {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        spacing: 8
 
-                        RippleButton {
+                        // The optional focus comes before the action that
+                        // consumes it: a field under the button it feeds reads
+                        // as an afterthought, and is seen after the click.
+                        MaterialTextField {
+                            id: focusField
+                            Layout.fillWidth: true
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            placeholderText: Translation.tr("Focus the fold on… (optional)")
+                        }
+
+                        RippleButtonWithIcon {
                             id: compressButton
                             Layout.alignment: Qt.AlignLeft
                             enabled: !HermesService.compressing && !HermesService.busy
-                            horizontalPadding: 12
-                            implicitHeight: 30
-                            implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
+                            // The spinner takes the icon's place rather than
+                            // sitting beside it, so the pill keeps one state
+                            // and does not change width when it starts.
+                            materialIcon: HermesService.compressing ? "" : "unfold_less"
+                            materialIconFill: false
+                            colText: Appearance.colors.colOnPrimaryContainer
                             buttonRadius: Appearance.rounding.full
                             colBackground: Appearance.colors.colPrimaryContainer
                             colBackgroundHover: Appearance.colors.colPrimaryContainerHover
@@ -462,45 +475,25 @@ Item {
 
                             releaseAction: () => HermesService.compressSession(focusField.text)
 
-                            contentItem: RowLayout {
-                                anchors {
-                                    verticalCenter: parent.verticalCenter
-                                    left: parent.left
-                                    right: parent.right
-                                    leftMargin: compressButton.horizontalPadding
-                                    rightMargin: compressButton.horizontalPadding
-                                }
-                                spacing: 8
+                            mainContentComponent: Component {
+                                RowLayout {
+                                    spacing: 8
 
-                                Loader {
-                                    active: HermesService.compressing
-                                    sourceComponent: MaterialLoadingIndicator {
-                                        implicitSize: 16
-                                        loading: true
+                                    Loader {
+                                        active: HermesService.compressing
+                                        sourceComponent: MaterialLoadingIndicator {
+                                            implicitSize: 16
+                                            loading: true
+                                        }
                                     }
-                                }
-                                Loader {
-                                    active: !HermesService.compressing
-                                    sourceComponent: MaterialSymbol {
-                                        text: "unfold_less"
-                                        iconSize: Appearance.font.pixelSize.larger
+
+                                    StyledText {
+                                        text: Translation.tr("Fold conversation")
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
                                         color: Appearance.colors.colOnPrimaryContainer
                                     }
                                 }
-
-                                StyledText {
-                                    text: Translation.tr("Fold conversation")
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
-                                    color: Appearance.colors.colOnPrimaryContainer
-                                }
                             }
-                        }
-
-                        MaterialTextField {
-                            id: focusField
-                            Layout.fillWidth: true
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            placeholderText: Translation.tr("Focus the fold on… (optional)")
                         }
                     }
                 }
