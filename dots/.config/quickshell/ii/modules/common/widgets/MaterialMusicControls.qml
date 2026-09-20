@@ -10,6 +10,10 @@ ButtonGroup {
 
 
     property var player: MprisController.activePlayer
+    // No active player: dim the whole transport and stop it taking clicks.
+    // Each GroupButton already renders disabled at opacity 0.4 (DESIGN.md 3.1);
+    // Qt's enabled cascade gets all three there without touching them individually.
+    enabled: !!root.player
 
     GroupButton { // Previous button
         baseWidth: baseButtonWidth

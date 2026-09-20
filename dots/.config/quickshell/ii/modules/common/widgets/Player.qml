@@ -27,7 +27,7 @@ Item {
     property list<real> visualizerPoints: []
     property real maxVisualizerValue: 1000
     property int visualizerSmoothing: 2
-    property real radius
+    property real radius: Appearance.rounding.verylarge
     property bool showLyrics: false
 
     property string displayedArtFilePath: {

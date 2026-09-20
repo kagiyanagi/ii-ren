@@ -22,8 +22,10 @@ Item {
     signal toggleLyrics()
 
     component TrackChangeButton: RippleButton {
-        implicitWidth: 24
-        implicitHeight: 24
+        // 32px minimum hit area (DESIGN.md 3.4); the icon stays at
+        // font.pixelSize.huge, this only grows the transparent-at-rest tap target.
+        implicitWidth: 32
+        implicitHeight: 32
         property var iconName
         colBackground: ColorUtils.transparentize(root.blendedColors.colSecondaryContainer, 1)
         colBackgroundHover: root.blendedColors.colSecondaryContainerHover
@@ -42,19 +44,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 13
+        anchors.margins: 12
         spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 15
+            spacing: 16
 
             Rectangle {
                 id: artBackground
                 implicitHeight: 150
                 implicitWidth: 150
-                radius: 16
+                radius: Appearance.rounding.normal
                 color: ColorUtils.transparentize(root.blendedColors.colLayer1, 0.5)
 
                 layer.enabled: true
@@ -90,11 +92,14 @@ Item {
                 dimColor: root.blendedColors.colSubtext
                 indicatorColor: {
                     let c = root.blendedColors.colPrimaryContainer
-                    return (c && c != "#000000" && c != "transparent") ? c : root.artDominantColor
+                    // AdaptedMaterialScheme reads back as black before it has harmonised
+                    // colours; Qt.colorEqual (not a hex string) survives however that
+                    // black gets serialised, which a literal string compare might not.
+                    return (c && !Qt.colorEqual(c, "black") && c != "transparent") ? c : root.artDominantColor
                 }
                 indicatorShapeColor: {
                     let c = root.blendedColors.colOnPrimaryContainer
-                    if (c && c != "#000000" && c != "#ffffff" && c != "transparent") return c
+                    if (c && !Qt.colorEqual(c, "black") && !Qt.colorEqual(c, "white") && c != "transparent") return c
                     return root.blendedColors.colPrimary || Appearance.colors.colPrimary
                 }
             }
@@ -103,7 +108,7 @@ Item {
         ColumnLayout {
             id: infoColumn
             Layout.fillWidth: true
-            Layout.bottomMargin: 5
+            Layout.bottomMargin: 4
 
             StyledText {
                 id: trackTitle
@@ -213,7 +218,7 @@ Item {
                     id: playPauseButton
                     anchors.right: parent.right
                     anchors.bottom: sliderRow.top
-                    anchors.bottomMargin: 5
+                    anchors.bottomMargin: 4
                     property real size: 44
                     implicitWidth: size
                     implicitHeight: size

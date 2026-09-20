@@ -19,6 +19,12 @@ Item {
     implicitWidth: 200
     implicitHeight: 200
 
+    // Called by PlayerControlsLyrics after a manual seek, and by the retry tap
+    // below. Every value in this file is a plain binding on
+    // LyricsService.currentIndex/statusText, so a position jump redraws on its
+    // own -- there is nothing to redrive by hand.
+    function restartLyrics() {}
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 4
@@ -26,30 +32,35 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: LyricsService.status !== "ok"
+            visible: !LyricsService.hasSyncedLines
 
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: 12
 
-                Item {
+                RippleButton {
                     Layout.alignment: Qt.AlignHCenter
                     implicitWidth: 48
                     implicitHeight: 48
+                    padding: 0
+                    buttonRadius: Appearance.rounding.full
+                    downAction: () => root.restartLyrics()
 
-                    MaterialLoadingIndicator {
-                        anchors.fill: parent
-                        loading: LyricsService.status === "loading"
+                    contentItem: MaterialLoadingIndicator {
+                        loading: true
                         color: root.indicatorColor
                         shapeColor: root.indicatorShapeColor
                         implicitSize: 48
                     }
+                }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: LyricsService.restartLyrics()
-                    }
+                StyledText {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                    color: root.textColor
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    text: LyricsService.statusText
                 }
             }
         }
@@ -57,7 +68,7 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: LyricsService.status === "ok"
+            visible: LyricsService.hasSyncedLines
             spacing: 6
 
             Repeater {
@@ -68,8 +79,11 @@ Item {
                     Layout.fillWidth: true
                     horizontalAlignment: root.textAlignment
                     wrapMode: Text.WordWrap
-                    text: LyricsService.slots[index] ?? ""
-                    readonly property int dist: Math.abs(index - LyricsService.before)
+                    readonly property int centerOffset: index - 3 // model: 7, center slot
+                    readonly property int actualIndex: LyricsService.currentIndex + centerOffset
+                    readonly property bool isValidLine: actualIndex >= 0 && actualIndex < LyricsService.syncedLines.length
+                    text: isValidLine ? LyricsService.syncedLines[actualIndex].text : ""
+                    readonly property int dist: Math.abs(centerOffset)
                     font.pixelSize: {
                         if (dist === 0) return Appearance.font.pixelSize.normal
                         if (dist === 1) return Appearance.font.pixelSize.small
@@ -82,7 +96,9 @@ Item {
                         return 0.15
                     }
                     color: dist === 0 ? root.activeColor : root.textColor
-                    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                 }
             }
         }

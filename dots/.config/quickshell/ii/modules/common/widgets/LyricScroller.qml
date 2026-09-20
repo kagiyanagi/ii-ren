@@ -44,13 +44,19 @@ Item {
         }
     }
 
+    // Small element (one lyric row), short distance (rowHeight) -- fast spatial.
+    // opacity/scale below are linearly derived from this same progress, so they ride
+    // whatever this curve does; expressiveFastSpatial's overshoot is mostly absorbed
+    // by the Math.abs() in animProgress, but a decoupled effects-only fade would be
+    // cleaner if this ever gets its own Behavior instead.
     NumberAnimation {
         id: scrollAnimation
         target: root
         property: "scrollOffset"
         to: 0
-        duration: 400
-        easing.type: Easing.OutQuart
+        duration: Appearance.animation.elementMoveSmall.duration
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
     }
 
     Column {

@@ -22,8 +22,10 @@ Item {
     signal toggleLyrics()
 
     component TrackChangeButton: RippleButton {
-        implicitWidth: 24
-        implicitHeight: 24
+        // 32px minimum hit area (DESIGN.md 3.4); the icon stays at
+        // font.pixelSize.huge, this only grows the transparent-at-rest tap target.
+        implicitWidth: 32
+        implicitHeight: 32
         property var iconName
         colBackground: ColorUtils.transparentize(root.blendedColors.colSecondaryContainer, 1)
         colBackgroundHover: root.blendedColors.colSecondaryContainerHover
@@ -42,8 +44,8 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 13
-        spacing: 15
+        anchors.margins: 12
+        spacing: 16
 
         Rectangle {
             id: artBackground
@@ -113,7 +115,7 @@ Item {
                 StyledText {
                     id: trackTime
                     anchors.bottom: sliderRow.top
-                    anchors.bottomMargin: 5
+                    anchors.bottomMargin: 4
                     anchors.left: parent.left
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: root.blendedColors.colSubtext
@@ -187,7 +189,7 @@ Item {
                     id: playPauseButton
                     anchors.right: parent.right
                     anchors.bottom: sliderRow.top
-                    anchors.bottomMargin: 5
+                    anchors.bottomMargin: 4
                     property real size: 44
                     implicitWidth: size
                     implicitHeight: size
