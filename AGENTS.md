@@ -34,6 +34,9 @@ you touched; they are the only automated gate.
 - `python3 tools/check-scaffold-containers.py` — the page/section/scroll containers keep
   their header states, specify both motion directions, and anchor nothing a layout
   manages (Qt calls that undefined behavior and only says so at runtime)
+- `python3 tools/check-alttab-grid.py` — the Alt+Tab tile grid still fits inside its card
+  at every screen width and window count. It evaluates the layout expressions lifted out
+  of `AltTab.qml`, because a desktop with four windows exercises none of the wrap
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

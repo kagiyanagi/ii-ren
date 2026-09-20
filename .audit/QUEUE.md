@@ -56,7 +56,7 @@ fenced the same way the twelve `cw-*` rows were.
 | `cw-overscroll` | `modules/common/widgets` | shared-widgets | 1 | 3 | 0 | any list or flickable | done | 2026-09-20 | **superseded — the stretch was removed the same day** (`DECISIONS.md` 24): glitchy on a real desktop at both anchors. Qt's `DragOverBounds` rubber-band is what a drag past the end does now |
 | `config-defaults` | `modules/common/Config.qml` | common | 1 | 1 | 0 | n/a | done | 2026-09-20 | resolved without touching the default: the handler no longer gates `visible` on `fasterTouchpadScroll`, so the key means only what its name says and the stretch is unconditional |
 | `services-Ai` | `services/Ai.qml` | services | 2 | 1 | 0 | n/a | done | 2026-09-20 | the `addUserModels()` call went — the two config-fed model lists are bindings. Boot is clean of it |
-| `ii-altTab` | `modules/ii/altTab` | ii | 2 | 1 | 243 | `ipc call altTab` | todo | |  |
+| `ii-altTab` | `modules/ii/altTab` | ii | 1 | 1 | 243 | `ipc call altTab` | done | 2026-09-21 | ran lane 1, not 2. The card now waits 150ms before it draws anything, which is what let every invented number go; tiles wrap into a balanced `Grid` (`check-alttab-grid.py`). See `notes.md` before driving it — `currentWorkspaceOnly` is `true` on this machine |
 | `ii-background-widgets` | `modules/ii/background/widgets` | background | 2 | 122 | 27746 | ? | skip | 2026-09-20 | **out permanently** — vendored and rsynced with `--delete`; decided in `DECISIONS.md` 3 and `AUDIT.md`'s re-port hazard |
 | `ii-background-root` | `modules/ii/background/*.qml` | background | 2 | 3 | 1437 | ? | todo | | top-level files only |
 | `ii-bar-cards` | `modules/ii/bar/cards` | bar | 1 | 14 | 3204 | ? | todo | |  |

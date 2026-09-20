@@ -25,6 +25,7 @@ hl.bind("ALT_L", hl.dsp.global("quickshell:altTabConfirm"), { ignore_mods = true
 hl.bind("ALT_R", hl.dsp.global("quickshell:altTabConfirm"), { ignore_mods = true, transparent = true })
 hl.bind("ALT_L", hl.dsp.global("quickshell:altTabConfirm"), { ignore_mods = true, transparent = true, release = true })
 hl.bind("ALT_R", hl.dsp.global("quickshell:altTabConfirm"), { ignore_mods = true, transparent = true, release = true })
+hl.bind("ALT + Escape", hl.dsp.global("quickshell:altTabCancel"), { description = "Shell: Cancel window switch" })
 hl.bind("SUPER + V", hl.dsp.global("quickshell:overviewClipboardToggle"))
 hl.bind("SUPER + Period", hl.dsp.global("quickshell:overviewEmojiToggle"))
 hl.bind("SUPER + A", hl.dsp.global("quickshell:sidebarLeftToggle"), { description = "Shell: Toggle left sidebar" })
