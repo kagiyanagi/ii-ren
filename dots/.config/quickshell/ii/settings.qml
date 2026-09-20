@@ -352,7 +352,6 @@ ApplicationWindow {
                     NavigationRail {
                         id: navRail
                         width: parent.width
-                        spacing: 5
                         expanded: root.width > 900
 
                         NavigationRailExpandButton {

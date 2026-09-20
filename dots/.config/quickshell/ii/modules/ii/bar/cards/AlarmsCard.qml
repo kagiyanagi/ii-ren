@@ -560,7 +560,7 @@ Rectangle {
                         id: switchComponent
                         StyledSwitch {
                             checked: alarmCard.modelData.enabled
-                            scale: 0.75
+                            sizeScale: 0.75
                             onCheckedChanged: {
                                 if (alarmCard.modelData.enabled !== checked) {
                                     AlarmService.toggleAlarm(alarmCard.index);

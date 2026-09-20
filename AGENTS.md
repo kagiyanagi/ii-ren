@@ -190,7 +190,7 @@ The condensed version, so nothing is missed even without opening that file:
 10. **Measure motion at 60fps.** Never eyeball a timing change.
 11. **No separator bars / dividers.** Separate sections with whitespace on the
     4dp grid (12–16dp) and container layer cards (`colLayer1`/`colLayer2`), not
-    horizontal separator lines or `WindowDialogSeparator`. Never use negative
+    horizontal separator lines of any kind. Never use negative
     margins to pull controls closer to a divider.
 
 Before calling a UI change done, run the design-check review — `/design-check`

@@ -97,7 +97,7 @@ ApplicationWindow {
                 StyledSwitch {
                     id: showNextTimeSwitch
                     checked: root.showNextTime
-                    scale: 0.6
+                    sizeScale: 0.6
                     Layout.alignment: Qt.AlignVCenter
                     onCheckedChanged: {
                         if (checked) {

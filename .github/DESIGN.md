@@ -521,9 +521,8 @@ Material 3 Expressive surfaces rely on **whitespace on the 4dp grid** (12–16dp
 gaps between sections) and **tonal layer nesting** (`colLayer1`, `colLayer2`) to
 establish visual hierarchy and separation.
 
-Do not insert hairline divider lines, separator bars, or
-`WindowDialogSeparator` between section headers and controls or around content
-groups. Separator lines clutter dialog surfaces, fight with container rounding,
+Do not insert hairline divider lines or separator bars between section
+headers and controls or around content groups. Separator lines clutter dialog surfaces, fight with container rounding,
 and frequently lead to brittle negative-margin hacks (e.g. `topMargin: -22`) to
 close the gap. Let whitespace and background layer cards do the work.
 
@@ -655,7 +654,8 @@ This shell targets integrated graphics. Effects are a budget, not a garnish.
 animation, gradients, `RectangularShadow` with `cached: true`.
 
 **Expensive** — `layer.enabled` (an extra framebuffer per item),
-`OpacityMask`, `MultiEffect` blur (`blurMax: 100` most of all), anything
+`OpacityMask`, `MultiEffect` blur (`blurMax` above 32 most of all — 64 and
+100 build the same number of internal blur levels, so both cost the same), anything
 recomputed in JS per frame.
 
 Rules:
@@ -701,7 +701,7 @@ anchor, 8 from the screen edge. Dismiss on any outside click and on Escape.
 `DockFolderPopup` and `DesktopMenu` are the worked examples.
 
 **Dialog** — `WindowDialog` and its `WindowDialogTitle`/`Paragraph`/
-`ButtonRow`/`Separator` parts. Scrim behind, elevation 5, radius `verylarge`,
+`SectionHeader`/`ButtonRow` parts. Scrim behind, elevation 5, radius `verylarge`,
 enter on `emphasizedDecel`, exit `emphasizedAccel` at ~half the duration.
 Confirming action on the right, destructive in `colError`.
 

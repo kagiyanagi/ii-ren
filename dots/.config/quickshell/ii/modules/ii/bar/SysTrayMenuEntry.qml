@@ -73,6 +73,7 @@ RippleButton {
 
                 sourceComponent: StyledRadioButton {
                     enabled: false
+                    opacity: 1 // `enabled` is "not interactive" here, not "disabled"
                     padding: 0
                     checked: root.menuEntry.checkState === Qt.Checked
                 }

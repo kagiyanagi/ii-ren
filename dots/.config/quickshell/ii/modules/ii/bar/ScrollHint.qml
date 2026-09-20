@@ -21,16 +21,8 @@ Revealer { // Scroll hint
         onExited: hovered = false
         acceptedButtons: Qt.NoButton
 
-        property bool showHintTimedOut: false
-        onHoveredChanged: showHintTimedOut = false
-        Timer {
-            running: mouseArea.hovered
-            interval: 500
-            onTriggered: mouseArea.showHintTimedOut = true
-        }
-
         PopupToolTip {
-            extraVisibleCondition: (tooltipText.length > 0 && mouseArea.showHintTimedOut)
+            extraVisibleCondition: tooltipText.length > 0
             text: tooltipText
         }
 

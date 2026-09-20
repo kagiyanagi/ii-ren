@@ -72,7 +72,7 @@ Item {
             iconSize: 56
             rotation: {
                 root.iconSpec = root.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit
-                return root.shown ? 0 : -70
+                return (root.shown ? 0 : -70) + openingAnimation.iconRotationOffset
             }
 
             Behavior on rotation {
