@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Controls
@@ -9,16 +10,27 @@ import QtQuick.Controls
 SpinBox {
     id: root
 
-    property real baseHeight: 35
+    property real baseHeight: 36 // 5.1: on the grid, and 3.4's 32 minimum
     property real radius: Appearance.rounding.small
     property real innerButtonRadius: Appearance.rounding.unsharpen
     editable: true
 
-    opacity: root.enabled ? 1 : 0.4
+    opacity: root.enabled ? 1 : 0.4 // 3.1: disabled is the whole control
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
 
     background: Rectangle {
-        color: Appearance.colors.colLayer2
+        // 3.7: the box is typed into, and nothing said which one had the
+        // caret. colLayer2Active is the 0.10 focus mix for this layer
+        // (3.1, mechanism 1). activeFocus, not visualFocus: a text field that
+        // was clicked into is focused too.
+        color: root.activeFocus ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer2
         radius: root.radius
+
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
     }
 
     contentItem: Item {
@@ -66,6 +78,8 @@ SpinBox {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
+        PointingHandInteraction {}
+
         MaterialSymbol {
             anchors.centerIn: parent
             text: "remove"
@@ -92,6 +106,8 @@ SpinBox {
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
+
+        PointingHandInteraction {}
 
         MaterialSymbol {
             anchors.centerIn: parent

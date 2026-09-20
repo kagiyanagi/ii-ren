@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.services
@@ -26,16 +27,16 @@ ListView {
         id: folderButton
         required property var modelData
         required property int index
-        buttonText: index === 0 ? "/" : modelData
+        buttonText: folderButton.index === 0 ? "/" : folderButton.modelData
         toggled: {
-            if (directory.trim() === "/") return index === 0;
-            return index === directory.split("/").length - 1
+            if (root.directory.trim() === "/") return folderButton.index === 0;
+            return folderButton.index === root.directory.split("/").length - 1
         }
-        leftmost: index === 0
-        rightmost: index === breadcrumbDirectory.split("/").length - 1
+        leftmost: folderButton.index === 0
+        rightmost: folderButton.index === root.breadcrumbDirectory.split("/").length - 1
 
         onClicked: {
-            root.navigateToDirectory(breadcrumbDirectory.split("/").slice(0, index + 1).join("/"))
+            root.navigateToDirectory(root.breadcrumbDirectory.split("/").slice(0, folderButton.index + 1).join("/"))
         }
     }
 }

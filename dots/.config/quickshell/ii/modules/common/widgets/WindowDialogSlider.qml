@@ -18,11 +18,14 @@ Column {
     property alias stopIndicatorValues: sliderWidget.stopIndicatorValues
 
     signal moved()
-    
-    spacing: -2
+
+    // 5.1/5.5: on the grid, and pulling the track up under the label with a
+    // negative gap is the hack 5.5 names. ConfigSlider, the label-above-track
+    // reference, uses the same 4.
+    spacing: 4
     ContentSubsectionLabel {
         id: sliderName
-        visible: text?.length > 0
+        visible: text.length > 0
         text: ""
         anchors {
             left: parent.left

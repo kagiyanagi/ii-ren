@@ -73,18 +73,14 @@ Slider {
     from: 0
     to: 1
 
-    property int valueAnimationDuration: 0
-
-    Behavior on value {
-        enabled: root.valueAnimationDuration > 0 && !root.pressed
-        NumberAnimation {
-            duration: root.valueAnimationDuration
-            easing.type: Easing.OutCubic
-        }
+    opacity: root.enabled ? 1 : 0.4 // 3.1: disabled is the whole control
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
+    // Margins move the track's ends: position, so fast spatial (2.1, 9).
     Behavior on handleMargins {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
     }
 
     component TrackDot: Rectangle {
@@ -112,11 +108,11 @@ Slider {
         id: background
         anchors.verticalCenter: parent.verticalCenter
         anchors.horizontalCenter: parent.horizontalCenter
-        width: trackWidth
-        implicitWidth: trackWidth
+        width: root.trackWidth
+        implicitWidth: root.trackWidth
         height: root.height
         property var normalized: root.dividerValues.map(v => (v - root.from) / (root.to - root.from))
-        property var filtered: normalized.filter(v => Math.abs(v - root.visualPosition) * effectiveDraggingHeight > handleMargins + handleHeight / 2 - dividerMargins)
+        property var filtered: background.normalized.filter(v => Math.abs(v - root.visualPosition) * root.effectiveDraggingHeight > root.handleMargins + root.handleHeight / 2 - root.dividerMargins)
         property var inactiveValues: [0, ...filtered.filter(v => v < root.visualPosition), root.visualPosition]
         property var activeValues: [root.visualPosition, ...filtered.filter(v => v > root.visualPosition), 1]
         property var inactiveHeights: inactiveValues.map((v, i, a) => a[i + 1] - v).slice(0, -1)
@@ -131,14 +127,19 @@ Slider {
                 anchors.horizontalCenter: background.horizontalCenter
                 property real topMargin: index > 0 ? root.dividerMargins : 0
                 property real bottomMargin: index < background.inactiveHeights.length - 1 ? root.dividerMargins : root.handleMargins
-                y: background.inactiveValues[index] * root.effectiveDraggingHeight + topMargin + (index > 0 ? topPadding : 0)
-                width: trackWidth
-                height: background.inactiveHeights[index] * root.effectiveDraggingHeight - topMargin - bottomMargin - (index === background.inactiveHeights.length - 1 ? handleHeight / 2 : 0) + (index === 0 ? topPadding : 0)
+                y: background.inactiveValues[index] * root.effectiveDraggingHeight + topMargin + (index > 0 ? root.topPadding : 0)
+                width: root.trackWidth
+                height: background.inactiveHeights[index] * root.effectiveDraggingHeight - topMargin - bottomMargin - (index === background.inactiveHeights.length - 1 ? root.handleHeight / 2 : 0) + (index === 0 ? root.topPadding : 0)
                 color: root.trackColor
                 topLeftRadius: index === 0 ? root.trackRadius : root.unsharpenRadius
                 topRightRadius: index === 0 ? root.trackRadius : root.unsharpenRadius
                 bottomLeftRadius: root.unsharpenRadius
                 bottomRightRadius: root.unsharpenRadius
+
+                // 9: track colour on default effects.
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
             }
         }
 
@@ -151,14 +152,21 @@ Slider {
                 anchors.horizontalCenter: background.horizontalCenter
                 property real topMargin: index > 0 ? root.dividerMargins : root.handleMargins
                 property real bottomMargin: index < background.activeHeights.length - 1 ? root.dividerMargins : 0
-                y: background.activeValues[index] * root.effectiveDraggingHeight + topMargin + (index === 0 ? handleHeight / 2 : 0) + topPadding
-                width: trackWidth
-                height: background.activeHeights[index] * root.effectiveDraggingHeight - topMargin - bottomMargin - (index === 0 ? handleHeight / 2 : 0) + (index === background.activeHeights.length - 1 ? bottomPadding : 0)
+                y: background.activeValues[index] * root.effectiveDraggingHeight + topMargin + (index === 0 ? root.handleHeight / 2 : 0) + root.topPadding
+                width: root.trackWidth
+                height: background.activeHeights[index] * root.effectiveDraggingHeight - topMargin - bottomMargin - (index === 0 ? root.handleHeight / 2 : 0) + (index === background.activeHeights.length - 1 ? root.bottomPadding : 0)
                 color: root.highlightColor
                 topLeftRadius: root.unsharpenRadius
                 topRightRadius: root.unsharpenRadius
                 bottomLeftRadius: index === background.activeHeights.length - 1 ? root.trackRadius : root.unsharpenRadius
                 bottomRightRadius: index === background.activeHeights.length - 1 ? root.trackRadius : root.unsharpenRadius
+
+                // 9: track colour on default effects. It swings to the error
+                // container when the value runs past `to`, so it is a real
+                // transition, not a theme-change-only one.
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
             }
         }
     }
@@ -175,11 +183,30 @@ Slider {
         radius: Appearance.rounding.full
         color: root.handleColor
 
-        layer.enabled: true
-        layer.samples: 4
-
+        // The M3 Expressive squeeze -- Material3 Slider's Thumb halves its
+        // short side while the press or drag interaction is live. Size, so fast
+        // spatial (9).
         Behavior on implicitHeight {
-            animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+        }
+
+        // The handle's state layer, sized off the handle for the same reason as
+        // StyledSlider's. It replaces the `layer.enabled` + `samples: 4` that
+        // used to sit here: a Rectangle antialiases its own rounded corners, and
+        // the framebuffer bought nothing while clipping away anything drawn
+        // outside the 4dp bar -- including this (3.1, 8).
+        StateOverlay {
+            anchors.centerIn: parent
+            width: root.handleWidth
+            height: root.handleWidth
+            topLeftRadius: Appearance.rounding.full
+            topRightRadius: Appearance.rounding.full
+            bottomLeftRadius: Appearance.rounding.full
+            bottomRightRadius: Appearance.rounding.full
+            contentColor: root.handleColor
+            hover: root.hovered
+            focused: root.visualFocus
+            press: root.pressed
         }
 
         StyledToolTip {
@@ -212,22 +239,33 @@ Slider {
         }
     }
 
+    // The value, riding just under the handle on the active track.
     StyledText {
         id: valueTooltipInline
-        parent: background  // fica sobre o track ativo
+        parent: background
         anchors.horizontalCenter: background.horizontalCenter
         y: {
             var handleY = root.topPadding + (root.visualPosition * root.effectiveDraggingHeight);
             return Math.min(Math.round(handleY + 12), root.height - root.bottomPadding - height - 12);
         }
+        // No Behavior on y: the handle's own y is not animated, so a 200ms
+        // effects spec on this one left the number trailing the handle it
+        // belongs to. It is welded to the handle instead.
         text: Math.round(root.rawValue * 100)
         color: {
             if (root.rawValue > root.to) return Appearance.colors.colOnErrorContainer;
             return Appearance.colors.colOnPrimary;
         }
+        // 9: the value is tabular. StyledText already picks the numbers family
+        // for a digit-only string and clears the variable axes with it, so the
+        // weight is set the named way rather than through font.bold (7).
+        font.family: Appearance.font.family.numbers
         font.pixelSize: Appearance.font.pixelSize.smaller
-        font.bold: true
+        font.weight: Font.DemiBold
         visible: root.showValueLabel
-        Behavior on y { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
+
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
     }
 }

@@ -17,4 +17,9 @@ TextArea {
         hintingPreference: Font.PreferFullHinting
         variableAxes: Appearance.font.variableAxes.main
     }
+
+    // 3.4: text gets an I-beam, and a TextArea sets no cursor of its own.
+    HoverHandler {
+        cursorShape: Qt.IBeamCursor
+    }
 }

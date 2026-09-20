@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.services
@@ -50,8 +51,15 @@ Rectangle {
                 id: directoryEntry
                 visible: !root.showBreadcrumb
                 anchors.fill: parent
-                color: Appearance.colors.colLayer1
+                // 3.7: the field is opened by a button that then calls
+                // forceActiveFocus on it, and nothing said so. colLayer1Active is
+                // the 0.10 focus mix for this layer (3.1, mechanism 1).
+                color: addressInput.activeFocus ? Appearance.colors.colLayer1Active : Appearance.colors.colLayer1
                 radius: Appearance.rounding.full
+
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
                 implicitWidth: addressInput.implicitWidth
                 implicitHeight: addressInput.implicitHeight
 
@@ -76,14 +84,6 @@ Rectangle {
                             root.showBreadcrumb = true;
                             event.accepted = true;
                         }
-                    }
-
-                    MouseArea {
-                        // I-beam cursor
-                        anchors.fill: parent
-                        acceptedButtons: Qt.NoButton
-                        hoverEnabled: true
-                        cursorShape: Qt.IBeamCursor
                     }
                 }
             }

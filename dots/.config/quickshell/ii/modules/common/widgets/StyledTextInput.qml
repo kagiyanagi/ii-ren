@@ -16,4 +16,12 @@ TextInput {
         hintingPreference: Font.PreferFullHinting
         variableAxes: Appearance.font.variableAxes.main
     }
+
+    // 3.4: text gets an I-beam. A TextInput sets no cursor of its own, so every
+    // caller was laying a no-button MouseArea over it to get one -- a handler
+    // does it in a line and, unlike a MouseArea, does not take hover off
+    // whatever is underneath.
+    HoverHandler {
+        cursorShape: Qt.IBeamCursor
+    }
 }

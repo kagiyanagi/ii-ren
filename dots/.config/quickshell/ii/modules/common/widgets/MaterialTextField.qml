@@ -31,10 +31,9 @@ TextField {
     }
     wrapMode: TextEdit.Wrap
 
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.NoButton
-        hoverEnabled: true
+    // 3.4: text gets an I-beam. A handler, not a hover-enabled MouseArea, which
+    // took hover off the row underneath it.
+    HoverHandler {
         cursorShape: Qt.IBeamCursor
     }
 }

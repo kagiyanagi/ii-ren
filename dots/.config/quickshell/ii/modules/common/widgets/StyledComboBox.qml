@@ -26,7 +26,7 @@ ComboBox {
     Layout.fillWidth: true
 
     Behavior on opacity {
-        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     background: Rectangle {
@@ -38,6 +38,18 @@ ComboBox {
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // Hover and press are the colour above; focus is the one state the
+        // container colours have no sibling for, so it composites on top (3.1).
+        StateOverlay {
+            anchors.fill: parent
+            topLeftRadius: root.topLeftRadius
+            topRightRadius: root.topRightRadius
+            bottomLeftRadius: root.bottomLeftRadius
+            bottomRightRadius: root.bottomRightRadius
+            contentColor: Appearance.colors.colOnSecondaryContainer
+            focused: root.visualFocus
         }
 
         MouseArea {
@@ -105,14 +117,19 @@ ComboBox {
 
         required property var model
         required property int index
+        // Arrow keys move the view's current index and nothing rendered it, so
+        // keyboard navigation through the list was invisible (3.1, 3.7). Read
+        // off the view, not root.highlightedIndex: the search variant drives the
+        // view directly and that binding is gone by then.
+        highlighted: itemDelegate.ListView.view?.currentIndex === itemDelegate.index
         property color color: {
             if (root.currentIndex === itemDelegate.index) {
                 if (itemDelegate.down) return Appearance.colors.colSecondaryContainerActive;
-                if (itemDelegate.hovered) return Appearance.colors.colSecondaryContainerHover;
+                if (itemDelegate.hovered || itemDelegate.highlighted) return Appearance.colors.colSecondaryContainerHover;
                 return Appearance.colors.colSecondaryContainer;
             } else {
                 if (itemDelegate.down) return Appearance.colors.colLayer3Active;
-                if (itemDelegate.hovered) return Appearance.colors.colLayer3Hover;
+                if (itemDelegate.hovered || itemDelegate.highlighted) return Appearance.colors.colLayer3Hover;
                 return ColorUtils.transparentize(Appearance.colors.colLayer3);
             }
         }
@@ -171,28 +188,65 @@ ComboBox {
     }
 
     popup: Popup {
-        y: root.height + 4
+        y: root.height + 10 // 5.3: a popup sits 10 from the thing it anchors to
         width: root.width
         height: Math.min(listView.contentHeight + topPadding + bottomPadding, 300)
-        padding: 8
+        padding: 12 // 5.2, and it keeps the first row clear of a verylarge corner
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
+        // The list drops out of the field, so the field's edge is the origin (2.6).
+        transformOrigin: Item.Top
+
+        // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
+        // This was one fade, the same duration in both directions, which is
+        // neither the popup motion 9 asks for nor an enter/exit pair (2.5).
         enter: Transition {
-            PropertyAnimation {
-                properties: "opacity"
-                to: 1
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            ParallelAnimation {
+                SequentialAnimation {
+                    NumberAnimation {
+                        property: "scale"
+                        from: Appearance.animationCurves.arrowPopupScale
+                        to: Appearance.animationCurves.arrowPopupOvershoot
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                    }
+                    NumberAnimation {
+                        property: "scale"
+                        to: 1
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
+                    }
+                }
+                NumberAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: Appearance.animationCurves.arrowPopupFadeDuration
+                }
             }
         }
 
         exit: Transition {
-            PropertyAnimation {
-                properties: "opacity"
-                to: 0
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "scale"
+                    to: Appearance.animationCurves.arrowPopupScale
+                    duration: Appearance.animationCurves.arrowPopupCloseDuration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                SequentialAnimation {
+                    PauseAnimation {
+                        duration: Appearance.animationCurves.arrowPopupFadeHold
+                    }
+                    NumberAnimation {
+                        property: "opacity"
+                        to: 0
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
+                    }
+                }
             }
         }
 
@@ -204,7 +258,7 @@ ComboBox {
             Rectangle {
                 id: popupBackground
                 anchors.fill: parent
-                radius: Appearance.rounding.normal
+                radius: Appearance.rounding.verylarge // 9: popup radius
                 color: Appearance.m3colors.m3surfaceContainerHigh
             }
         }

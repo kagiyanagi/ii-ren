@@ -68,6 +68,11 @@ Slider {
     from: 0
     to: 1
 
+    opacity: root.enabled ? 1 : 0.4 // 3.1: disabled is the whole control
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
+
     Behavior on value { // This makes the adjusted value (like volume) shift smoothly
         enabled: !root.pressed
         SmoothedAnimation {
@@ -75,8 +80,9 @@ Slider {
         }
     }
 
+    // Margins move the track's ends: position, so fast spatial (2.1, 9).
     Behavior on handleMargins {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
     }
 
     component TrackDot: Rectangle {
@@ -105,10 +111,10 @@ Slider {
         anchors.verticalCenter: parent.verticalCenter
         anchors.horizontalCenter: parent.horizontalCenter
         width: root.width
-        implicitHeight: trackWidth
+        implicitHeight: root.trackWidth
         readonly property bool hasDividers: root.dividerValues.length > 0
         property var normalized: hasDividers ? root.dividerValues.map(v => (v - root.from) / (root.to - root.from)) : []
-        property var filtered: hasDividers ? normalized.filter(v => Math.abs(v - root.visualPosition) * effectiveDraggingWidth > handleMargins + handleWidth / 2 - dividerMargins) : []
+        property var filtered: hasDividers ? background.normalized.filter(v => Math.abs(v - root.visualPosition) * root.effectiveDraggingWidth > root.handleMargins + root.handleWidth / 2 - root.dividerMargins) : []
         property var leftValues: (hasDividers && filtered.length > 0) ? [0, ...filtered.filter(v => v < root.visualPosition), root.visualPosition] : [0, root.visualPosition]
         property var rightValues: (hasDividers && filtered.length > 0) ? [root.visualPosition, ...filtered.filter(v => v > root.visualPosition), 1] : [root.visualPosition, 1]
         property var leftWidths: (hasDividers && filtered.length > 0) ? leftValues.map((v, i, a) => a[i + 1] - v).slice(0, -1) : [root.visualPosition]
@@ -119,20 +125,26 @@ Slider {
             model: !root.wavy ? background.leftWidths.length : 0
 
             Loader {
+                id: fillLoader
                 required property real index
                 anchors.verticalCenter: background.verticalCenter
                 property real leftMargin: index > 0 ? root.dividerMargins : 0
                 property real rightMargin: index < background.leftWidths.length - 1 ? root.dividerMargins : root.handleMargins
-                x: background.leftValues[index] * root.effectiveDraggingWidth + leftMargin + (index > 0 ? leftPadding : 0)
-                width: background.leftWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === background.leftWidths.length - 1 ? handleWidth / 2 : 0) + (index === 0 ? leftPadding : 0)
+                x: background.leftValues[index] * root.effectiveDraggingWidth + leftMargin + (index > 0 ? root.leftPadding : 0)
+                width: background.leftWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === background.leftWidths.length - 1 ? root.handleWidth / 2 : 0) + (index === 0 ? root.leftPadding : 0)
                 height: root.trackWidth
                 active: !root.wavy
                 sourceComponent: Rectangle {
                     color: root.highlightColor
-                    topLeftRadius: index === 0 ? root.trackRadius : root.unsharpenRadius
-                    bottomLeftRadius: index === 0 ? root.trackRadius : root.unsharpenRadius
+                    topLeftRadius: fillLoader.index === 0 ? root.trackRadius : root.unsharpenRadius
+                    bottomLeftRadius: fillLoader.index === 0 ? root.trackRadius : root.unsharpenRadius
                     topRightRadius: root.unsharpenRadius
                     bottomRightRadius: root.unsharpenRadius
+
+                    // 9: track colour on default effects.
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
                 }
             }
         }
@@ -145,8 +157,8 @@ Slider {
                 anchors.verticalCenter: background.verticalCenter
                 property real leftMargin: index > 0 ? root.dividerMargins : 0
                 property real rightMargin: index < background.leftWidths.length - 1 ? root.dividerMargins : root.handleMargins
-                x: background.leftValues[index] * root.effectiveDraggingWidth + leftMargin + (index > 0 ? leftPadding : 0)
-                width: background.leftWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === background.leftWidths.length - 1 ? handleWidth / 2 : 0) + (index === 0 ? leftPadding : 0)
+                x: background.leftValues[index] * root.effectiveDraggingWidth + leftMargin + (index > 0 ? root.leftPadding : 0)
+                width: background.leftWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === background.leftWidths.length - 1 ? root.handleWidth / 2 : 0) + (index === 0 ? root.leftPadding : 0)
                 height: root.height
                 active: root.wavy
                 sourceComponent: WavyLine {
@@ -173,14 +185,19 @@ Slider {
                 anchors.verticalCenter: background.verticalCenter
                 property real leftMargin: index > 0 ? root.dividerMargins : root.handleMargins
                 property real rightMargin: index < background.rightWidths.length - 1 ? root.dividerMargins : 0
-                x: background.rightValues[index] * root.effectiveDraggingWidth + leftMargin + (index === 0 ? handleWidth / 2 : 0) + leftPadding
-                width: background.rightWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === 0 ? handleWidth / 2 : 0) + (index === background.rightWidths.length - 1 ? rightPadding : 0)
-                height: trackWidth
+                x: background.rightValues[index] * root.effectiveDraggingWidth + leftMargin + (index === 0 ? root.handleWidth / 2 : 0) + root.leftPadding
+                width: background.rightWidths[index] * root.effectiveDraggingWidth - leftMargin - rightMargin - (index === 0 ? root.handleWidth / 2 : 0) + (index === background.rightWidths.length - 1 ? root.rightPadding : 0)
+                height: root.trackWidth
                 color: root.trackColor
                 topRightRadius: index === background.rightWidths.length - 1 ? root.trackRadius : root.unsharpenRadius
                 bottomRightRadius: index === background.rightWidths.length - 1 ? root.trackRadius : root.unsharpenRadius
                 topLeftRadius: root.unsharpenRadius
                 bottomLeftRadius: root.unsharpenRadius
+
+                // 9: track colour on default effects.
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
             }
         }
 
@@ -205,8 +222,29 @@ Slider {
         radius: Appearance.rounding.full
         color: root.handleColor
 
+        // The M3 Expressive squeeze -- Material3 Slider's Thumb halves its width
+        // while the press or drag interaction is live. Size, so fast spatial (9).
         Behavior on implicitWidth {
-            animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+        }
+
+        // The handle's state layer. M3 puts a 40dp one on a slider handle; this
+        // file runs at ~3/4 scale (see the header), so it is sized off the
+        // handle instead of hard-coded, and it overhangs the 3dp bar the way
+        // the spec draws it. Focus is the state that had nothing before: a
+        // slider takes arrow keys, and nothing said which one had them (3.1).
+        StateOverlay {
+            anchors.centerIn: parent
+            width: root.handleHeight
+            height: root.handleHeight
+            topLeftRadius: Appearance.rounding.full
+            topRightRadius: Appearance.rounding.full
+            bottomLeftRadius: Appearance.rounding.full
+            bottomRightRadius: Appearance.rounding.full
+            contentColor: root.handleColor
+            hover: root.hovered
+            focused: root.visualFocus
+            press: root.pressed
         }
 
         StyledToolTip {

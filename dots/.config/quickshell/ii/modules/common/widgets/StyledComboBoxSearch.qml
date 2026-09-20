@@ -11,7 +11,8 @@ ComboBox {
     id: root
 
     property string buttonIcon: ""
-    property real buttonRadius: height / 2
+    // 4.1: through the token, or sharp mode leaves this one pill-shaped.
+    property real buttonRadius: Appearance.rounding.full
     property color colBackground: Appearance.colors.colSecondaryContainer
     property color colBackgroundHover: Appearance.colors.colSecondaryContainerHover
     property color colBackgroundActive: Appearance.colors.colSecondaryContainerActive
@@ -29,12 +30,29 @@ ComboBox {
     implicitHeight: 40
     Layout.fillWidth: true
 
+    opacity: root.enabled ? 1 : 0.4 // 3.1: disabled is the whole control
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
+
     background: Rectangle {
         radius: root.buttonRadius
         color: (root.down && !root.popup.visible) ? root.colBackgroundActive : root.hovered ? root.colBackgroundHover : root.colBackground
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // Hover and press are the colour above; focus is the one state the
+        // container colours have no sibling for, so it composites on top (3.1).
+        StateOverlay {
+            anchors.fill: parent
+            topLeftRadius: root.buttonRadius
+            topRightRadius: root.buttonRadius
+            bottomLeftRadius: root.buttonRadius
+            bottomRightRadius: root.buttonRadius
+            contentColor: Appearance.colors.colOnSecondaryContainer
+            focused: root.visualFocus
         }
 
         MouseArea {
@@ -107,15 +125,19 @@ ComboBox {
 
         required property var model
         required property int index
+        // The search field's arrow keys move the view's current index and
+        // nothing rendered it, so typing then arrowing picked a row you could
+        // not see (3.1, 3.7).
+        highlighted: itemDelegate.ListView.view?.currentIndex === itemDelegate.index
 
         property color color: {
             if (root.currentIndex === itemDelegate.index) {
                 if (itemDelegate.down) return Appearance.colors.colSecondaryContainerActive;
-                if (itemDelegate.hovered) return Appearance.colors.colSecondaryContainerHover;
+                if (itemDelegate.hovered || itemDelegate.highlighted) return Appearance.colors.colSecondaryContainerHover;
                 return Appearance.colors.colSecondaryContainer;
             } else {
                 if (itemDelegate.down) return Appearance.colors.colLayer3Active;
-                if (itemDelegate.hovered) return Appearance.colors.colLayer3Hover;
+                if (itemDelegate.hovered || itemDelegate.highlighted) return Appearance.colors.colLayer3Hover;
                 return ColorUtils.transparentize(Appearance.colors.colLayer3);
             }
         }
@@ -170,14 +192,18 @@ ComboBox {
     }
 
     popup: Popup {
-        y: root.height + 4
+        y: root.height + 10 // 5.3: a popup sits 10 from the thing it anchors to
         width: root.width
         clip: true
         height: Math.min(
-            searchField.implicitHeight + 20 + (visibleCount * 42) + topPadding + bottomPadding,
+            searchField.implicitHeight + 20 + (root.visibleCount * 42) + topPadding + bottomPadding,
             320
         )
-        padding: 8
+        padding: 12 // 5.2, and it keeps the first row clear of a verylarge corner
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        // The list drops out of the field, so the field's edge is the origin (2.6).
+        transformOrigin: Item.Top
 
         onVisibleChanged: {
             if (visible) {
@@ -188,20 +214,56 @@ ComboBox {
             }
         }
 
+        // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
+        // This was one fade, the same duration in both directions, which is
+        // neither the popup motion 9 asks for nor an enter/exit pair (2.5).
         enter: Transition {
-            PropertyAnimation {
-                properties: "opacity"; to: 1
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            ParallelAnimation {
+                SequentialAnimation {
+                    NumberAnimation {
+                        property: "scale"
+                        from: Appearance.animationCurves.arrowPopupScale
+                        to: Appearance.animationCurves.arrowPopupOvershoot
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                    }
+                    NumberAnimation {
+                        property: "scale"
+                        to: 1
+                        duration: Appearance.animationCurves.arrowPopupScaleDuration
+                        easing.type: Easing.Bezier
+                        easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
+                    }
+                }
+                NumberAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: Appearance.animationCurves.arrowPopupFadeDuration
+                }
             }
         }
+
         exit: Transition {
-            PropertyAnimation {
-                properties: "opacity"; to: 0
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "scale"
+                    to: Appearance.animationCurves.arrowPopupScale
+                    duration: Appearance.animationCurves.arrowPopupCloseDuration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                SequentialAnimation {
+                    PauseAnimation {
+                        duration: Appearance.animationCurves.arrowPopupFadeHold
+                    }
+                    NumberAnimation {
+                        property: "opacity"
+                        to: 0
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
+                    }
+                }
             }
         }
 
@@ -210,7 +272,7 @@ ComboBox {
             Rectangle {
                 id: popupBackground
                 anchors.fill: parent
-                radius: Appearance.rounding.normal
+                radius: Appearance.rounding.verylarge // 9: popup radius
                 color: Appearance.m3colors.m3surfaceContainerHigh
             }
         }
@@ -239,14 +301,29 @@ ComboBox {
                     TextField {
                         id: searchField
                         Layout.fillWidth: true
-                        placeholderText: "Search..."
+                        placeholderText: Translation.tr("Search...")
+                        // The colours a bare TextField neglects, the same ones
+                        // StyledTextInput fills in -- the placeholder and the
+                        // selection were coming from the Qt default palette.
                         color: Appearance.colors.colOnLayer1
+                        placeholderTextColor: Appearance.m3colors.m3outline
+                        selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
+                        selectionColor: Appearance.colors.colSecondaryContainer
                         background: null
                         font.family: Appearance.font.family.main
                         font.pixelSize: Appearance.font.pixelSize.normal
+                        font.hintingPreference: Font.PreferFullHinting
+                        font.variableAxes: Appearance.font.variableAxes.main
+                        HoverHandler { cursorShape: Qt.IBeamCursor } // 3.4
                         onTextChanged: root.searchText = text
                         Keys.onDownPressed: listView.incrementCurrentIndex()
                         Keys.onUpPressed: listView.decrementCurrentIndex()
+                        // 3.7: the field has the focus, so Escape has to be let
+                        // past it for the popup's CloseOnEscape to see it.
+                        Keys.onEscapePressed: event => {
+                            root.popup.close();
+                            event.accepted = true;
+                        }
                         Keys.onReturnPressed: {
                             if (listView.currentIndex >= 0) {
                                 root.currentIndex = listView.currentIndex
@@ -262,7 +339,11 @@ ComboBox {
                         color: Appearance.colors.colSubtext
                         Layout.rightMargin: 6
                         MouseArea {
-                            anchors.fill: parent
+                            // 3.4: the glyph is 16, the target is 32. Expand the
+                            // area, not the paint.
+                            anchors.centerIn: parent
+                            width: 32
+                            height: 32
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 searchField.text = ""

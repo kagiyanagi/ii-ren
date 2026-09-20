@@ -1,6 +1,8 @@
 import qs.modules.common
 import QtQuick
 
+// A keycap. Static: it labels a shortcut, nothing clicks it, so it carries no
+// interaction states.
 Rectangle {
     id: root
     property string key
@@ -10,34 +12,38 @@ Rectangle {
     property real borderWidth: 1
     property real extraBottomBorderWidth: 2
     property color borderColor: Appearance.colors.colOnLayer0
-    property real borderRadius: 5
+    // 4.1: a literal radius ignores the sharp-mode scale, and this one left
+    // every keycap rounded on a shell that had squared everything else.
+    property real borderRadius: Appearance.rounding.unsharpenmore
     property real pixelSize: Appearance.font.pixelSize.smaller
     property color keyColor: Appearance.m3colors.m3surfaceContainerLow
-    implicitWidth: keyFace.implicitWidth + borderWidth * 2
-    implicitHeight: keyFace.implicitHeight + borderWidth * 2 + extraBottomBorderWidth
-    radius: borderRadius
-    color: borderColor
+    implicitWidth: keyFace.implicitWidth + root.borderWidth * 2
+    implicitHeight: keyFace.implicitHeight + root.borderWidth * 2 + root.extraBottomBorderWidth
+    radius: root.borderRadius
+    color: root.borderColor
 
     Rectangle {
         id: keyFace
         anchors {
             fill: parent
-            topMargin: borderWidth
-            leftMargin: borderWidth
-            rightMargin: borderWidth
-            bottomMargin: extraBottomBorderWidth + borderWidth
+            topMargin: root.borderWidth
+            leftMargin: root.borderWidth
+            rightMargin: root.borderWidth
+            bottomMargin: root.extraBottomBorderWidth + root.borderWidth
         }
-        implicitWidth: keyText.implicitWidth + horizontalPadding * 2
-        implicitHeight: keyText.implicitHeight + verticalPadding * 2
-        color: keyColor
-        radius: borderRadius - borderWidth
+        implicitWidth: keyText.implicitWidth + root.horizontalPadding * 2
+        implicitHeight: keyText.implicitHeight + root.verticalPadding * 2
+        color: root.keyColor
+        // 4.2: inside the cap, so smaller -- and never negative once sharp mode
+        // takes the outer radius to 0.
+        radius: Math.max(0, root.borderRadius - root.borderWidth)
 
         StyledText {
             id: keyText
             anchors.centerIn: parent
             font.family: Appearance.font.family.monospace
             font.pixelSize: root.pixelSize
-            text: key
+            text: root.key
         }
     }
 }
