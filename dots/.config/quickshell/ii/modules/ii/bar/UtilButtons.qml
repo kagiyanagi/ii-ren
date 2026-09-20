@@ -15,11 +15,13 @@ Item {
     implicitWidth: gridLayout.implicitWidth + gridLayout.rowSpacing * 2
     implicitHeight: gridLayout.implicitHeight + gridLayout.columnSpacing * 2
     
+    // Implicit size is spatial, so it takes the resize spec, not the effects one
+    // a colour fade uses (the motion table, 2.3).
     Behavior on implicitWidth {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
     Behavior on implicitHeight {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
     GridLayout {

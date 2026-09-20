@@ -7,18 +7,14 @@ import qs.modules.common.functions
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
-import QtQuick.Controls
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Widgets
-import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
     property bool vertical: false
     readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.QsWindow.window?.screen)
-    readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
     readonly property bool useWorkspaceMap: Config.options.bar.workspaces.useWorkspaceMap
     readonly property list<int> workspaceMap: Config.options.bar.workspaces.workspaceMap 
@@ -60,6 +56,72 @@ Item {
             if (isWorkspaceVisible(i)) count++
         }
         return count
+    }
+
+    /*
+     * The strip's real geometry, in *visible* slots.
+     *
+     * A workspace is not always iconBoxWrapperSize wide: it grows with the app
+     * icons in it, and with dynamicWorkspaces an empty one takes no room at
+     * all. Both indicators used to mix the two coordinate systems -- their
+     * position counted slots of a fixed size while the offset that corrected
+     * for the real widths came from a loop over *raw* child indices, hidden
+     * children included. With dynamic workspaces on and icons showing, the
+     * indicator therefore landed beside the workspace it was pointing at.
+     *
+     * Everything below walks the live child widths instead, so one function
+     * answers where a slot edge is and the indicators only have to say which
+     * edge they want.
+     */
+    readonly property var slotSizes: {
+        const sizes = [];
+        for (let i = 0; i < root.workspacesShown; i++) {
+            const item = contentLayout.children[i];
+            if (!item?.visible)
+                continue;
+            const size = root.vertical ? item.height : item.width;
+            // `> 0` and not Math.max: NaN fails every comparison but survives
+            // Math.max, and one NaN here is a blank bar (ii-background-root).
+            sizes.push(size > 0 ? size : root.iconBoxWrapperSize);
+        }
+        return sizes;
+    }
+
+    // Size of visible slot k, clamped at both ends so the indicator's overshoot
+    // past the first or last workspace extrapolates instead of collapsing.
+    function slotSize(k: int): real {
+        const sizes = root.slotSizes;
+        if (sizes.length === 0)
+            return root.iconBoxWrapperSize;
+        return sizes[Math.max(0, Math.min(sizes.length - 1, k))];
+    }
+
+    // Leading edge of fractional visible-slot position v, along the bar's axis.
+    function slotEdge(v: real): real {
+        const sizes = root.slotSizes;
+        const n = sizes.length;
+        if (n === 0 || !isFinite(v))
+            return 0;
+        const whole = Math.floor(v);
+        let edge = 0;
+        if (whole <= 0) {
+            edge = whole * sizes[0];
+        } else {
+            for (let i = 0; i < Math.min(whole, n); i++)
+                edge += sizes[i];
+            if (whole > n)
+                edge += (whole - n) * sizes[n - 1];
+        }
+        return edge + (v - whole) * root.slotSize(whole);
+    }
+
+    // How many visible slots sit before raw workspace index `index`.
+    function slotsBefore(index: int): int {
+        let n = 0;
+        for (let i = 0; i < index; i++)
+            if (contentLayout.children[i]?.visible)
+                n++;
+        return n;
     }
 
     property bool showNumbersByMs: false
@@ -150,18 +212,12 @@ Item {
         opacity: Config.options.bar.workspaces.activeIndicatorOpacity / 100
         radius: Appearance.rounding.full
         
+        // The tab-indicator stretch: the leading edge runs on fast spatial and
+        // the trailing one on default spatial, so the pill elongates out of the
+        // workspace it is leaving and gathers back into the one it lands on.
         AnimatedTabIndexPair {
             id: idxPair
             index: root.visibleActiveIndex
-        }
-
-        function offsetFor(index) {
-            let y = 0
-            for (let i = 0; i < index; i++) {
-                const item = contentLayout.children[i]
-                y += root.vertical ? item?.height - baseHeight : item?.width - baseHeight
-            }
-            return y
         }
 
         function getWindowCount(workspaceId) {
@@ -169,7 +225,6 @@ Item {
         }
 
         property int index: root.workspaceIndexInGroup
-        property int baseHeight: root.iconBoxWrapperSize
         property int windowCount: getWindowCount(index + root.workspaceOffset + root.workspaceGroup * root.workspacesShown + 1)
 
         property bool isEmptyWorkspace: windowCount === 0
@@ -189,22 +244,20 @@ Item {
             return indicatorInset
         }
 
-        property real pairMin: Math.min(idxPair.idx1, idxPair.idx2)
-        property real pairAbs: Math.abs(idxPair.idx1 - idxPair.idx2)
-
-        property real currentItemOffset: {
-            const item = contentLayout.children[root.workspaceIndexInGroup]
-            const itemSize = root.vertical ? item?.height : item?.width
-            return itemSize - baseHeight
+        // The inset is the one term of the geometry that is not already moving:
+        // it steps when the window count crosses 0 or 1. It feeds the position
+        // and the length, so animating it here -- once, on the spec the motion
+        // table gives position and size -- keeps the two ends of the pill on
+        // one timing. Two Behaviors, one per end, is how they drift apart.
+        Behavior on visualInset {
+            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
-        readonly property real accumulatedPreviousOffsets: offsetFor(root.workspaceIndexInGroup + 1)
+        readonly property real leadSlot: Math.min(idxPair.idx1, idxPair.idx2)
+        readonly property real trailSlot: Math.max(idxPair.idx1, idxPair.idx2)
 
-        readonly property real baseIndicatorPosition: pairMin * root.iconBoxWrapperSize
-        readonly property real baseIndicatorLength: (pairAbs + 1) * root.iconBoxWrapperSize
-
-        property real indicatorPosition: baseIndicatorPosition + accumulatedPreviousOffsets - currentItemOffset + visualInset
-        property real indicatorLength: baseIndicatorLength + currentItemOffset - visualInset * 2
+        readonly property real indicatorPosition: root.slotEdge(leadSlot) + visualInset
+        readonly property real indicatorLength: Math.max(0, root.slotEdge(trailSlot + 1) - root.slotEdge(leadSlot) - visualInset * 2)
 
         y: root.vertical ? indicatorPosition : 0
         x: root.vertical ? 0 : indicatorPosition
@@ -212,27 +265,45 @@ Item {
         implicitWidth: root.vertical ? individualIconBoxHeight : indicatorLength
     }
     
-    Rectangle { // NOTE: we still dont have an unhover animation
+    Rectangle {
         id: hoverIndicator
         z: 2
         anchors.horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
         anchors.verticalCenter: root.vertical ? undefined : parent.verticalCenter
 
-        color: "transparent"
         radius: Appearance.rounding.full
-        
-        visible: interactionMouseArea.containsMouse
-        opacity: visible ? 1 : 0
-        
+
+        /*
+         * The bar's own state film, not a tint of its own: hover and pressed are
+         * the layer-0 siblings of the surface the strip sits on (3.1, 6.1), so
+         * they stay right when transparency is on. This used to be a primary
+         * fill at a hand-written 0.1, with no pressed state at all.
+         *
+         * `visible` used to be bound to containsMouse, which meant the opacity
+         * Behavior below never ran -- the pill vanished in one frame, as the
+         * NOTE this block used to carry said. It is now driven by the fade, so
+         * the exit exists and the first-contact snap still has a visible edge to
+         * trigger on.
+         */
+        color: interactionMouseArea.pressed ? Appearance.colors.colLayer0Active : Appearance.colors.colLayer0Hover
+        opacity: interactionMouseArea.containsMouse ? 1 : 0
+        visible: opacity > 0
+
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(hoverIndicator)
+        }
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(hoverIndicator)
+        }
+
         property int hoverIdx: interactionMouseArea.hoverIndex
         property bool wasVisible: false
-        
 
         onVisibleChanged: { // we disable the animations on first contact, then enable it
             if (visible && !wasVisible) {
                 positionBehavior.enabled = false
                 lengthBehavior.enabled = false
-                
+
                 Qt.callLater(function() {
                     positionBehavior.enabled = true
                     lengthBehavior.enabled = true
@@ -240,32 +311,18 @@ Item {
             }
             wasVisible = visible
         }
-        
-        function offsetFor(index) {
-            let y = 0
-            for (let i = 0; i < index; i++) {
-                const item = contentLayout.children[i]
-                y += root.vertical ? item?.height - root.iconBoxWrapperSize : item?.width - root.iconBoxWrapperSize
-            }
-            return y
-        }
-        
-        property real currentItemOffset: {
-            const item = contentLayout.children[hoverIdx]
-            const itemSize = root.vertical ? item?.height : item?.width
-            return itemSize - root.iconBoxWrapperSize
-        }
-        
-        readonly property real accumulatedPreviousOffsets: offsetFor(hoverIdx)
-        
-        property real indicatorPosition: hoverIdx * root.iconBoxWrapperSize + accumulatedPreviousOffsets + root.iconBoxWrapperSize * 0.05
-        property real indicatorLength: root.iconBoxWrapperSize + currentItemOffset - root.iconBoxWrapperSize * 0.1
-        
+
+        readonly property real hoverInset: root.iconBoxWrapperSize * 0.05
+        readonly property int hoverSlot: root.slotsBefore(hoverIdx)
+
+        property real indicatorPosition: root.slotEdge(hoverSlot) + hoverInset
+        property real indicatorLength: Math.max(0, root.slotSize(hoverSlot) - hoverInset * 2)
+
         y: root.vertical ? indicatorPosition : 0
         x: root.vertical ? 0 : indicatorPosition
         implicitHeight: root.vertical ? indicatorLength : individualIconBoxHeight
         implicitWidth: root.vertical ? individualIconBoxHeight : indicatorLength
-        
+
         Behavior on indicatorPosition {
             id: positionBehavior
             animation: Appearance.animation.elementMove.numberAnimation.createObject(hoverIndicator)
@@ -273,14 +330,6 @@ Item {
         Behavior on indicatorLength {
             id: lengthBehavior
             animation: Appearance.animation.elementMove.numberAnimation.createObject(hoverIndicator)
-        }
-        
-        Behavior on opacity {
-            animation: Appearance.animation.elementMove.numberAnimation.createObject(hoverIndicator)
-        }
-        
-        HoverOverlay {
-            hover: interactionMouseArea.containsMouse
         }
     }
 
@@ -293,25 +342,29 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.RightButton | Qt.LeftButton | Qt.BackButton
         
+        // Raw workspace index under the pointer. Hidden workspaces take no room
+        // in the strip, so they must take none here either -- counting them made
+        // every click past a hidden workspace land on the wrong one.
         property int hoverIndex: {
             const position = root.vertical ? mouseY : mouseX;
             let accumulated = 0;
-            
-            // calculating the every workspace's length
+            let last = 0;
+
             for (let i = 0; i < root.workspacesShown; i++) {
                 const item = contentLayout.children[i];
-                if (!item) continue;
-                
+                if (!item?.visible) continue;
+
                 const itemSize = root.vertical ? item.height : item.width;
-                
+                last = i;
+
                 if (position < accumulated + itemSize) {
                     return i;
                 }
-                
+
                 accumulated += itemSize;
             }
-            
-            return root.workspacesShown - 1;
+
+            return last;
         }
 
         onPressed: (event) => {
@@ -340,7 +393,7 @@ Item {
         id: occupiedIndicatorsBg
         anchors.fill: occupiedIndicatorsLayout
         contentLayer: StyledRectangle.ContentLayer.Group
-        color: ColorUtils.transparentize(Appearance.m3colors.m3secondaryContainer, 0.4)
+        color: ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 0.4)
         visible: false
     }
 
@@ -490,10 +543,30 @@ Item {
                     rowSpacing: 0
                     columns: root.vertical ? 1 : 99
                     rows: root.vertical ? 99 : 1
-                    
+
+                    /*
+                     * Monochrome icons used to cost a Desaturate *and* a
+                     * ColorOverlay per icon, inside a repeated delegate (law 8,
+                     * 8) -- and the option is on by default, so every app icon
+                     * in the bar paid for two framebuffers. One MultiEffect on
+                     * the row does the same desaturate-then-tint for every icon
+                     * in the workspace at once. It sits here and not on the
+                     * delegate above because this layout holds nothing but the
+                     * icons; the number and the dot are its siblings.
+                     */
+                    layer.enabled: Config.options.bar.workspaces.monochromeIcons && layout.width > 0
+                    layer.effect: MultiEffect {
+                        saturation: -0.8
+                        colorization: 0.1
+                        colorizationColor: Appearance.colors.colOnLayer1
+                    }
+
                     Repeater {
                         property int workspaceIndex: workspaceOffset + workspaceGroup * workspacesShown + index + 1
-                        model: root.showIcons ? root.monitorWindows?.filter(win => win.workspace === workspaceIndex).splice(0, Config.options.bar.workspaces.maxWindowCount) : []
+                        // root.maxWindowCount, not the config key it is derived
+                        // from: the scrolling-layout cap was computed above and
+                        // then bypassed here, so it never applied.
+                        model: root.showIcons ? root.monitorWindows?.filter(win => win.workspace === workspaceIndex).splice(0, root.maxWindowCount) : []
                         delegate: Item {
                             Layout.alignment: Qt.AlignHCenter
                             width: root.individualIconBoxHeight
@@ -520,24 +593,6 @@ Item {
                                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                                 }
                             }
-                            Loader {
-                                active: Config.options.bar.workspaces.monochromeIcons
-                                anchors.fill: mainAppIcon
-                                sourceComponent: Item {
-                                    Desaturate {
-                                        id: desaturatedIcon
-                                        visible: false
-                                        anchors.fill: parent
-                                        source: mainAppIcon
-                                        desaturation: 0.8
-                                    }
-                                    ColorOverlay {
-                                        anchors.fill: desaturatedIcon
-                                        source: desaturatedIcon
-                                        color: ColorUtils.transparentize(Appearance.colors.colOnLayer1, 0.9)
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -545,26 +600,11 @@ Item {
         }
     }
 
-    component HoverOverlay: Rectangle {
-        id: hoverOverlay
-        anchors.fill: parent
-
-        property bool hover: false
-        
-        color: Appearance.colors.colPrimary
-        radius: Appearance.rounding.full
-        opacity: hover ? 0.1 : 0
-        
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-    }
-
     component WorkspaceBackgroundIndicator: Rectangle {
         property bool showNumbers: Config.options.bar.workspaces.alwaysShowNumbers || root.showNumbersByMs
         property int workspaceValue
         property bool activeWorkspace
-        property color indColor: (activeWorkspace) ? Appearance.m3colors.m3onPrimary : (root.workspaceOccupied[index] ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer1Inactive)
+        property color indColor: (activeWorkspace) ? Appearance.colors.colOnPrimary : (root.workspaceOccupied[index] ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1Inactive)
 
         anchors.centerIn: parent
         width: root.workspaceDotSize
@@ -585,8 +625,10 @@ Item {
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
             color: indColor
+            // Opacity is an effect: it clips, so it takes the critically damped
+            // spec, not the spatial one that overshoots past 1 (2.1, 10.6).
             Behavior on opacity {
-                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
         }
     }

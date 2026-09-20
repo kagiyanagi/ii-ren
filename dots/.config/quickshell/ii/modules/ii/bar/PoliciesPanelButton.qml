@@ -9,7 +9,9 @@ RippleButton {
 
     property bool showPing: false
 
-    property real buttonPadding: 5
+    // 20 + 6 + 6 = 32, the pointer-shell minimum hit area (3.4), on the 4dp
+    // grid (5.1). It rested at 19.5 + 5 + 5 = 29.5, under it and off it.
+    property real buttonPadding: 6
     implicitWidth: distroIcon.width + buttonPadding * 2
     implicitHeight: distroIcon.height + buttonPadding * 2
     buttonRadius: Appearance.rounding.full
@@ -50,8 +52,8 @@ RippleButton {
     CustomIcon {
         id: distroIcon
         anchors.centerIn: parent
-        width: 19.5
-        height: 19.5
+        width: 20
+        height: 20
         source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : `${Config.options.bar.topLeftIcon}-symbolic`
         colorize: true
         color: Appearance.colors.colOnLayer0

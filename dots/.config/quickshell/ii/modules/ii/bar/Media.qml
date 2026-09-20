@@ -7,7 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.Mpris
 import Quickshell.Hyprland
-import Qt5Compat.GraphicalEffects
+import Quickshell.Widgets
 import qs.modules.common.utils
 
 Item {
@@ -19,7 +19,6 @@ Item {
     
     property int customSize: Config.options.bar.mediaPlayer.customSize
     property int lyricsCustomSize: Config.options.bar.mediaPlayer.lyrics.customSize
-    readonly property int maxWidth: 300
 
     property bool useFixedSize: Config.options.bar.mediaPlayer.useFixedSize
     readonly property bool lyricsEnabled: Config.options.bar.mediaPlayer.lyrics.enable
@@ -36,8 +35,10 @@ Item {
     implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
     implicitHeight: Appearance.sizes.barHeight
 
+    // The bar slot's width is size, not a tint: the resize spec, not the
+    // effects one it used to borrow (2.3).
     Behavior on implicitWidth {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(root)
     }
 
     Component.onCompleted: {
@@ -75,7 +76,10 @@ Item {
         width: artworkEnabled ? artworkBoxSize : 0
         height: artworkEnabled ? artworkBoxSize : 0
 
-        Rectangle {
+        // ClippingRectangle rounds the artwork with the scene graph's own
+        // clip, where this used to spend a framebuffer and an OpacityMask pass
+        // per frame on a 25px circle (8: native radii before a mask).
+        ClippingRectangle {
             anchors.fill: parent
             color: Appearance.colors.colPrimaryContainer
             radius: Appearance.rounding.full
@@ -86,19 +90,8 @@ Item {
                 fillMode: Image.PreserveAspectCrop
                 cache: false
                 antialiasing: true
-                width: parent.width
-                height: parent.height
                 sourceSize.width: width
                 sourceSize.height: height
-
-                layer.enabled: true
-                layer.effect: OpacityMask {
-                    maskSource: Rectangle {
-                        width: artworkItem.width
-                        height: artworkItem.height
-                        radius: Appearance.rounding.full
-                    }
-                }
             }
 
             MaterialSymbol {
@@ -157,7 +150,7 @@ Item {
                     fill: 1
                     text: activePlayer?.isPlaying ? "pause" : "music_note"
                     iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.m3colors.m3onSecondaryContainer
+                    color: Appearance.colors.colOnSecondaryContainer
                 }
             }
         }

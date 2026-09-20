@@ -18,8 +18,8 @@ Loader {
     }
 
     sourceComponent: Item {
-        implicitWidth: root.vertical ? null : layoutCodeText.implicitWidth
-        implicitHeight: root.vertical ? layoutCodeText.implicitHeight : null
+        implicitWidth: root.vertical ? 0 : layoutCodeText.implicitWidth
+        implicitHeight: root.vertical ? layoutCodeText.implicitHeight : 0
 
         StyledText {
             id: layoutCodeText

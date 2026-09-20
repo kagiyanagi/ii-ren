@@ -46,83 +46,25 @@ RippleButton { // Right sidebar button
         columnSpacing: 0
 
         // Gaps are per-item margins rather than layout spacing so a collapsed
-        // revealer takes up no space at all.
-        property real realSpacing: rightSidebarButton.vertical ? 6 : 15
+        // revealer takes up no space at all. 16 is the 4dp grid's section gap;
+        // it used to be 15, which is not on it (5.1).
+        property real realSpacing: rightSidebarButton.vertical ? 6 : 16
 
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: Idle.inhibit ?? false
-            Layout.fillHeight: true
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "local_cafe"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "local_cafe"
         }
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: Audio.sink?.audio?.muted ?? false
-            Layout.fillHeight: !rightSidebarButton.vertical
-            Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "volume_off"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "volume_off"
         }
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: Audio.source?.audio?.muted ?? false
-            Layout.fillHeight: !rightSidebarButton.vertical
-            Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "mic_off"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "mic_off"
         }
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: LocationService.available && !LocationService.enabled
-            Layout.fillHeight: !rightSidebarButton.vertical
-            Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "location_disabled"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "location_disabled"
         }
         HyprlandXkbIndicator {
             vertical: rightSidebarButton.vertical
@@ -131,62 +73,54 @@ RippleButton { // Right sidebar button
             Layout.bottomMargin: rightSidebarButton.vertical ? indicatorsLayout.realSpacing : 0
             color: rightSidebarButton.colText
         }
+        // The one indicator whose content is not a bare symbol, so it spells the
+        // revealer out instead of reusing IndicatorRevealer. It used to override
+        // implicitWidth/implicitHeight, which replaced the bindings Revealer
+        // picks its exit spec from -- the badge therefore left on the enter
+        // curve. Revealer's own childrenRect gives the same size: the ping sits
+        // inside the symbol's bounds.
         Revealer {
+            id: notificationRevealer
             vertical: rightSidebarButton.vertical
             reveal: Notifications.silent || Notifications.unread > 0
             Layout.fillHeight: !rightSidebarButton.vertical
             Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            implicitHeight: reveal ? notificationUnreadCount.implicitHeight : 0
-            implicitWidth: reveal ? notificationUnreadCount.implicitWidth : 0
+
+            Layout.rightMargin: {
+                notificationRevealer.pickRevealSpec();
+                return rightSidebarButton.vertical ? 0 : (notificationRevealer.reveal ? indicatorsLayout.realSpacing : 0);
+            }
+            Layout.bottomMargin: {
+                notificationRevealer.pickRevealSpec();
+                return rightSidebarButton.vertical ? (notificationRevealer.reveal ? indicatorsLayout.realSpacing : 0) : 0;
+            }
+
             Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                NumberAnimation {
+                    alwaysRunToEnd: false
+                    duration: notificationRevealer.revealSpec.duration
+                    easing.type: notificationRevealer.revealSpec.type
+                    easing.bezierCurve: notificationRevealer.revealSpec.bezierCurve
+                }
             }
             Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                NumberAnimation {
+                    alwaysRunToEnd: false
+                    duration: notificationRevealer.revealSpec.duration
+                    easing.type: notificationRevealer.revealSpec.type
+                    easing.bezierCurve: notificationRevealer.revealSpec.bezierCurve
+                }
             }
-            NotificationUnreadCount {
-                id: notificationUnreadCount
-            }
+
+            NotificationUnreadCount {}
         }
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: CloudflareWarpService.available && CloudflareWarpService.connected
-            Layout.fillHeight: !rightSidebarButton.vertical
-            Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "cloud_lock"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "cloud_lock"
         }
-        Revealer {
-            vertical: rightSidebarButton.vertical
+        IndicatorRevealer {
             reveal: Network.hotspotToggled
-            Layout.fillHeight: !rightSidebarButton.vertical
-            Layout.fillWidth: rightSidebarButton.vertical
-            Layout.rightMargin: rightSidebarButton.vertical ? 0 : (reveal ? indicatorsLayout.realSpacing : 0)
-            Layout.bottomMargin: rightSidebarButton.vertical ? (reveal ? indicatorsLayout.realSpacing : 0) : 0
-            Behavior on Layout.rightMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            Behavior on Layout.bottomMargin {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
-            MaterialSymbol {
-                text: "wifi_tethering"
-                iconSize: Appearance.font.pixelSize.larger
-                color: rightSidebarButton.colText
-            }
+            icon: "wifi_tethering"
         }
         MaterialSymbol {
             text: Network.materialSymbol
@@ -198,6 +132,62 @@ RippleButton { // Right sidebar button
             Layout.topMargin: rightSidebarButton.vertical ? indicatorsLayout.realSpacing : 0
             visible: BluetoothStatus.available
             text: BluetoothStatus.connected ? "bluetooth_connected" : BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
+            iconSize: Appearance.font.pixelSize.larger
+            color: rightSidebarButton.colText
+        }
+    }
+
+    /**
+     * One indicator that slides in and out of the cluster. Eight copies of this
+     * block used to sit inline, and the first of them filled height
+     * unconditionally, so in the vertical bar it stretched where its seven
+     * siblings did not.
+     *
+     * The gap rides Revealer's own `revealSpec` rather than a spec of its own:
+     * the width and the gap beside it are one movement, and two specs on it
+     * meant the neighbours finished sliding 370ms before the hole between them
+     * closed. `pickRevealSpec()` is called from inside the margin binding for
+     * the reason Revealer documents -- a Behavior bakes its curve when the
+     * binding that writes its property runs, and nothing orders these two
+     * bindings against each other (2.9).
+     */
+    component IndicatorRevealer: Revealer {
+        id: indicator
+
+        required property string icon
+
+        vertical: rightSidebarButton.vertical
+        Layout.fillHeight: !rightSidebarButton.vertical
+        Layout.fillWidth: rightSidebarButton.vertical
+
+        Layout.rightMargin: {
+            indicator.pickRevealSpec();
+            return rightSidebarButton.vertical ? 0 : (indicator.reveal ? indicatorsLayout.realSpacing : 0);
+        }
+        Layout.bottomMargin: {
+            indicator.pickRevealSpec();
+            return rightSidebarButton.vertical ? (indicator.reveal ? indicatorsLayout.realSpacing : 0) : 0;
+        }
+
+        Behavior on Layout.rightMargin {
+            NumberAnimation {
+                alwaysRunToEnd: false
+                duration: indicator.revealSpec.duration
+                easing.type: indicator.revealSpec.type
+                easing.bezierCurve: indicator.revealSpec.bezierCurve
+            }
+        }
+        Behavior on Layout.bottomMargin {
+            NumberAnimation {
+                alwaysRunToEnd: false
+                duration: indicator.revealSpec.duration
+                easing.type: indicator.revealSpec.type
+                easing.bezierCurve: indicator.revealSpec.bezierCurve
+            }
+        }
+
+        MaterialSymbol {
+            text: indicator.icon
             iconSize: Appearance.font.pixelSize.larger
             color: rightSidebarButton.colText
         }

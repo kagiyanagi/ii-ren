@@ -34,6 +34,11 @@ Item {
             accountForLightBleeding: !root.warning
             enableAnimation: false
 
+            // Crossing the threshold is a colour change, not a pulse (law 8).
+            Behavior on colPrimary {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
             Item {
                 anchors.centerIn: parent
                 width: resourceCircProg.implicitSize
@@ -45,7 +50,7 @@ Item {
                     fill: 1
                     text: iconName
                     iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.m3colors.m3onSecondaryContainer
+                    color: Appearance.colors.colOnSecondaryContainer
                 }
             }
         }
@@ -81,19 +86,9 @@ Item {
         }
     }
 
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        enabled: resourceRowLayout.x >= 0 && root.width > 0 && root.visible
-    }
-
+    // The slide-out (`x`) and the collapse (`implicitWidth`) are one movement and
+    // travel on one spec, so the row cannot leave its own gap behind.
     Behavior on implicitWidth {
-        NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-        }
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
     }
 }

@@ -65,8 +65,11 @@ Item {
             id: titleText
             Layout.leftMargin: root.vertical ? 0 : 6
             Layout.fillWidth: true
+            // Third-rank text: the workspaces beside it and the clock own
+            // colOnLayer0, so the title sits one step down the role ladder (6.1)
+            // and cannot compete with them.
             font.pixelSize: Appearance.font.pixelSize.small
-            color: Appearance.colors.colOnLayer0
+            color: Appearance.colors.colOnSurfaceVariant
             elide: Text.ElideRight
             rotation: root.vertical ? 90 : 0
             text: root.vertical ? root.appClassText : root.appTitleText

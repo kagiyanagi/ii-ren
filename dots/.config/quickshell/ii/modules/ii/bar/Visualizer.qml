@@ -46,9 +46,20 @@ Item { // Cava audio visualizer
                     height: root.vertical ? root.barThickness : length
                     radius: root.barThickness / 2
                     color: Appearance.colors.colPrimary
-                    opacity: root.active ? 1 : 0.35
-                    Behavior on width { enabled: root.vertical; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
-                    Behavior on height { enabled: !root.vertical; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                    opacity: root.active ? 1 : 0.4
+
+                    // A level follower, not a transition: it must never overshoot
+                    // the sample it is chasing, so it rides the critically damped
+                    // effects curve rather than a spatial one, at the shortest
+                    // duration the token table has (fast effects, 130ms).
+                    Behavior on width {
+                        enabled: root.vertical
+                        animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
+                    }
+                    Behavior on height {
+                        enabled: !root.vertical
+                        animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
+                    }
                     Behavior on opacity { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
                 }
             }

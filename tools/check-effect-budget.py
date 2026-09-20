@@ -55,15 +55,22 @@ KNOWN = {
     ("modules/ii/background/widgets/bluetooth/DevicesBatteryListWidget.qml", "layer.enabled"),
     ("modules/ii/background/widgets/utility/ResourceFillCardsWidget.qml", "OpacityMask"),
     ("modules/ii/background/widgets/utility/ResourceFillCardsWidget.qml", "layer.enabled"),
-    ("modules/ii/bar/Workspaces.qml", "ColorOverlay"),
-    ("modules/ii/bar/cards/WorldClocksCard.qml", "OpacityMask"),
-    ("modules/ii/bar/cards/WorldClocksCard.qml", "layer.enabled"),
+    # Workspaces' monochrome icons: this IS this gate's own prescribed fix,
+    # not a violation being silenced. It used to be a Desaturate *and* a
+    # ColorOverlay on every app icon, and the option is on by default. Both
+    # collapsed into one MultiEffect cached at the icon row -- "cache it at the
+    # container", exactly as the assertion says -- so the cost went from two
+    # framebuffers per icon to one per workspace. It still reads as nested
+    # because that container sits inside the per-workspace Repeater, and it
+    # cannot rise any further: one level up holds the number and the dot, which
+    # must not be desaturated. Anything that lands here without that argument is
+    # a real hit.
+    ("modules/ii/bar/Workspaces.qml", "layer.enabled"),
+    ("modules/ii/bar/Workspaces.qml", "MultiEffect"),
     ("modules/ii/desktopMenu/DesktopMenu.qml", "OpacityMask"),
     ("modules/ii/desktopMenu/DesktopMenu.qml", "layer.enabled"),
     ("modules/ii/dock/widgets/DockPreviewPopup.qml", "OpacityMask"),
     ("modules/ii/dock/widgets/DockPreviewPopup.qml", "layer.enabled"),
-    ("modules/settings/widgets/WallpaperEngineConfig.qml", "OpacityMask"),
-    ("modules/settings/widgets/WallpaperEngineConfig.qml", "layer.enabled"),
 }
 
 

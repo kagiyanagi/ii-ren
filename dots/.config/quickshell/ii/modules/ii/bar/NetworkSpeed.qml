@@ -38,57 +38,38 @@ Item {
         }
     }
 
-    function updateVisibility() {
-        try {
-            if (typeof rootItem !== "undefined") {
-                rootItem.visible = (!autoHide || showWidget);
-            } else {
-                root.visible = (!autoHide || showWidget);
-            }
-        } catch (e) {
-            root.visible = (!autoHide || showWidget);
-        }
+    // `visible` stays a binding. updateVisibility() used to assign root.visible
+    // from three handlers and Component.onCompleted, which destroyed the binding
+    // above on the first call -- after that the widget's visibility was whatever
+    // the last imperative write left, and autoHide stopped tracking showWidget.
+    // The bar cell still has to be told, because a zero-width child leaves the
+    // group's padding behind.
+    onVisibleChanged: {
+        if (typeof rootItem !== "undefined")
+            rootItem.visible = root.visible;
     }
 
-    onShowWidgetChanged: updateVisibility()
-
     onHasActivityChanged: {
-        if (hasActivity) {
-            hideTimer.stop();
-            showWidget = true;
-        }
-        updateVisibility();
+        if (!hasActivity) return;
+        hideTimer.stop();
+        showWidget = true;
     }
 
     onAutoHideChanged: {
-        if (!autoHide) {
-            hideTimer.stop();
-            showWidget = true;
-        }
-        updateVisibility();
+        if (autoHide) return;
+        hideTimer.stop();
+        showWidget = true;
     }
 
-    readonly property int displayMode: Config.options.bar.networkSpeed.displayMode
+    // The vertical bar has no room for a speed readout, so it shows the icon
+    // mode -- by *rendering* it, not by writing it into the user's config. The
+    // old onVerticalChanged/Component.onCompleted pair overwrote the stored
+    // displayMode the moment a vertical bar loaded and never put it back.
+    readonly property int displayMode: root.vertical ? 4 : (Config.options.bar.networkSpeed.displayMode ?? 0)
     readonly property bool showIcons: Config.options.bar.networkSpeed.showIcons
     readonly property int iconPosition: Config.options.bar.networkSpeed.iconPosition
 
-    onVerticalChanged: {
-        if (vertical) {
-            if (Config.options.bar.networkSpeed.displayMode < 4) {
-                Config.options.bar.networkSpeed.displayMode = 4;
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        NetworkUsage.activeInstances++;
-        if (vertical) {
-            if (Config.options.bar.networkSpeed.displayMode < 4) {
-                Config.options.bar.networkSpeed.displayMode = 4;
-            }
-        }
-        updateVisibility();
-    }
+    Component.onCompleted: NetworkUsage.activeInstances++
     Component.onDestruction: NetworkUsage.activeInstances--
 
     function formatSpeed(bytesPerSecond) {
@@ -172,6 +153,8 @@ Item {
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        // Right-click cycles the display mode, so it is a clickable surface (3.4).
+        cursorShape: root.vertical ? Qt.ArrowCursor : Qt.PointingHandCursor
 
         onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton) {
