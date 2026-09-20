@@ -59,18 +59,21 @@ Item {
         implicitHeight: contentItem.children[root.currentIndex]?.implicitHeight ?? 0
         readonly property int fullRadius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2
         radius: fullRadius
-        // Animation
+        // DESIGN.md 9: the indicator moves on elementMoveSmall. The pair stretches
+        // it -- the edge the eye follows takes the fast spatial spec, the one
+        // behind it the default spatial one, so the pill leads and catches up
+        // rather than sliding rigidly. Both are tokens; 50 and 200 were neither.
         property Item targetItem: contentItem.children[root.currentIndex] || null
         AnimatedTabIndexPair {
             id: leftBound
-            idx1Duration: 50
-            idx2Duration: 200
+            idx1Duration: Appearance.animation.elementMoveSmall.duration
+            idx2Duration: Appearance.animation.elementMove.duration
             index: activeIndicator.targetItem ? activeIndicator.targetItem.x : 0
         }
         AnimatedTabIndexPair {
             id: rightBound
-            idx1Duration: 50
-            idx2Duration: 200
+            idx1Duration: Appearance.animation.elementMoveSmall.duration
+            idx2Duration: Appearance.animation.elementMove.duration
             index: activeIndicator.targetItem ? activeIndicator.targetItem.x + activeIndicator.targetItem.width : 0
         }
         x: Math.min(leftBound.idx1, leftBound.idx2)

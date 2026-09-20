@@ -28,14 +28,20 @@ Item {
         }
     }
 
+    // A toolbar grows and shrinks as its contents change: that is size, so it
+    // rides a spatial spec (DESIGN.md 2.1). It was on elementMoveFast, the
+    // effects one, which is the curve for the colour underneath it.
     Behavior on implicitWidth {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
     Rectangle {
         id: background
         anchors.fill: parent
-        color: Appearance.m3colors.m3surfaceContainer
+        // The semantic token, not the generated palette entry: colSurfaceContainer
+        // is solved against the layer below it, so the toolbar stays right when
+        // content transparency is on (DESIGN.md 6.1). Identical with it off.
+        color: Appearance.colors.colSurfaceContainer
         implicitHeight: 56
         implicitWidth: toolbarLayout.implicitWidth + root.padding * 2
         readonly property int fullRadius: Config.options.appearance.sharpMode ? Appearance.rounding.full : height / 2

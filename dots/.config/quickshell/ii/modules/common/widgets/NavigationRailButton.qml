@@ -21,13 +21,53 @@ TabButton {
     // the label is cut to fit it, so a rail that wants room for longer names
     // raises this instead of letting them spill past its edge.
     property real collapsedWidth: baseSize
-    readonly property real visualWidth: root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.collapsedWidth
+
+    /*
+     * Expanding is a surface growing and collapsing is one leaving, so the two
+     * do not share a spec (DESIGN.md 2.5): out on the default spatial one, back
+     * in on the fast effects one at roughly a quarter the length. Both legs used
+     * to be elementMoveFast, an effects spec driving an anchor, which 2.1 rules
+     * out in either direction.
+     *
+     * The anchor halves get their direction from a state's `to:`, which is
+     * unambiguous. The width has no state of its own -- it rides this binding --
+     * so it takes 2.9's shape instead: the spec is assigned from inside the
+     * binding that drives the animation, which by construction runs before the
+     * write that starts it. Revealer is the worked example.
+     */
+    property AnimSpec railSpec: Appearance.animation.elementMove
+    readonly property real visualWidth: {
+        root.railSpec = root.expanded ? Appearance.animation.elementMove : Appearance.animation.elementMoveExit;
+        return root.expanded ? root.baseSize + 20 + itemText.implicitWidth : root.collapsedWidth;
+    }
+
+    component RailEnter: Transition {
+        AnchorAnimation {
+            duration: Appearance.animation.elementMove.duration
+            easing.type: Appearance.animation.elementMove.type
+            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+        }
+    }
+
+    component RailExit: Transition {
+        AnchorAnimation {
+            duration: Appearance.animation.elementMoveExit.duration
+            easing.type: Appearance.animation.elementMoveExit.type
+            easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+        }
+    }
 
     property real baseSize: 56
     property real baseHighlightHeight: 32
     property real iconSize: 24
     property real highlightCollapsedTopMargin: 8
     padding: 0
+
+    // Selected, the item sits on the secondary container -- its own highlight or
+    // the one NavigationRailTabArray slides behind it -- so the icon, the label
+    // and the state film all take that container's content colour, not the
+    // rail's. The label used to stay colOnLayer1 on top of the pill.
+    readonly property color colContent: root.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1
 
     // The navigation item’s target area always spans the full width of the
     // nav rail, even if the item container hugs its contents.
@@ -47,9 +87,9 @@ TabButton {
             left: parent.left
             right: undefined
         }
-        
+
         implicitWidth: root.visualWidth
-        implicitHeight: root.expanded ? itemIconBackground.implicitHeight : itemIconBackground.implicitHeight + itemText.implicitHeight 
+        implicitHeight: root.expanded ? itemIconBackground.implicitHeight : itemIconBackground.implicitHeight + itemText.implicitHeight
 
         Rectangle {
             id: itemBackground
@@ -58,11 +98,22 @@ TabButton {
             anchors.bottom: itemIconBackground.bottom
             implicitWidth: root.visualWidth
             radius: Appearance.rounding.full
-            color: toggled ? 
+            color: toggled ?
                 root.showToggledHighlight ?
                     (root.down ? Appearance.colors.colSecondaryContainerActive : root.hovered ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer)
                     : ColorUtils.transparentize(Appearance.colors.colSecondaryContainer) :
                 (root.down ? Appearance.colors.colLayer1Active : root.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1))
+
+            // Hover and pressed come off the layer's own Hover/Active siblings in
+            // the colour above; focus is 3.1's fourth state and the one this
+            // rail -- the keyboard-navigable half of the settings app -- never
+            // had. A film composites over the highlight instead of replacing it.
+            StateOverlay {
+                anchors.fill: parent
+                radius: parent.radius
+                focused: root.visualFocus
+                contentColor: root.colContent
+            }
 
             states: State {
                 name: "expanded"
@@ -73,25 +124,25 @@ TabButton {
                     anchors.left: buttonContent.left
                     anchors.bottom: buttonContent.bottom
                 }
-                PropertyChanges {
-                    target: itemBackground
-                    implicitWidth: root.visualWidth
-                }
             }
-            transitions: Transition {
+            transitions: [
+                RailEnter {
+                    to: "expanded"
+                    enabled: root._isInitialized
+                },
+                RailExit {
+                    to: ""
+                    enabled: root._isInitialized
+                }
+            ]
+
+            Behavior on implicitWidth {
                 enabled: root._isInitialized
 
-                AnchorAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                }
-                PropertyAnimation {
-                    target: itemBackground
-                    property: "implicitWidth"
-                    duration: Appearance.animation.elementMove.duration
-                    easing.type: Appearance.animation.elementMove.type
-                    easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                NumberAnimation {
+                    duration: root.railSpec.duration
+                    easing.type: root.railSpec.type
+                    easing.bezierCurve: root.railSpec.bezierCurve
                 }
             }
 
@@ -116,7 +167,7 @@ TabButton {
                 fill: toggled ? 1 : 0
                 font.weight: (toggled || root.hovered) ? Font.DemiBold : Font.Normal
                 text: buttonIcon
-                color: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer1
+                color: root.colContent
 
                 Behavior on color {
                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -154,15 +205,16 @@ TabButton {
                     }
                 }
             ]
-            transitions: Transition {
-                enabled: root._isInitialized
-
-                AnchorAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            transitions: [
+                RailEnter {
+                    to: "expanded"
+                    enabled: root._isInitialized
+                },
+                RailExit {
+                    to: "minimized"
+                    enabled: root._isInitialized
                 }
-            }
+            ]
             text: buttonText
             // Collapsed, the label sits under a baseSize-wide icon in a rail
             // that is only that wide, so a long name has to be cut rather than
@@ -170,8 +222,14 @@ TabButton {
             width: root.expanded ? implicitWidth : root.collapsedWidth
             elide: Text.ElideRight
             horizontalAlignment: root.expanded ? Text.AlignLeft : Text.AlignHCenter
-            font.pixelSize: 14
-            color: Appearance.colors.colOnLayer1
+            font.pixelSize: Appearance.font.pixelSize.smallie
+            // DESIGN.md 9: the label crossfades on the effects spec while the
+            // highlight behind it moves on a spatial one.
+            color: root.colContent
+
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
         }
     }
 

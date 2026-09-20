@@ -10,14 +10,14 @@ TabButton {
     id: root
     property string buttonText
     property string buttonIcon
-    property int rippleDuration: 225
-    property int tabContentWidth: buttonBackground.width - buttonBackground.radius*2
+    property int rippleDuration: 225 // Compose RippleAnimation
+    // A tab is a fixed cell -- TabBar hands every tab the same width -- so the
+    // row inside it is capped and its label elides rather than drawing out past
+    // the pill (DESIGN.md 10.17).
+    property int tabContentWidth: Math.max(0, buttonBackground.width - buttonBackground.radius * 2)
 
     property color colBackground: ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-    property color colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnSurface, root.checked ? 1 : 0.95)
     property color colRipple: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.95)
-
-    PointingHandInteraction {}
 
     component RippleAnim: NumberAnimation {
         duration: rippleDuration
@@ -29,6 +29,10 @@ TabButton {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         onPressed: (event) => {
+            // This MouseArea swallows the press, so AbstractButton never sets its
+            // own `down` -- which is what the press film and the colour ternaries
+            // read. RippleButton drives it by hand for the same reason.
+            root.down = true
             root.click() // Because the MouseArea already consumed the event
             const {x,y} = event
             const stateY = buttonBackground.y;
@@ -43,6 +47,11 @@ TabButton {
             rippleAnim.restart();
         }
         onReleased: (event) => {
+            root.down = false
+            rippleFadeAnim.restart();
+        }
+        onCanceled: (event) => {
+            root.down = false
             rippleFadeAnim.restart();
         }
     }
@@ -92,11 +101,11 @@ TabButton {
         id: buttonBackground
         anchors {
             fill: parent
-            margins: 3
+            margins: 4
         }
         radius: Appearance?.rounding.normal
         implicitHeight: 42
-        color: (root.hovered ? root.colBackgroundHover : root.colBackground)
+        color: root.colBackground
         layer.enabled: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
@@ -105,9 +114,22 @@ TabButton {
                 radius: buttonBackground.radius
             }
         }
-        
+
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // All four of 3.1's states, composited rather than mixed into the
+        // background. The old hover tint was a hand-rolled 0.05 of colOnSurface
+        // that a checked tab turned off entirely, and focus and press had
+        // nothing at all. The parent's OpacityMask clips this to the tab's
+        // corners, so the film does not repeat them.
+        StateOverlay {
+            anchors.fill: parent
+            hover: root.hovered && !root.down
+            focused: root.visualFocus
+            press: root.down
+            contentColor: Appearance.colors.colOnLayer1
         }
 
         Item {
@@ -147,13 +169,13 @@ TabButton {
         anchors.centerIn: buttonBackground
         RowLayout {
             anchors.centerIn: parent
-            spacing: 0
-            
+            width: Math.min(implicitWidth, root.tabContentWidth)
+            spacing: iconLoader.active ? 8 : 0
+
             Loader {
                 id: iconLoader
                 active: buttonIcon?.length > 0
                 sourceComponent: buttonIcon?.length > 0 ? materialSymbolComponent : null
-                Layout.rightMargin: 5
             }
 
             Component {
@@ -171,6 +193,8 @@ TabButton {
             }
             StyledText {
                 id: buttonTextWidget
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
                 verticalAlignment: Text.AlignVCenter
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: root.checked ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer1

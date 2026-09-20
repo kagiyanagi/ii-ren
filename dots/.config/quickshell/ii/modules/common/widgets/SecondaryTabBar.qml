@@ -27,10 +27,15 @@ TabBar {
             bottomLeftRadius: 0
             bottomRightRadius: 0
             color: Appearance.colors.colPrimary
-            // Animation
-            property real baseWidth: root.width / root.count
+            // DESIGN.md 9: the indicator moves on elementMoveSmall, with the
+            // trailing edge on the default spatial spec so the bar stretches
+            // toward the new tab instead of sliding rigidly. The shared model's
+            // own 100/300 defaults are neither token.
+            property real baseWidth: root.count > 0 ? root.width / root.count : 0
             AnimatedTabIndexPair {
                 id: idxPair
+                idx1Duration: Appearance.animation.elementMoveSmall.duration
+                idx2Duration: Appearance.animation.elementMove.duration
                 index: root.currentIndex
             }
             height: 3
@@ -38,7 +43,10 @@ TabBar {
             width: ((Math.max(idxPair.idx1, idxPair.idx2) + 1) * baseWidth - root.indicatorPadding) - x
         }
 
-        Rectangle { // Tabbar bottom border
+        // The active indicator's track, not a section divider: M3's tab anatomy
+        // draws the full-width line the indicator rides on, and 5.5 is about
+        // separators between content groups. It stays 1px colOutlineVariant.
+        Rectangle {
             id: tabBarBottomBorder
             z: 9998
             anchors.bottom: parent.bottom

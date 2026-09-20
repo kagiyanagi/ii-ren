@@ -1,0 +1,53 @@
+refactor(cw-navigation): the film the tabs never had, and a collapse that is not the expand
+
+The brief called this the family with the densest untokenised motion per line.
+Mechanically it was four check-design hits in 830 lines; the debt that mattered was
+the two shapes no regex reaches. The tab indicator's durations arrive as
+`idx1Duration: 50` through the shared AnimatedTabIndexPair, and `\bduration:` does
+not match `idx1Duration:` -- the exported-knob blind spot, now its third instance
+after CircularProgress and StyledText. And a missing state has no line at all:
+check-button-states.py walks QQC2 Button roots, so both TabButton-rooted widgets and
+ToolbarTextField sat outside it with no focus layer, SecondaryTabButton with no press
+state either once you look past the ripple.
+
+SecondaryTabButton's hover was a hand-rolled 0.05 tint of colOnSurface that a checked
+tab switched off entirely. All three states are now one StateOverlay, which the
+button's existing OpacityMask already clips to its corners for free -- and its `down`
+is driven by hand, because the MouseArea swallows the press and AbstractButton
+therefore never set the flag the press reads. RippleButton has always done that; this
+one had nothing reading `down` to notice.
+
+Measured rather than argued, with the plain qml runtime and the answer in the exit
+code: TabButton already defaults to Qt.StrongFocus and already has activeFocusOnTab,
+so the focusPolicy line this started with was dead and is gone; visualFocus does go
+true on a tab-reason focus, so the film is reachable and not inert; a `to:` pair of
+Transitions fires exactly once each in the right direction; and topLeftRadius follows
+radius, so StateOverlay takes one radius instead of four. Also, contrary to the Qt
+docs, an inline component does see the enclosing file's root id in 6.11 -- which
+RippleButton's own RippleAnim has been relying on all along.
+
+The rail's expand and its collapse stop sharing a spec (2.5): out on the default
+spatial one, back on the fast effects one at roughly a quarter the length. The anchor
+halves take their direction from a state's `to:`; the width and the chevron have no
+state to read, so they use 2.9's assign-from-the-driving-binding shape. The expanded
+state's PropertyChanges was restoring the binding the base state already had, which
+made the PropertyAnimation beside it a race it usually lost -- qmllint said so twice
+and both warnings go with it. NavigationRailTabArray's pill stays symmetric on
+elementMoveSmall because it is the selection indicator (9) and one Behavior cannot
+tell which cause moved it; its height had no animation at all and simply jumped.
+
+Selection was reading wrong in two places: the rail's label stayed colOnLayer1 on top
+of the secondary-container pill while its icon did not, and ToolbarTabButton gave its
+content no selected colour whatsoever. Both now crossfade one colContent on
+elementMoveFast, which is also the hue their state film should have been.
+ToolbarPairedFab stops anchoring its own root -- half its callers are RowLayouts, and
+Qt calls that undefined behavior -- stops anchoring its shadow across a Loader
+boundary, and drops a clicked(event) that always forwarded undefined.
+
+check-navigation-widgets.py holds the three states on the widgets check-button-states
+cannot see, the two named directions and their 2.9 shape, and the indicator durations
+that check-design structurally cannot read. 12 mutations, 12 caught.
+
+AnimatedTabIndexPair itself still hand-fits Easing.OutSine on both edges; it lives in
+modules/common/models, which no family in this tranche owns, and Workspaces.qml is
+its fourth caller. The exact edit is in the notes.

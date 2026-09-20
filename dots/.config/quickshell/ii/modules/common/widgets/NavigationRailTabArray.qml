@@ -10,10 +10,10 @@ Item {
     property bool _isInitialized: false
     Component.onCompleted: _isInitialized = true
 
-    default property alias tabData: tabBarColumn.data  
+    default property alias tabData: tabBarColumn.data
     implicitHeight: tabBarColumn.implicitHeight
     implicitWidth: tabBarColumn.implicitWidth
-    Layout.topMargin: 25
+    Layout.topMargin: 24
 
     Rectangle {
         property real itemHeight: tabBarColumn.children[0]?.baseSize ?? 56
@@ -28,20 +28,30 @@ Item {
         implicitHeight: root.expanded ? itemHeight : baseHighlightHeight
         implicitWidth: tabBarColumn?.children[root.currentIndex]?.visualWidth ?? 130
 
+        /*
+         * This is the selection indicator, so all three legs ride
+         * elementMoveSmall and it moves as one object (DESIGN.md 9). Its size
+         * also changes when the rail expands, where 2.5 would want an
+         * asymmetric pair -- but one Behavior cannot tell which cause moved it,
+         * and tearing the pill's height away from its own travel is the worse
+         * of the two. Height had no animation at all and simply jumped.
+         */
         Behavior on implicitWidth {
             enabled: root._isInitialized
 
-            animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+        }
+
+        Behavior on implicitHeight {
+            enabled: root._isInitialized
+
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
         }
 
         Behavior on anchors.topMargin {
             enabled: root._isInitialized
 
-            NumberAnimation {
-                duration: Appearance.animationCurves.expressiveFastSpatialDuration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-            }
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
         }
     }
 
