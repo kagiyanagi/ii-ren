@@ -7,13 +7,33 @@ never regenerated. Protocol: `.github/AUDIT.md`.
 Lane 1 = Claude end to end. Lane 2 = Claude brief, Sonnet-via-agy builds, Claude reviews.
 Status: `todo` → `briefed` → `built` → `done`. Put the date in `done` when it lands.
 
-The two `shared-widgets` rows are **tranches, not sessions** — 175 and 191 files. They
-split into per-family sessions (buttons, lists, popups, inputs...) when reached, per the
-2,500-line rule in AUDIT.md.
+`common-widgets` was a tranche and is now split into the fifteen `cw-*` rows below, one
+session each — see `.audit/common-widgets/families.md` for membership and
+`.audit/common-widgets/brief.md`, which is the brief for all fifteen. `settings-widgets`
+is still a tranche (191 files) and splits the same way when reached, per the 2,500-line
+rule in AUDIT.md.
+
+The `cw-*` rows run in the order listed: `cw-buttons` first because fourteen library
+widgets are rooted in `RippleButton`, then by caller count.
 
 | id | path | cluster | lane | files | lines | open with | status | done | notes |
 |---|---|---|---:|---:|---:|---|---|---|---|
-| `common-widgets` | `modules/common/widgets` | shared-widgets | 1 | 175 | 14956 | ? | todo | | **do first — lifts every surface** |
+| `common-widgets` | `modules/common/widgets` | shared-widgets | 1 | 169 | 14176 | n/a | done | 2026-09-20 | tranche split only, no QML changed — see `families.md`, `brief.md`, `notes.md` |
+| `cw-buttons` | `modules/common/widgets` | shared-widgets | 1 | 21 | 1471 | settings app · any `RippleButton` caller | todo | | **run first** — `RippleButton` + 14 widgets rooted in it, 295 callers |
+| `cw-primitives` | `modules/common/widgets` | shared-widgets | 1 | 18 | 1017 | everywhere | todo | | `StyledText` 471 callers, `MaterialSymbol` 398 |
+| `cw-scaffolding` | `modules/common/widgets` | shared-widgets | 1 | 14 | 1044 | `qs -c ii settings.qml` | todo | | `ContentSection` 177, `ContentPage` 175, `PagePlaceholder` 71 |
+| `cw-config-rows` | `modules/common/widgets` | shared-widgets | 1 | 12 | 1517 | `qs -c ii settings.qml` | todo | | `ConfigSwitch` 129; §5.7 label-above-track, §5.6 card owns the row |
+| `cw-inputs` | `modules/common/widgets` | shared-widgets | 1 | 16 | 1648 | `qs -c ii settings.qml` | todo | | sliders, combos, text fields; combo popups take §9 popup motion |
+| `cw-navigation` | `modules/common/widgets` | shared-widgets | 1 | 13 | 830 | `qs -c ii settings.qml` | todo | | tabs, nav rail, toolbar; densest untokenised motion per line |
+| `cw-dialogs` | `modules/common/widgets` | shared-widgets | 1 | 14 | 929 | `ipc call session`, hotspot/bluetooth dialogs | todo | | deletes `WindowDialogSeparator` (0 callers, §5.5) |
+| `cw-progress` | `modules/common/widgets` | shared-widgets | 1 | 13 | 1060 | `ipc call osdVolume`, bar cards | todo | | `CircularProgress` exports `animationDuration`/`easingType` — knobs go |
+| `cw-notifications` | `modules/common/widgets` | shared-widgets | 1 | 6 | 612 | `notify-send test` | todo | | `NotificationGroup` is a bare `MouseArea`; `SwipeDismissible` dismissal |
+| `cw-effects` | `modules/common/widgets` | shared-widgets | 1 | 8 | 234 | wallpaper + any shadowed surface | todo | | `StyledRectangularShadow` 71, `StyledDropShadow` 51; §8 budget |
+| `cw-media` | `modules/common/widgets` | shared-widgets | 2 | 8 | 1007 | `ipc call mediaControls` | todo | | `PlayerControlsLyrics` 7 design hits, `PlayerControls` 4 — densest pair |
+| `cw-motion` | `modules/common/widgets` | shared-widgets | 2 | 15 | 858 | wallpaper switch, `ipc call wallpaperSelector` | todo | | parameterised on purpose; the work is the **defaults** |
+| `cw-gestures` | `modules/common/widgets` | shared-widgets | 2 | 6 | 446 | `wl-copy x`, notification swipe | todo | | `SwipeDismissible` needs a `ListView` owner — see clipboardToast notes |
+| `cw-misc` | `modules/common/widgets` | shared-widgets | 2 | 4 | 463 | `ipc call sidebarRight` | todo | | four leaves, identical work (tokenisation) |
+| `cw-battery` | `modules/common/widgets` | shared-widgets | 2 | 1 | 1040 | `ipc call bar` | todo | | 10 design hits, worst in the library; one file, one job |
 | `settings-widgets` | `modules/settings/widgets` | shared-widgets | 1 | 191 | 35432 | ? | todo | | settings widget library |
 | `ii-altTab` | `modules/ii/altTab` | ii | 2 | 1 | 243 | `ipc call altTab` | todo | |  |
 | `ii-background-widgets` | `modules/ii/background/widgets` | background | 2 | 122 | 27746 | ? | todo | | **deferred — vendored, see re-port hazard** |

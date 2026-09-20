@@ -18,7 +18,7 @@ The shell boots and renders with all of these; they are silent in normal use.
 
 | where | issue | owner |
 |---|---|---|
-| `modules/common/widgets/RippleButton.qml` | Renders hover, pressed and disabled but no focus state. `Button.visualFocus` is never read, so DESIGN.md 3.1's four states are three on every caller. Harmless on a layer surface with `keyboardFocus: None`; not harmless in the settings app. | `common-widgets` |
+| `modules/common/widgets/RippleButton.qml` | Renders hover, pressed and disabled but no focus state. `Button.visualFocus` is never read, so DESIGN.md 3.1's four states are three on every caller. Harmless on a layer surface with `keyboardFocus: None`; not harmless in the settings app. | `cw-buttons` |
 
 ## From `tools/p3-widget-port/check-config-paths.py`
 

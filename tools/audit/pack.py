@@ -7,6 +7,7 @@ can be invented and later trusted. Regenerate rather than maintain.
 
   python3 tools/audit/pack.py modules/ii/clipboardToast
   python3 tools/audit/pack.py modules/settings/BarConfig.qml --id settings-bar
+  python3 tools/audit/pack.py modules/common/widgets --only '^Ripple' --id cw-buttons
 """
 import argparse, importlib.util, os, pathlib, re, sys
 from collections import Counter, defaultdict
@@ -33,10 +34,16 @@ def load_config_parser():
     spec.loader.exec_module(m)
     return m
 
-def qml_files(target):
+def qml_files(target, only=None):
     if target.is_file():
         return [target]
-    return sorted(p for p in target.rglob("*") if p.suffix in (".qml", ".js"))
+    files = sorted(p for p in target.rglob("*") if p.suffix in (".qml", ".js"))
+    if only:
+        # A tranche too big for one session is packed per family instead. Match on the
+        # path relative to the target so `--only 'transitions/|^Styled'` reads naturally.
+        rx = re.compile(only)
+        files = [f for f in files if rx.search(str(f.relative_to(target)))]
+    return files
 
 def root_type(src):
     for line in src.split("\n"):
@@ -55,6 +62,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("surface", help="path under the shell dir")
     ap.add_argument("--id", help="surface id (default: derived from path)")
+    ap.add_argument("--only", help="regex on the path relative to the surface dir; packs "
+                                   "one family of a tranche too big for one session")
     args = ap.parse_args()
 
     target = SHELL / args.surface
@@ -62,7 +71,7 @@ def main():
         sys.exit(f"no such surface: {target}")
     sid = args.id or re.sub(r"[^a-zA-Z0-9]+", "-", args.surface.replace("modules/", "")).strip("-").removesuffix("-qml")
 
-    files = qml_files(target)
+    files = qml_files(target, args.only)
     if not files:
         sys.exit(f"no qml under {target}")
 
