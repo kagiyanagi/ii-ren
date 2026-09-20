@@ -25,7 +25,7 @@ LazyLoader {
         var barSpace = Config.options.bar.vertical ? 0 : Appearance.sizes.barHeight;
         var maxAllowedHeight = screenHeight - barSpace - Appearance.sizes.elevationMargin * 2 - 40;
         var maxAllowedWidth = (screenWidth > 0 ? screenWidth : 1920) * 0.9;
-        
+
         var userMultiplier = Config.options?.bar?.tooltips?.popupScaleMultiplier ?? 1.0;
         var scale = baseScale * userMultiplier;
         // Measure with the actual candidate scale. Using baseScale here made
@@ -42,7 +42,8 @@ LazyLoader {
         return scale;
     }
     property real popupBackgroundMargin: 0
-    property int popupRadius: Appearance.rounding.large
+    // DESIGN.md 9, Popup / context menu: an anchored popup surface is verylarge.
+    property int popupRadius: Appearance.rounding.verylarge
     property bool animate: true
     property bool animateHeight: true
     property bool stickyHover: false
@@ -81,9 +82,15 @@ LazyLoader {
     // hover/click behaviour.
     property var externalOpen: undefined
 
+    // A popup with nothing left in it must not open on hover - an empty card
+    // under the pointer reads as a glitch. Defaults true, so only a caller whose
+    // every section is config-gated has to say otherwise; `externalOpen` is a
+    // deliberate caller decision and overrides it.
+    property bool contentAvailable: true
+
     readonly property bool _computedActive: root.externalOpen !== undefined
         ? root.externalOpen
-        : Config.options.bar.tooltips.enablePopups && ((Config.options.bar.tooltips.clickToShow || forceClick) ? _clickActive : (stickyHover ? _stickyActive : (_targetHovered && _openDebounced)))
+        : root.contentAvailable && Config.options.bar.tooltips.enablePopups && ((Config.options.bar.tooltips.clickToShow || forceClick) ? _clickActive : (stickyHover ? _stickyActive : (_targetHovered && _openDebounced)))
 
     property bool _openDebounced: false
 
@@ -118,6 +125,39 @@ LazyLoader {
             onTriggered: {
                 root._popupHovered = false;
                 root._stickyActive = false;
+            }
+        }
+        /*
+         * The pointer came back while the popup was closing. The re-open cannot
+         * ride the same event-loop turn as the close: `active` is
+         * `_computedActive || _isClosing`, so clearing _isClosing and setting an
+         * open flag together re-evaluates that binding straight back to true and
+         * the LazyLoader never tears the instance down - the new popup then
+         * inherits the old one's half-finished entrance.
+         *
+         * What it waits for by name: the DeferredDelete that drops the old
+         * window. Qt only delivers that when the event loop unwinds to the level
+         * it was posted at, so the shortest real timer is the handle we have on
+         * it; Qt.callLater runs too early. It lives on root, not inside the
+         * window, so it is not destroyed by the teardown it is waiting for -
+         * which is what the 30ms timer that used to sit in there was really for.
+         */
+        property Timer reopen: Timer {
+            interval: 1
+            repeat: false
+            onTriggered: {
+                if (!root._reopenPending)
+                    return;
+
+                root._reopenPending = false;
+                if (root._targetHovered || Config.options.bar.tooltips.clickToShow || root.forceClick) {
+                    if (Config.options.bar.tooltips.clickToShow || root.forceClick)
+                        root._clickActive = true;
+                    else if (root.stickyHover)
+                        root._stickyActive = true;
+                    else
+                        root._openDebounced = true;
+                }
             }
         }
     }
@@ -208,10 +248,10 @@ LazyLoader {
         anchors.bottom: root.customPosition ? root.anchorBottom : (!Config.options.bar.vertical && Config.options.bar.bottom)
 
         implicitWidth: popupBackground.targetWidth + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
-        implicitHeight: popupBackground._windowHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
+        implicitHeight: popupBackground._commitHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
 
         // The input region must not follow the open animation. popupBackground lives inside
-        // animContainer, which carries a Translate transform, and a transform change does not
+        // animContainer, which carries a Scale transform, and a transform change does not
         // emit the geometry signals Region listens to — so the committed region can stay stuck
         // at the animation's starting offset and swallow clicks aimed at the popup's contents.
         Item {
@@ -229,37 +269,44 @@ LazyLoader {
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
 
+        /*
+         * The popup wants to sit centred on the bar item that opened it; the
+         * screen edge wins when it cannot. Both the wanted position and the one
+         * actually used are kept, because their difference is exactly how far
+         * the bar item ends up from the surface's centre - which is the
+         * open/close pivot (DESIGN.md 2.6). tools/check-popup-pivot.py holds
+         * this arithmetic.
+         */
+        readonly property real anchorIdealLeft: {
+            if (!root.hoverTarget || !root.QsWindow)
+                return 0;
+            const p = root.QsWindow.mapFromItem(root.hoverTarget, 0, 0);
+            return p.x + (root.hoverTarget.width - popupWindow.implicitWidth) / 2;
+        }
+        readonly property real anchorIdealTop: {
+            if (!root.hoverTarget || !root.QsWindow)
+                return 0;
+            const p = root.QsWindow.mapFromItem(root.hoverTarget, 0, 0);
+            return p.y + (root.hoverTarget.height - popupWindow.implicitHeight) / 2;
+        }
+        readonly property real anchorLeftMargin: Math.max(0, Math.min(screenWidth - popupWindow.implicitWidth, anchorIdealLeft))
+        readonly property real anchorTopMargin: Math.max(0, Math.min(screenHeight - popupWindow.implicitHeight, anchorIdealTop))
+
         margins {
             left: {
-                if (root.customPosition) {
+                if (root.customPosition)
                     return root.customMarginLeft;
-                }
-                if (!Config.options.bar.vertical) {
-                    if (!root.hoverTarget || !root.QsWindow)
-                        return 0;
-                    var targetPos = root.QsWindow.mapFromItem(root.hoverTarget, 0, 0);
-                    var centeredX = targetPos.x + (root.hoverTarget.width - popupWindow.implicitWidth) / 2;
-                    var minX = 0;
-                    var maxX = screenWidth - popupWindow.implicitWidth;
-                    return Math.max(minX, Math.min(maxX, centeredX));
-                }
+                if (!Config.options.bar.vertical)
+                    return popupWindow.anchorLeftMargin;
                 return Appearance.sizes.verticalBarWidth;
             }
 
             top: {
-                if (root.customPosition) {
+                if (root.customPosition)
                     return root.customMarginTop;
-                }
-                if (!Config.options.bar.vertical) {
+                if (!Config.options.bar.vertical)
                     return Appearance.sizes.barHeight;
-                }
-                if (!root.hoverTarget || !root.QsWindow)
-                    return 0;
-                var targetPos = root.QsWindow.mapFromItem(root.hoverTarget, 0, 0);
-                var centeredY = targetPos.y + (root.hoverTarget.height - popupWindow.implicitHeight) / 2;
-                var minY = 0;
-                var maxY = screenHeight - popupWindow.implicitHeight;
-                return Math.max(minY, Math.min(maxY, centeredY));
+                return popupWindow.anchorTopMargin;
             }
 
             right: root.customPosition ? root.customMarginRight : Appearance.sizes.verticalBarWidth
@@ -280,124 +327,154 @@ LazyLoader {
             }
         }
 
+        // The surface's own open/close transform. Six popups outside this file
+        // read popupOpenProgress to time their content entrance and to reset it
+        // at exactly 0, so it stays a plain 0..1 ramp riding the same animations.
         property real animProgress: 0.0
+        property real surfaceScale: Appearance.animationCurves.arrowPopupScale
+        property real surfaceOpacity: 0.0
         readonly property real popupOpenProgress: animProgress
-        property var childDelays: []
-
-        onAnimProgressChanged: updateChildrenAnimation()
-
-        function updateChildrenAnimation() {
-            // Keep children animation clean and empty since they will animate themselves
-            // directly using the root.active property, matching HourlyForecast's pattern.
-        }
 
         readonly property bool isBarVertical: Config.options.bar.vertical
         readonly property bool isBarBottom: Config.options.bar.bottom
-        readonly property real slideOffset: 35
 
-        readonly property real slideX: {
-            if (!isBarVertical)
-                return 0;
-            return isBarBottom ? slideOffset : -slideOffset;
-        }
-
-        readonly property real slideY: {
-            if (isBarVertical)
-                return 0;
-            return isBarBottom ? slideOffset : -slideOffset;
-        }
-
-        readonly property Item heroItem: {
-            if (!root.contentItem)
-                return null;
-            for (let i = 0; i < root.contentItem.children.length; i++) {
-                let child = root.contentItem.children[i];
-                if (child.visible && child.width > 0)
-                    return child;
+        /*
+         * Origin at the corner nearest the bar item that opened it, in
+         * animContainer coordinates - ArrowPopup.setPivotForOpenCloseAnimation().
+         * A tray popup grows out of its top-right, one under the clock out of
+         * the top-centre, and a bottom bar's grows upward.
+         */
+        readonly property real pivotX: {
+            if (root.customPosition) {
+                if (root.anchorLeft)
+                    return popupBackground.x;
+                if (root.anchorRight)
+                    return popupBackground.x + popupBackground.width;
+                return popupBackground.x + popupBackground.width / 2;
             }
-            return null;
+            if (isBarVertical)
+                return isBarBottom ? popupBackground.x + popupBackground.width : popupBackground.x;
+            const wanted = popupWindow.anchorIdealLeft + popupWindow.implicitWidth / 2 - popupWindow.anchorLeftMargin;
+            return Math.max(popupBackground.x, Math.min(popupBackground.x + popupBackground.width, wanted));
         }
-        readonly property real heroHeight: heroItem ? heroItem.implicitHeight : 0
+        readonly property real pivotY: {
+            if (root.customPosition) {
+                if (root.anchorTop)
+                    return popupBackground.y;
+                if (root.anchorBottom)
+                    return popupBackground.y + popupBackground.height;
+                return popupBackground.y + popupBackground.height / 2;
+            }
+            if (!isBarVertical)
+                return isBarBottom ? popupBackground.y + popupBackground.height : popupBackground.y;
+            const wanted = popupWindow.anchorIdealTop + popupWindow.implicitHeight / 2 - popupWindow.anchorTopMargin;
+            return Math.max(popupBackground.y, Math.min(popupBackground.y + popupBackground.height, wanted));
+        }
 
-        SequentialAnimation {
-            id: openAnimSeq
-            PauseAnimation {
-                duration: 50
+        function resetOpenState(): void {
+            popupWindow.animProgress = 0.0;
+            popupWindow.surfaceScale = Appearance.animationCurves.arrowPopupScale;
+            popupWindow.surfaceOpacity = 0.0;
+        }
+
+        // ArrowPopup.animateOpen(), assembled from the transcribed composite
+        // (DESIGN.md 9): scale overshoots and settles on its own curve, alpha
+        // rides underneath. Same shape DockFolderPopup and DesktopMenu use.
+        ParallelAnimation {
+            id: openAnim
+            SequentialAnimation {
+                NumberAnimation {
+                    target: popupWindow
+                    property: "surfaceScale"
+                    from: Appearance.animationCurves.arrowPopupScale
+                    to: Appearance.animationCurves.arrowPopupOvershoot
+                    duration: Appearance.animationCurves.arrowPopupScaleDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                }
+                NumberAnimation {
+                    target: popupWindow
+                    property: "surfaceScale"
+                    to: 1.0
+                    duration: Appearance.animationCurves.arrowPopupScaleDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
+                }
             }
             NumberAnimation {
-                id: openProgressAnim
+                target: popupWindow
+                property: "surfaceOpacity"
+                from: 0.0
+                to: 1.0
+                duration: Appearance.animationCurves.arrowPopupFadeDuration
+            }
+            NumberAnimation {
                 target: popupWindow
                 property: "animProgress"
                 from: 0.0
                 to: 1.0
-                duration: 380
-                easing.type: Easing.OutQuart
+                duration: Appearance.animationCurves.arrowPopupScaleDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
             }
         }
 
-        NumberAnimation {
+        // ArrowPopup.animateClose(): accelerating, and shorter than the open, so
+        // leaving does not feel like entering played backwards (DESIGN.md 2.5).
+        ParallelAnimation {
             id: closeAnim
-            target: popupWindow
-            property: "animProgress"
-            from: 1.0
-            to: 0.0
-            duration: 260
-            easing.type: Easing.InCubic
+            NumberAnimation {
+                target: popupWindow
+                property: "surfaceScale"
+                to: Appearance.animationCurves.arrowPopupScale
+                duration: Appearance.animationCurves.arrowPopupCloseDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+            }
+            SequentialAnimation {
+                PauseAnimation {
+                    duration: Appearance.animationCurves.arrowPopupFadeHold
+                }
+                NumberAnimation {
+                    target: popupWindow
+                    property: "surfaceOpacity"
+                    to: 0.0
+                    duration: Appearance.animationCurves.arrowPopupFadeDuration
+                }
+            }
+            NumberAnimation {
+                target: popupWindow
+                property: "animProgress"
+                to: 0.0
+                duration: Appearance.animationCurves.arrowPopupCloseDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+            }
             onFinished: {
                 popupWindow.animProgress = 0.0;
-                destroyTimer.start();
-            }
-        }
-
-        Timer {
-            id: destroyTimer
-            interval: 30
-            onTriggered: {
-                root._isClosing = false;
+                // Queue before the teardown: clearing _isClosing drops `active`,
+                // which destroys this window and everything under it.
                 if (root._reopenPending)
-                    reopenAfterClose.start();
-            }
-        }
-
-        Timer {
-            id: reopenAfterClose
-            interval: 1
-            onTriggered: {
-                if (!root._reopenPending)
-                    return;
-
-                root._reopenPending = false;
-                if (root._targetHovered || Config.options.bar.tooltips.clickToShow || root.forceClick) {
-                    if (Config.options.bar.tooltips.clickToShow || root.forceClick)
-                        root._clickActive = true;
-                    else if (root.stickyHover)
-                        root._stickyActive = true;
-                    else
-                        root._openDebounced = true;
-                }
+                    root._timers.reopen.start();
+                root._isClosing = false;
             }
         }
 
         Connections {
             target: root
             function onActiveChanged() {
-                if (root.active) {
-                    popupWindow.animProgress = 0.0;
-                    openAnimSeq.start();
-                } else {
-                    popupWindow.animProgress = 0.0;
-                }
+                popupWindow.resetOpenState();
+                if (root.active)
+                    openAnim.start();
             }
             function on_IsClosingChanged() {
                 if (root._isClosing) {
-                    openAnimSeq.stop();
-                    closeAnim.from = popupWindow.animProgress;
+                    openAnim.stop();
                     closeAnim.start();
                 } else if (root._computedActive) {
                     closeAnim.stop();
-                    destroyTimer.stop();
-                    popupWindow.animProgress = 0.0;
-                    openAnimSeq.start();
+                    popupWindow.resetOpenState();
+                    openAnim.start();
                 }
             }
             function on_ComputedActiveChanged() {
@@ -415,8 +492,8 @@ LazyLoader {
             if (root.selfDismiss && Config.options.bar.tooltips.clickToShow) {
                 dismissGrabArmTimer.restart();
             }
-            popupWindow.animProgress = 0.0;
-            openAnimSeq.start();
+            popupWindow.resetOpenState();
+            openAnim.start();
         }
 
         Timer {
@@ -428,11 +505,13 @@ LazyLoader {
         Item {
             id: animContainer
             anchors.fill: parent
-            opacity: popupWindow.animProgress
+            opacity: popupWindow.surfaceOpacity
 
-            transform: Translate {
-                x: popupWindow.slideX * (1.0 - popupWindow.animProgress)
-                y: popupWindow.slideY * (1.0 - popupWindow.animProgress)
+            transform: Scale {
+                origin.x: popupWindow.pivotX
+                origin.y: popupWindow.pivotY
+                xScale: popupWindow.surfaceScale
+                yScale: popupWindow.surfaceScale
             }
 
             // Keep the popup vector/text content on the scene graph. Do not put
@@ -454,30 +533,24 @@ LazyLoader {
                 property bool isBottom: Config.options.bar.bottom
                 property int elevation: Appearance.sizes.elevationMargin
 
+                // The height the surface and its window have actually committed
+                // to. It trails targetHeight through a Behavior so content that
+                // grows or shrinks while the popup is open resizes instead of
+                // snapping; during the open/close it is targetHeight exactly,
+                // because the surface's own scale is the entrance.
                 property real _commitHeight: 0
-                property real _windowHeight: 0
                 property bool _heightReady: false
 
-                onTargetHeightChanged: {
-                    _commitHeight = targetHeight;
-                    _windowHeight = targetHeight;
-                }
+                onTargetHeightChanged: _commitHeight = targetHeight
 
                 Component.onCompleted: {
                     _commitHeight = targetHeight;
-                    _windowHeight = targetHeight;
                     Qt.callLater(function () {
                         popupBackground._heightReady = true;
                     });
                 }
 
                 Behavior on _commitHeight {
-                    enabled: popupBackground._heightReady && root.animate && root.animateHeight
-                        && root.opened && popupWindow.animProgress >= 1.0
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-
-                Behavior on _windowHeight {
                     enabled: popupBackground._heightReady && root.animate && root.animateHeight
                         && root.opened && popupWindow.animProgress >= 1.0
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
@@ -499,19 +572,19 @@ LazyLoader {
                 }
 
                 width: targetWidth
-                height: {
-                    if (!root.animateHeight)
-                        return targetHeight;
-                    if (!root.animate || !root.contentItem || !heroItem || targetHeight <= heroHeight + margin * 2)
-                        return _commitHeight;
-                    return (heroHeight + margin * 2) + (_commitHeight - (heroHeight + margin * 2)) * popupWindow.animProgress;
-                }
+                height: root.animateHeight ? _commitHeight : targetHeight
 
                 color: Config.options.appearance.transparency.popups ? Appearance.colors.colLayer0 : Appearance.m3colors.m3surfaceContainer
                 radius: root.popupRadius
-                // During close the surface shrinks before the content tree is destroyed.
-                // Clip that subtree to the same animated bounds so cards cannot spill out.
+                // Content whose own size is still settling must not paint past
+                // the surface while _commitHeight is catching up.
                 clip: root._isClosing
+
+                // Escape dismisses, like any other menu (DESIGN.md 9). No
+                // `focus: true` here on purpose: popups that take no keyboard
+                // focus must not start stealing it, and the ones that do have
+                // their own fields that see the key first.
+                Keys.onEscapePressed: root.close()
 
                 Item {
                     id: contentContainer
@@ -519,46 +592,11 @@ LazyLoader {
                     width: root.contentItem ? root.contentItem.implicitWidth : 0
                     height: root.contentItem ? root.contentItem.implicitHeight : 0
 
-                    // Keep the content exit synchronized with the surface close. Scale
-                    // by the currently available surface height so the cards follow the
-                    // same contraction instead of remaining at their full size.
-                    readonly property real closeScale: root._isClosing
-                        ? Math.max(0.0, Math.min(1.0, popupBackground.height / Math.max(1.0, height)))
-                        : 1.0
-                    readonly property real closeOriginX: {
-                        if (root.customPosition) {
-                            if (root.anchorLeft)
-                                return 0;
-                            if (root.anchorRight)
-                                return width;
-                        }
-                        if (popupBackground.isVertical)
-                            return popupBackground.isBottom ? width : 0;
-                        return width / 2;
-                    }
-                    readonly property real closeOriginY: {
-                        if (root.customPosition) {
-                            if (root.anchorTop)
-                                return 0;
-                            if (root.anchorBottom)
-                                return height;
-                        }
-                        if (popupBackground.isVertical)
-                            return height / 2;
-                        return popupBackground.isBottom ? height : 0;
-                    }
-
-                    // Keep the layout scale centered; only the close transform should
-                    // travel toward the bar, so opening geometry remains unchanged.
+                    // Only the screen-fit scale lives here; the open and close
+                    // transform belongs to the whole surface, pivoted on the bar
+                    // item, so the content cannot drift away from its card.
                     scale: root.layoutScale
-                    opacity: root._isClosing ? closeScale : 1.0
                     transformOrigin: Item.Center
-                    transform: Scale {
-                        origin.x: contentContainer.closeOriginX
-                        origin.y: contentContainer.closeOriginY
-                        xScale: contentContainer.closeScale
-                        yScale: contentContainer.closeScale
-                    }
                     clip: false
 
                     // contentItem is owned by root, which is a LazyLoader (not an Item), so it
@@ -572,96 +610,15 @@ LazyLoader {
                     }
 
                     Component.onCompleted: {
-                        if (root.contentItem) {
-                            root.contentItem.parent = contentContainer;
-                            root.contentItem.anchors.centerIn = undefined;
-                            root.contentItem.anchors.top = undefined;
-                            root.contentItem.anchors.bottom = undefined;
-                            root.contentItem.anchors.left = undefined;
-                            root.contentItem.anchors.right = undefined;
-                            root.contentItem.anchors.fill = contentContainer;
-
-                            function recalculateDelays() {
-                                if (!root || !root.contentItem)
-                                    return;
-
-                                let targetItem = root.contentItem;
-                                if (root.contentItem.children.length === 1) {
-                                    let firstChild = root.contentItem.children[0];
-                                    let name = firstChild.toString();
-                                    if (name.includes("Layout") || firstChild.hasOwnProperty("spacing")) {
-                                        targetItem = firstChild;
-                                    }
-                                }
-
-                                let visibleChildren = [];
-                                for (let i = 0; i < targetItem.children.length; i++) {
-                                    let child = targetItem.children[i];
-                                    if (child && child.hasOwnProperty("visible") && child.visible) {
-                                        visibleChildren.push(child);
-                                    }
-                                }
-
-                                let delays = [];
-                                let total = visibleChildren.length;
-                                for (let i = 0; i < targetItem.children.length; i++) {
-                                    let child = targetItem.children[i];
-                                    let visIdx = visibleChildren.indexOf(child);
-                                    if (visIdx !== -1) {
-                                        delays.push(visIdx / Math.max(1, total));
-                                    } else {
-                                        delays.push(0);
-                                    }
-                                }
-                                popupWindow.childDelays = delays;
-                                popupWindow.updateChildrenAnimation();
-                            }
-
-                            recalculateDelays();
-
-                            // Listen to hierarchy changes to connect and recalculate delays properly
-                            function setupConnections() {
-                                if (!root || !root.contentItem)
-                                    return;
-                                let targetItem = root.contentItem;
-                                if (root.contentItem.children.length === 1) {
-                                    let firstChild = root.contentItem.children[0];
-                                    let name = firstChild.toString();
-                                    if (name.includes("Layout") || firstChild.hasOwnProperty("spacing")) {
-                                        targetItem = firstChild;
-                                    }
-                                }
-
-                                for (let i = 0; i < targetItem.children.length; i++) {
-                                    let child = targetItem.children[i];
-                                    if (child && child.hasOwnProperty("visibleChanged")) {
-                                        try {
-                                            child.visibleChanged.disconnect(recalculateDelays);
-                                        } catch (e) {}
-                                        child.visibleChanged.connect(recalculateDelays);
-                                    }
-                                }
-                                recalculateDelays();
-                            }
-
-                            setupConnections();
-
-                            if (root.contentItem.hasOwnProperty("childrenChanged")) {
-                                root.contentItem.childrenChanged.connect(setupConnections);
-                            }
-
-                            let targetItem = root.contentItem;
-                            if (root.contentItem.children.length === 1) {
-                                let firstChild = root.contentItem.children[0];
-                                let name = firstChild.toString();
-                                if (name.includes("Layout") || firstChild.hasOwnProperty("spacing")) {
-                                    targetItem = firstChild;
-                                }
-                            }
-                            if (targetItem !== root.contentItem && targetItem.hasOwnProperty("childrenChanged")) {
-                                targetItem.childrenChanged.connect(setupConnections);
-                            }
-                        }
+                        if (!root.contentItem)
+                            return;
+                        root.contentItem.parent = contentContainer;
+                        root.contentItem.anchors.centerIn = undefined;
+                        root.contentItem.anchors.top = undefined;
+                        root.contentItem.anchors.bottom = undefined;
+                        root.contentItem.anchors.left = undefined;
+                        root.contentItem.anchors.right = undefined;
+                        root.contentItem.anchors.fill = contentContainer;
                     }
                 }
 

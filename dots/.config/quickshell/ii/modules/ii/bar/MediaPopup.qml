@@ -10,13 +10,11 @@ import Qt5Compat.GraphicalEffects
 
 StyledPopup {
     id: root
-    popupRadius: Appearance.rounding.large
     stickyHover: true
 
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
 
-    animate: false // We have to disable the animation if we have only one card
     contentItem: HeroCard {
         id: mediaHero
         startAnim: root.opened && root.popupOpenProgress > 0.6

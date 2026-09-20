@@ -11,7 +11,6 @@ import Quickshell.Wayland
 
 StyledPopup {
     id: root
-    popupRadius: Appearance.rounding.large
     keyboardFocus: alarmsCard.mode !== "list" ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     property var timezoneOffsets: ({})
@@ -81,6 +80,11 @@ StyledPopup {
 
     required property bool compact
     stickyHover: true
+
+    // All three sections switched off, in compact mode, with no LocalSend on the
+    // network, leaves a 400px-wide empty card under the pointer. _visList is
+    // already the "would this child be on screen" list, so ask it.
+    contentAvailable: !Config.ready || columnLayout._visList.some(v => v)
 
     property bool stopwatchPaused: !TimerService.stopwatchRunning && TimerService.stopwatchTime > 0
 
@@ -194,6 +198,52 @@ StyledPopup {
         }
     }
 
+    /*
+     * Contract 1's one entrance rule (DESIGN.md 2.8), the same shape every popup
+     * in this cluster uses: opacity on an effects spec, one transform on the
+     * enter spatial spec, siblings offset by their place in the visible order.
+     * `running` is bound to the popup's open state, so a close stops it
+     * mid-flight and the `from:` values restore the start state on the next open.
+     * That is the whole of the reset that `resetContentEntrance()`,
+     * `startContentEntrance()` and the `_entranceGeneration` counter used to do
+     * by hand.
+     *
+     * Exit is the surface's own arrowPopup close, inherited from StyledPopup;
+     * the content does not animate out separately.
+     */
+    component EnterAnim: SequentialAnimation {
+        id: enterAnim
+
+        property Item item
+        property Translate slide
+        property int delay: 0
+        readonly property int offset: 12
+
+        PauseAnimation {
+            duration: enterAnim.delay
+        }
+        ParallelAnimation {
+            NumberAnimation {
+                target: enterAnim.item
+                property: "opacity"
+                from: 0
+                to: 1
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+            NumberAnimation {
+                target: enterAnim.slide
+                property: "y"
+                from: enterAnim.offset
+                to: 0
+                duration: Appearance.animation.elementMoveEnter.duration
+                easing.type: Appearance.animation.elementMoveEnter.type
+                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            }
+        }
+    }
+
     contentItem: ColumnLayout {
         id: columnLayout
         anchors.centerIn: parent
@@ -204,85 +254,23 @@ StyledPopup {
         readonly property var _visList: [
             clockHero.visible,
             worldClocksLoader.visible && worldClocksLoader.active,
-            columnLayout.children[2].visible, // info column Layout
+            infoPill.visible || localSendPill.visible, // info column Layout
             localSendLoader.visible && localSendLoader.active,
             alarmsCard.visible
         ]
 
+        // Counted over *visible* siblings: with a section hidden by config,
+        // counting raw indices would leave a hole in the sequence and the tail
+        // would enter late for no reason on screen.
         function getDelay(index) {
             let visIndex = 0;
             for (let i = 0; i < index; i++) {
                 if (_visList[i]) visIndex++;
             }
-            const delays = [40, 100, 160, 220, 280];
-            return delays[Math.min(visIndex, delays.length - 1)];
+            return Appearance.animation.staggerStep * Math.min(visIndex, Appearance.animation.staggerCap);
         }
 
-        property int _entranceGeneration: 0
         readonly property bool startAnim: root.opened && root.popupOpenProgress > 0.6
-
-        function resetContentEntrance() {
-            _entranceGeneration++;
-
-            clockHeroAnim.stop();
-            worldClocksAnim.stop();
-            infoColumnAnim.stop();
-            localSendAnim.stop();
-            alarmsCardAnim.stop();
-
-            clockHero.opacity = 0.0;
-            clockHero.scale = 0.85;
-            clockHeroTransform.y = 25;
-
-            worldClocksLoader.opacity = 0.0;
-            worldClocksLoader.scale = 0.85;
-            worldClocksTransform.y = 25;
-
-            infoColumn.opacity = 0.0;
-            infoColumn.scale = 0.85;
-            infoColumnTransform.y = 25;
-
-            localSendLoader.opacity = 0.0;
-            localSendLoader.scale = 0.85;
-            localSendTransform.y = 25;
-
-            alarmsCard.opacity = 0.0;
-            alarmsCard.scale = 0.85;
-            alarmsCardTransform.y = 25;
-        }
-
-        function startContentEntrance() {
-            const generation = _entranceGeneration;
-            Qt.callLater(function() {
-                if (!root.opened || !columnLayout.startAnim || generation !== _entranceGeneration)
-                    return;
-
-                clockHeroAnim.start();
-                worldClocksAnim.start();
-                infoColumnAnim.start();
-                localSendAnim.start();
-                alarmsCardAnim.start();
-            });
-        }
-
-        onStartAnimChanged: {
-            if (startAnim) {
-                resetContentEntrance();
-                startContentEntrance();
-            }
-        }
-
-        Connections {
-            target: root
-            // Do not reset on close start: the cards must stay visible so they
-            // shrink with the surface, like the other popups. The reset happens
-            // once the close animation reaches progress 0.
-            function onPopupOpenProgressChanged() {
-                if (root.popupOpenProgress === 0.0) {
-                    columnLayout.resetContentEntrance();
-                }
-            }
-        }
 
         ClockHeaderCard {
             id: clockHero
@@ -291,22 +279,16 @@ StyledPopup {
             visible: Config.options.time.alarms.showAnalogClock
             startAnim: columnLayout.startAnim
             
-            opacity: 0.0
-            scale: 0.85
+            opacity: 0
             transform: Translate {
                 id: clockHeroTransform
-                y: 25
             }
-            
-            SequentialAnimation {
-                id: clockHeroAnim
-                
-                PauseAnimation { duration: columnLayout.getDelay(0) }
-                ParallelAnimation {
-                    NumberAnimation { target: clockHero; property: "opacity"; to: 1.0; duration: 300 }
-                    NumberAnimation { target: clockHero; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                    NumberAnimation { target: clockHeroTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
-                }
+
+            EnterAnim {
+                item: clockHero
+                slide: clockHeroTransform
+                delay: columnLayout.getDelay(0)
+                running: columnLayout.startAnim
             }
         }
 
@@ -318,22 +300,16 @@ StyledPopup {
             active: Config.options.time.worldClocks && Config.options.time.worldClocks.length > 0
             sourceComponent: worldClocksComponent
             
-            opacity: 0.0
-            scale: 0.85
+            opacity: 0
             transform: Translate {
                 id: worldClocksTransform
-                y: 25
             }
-            
-            SequentialAnimation {
-                id: worldClocksAnim
-                
-                PauseAnimation { duration: columnLayout.getDelay(1) }
-                ParallelAnimation {
-                    NumberAnimation { target: worldClocksLoader; property: "opacity"; to: 1.0; duration: 300 }
-                    NumberAnimation { target: worldClocksLoader; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                    NumberAnimation { target: worldClocksTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
-                }
+
+            EnterAnim {
+                item: worldClocksLoader
+                slide: worldClocksTransform
+                delay: columnLayout.getDelay(1)
+                running: columnLayout.startAnim
             }
         }
 
@@ -342,38 +318,21 @@ StyledPopup {
             Layout.fillWidth: true
             spacing: 12
             
-            property bool startAnim: columnLayout.startAnim
-            onStartAnimChanged: {
-                if (startAnim) {
-                    infoPill.startAnim = false;
-                    localSendPill.startAnim = false;
-                    Qt.callLater(function() {
-                        infoPill.startAnim = true;
-                        localSendPill.startAnim = true;
-                    });
-                }
-            }
-            
-            opacity: 0.0
-            scale: 0.85
+            opacity: 0
             transform: Translate {
                 id: infoColumnTransform
-                y: 25
             }
-            
-            SequentialAnimation {
-                id: infoColumnAnim
-                
-                PauseAnimation { duration: columnLayout.getDelay(2) }
-                ParallelAnimation {
-                    NumberAnimation { target: infoColumn; property: "opacity"; to: 1.0; duration: 300 }
-                    NumberAnimation { target: infoColumn; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                    NumberAnimation { target: infoColumnTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
-                }
+
+            EnterAnim {
+                item: infoColumn
+                slide: infoColumnTransform
+                delay: columnLayout.getDelay(2)
+                running: columnLayout.startAnim
             }
 
             InfoPill {
                 id: infoPill
+                startAnim: columnLayout.startAnim
                 visible: !root.compact ? LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0 : false
                 
                 readonly property bool isTimerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning || root.stopwatchPaused || (TimerService.stopwatchTime > 0)
@@ -424,6 +383,7 @@ StyledPopup {
 
             LocalSendPill {
                 id: localSendPill
+                startAnim: columnLayout.startAnim
                 visible: LocalSend.available
             }
         }
@@ -446,22 +406,16 @@ StyledPopup {
             active: LocalSend.currentTransfer !== null || LocalSend.droppedFiles.length > 0
             sourceComponent: LocalSend.currentTransfer !== null ? transferCard : sendCard
             
-            opacity: 0.0
-            scale: 0.85
+            opacity: 0
             transform: Translate {
                 id: localSendTransform
-                y: 25
             }
-            
-            SequentialAnimation {
-                id: localSendAnim
-                
-                PauseAnimation { duration: columnLayout.getDelay(3) }
-                ParallelAnimation {
-                    NumberAnimation { target: localSendLoader; property: "opacity"; to: 1.0; duration: 300 }
-                    NumberAnimation { target: localSendLoader; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                    NumberAnimation { target: localSendTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
-                }
+
+            EnterAnim {
+                item: localSendLoader
+                slide: localSendTransform
+                delay: columnLayout.getDelay(3)
+                running: columnLayout.startAnim
             }
         }
 
@@ -472,22 +426,16 @@ StyledPopup {
             visible: Config.options.time.alarms.showAlarmsSection
             startAnim: columnLayout.startAnim
             
-            opacity: 0.0
-            scale: 0.85
+            opacity: 0
             transform: Translate {
                 id: alarmsCardTransform
-                y: 25
             }
-            
-            SequentialAnimation {
-                id: alarmsCardAnim
-                
-                PauseAnimation { duration: columnLayout.getDelay(4) }
-                ParallelAnimation {
-                    NumberAnimation { target: alarmsCard; property: "opacity"; to: 1.0; duration: 300 }
-                    NumberAnimation { target: alarmsCard; property: "scale"; to: 1.0; duration: 380; easing.type: Easing.OutBack }
-                    NumberAnimation { target: alarmsCardTransform; property: "y"; to: 0; duration: 380; easing.type: Easing.OutCubic }
-                }
+
+            EnterAnim {
+                item: alarmsCard
+                slide: alarmsCardTransform
+                delay: columnLayout.getDelay(4)
+                running: columnLayout.startAnim
             }
         }
 
@@ -526,8 +474,11 @@ StyledPopup {
                     loops: Animation.Infinite
 
                     ScriptAction { script: textLayout.visible = true }
+                    // design-ok: a blink cadence for a paused stopwatch, not a
+                    // transition -- there is no motion token for "how often".
                     PauseAnimation { duration: 700 }
                     ScriptAction { script: textLayout.visible = false }
+                    // design-ok: the other half of the same blink cadence.
                     PauseAnimation { duration: 700 }
 
                     onStopped: {
