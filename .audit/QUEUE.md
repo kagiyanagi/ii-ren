@@ -19,7 +19,7 @@ widgets are rooted in `RippleButton`, then by caller count.
 | id | path | cluster | lane | files | lines | open with | status | done | notes |
 |---|---|---|---:|---:|---:|---|---|---|---|
 | `common-widgets` | `modules/common/widgets` | shared-widgets | 1 | 169 | 14176 | n/a | done | 2026-09-20 | tranche split only, no QML changed — see `families.md`, `brief.md`, `notes.md` |
-| `cw-buttons` | `modules/common/widgets` | shared-widgets | 1 | 21 | 1471 | settings app · any `RippleButton` caller | todo | | **run first** — `RippleButton` + 14 widgets rooted in it, 295 callers |
+| `cw-buttons` | `modules/common/widgets` | shared-widgets | 1 | 21 | 1471 | `qs -p ~/.config/quickshell/ii/settings.qml` · any `RippleButton` caller | done | 2026-09-20 | focus + pressed at the root; `check-button-states.py`. See `notes.md` before changing a state default |
 | `cw-primitives` | `modules/common/widgets` | shared-widgets | 1 | 18 | 1017 | everywhere | todo | | `StyledText` 471 callers, `MaterialSymbol` 398 |
 | `cw-scaffolding` | `modules/common/widgets` | shared-widgets | 1 | 14 | 1044 | `qs -c ii settings.qml` | todo | | `ContentSection` 177, `ContentPage` 175, `PagePlaceholder` 71 |
 | `cw-config-rows` | `modules/common/widgets` | shared-widgets | 1 | 12 | 1517 | `qs -c ii settings.qml` | todo | | `ConfigSwitch` 129; §5.7 label-above-track, §5.6 card owns the row |

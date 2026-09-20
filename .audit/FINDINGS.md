@@ -14,11 +14,20 @@ The shell boots and renders with all of these; they are silent in normal use.
 | `.../AndroidNetworkToggle.qml:81:25` | `Unable to assign [undefined] to double` | `ii-sidebarDashboard-quickToggles` |
 | `services/Ai.qml:396` | `TypeError: Property 'addUserModels' of object Ai is not a function` | `services` — no queue row yet, add one |
 
+The 2026-09-20 run was made with no media player running. With one playing, five more
+appear — all pre-existing, confirmed against a stashed tree while auditing `cw-buttons`:
+
+| where | error | owner |
+|---|---|---|
+| `modules/ii/background/widgets/media/ExpressiveMediaWidget.qml:334,344` | `Unable to assign [undefined] to int` | `ii-background-widgets` |
+| `.../ExpressiveMediaWidget.qml:390` | `Unable to assign [undefined] to bool` | `ii-background-widgets` |
+| `.../ExpressiveMediaWidget.qml:410,453` | `Unable to assign [undefined] to QColor` | `ii-background-widgets` |
+
 ## From auditing `ii-clipboardToast`, 2026-09-20
 
 | where | issue | owner |
 |---|---|---|
-| `modules/common/widgets/RippleButton.qml` | Renders hover, pressed and disabled but no focus state. `Button.visualFocus` is never read, so DESIGN.md 3.1's four states are three on every caller. Harmless on a layer surface with `keyboardFocus: None`; not harmless in the settings app. | `cw-buttons` |
+| `modules/common/widgets/RippleButton.qml` | Renders hover, pressed and disabled but no focus state. `Button.visualFocus` is never read, so DESIGN.md 3.1's four states are three on every caller. Harmless on a layer surface with `keyboardFocus: None`; not harmless in the settings app. | `cw-buttons` — **fixed 2026-09-20** |
 
 ## From `tools/p3-widget-port/check-config-paths.py`
 

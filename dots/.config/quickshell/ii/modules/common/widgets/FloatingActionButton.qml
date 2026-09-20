@@ -11,7 +11,7 @@ RippleButton {
     property string iconText: "add"
     property bool expanded: false
     property real baseSize: 56
-    property real elementSpacing: 5
+    property real elementSpacing: 8
     implicitWidth: expanded ? (Math.max(contentRowLayout.implicitWidth + 10 * 2, baseSize)) : baseSize
     implicitHeight: baseSize
 
@@ -62,8 +62,7 @@ RippleButton {
                     }
                     text: root.buttonText
                     color: Appearance.colors.colOnPrimaryContainer
-                    font.pixelSize: 14
-                    font.weight: 450
+                    font.pixelSize: Appearance.font.pixelSize.small
                 }
             }
         }

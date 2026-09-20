@@ -46,20 +46,26 @@ Button {
     property real radius: root.down ? root.buttonRadiusPressed : root.buttonRadius
     property real leftRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
     property real rightRadius: root.down ? root.buttonRadiusPressed : root.buttonRadius
-    property color color: root.enabled ? (root.toggled ? 
-        (root.down ? colBackgroundToggledActive : 
-            root.hovered ? colBackgroundToggledHover : 
+    // Disabled is 0.4 on the whole control (DESIGN.md 3.1), not a greyed-out fill -
+    // greying only the background leaves the label at full strength.
+    opacity: root.enabled ? 1 : 0.4
+    property color color: root.toggled ?
+        (root.down ? colBackgroundToggledActive :
+            root.hovered ? colBackgroundToggledHover :
             colBackgroundToggled) :
-        (root.down ? colBackgroundActive : 
-            root.hovered ? colBackgroundHover : 
-            colBackground)) : colBackground
+        (root.down ? colBackgroundActive :
+            root.hovered ? colBackgroundHover :
+            colBackground)
+
+    Behavior on opacity {
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
 
     onDownChanged: {
-        if (root.down) {
-            if (root.parent.clickIndex !== undefined) {
-                root.parent.clickIndex = parent.children.indexOf(root)
-            }
-        }
+        // parent is null while the button is still being constructed, and `down`
+        // can already be bound by then.
+        if (!root.down || root.parent?.clickIndex === undefined) return;
+        root.parent.clickIndex = root.parent.children.indexOf(root)
     }
 
     Behavior on implicitWidth {
@@ -117,7 +123,6 @@ Button {
         };
     }
 
-    property bool tabbedTo: root.focus && (focusReason === Qt.TabFocusReason || focusReason === Qt.BacktabFocusReason)
     background: Rectangle {
         id: buttonBackground
         topLeftRadius: root.leftRadius
@@ -131,8 +136,16 @@ Button {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        border.width: root.tabbedTo ? 2 : 0
-        border.color: Appearance.colors.colSecondary
+        // The keyboard focus state is the 0.10 film, not an outline of its own.
+        StateOverlay {
+            anchors.fill: parent
+            focused: root.visualFocus
+            contentColor: root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+            topLeftRadius: root.leftRadius
+            bottomLeftRadius: root.leftRadius
+            topRightRadius: root.rightRadius
+            bottomRightRadius: root.rightRadius
+        }
     }
 
     contentItem: StyledText {

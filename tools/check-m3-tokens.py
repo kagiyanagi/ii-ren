@@ -40,6 +40,9 @@ print(f"ok: {len(found)} springs match Android 16 motion tokens")
 # State layer opacities: androidx.compose.material3.tokens.StateTokens.
 # mix(base, on, p) keeps p of the base colour, so an 8% layer is p = 0.92.
 STATE = {"Hover": 0.08, "Active": 0.10}  # Hover/Pressed StateLayerOpacity
+# The same table again, this time as StateLayer.qml's switch. Appearance bakes the
+# film into a colour; StateLayer paints it as a film, and both must agree.
+STATE_LAYER = {"Hover": 0.08, "Focus": 0.1, "Press": 0.1, "Drag": 0.16}
 LAYER = re.compile(
     r"colLayer(\d)(Hover|Active):.*?ColorUtils\.mix\(colLayer\d(?:Base)?, colOnLayer\d, ([\d.]+)\)"
 )
@@ -53,3 +56,12 @@ for num, state, kept in layers:
     assert abs(float(kept) - want) < 1e-9, \
         f"colLayer{num}{state}: keeps {kept} of the base, token wants {want:.2f}"
 print(f"ok: {len(layers)} state layers match StateTokens")
+
+sl = (pathlib.Path(__file__).parent.parent
+      / "dots/.config/quickshell/ii/modules/common/widgets/StateLayer.qml").read_text()
+cases = dict(re.findall(r"case StateLayer\.State\.(\w+):\s*return ([\d.]+);", sl))
+assert set(cases) == set(STATE_LAYER), f"StateLayer states drifted: {sorted(cases)}"
+for state, opacity in cases.items():
+    assert abs(float(opacity) - STATE_LAYER[state]) < 1e-9, \
+        f"StateLayer {state}: {opacity} != token {STATE_LAYER[state]}"
+print(f"ok: {len(cases)} StateLayer opacities match StateTokens")

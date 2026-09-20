@@ -40,27 +40,38 @@ Button {
 
     property color colBackground: ColorUtils.transparentize(Appearance?.colors.colLayer1Hover, 1) || "transparent"
     property color colBackgroundHover: Appearance?.colors.colLayer1Hover ?? "#E5DFED"
+    // Hover is M3's 0.08 state film and pressed its 0.10 one - different tokens,
+    // and this default used to make a press look exactly like a hover. Only the
+    // caller knows which layer it painted, so rather than guess one, a press with
+    // no pressed colour of its own drops back to the base and composites the real
+    // film below; a caller that gives one still wins.
     property color colBackgroundActive: colBackgroundHover
     property color colBackgroundToggled: Appearance?.colors.colPrimary ?? "#65558F"
     property color colBackgroundToggledHover: Appearance?.colors.colPrimaryHover ?? "#77699C"
     property color colBackgroundToggledActive: colBackgroundToggledHover
     property color colRipple: Appearance?.colors.colLayer1Active ?? "#D6CEE2"
     property color colRippleToggled: Appearance?.colors.colPrimaryActive ?? "#D6CEE2"
+    // The state film is the content colour of whatever the button is filled with.
+    property color colStateLayer: root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+
+    readonly property bool ownPressColor: root.toggled ?
+        !Qt.colorEqual(colBackgroundToggledActive, colBackgroundToggledHover) :
+        !Qt.colorEqual(colBackgroundActive, colBackgroundHover)
 
     Behavior on buttonEffectiveRadius {
         animation: Appearance?.animation.elementMoveSmall.numberAnimation.createObject(this)
     }
 
     opacity: root.enabled ? 1 : 0.4
-    property color buttonColor: ColorUtils.transparentize(root.toggled ? 
-        (root.down ? colBackgroundToggledActive : root.hovered ? colBackgroundToggledHover : 
-            colBackgroundToggled) :
-        (root.down ? colBackgroundActive : root.hovered ? colBackgroundHover : 
-            colBackground), root.enabled ? 0 : 0)
+    property color buttonColor: root.toggled ?
+        (root.down && root.ownPressColor ? colBackgroundToggledActive :
+            root.hovered && !root.down ? colBackgroundToggledHover : colBackgroundToggled) :
+        (root.down && root.ownPressColor ? colBackgroundActive :
+            root.hovered && !root.down ? colBackgroundHover : colBackground)
     property color rippleColor: root.toggled ? colRippleToggled : colRipple
 
     Behavior on opacity {
-        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     function startRipple(x, y) {
@@ -182,6 +193,17 @@ Button {
                 bottomLeftRadius: root.bottomLeftRadius
                 bottomRightRadius: root.bottomRightRadius
             }
+        }
+
+        // Focus is the fourth state DESIGN.md 3.1 requires and the library had
+        // nowhere; press lands here too whenever the caller left it to the tokens.
+        // The parent's OpacityMask already clips to the button's corners, so the
+        // film does not repeat them.
+        StateOverlay {
+            anchors.fill: parent
+            focused: root.visualFocus
+            press: root.down && !root.ownPressColor
+            contentColor: root.colStateLayer
         }
 
         Item {

@@ -10,7 +10,8 @@ Hyprland dotfiles based on illogical-impulse, built with Quickshell (QtQuick/QML
 - **Run the shell with logs:** `pkill qs; qs -c ii` — QML edits under
   `dots/.config/quickshell/ii/` reload live, no restart needed
 - **Restart shell + reload Hyprland:** `iiren run` (alias `iiren restart`)
-- **Run settings app:** `qs -c ii settings.qml` (separate QApplication)
+- **Run settings app:** `qs -p ~/.config/quickshell/ii/settings.qml` (separate QApplication;
+  `-c ii settings.qml` is rejected — `qs` takes one config, and `-p` excludes `-c`)
 - **Setup/update:** `./setup-ii-ren.sh` or `iiren update` (CLI)
 - **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell, no prompts)
 - **Snapshot live settings into the repo:** `iiren save`
@@ -26,6 +27,8 @@ you touched; they are the only automated gate.
 - `python3 tools/check-design.py --diff` — design law on added lines, exits 1 on error
 - `python3 tools/check-m3-tokens.py` — Hyprland springs still match AOSP motion tokens
 - `python3 tools/check-mpris-hover-preview.py` — MprisController's YouTube-preview regexes
+- `python3 tools/check-button-states.py` — the shared button roots still render all four
+  interaction states (a missing state has no line for `check-design.py` to flag)
 
 Non-trivial logic that would otherwise only be verifiable by watching the shell gets a
 new `tools/check-*.py` in the same shape: pure asserts, no framework, one concern.

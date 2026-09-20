@@ -9,10 +9,15 @@ import Quickshell
 RippleButton {
     id: lightDarkButtonRoot
     required property bool dark
-    property color previewBg: dark ? ColorUtils.colorWithHueOf("#3f3838", Appearance.m3colors.m3primary) : 
-        ColorUtils.colorWithHueOf("#F7F9FF", Appearance.m3colors.m3primary)
-    property color previewFg: dark ? Qt.lighter(previewBg, 2.2) : ColorUtils.mix(previewBg, "#292929", 0.85)
-    padding: 5
+    // The neutral surfaces of the mode you are not in. The live palette only ever
+    // expresses the current mode, so a preview of the other one cannot come from
+    // Appearance.colors - only its hue can.
+    readonly property color previewDarkBase: "#3f3838" // design-ok: see above
+    readonly property color previewLightBase: "#F7F9FF" // design-ok: see above
+    readonly property color previewLightInk: "#292929" // design-ok: see above
+    property color previewBg: ColorUtils.colorWithHueOf(dark ? previewDarkBase : previewLightBase, Appearance.m3colors.m3primary)
+    property color previewFg: dark ? Qt.lighter(previewBg, 2.2) : ColorUtils.mix(previewBg, previewLightInk, 0.85)
+    padding: 4
     Layout.fillWidth: true
     colBackground: Appearance.colors.colLayer2
     toggled: Appearance.m3colors.darkmode === dark
@@ -62,14 +67,14 @@ RippleButton {
                                 radius: Appearance.rounding.unsharpenmore
                                 color: lightDarkButtonRoot.previewFg
                                 Layout.fillWidth: true
-                                Layout.rightMargin: 45
+                                Layout.rightMargin: 44
                                 implicitHeight: 18
                             }
                         }
                     }
                     StyledProgressBar {
-                        Layout.topMargin: 5
-                        Layout.bottomMargin: 5
+                        Layout.topMargin: 4
+                        Layout.bottomMargin: 4
                         Layout.fillWidth: true
                         value: 0.7
                         wavy: true

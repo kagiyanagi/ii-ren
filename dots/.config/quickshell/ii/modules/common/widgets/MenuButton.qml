@@ -6,13 +6,15 @@ RippleButton {
 
     buttonRadius: 0
     implicitHeight: 36
-    implicitWidth: buttonTextWidget.implicitWidth + 14 * 2
+    implicitWidth: buttonTextWidget.implicitWidth + root.padding * 2
+
+    padding: 16
 
     contentItem: StyledText {
         id: buttonTextWidget
         anchors.fill: parent
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
+        anchors.leftMargin: root.padding
+        anchors.rightMargin: root.padding
         text: root.buttonText
         horizontalAlignment: Text.AlignLeft
         font.pixelSize: Appearance.font.pixelSize.small
