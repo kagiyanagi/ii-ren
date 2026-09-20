@@ -44,11 +44,43 @@ def cited(lines, i):
     return any(CITED.search(lines[j]) for j in range(max(0, i - 2), i + 1))
 
 
+def arithmetic(expr):
+    """The value of a digits-and-operators expression, or None if it is not one."""
+    expr = expr.strip()
+    if not expr or not re.fullmatch(r"[\d\s+\-*/().]+", expr) or not re.search(r"\d", expr):
+        return None
+    try:
+        return eval(expr, {"__builtins__": {}}, {})  # digits and operators only
+    except Exception:
+        return None
+
+
 def rule_literal_duration(lines):
+    # An expression, not just a bare int: `duration: 300 / 2` hid a literal in
+    # StyledText (471 callers) from the old \d+ match for as long as it existed.
     for i, ln in enumerate(lines):
-        m = re.search(r"\bduration:\s*(\d+)\b", ln)
-        if m and int(m.group(1)) > 0 and not cited(lines, i):
-            yield i, f"duration: {m.group(1)} -- use Appearance.animation.*.duration"
+        m = re.search(r"\bduration:\s*([\d][\d\s+\-*/().]*)", ln)
+        if not m or cited(lines, i):
+            continue
+        v = arithmetic(m.group(1))
+        if v:
+            yield i, f"duration: {m.group(1).strip()} -- use Appearance.animation.*.duration"
+
+
+def rule_exported_motion_knob(lines):
+    """A duration or curve re-exported as a property with a literal default.
+
+    Three of these got through (`CircularProgress.animationDuration`, `StyledText`'s
+    `duration: 300 / 2`, `AnimatedTabIndexPair.idx1Duration`): the number moves into a
+    property name the other two rules do not look at, and every caller inherits it.
+    """
+    for i, ln in enumerate(lines):
+        m = re.search(r"\bproperty\s+(?:int|real|double)\s+(\w*[Dd]uration)\s*:\s*([^/\n]+)", ln)
+        if m and not cited(lines, i) and arithmetic(m.group(2)):
+            yield i, f"{m.group(1)} defaults to a literal -- name an Appearance.animation.* spec"
+        m = re.search(r"\bproperty\s+(?:var|list<real>)\s+(\w*[Cc]urve)\s*:\s*\[", ln)
+        if m and not cited(lines, i):
+            yield i, f"{m.group(1)} defaults to an inline curve -- use Appearance.animationCurves.*"
 
 
 def rule_inline_curve(lines):
@@ -200,14 +232,25 @@ def rule_async_connections(lines):
 
 
 def rule_no_separator_bars(lines):
-    """M3 Expressive separates sections via whitespace and layers, not divider bars."""
+    """M3 Expressive separates sections via whitespace and layers, not divider bars.
+
+    By shape as well as by name: the name half only knew `WindowDialogSeparator`, so
+    `Spacebar`, `DockSeparator` and `SectionSeparator` painted pipes in the bar and the
+    dock through every gate. What they have in common is an outline colour used as a
+    *fill* -- an outline belongs on `border.color`.
+    """
     for i, ln in enumerate(lines):
         if re.search(r"\bWindowDialogSeparator\b", ln) and not cited(lines, i):
             yield i, "WindowDialogSeparator -- avoid divider lines; use whitespace (12-16dp) and layer nesting (see DESIGN.md 5.5)"
+        elif (re.search(r"\bcolOutlineVariant\b", ln)
+                and not re.search(r"border\.color|border\s*:|outlineColor", ln)
+                and not cited(lines, i)):
+            yield i, "colOutlineVariant as a fill -- a divider bar by any name (DESIGN.md 5.5, law 11)"
 
 
 RULES = [
     ("literal-duration", "warn", rule_literal_duration),
+    ("exported-motion-knob", "warn", rule_exported_motion_knob),
     ("inline-curve", "warn", rule_inline_curve),
     ("hex-color", "warn", rule_hex_color),
     ("literal-radius", "warn", rule_literal_radius),
