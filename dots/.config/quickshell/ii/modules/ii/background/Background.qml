@@ -50,13 +50,6 @@ Variants {
         // Workspaces
         property HyprlandMonitor monitor: Hyprland.monitorFor(modelData)
 
-        readonly property int activeWorkspaceId: monitor?.activeWorkspace?.id ?? -1
-
-        readonly property bool isCovered: {
-            if (activeWorkspaceId === -1 || !monitor) return false;
-            return HyprlandData.windowList.some(w => w.workspace?.id === activeWorkspaceId && w.monitor === monitor.id && !w.floating);
-        }
-
         property list<var> relevantWindows: HyprlandData.windowList.filter(win => win.monitor == monitor?.id && win.workspace.id >= 0).sort((a, b) => a.workspace.id - b.workspace.id)
         property int firstWorkspaceId: relevantWindows[0]?.workspace.id || 1
         property int lastWorkspaceId: relevantWindows[relevantWindows.length - 1]?.workspace.id || 10
@@ -91,18 +84,6 @@ Variants {
         readonly property bool parallaxEnabled: Config.options.background.parallax.enableWorkspace
             || Config.options.background.parallax.enableSidebar
         readonly property bool verticalParallax: (Config.options.background.parallax.autoVertical && wallpaperHeight > wallpaperWidth) || Config.options.background.parallax.vertical
-        // Colors
-        property bool shouldBlur: (GlobalStates.screenLocked && Config.options.lock.blur.enable)
-        property color dominantColor: Appearance.colors.colPrimary // Default, to be changed
-        property bool dominantColorIsDark: dominantColor.hslLightness < 0.5
-        property color colText: {
-            if (wallpaperSafetyTriggered)
-                return CF.ColorUtils.mix(Appearance.colors.colOnLayer0, Appearance.colors.colPrimary, 0.75);
-            return (GlobalStates.screenLocked && shouldBlur) ? Appearance.colors.colOnLayer0 : CF.ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12));
-        }
-        Behavior on colText {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-        }
 
         readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
 
@@ -123,11 +104,6 @@ Variants {
         // overview's own zoom is gated behind that layout, so every other layout
         // had no reaction to the launcher at all.
         readonly property real launcherZoom: 1.06
-
-        property real scaleAnimated: GlobalStates.overviewOpen && showOpeningAnimation ? zoomedRatio : defaultRatio
-        Behavior on scaleAnimated {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
 
         // Layer props
         screen: modelData
@@ -409,6 +385,7 @@ Variants {
             }
 
             Rectangle {
+                id: dropHint
                 anchors.centerIn: parent
                 implicitWidth: dropHintRow.implicitWidth + 40
                 implicitHeight: dropHintRow.implicitHeight + 28
@@ -416,11 +393,38 @@ Variants {
                 color: Appearance.colors.colLayer1
                 border.width: 2
                 border.color: Appearance.colors.colPrimary
-                visible: opacity > 0
-                opacity: (wallpaperDrop.containsDrag && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)) ? 1 : 0
 
+                readonly property bool shown: wallpaperDrop.containsDrag
+                    && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)
+
+                visible: opacity > 0
+                opacity: shown ? 1 : 0
+                // Grows from its own centre, and that origin is deliberate: the card
+                // is pinned to the middle of the screen while the drag it answers can
+                // be anywhere, so there is no corner for it to come out of.
+                scale: shown ? 1 : 0.9
+
+                // The one surface in this file that arrives and leaves, so both
+                // directions are spelled out: in on the default spatial curve with
+                // the opacity riding the effects curve, out on fast effects at about
+                // half the time - the drag has already left.
                 Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    NumberAnimation {
+                        duration: dropHint.shown ? Appearance.animation.elementMoveFast.duration
+                            : Appearance.animation.elementMoveExit.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    }
+                }
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: dropHint.shown ? Appearance.animation.elementMoveEnter.duration
+                            : Appearance.animation.elementMoveExit.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: dropHint.shown
+                            ? Appearance.animationCurves.expressiveDefaultSpatial
+                            : Appearance.animationCurves.expressiveEffects
+                    }
                 }
 
                 RowLayout {
@@ -536,54 +540,47 @@ Variants {
                 property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
                 property int upper: Math.ceil(bgRoot.lastWorkspaceId / chunkSize) * chunkSize
                 property int range: upper - lower
-                property real valueX: {
-                    let result = 0.5;
-                    if (Config.options.background.parallax.enableWorkspace && !bgRoot.verticalParallax) {
-                        result = ((bgRoot.monitor.activeWorkspace?.id - lower) / range);
-
-                    }
-                    return result;
+                // Where the active workspace sits in the group the parallax pans
+                // across. `range` is 0 whenever every window is inside one chunk -
+                // all of them on workspace 10, say - and 0/0 is NaN, which survives
+                // the Math.max/Math.min below untouched and lands in `x`, putting
+                // the whole wallpaper plane nowhere. No active workspace on a
+                // monitor is the same NaN by the other route. Centre for both:
+                // there is nothing to pan across either way.
+                property real workspaceProgress: {
+                    const id = bgRoot.monitor?.activeWorkspace?.id;
+                    if (id === undefined || range <= 0) return 0.5;
+                    return (id - lower) / range;
                 }
+                property real valueX: (Config.options.background.parallax.enableWorkspace && !bgRoot.verticalParallax)
+                    ? workspaceProgress : 0.5
+                property real valueY: (Config.options.background.parallax.enableWorkspace && bgRoot.verticalParallax)
+                    ? workspaceProgress : 0.5
                 property real sidebarOffsetX: {
                     if (!Config.options.background.parallax.enableSidebar) return 0;
                     return (0.15 * GlobalStates.effectiveRightOpen - 0.15 * GlobalStates.effectiveLeftOpen);
-
-                }
-                property real valueY: {
-                    let result = 0.5;
-                    if (Config.options.background.parallax.enableWorkspace && bgRoot.verticalParallax) {
-                        result = ((bgRoot.monitor.activeWorkspace?.id - lower) / range);
-                    }
-                    return result;
                 }
                 property real effectiveValueX: Math.max(0, Math.min(1, valueX)) + sidebarOffsetX
                 property real effectiveValueY: Math.max(0, Math.min(1, valueY))
                 x: -(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace
                 y: -(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace
 
+                // The same spec the widget canvas parallaxes on, and one spec for
+                // all four: movableXSpace is derived from the wallpaper's size, so a
+                // wallpaper swap moves x/y and resizes width/height in the same
+                // instant. Two timings there let the plane's edge lag its position
+                // and expose the void behind it mid-swap.
                 Behavior on x {
-                    NumberAnimation {
-                        duration: 600
-                        easing.type: Easing.OutCubic
-                    }
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 Behavior on y {
-                    NumberAnimation {
-                        duration: 600
-                        easing.type: Easing.OutCubic
-                    }
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 Behavior on width {
-                    NumberAnimation {
-                        duration: 800
-                        easing.type: Easing.OutCubic
-                    }
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 Behavior on height {
-                    NumberAnimation {
-                        duration: 800
-                        easing.type: Easing.OutCubic
-                    }
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 width: bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
                 height: bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
@@ -638,7 +635,7 @@ Variants {
                 Behavior on scale {
                     NumberAnimation {
                         id: scaleAnim
-                        duration: 400
+                        duration: Appearance.animation.elementMoveEnter.duration
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
                     }
@@ -671,10 +668,11 @@ Variants {
                         anchors.fill: parent
                         color: CF.ColorUtils.transparentize(Appearance.colors.colLayer0, 0.7)
                     }
-                    // Long enough for the wallpaper chain underneath to be there.
+                    // Long enough for the wallpaper chain underneath to be there,
+                    // which is however long the zoom above takes.
                     Timer {
                         id: lockBlurSettle
-                        interval: 400
+                        interval: Appearance.animation.elementMoveEnter.duration
                         running: true
                     }
                 }

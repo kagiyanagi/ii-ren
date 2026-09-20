@@ -34,6 +34,10 @@ you touched; they are the only automated gate.
 - `python3 tools/check-scaffold-containers.py` — the page/section/scroll containers keep
   their header states, specify both motion directions, and anchor nothing a layout
   manages (Qt calls that undefined behavior and only says so at runtime)
+- `python3 tools/check-desktop-parallax.py` — the desktop's wallpaper parallax still lands a
+  finite number, and the wallpaper and widget planes still travel on one spec. `0/0` is NaN
+  and `Math.max(0, Math.min(1, NaN))` is NaN too, so the clamp that looks like it covers
+  this does not; the shape that triggers it is every window on one workspace
 - `python3 tools/check-alttab-grid.py` — the Alt+Tab tile grid still fits inside its card
   at every screen width and window count. It evaluates the layout expressions lifted out
   of `AltTab.qml`, because a desktop with four windows exercises none of the wrap
