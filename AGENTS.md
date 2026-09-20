@@ -7,12 +7,49 @@ Hyprland dotfiles based on illogical-impulse, built with Quickshell (QtQuick/QML
 
 ## Commands
 
+- **Run the shell with logs:** `pkill qs; qs -c ii` — QML edits under
+  `dots/.config/quickshell/ii/` reload live, no restart needed
+- **Restart shell + reload Hyprland:** `iiren run` (alias `iiren restart`)
 - **Run settings app:** `qs -c ii settings.qml` (separate QApplication)
 - **Setup/update:** `./setup-ii-ren.sh` or `iiren update` (CLI)
 - **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell, no prompts)
 - **Snapshot live settings into the repo:** `iiren save`
 - **Legacy setup router:** `./setup <subcommand>` (install, uninstall, exp-merge, etc.)
+- **Override a Hyprland option without editing the repo:** `iiren hyprset key|anim|reset|merge`
 - **LSP setup:** `touch ~/.config/quickshell/ii/.qmlls.ini` — gitignored, create manually
+
+### Checks (there is no test suite)
+
+Each `tools/check-*.py` is a standalone assert script — run the one that covers what
+you touched; they are the only automated gate.
+
+- `python3 tools/check-design.py --diff` — design law on added lines, exits 1 on error
+- `python3 tools/check-m3-tokens.py` — Hyprland springs still match AOSP motion tokens
+- `python3 tools/check-mpris-hover-preview.py` — MprisController's YouTube-preview regexes
+
+Non-trivial logic that would otherwise only be verifiable by watching the shell gets a
+new `tools/check-*.py` in the same shape: pure asserts, no framework, one concern.
+
+## Repo vs live system
+
+`dots/` is the source; `setup-ii-ren.sh` / `iiren update` **copies** it into `~/.config`.
+A dev machine usually symlinks `~/.config/quickshell/ii` -> `dots/.config/quickshell/ii`
+instead, so QML edits in the repo are live — check with `readlink` before assuming.
+
+What is *not* symlinked flows the other way: `iiren save` pulls
+`~/.config/illogical-impulse/config.json` and `~/.config/hypr/custom/*.lua` back into
+`dots/`, de-personalising them (`$HOME` -> `~`, wallpaper cleared). Edit settings through
+the GUI, then `iiren save`, rather than hand-editing the JSON defaults.
+
+## Hyprland side (Lua, not hyprlang)
+
+`dots/.config/hypr/hyprland.lua` sources `hyprland/*.lua` (env, execs, general, rules,
+colors, keybinds) and then any matching `custom/*.lua`, which is where user overrides go
+and what `iiren save` preserves. Config is built with the `hl.*` API in `hyprland/lib/`.
+
+`hyprland/general.lua` holds the window-manager animation springs — the same Android 16
+motion tokens as the QML side, as mass/stiffness/dampening. Change one and
+`tools/check-m3-tokens.py` is what tells you the damping ratio still matches AOSP.
 
 ## QML Architecture
 
@@ -50,6 +87,9 @@ modules/
   waffle/       # Waffle panel components
   settings/     # Settings app pages (QuickConfig, BarConfig, etc.)
 services/       # Backend services (Ai, Audio, Battery, Network, MprisController, etc.)
+user_widgets/   # Installed extensions (see Extension System)
+defaults/       # Shipped default assets/config the shell falls back to
+scripts/        # Shell-invoked helper scripts
 ```
 
 ### Loader Pattern
@@ -98,7 +138,9 @@ Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`,
 
 The details of creating a new extension is in the file `EXTENSIONS.md` located at `.github/EXTENSIONS.md`.
 
-The details of the implementation of the extension system is in the file `EXTENSIONARCHITECTURE.md` located at `.github/EXTENSIONSARCHITECTURE`.
+The details of the implementation of the extension system is in
+`.github/EXTENSIONSARCHITECTURE.md`. Installed extensions live in
+`dots/.config/quickshell/ii/user_widgets/` and load without a shell restart.
 
 ## Git Setup
 
