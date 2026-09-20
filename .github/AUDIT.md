@@ -11,8 +11,8 @@ Two hard constraints shape every choice below:
   steady, to be stopped after any surface at zero cost, and to be resumed weeks later
   without re-reading anything.
 
-Read this before starting or resuming audit work. Nothing here is built yet — see
-**Not built yet**.
+Read this before starting or resuming audit work. The tooling is built and 17 of the
+96 queue rows are done; what is left to build is in **Not built yet**.
 
 ## Why a process instead of just doing it
 
@@ -44,6 +44,7 @@ the same work*, and by a wide margin. Every rule below follows from that one fac
 | Rule | Why |
 |---|---|
 | **One surface per session, then stop and `/clear`.** | Context never grows past one surface. Two surfaces in one session costs far more than two sessions. |
+| **Or one session that only dispatches.** | The fifteen `cw-*` rows ran twelve at once as subagents, each fenced to its own files, with the parent holding no surface itself — it owned only git, the shell and the merge. Same rule underneath: no context holds two surfaces. See `.audit/common-widgets/notes.md` for the four fences that make it safe. |
 | **Read the pack, not the repo.** | `.audit/<id>/pack.md` is script-generated and ~150 lines. The surface itself is 1–3k. Read actual QML only for files being edited. |
 | **Read line ranges, not whole files.** | `sed -n '400,520p'` on a 2,000-line file like `ResourcesPopup.qml`. Whole-file reads are the single largest avoidable cost. |
 | **Checks run in Bash, never by reading.** | `check-design.py --diff` output is twenty lines. Deriving the same by reading is hundreds. |
@@ -65,6 +66,8 @@ the pace is visible at a glance. Stop whenever; the next session starts from the
 | Who implements | **Lane 1 Claude, lane 2 Sonnet-via-agy behind the gates.** See **Two lanes**. |
 | Who verifies | Scripts first, then Claude reading its own diff against the brief. |
 | agy | Vision, shell driving, and lane 2 implementation. See **The tiers**. |
+| Vendored trees | **Out, permanently.** See **The re-port hazard**. |
+| Motion verification | **Once, in the cohesion pass**, not per row. A row that retimes something names it in `notes.md`; the cohesion session runs the shell at 60fps against that list. Twelve parallel sessions could not each drive the shell, and one pass over a list costs less than twelve that each re-derive what to look at. |
 
 ## The tiers, as actually measured
 
@@ -109,12 +112,16 @@ In: `modules/common/`, `modules/common/widgets/`, `modules/ii/`, `modules/waffle
 Out: `user_widgets/` (426 files / 108k lines of third-party extensions — not ours to
 redesign), `modules/common/widgets/shapes/` (submodule).
 
-**The re-port hazard.** `modules/ii/background/widgets/`, `modules/ii/bar/cards/` and the
-bar popups are vendored from ii-p3drovfx by `tools/p3-widget-port/` and
-`tools/p3-bar-popups/`; `port-widgets.sh` rsyncs the widget tree with `--delete`. Redesign
-those in place and the next re-port reverts all of it. Before touching that tranche,
-decide explicitly: either stop re-porting and own them locally, or leave them out. Do not
-discover this halfway through. See `tools/p3-widget-port/README.md`.
+**The re-port hazard — decided 2026-09-20: they stay out.** `modules/ii/background/widgets/`,
+`modules/ii/bar/cards/` and the bar popups are vendored from ii-p3drovfx by
+`tools/p3-widget-port/` and `tools/p3-bar-popups/`; `port-widgets.sh` rsyncs the widget
+tree with `--delete`, so a redesign there is reverted by the next re-port. Re-porting is
+worth more than redesigning 27.7k lines that are not ours: the tranche keeps flowing from
+upstream, and `ii-background-widgets` is marked `skip` in the queue rather than `todo`.
+What that costs, accepted with eyes open: the eight `[undefined]` assignments and the 21
+effects-in-delegates in `FINDINGS.md` that live in that tree stay unfixed, and
+`check-effect-budget.py`'s `KNOWN` set is what keeps them from growing. Reverse this only
+by stopping the re-port first. See `tools/p3-widget-port/README.md`.
 
 ## Unit of work
 
@@ -162,6 +169,10 @@ State lives in the repo. No session needs to remember another one.
 - every component type instantiated, flagged when a same-named widget exists in
   `modules/common/widgets/` — the reuse-miss heuristic
 - reverse dependencies: who imports or instantiates this surface
+- an **effect budget**: every `layer.enabled` / `MultiEffect` / `OpacityMask` /
+  `ShaderEffect` / shadow / `Canvas` and every sub-100ms `Timer`, flagged when it sits
+  inside something that repeats. Until 2026-09-20 no session saw a single perf fact
+  unless it read the QML itself
 - `check-design.py` output filtered to the path, and qmllint via
   `tools/p3-widget-port/mkshadow.sh`
 - the IPC call or keybind that opens it
@@ -187,6 +198,8 @@ Input is the packs and the before-shots for that cluster, nothing else. One page
 **Interaction.** States, motion spec per element (spatial vs effects, enter and exit),
   transform origin and what it grows out of. Tokens by name, never numbers.
 **Edge states.** Empty, loading, error, and one-item. Each gets a sentence.
+**Cost.** Which effects the surface keeps, from the pack's *Effect budget*, and what
+  it drops. One layer or effect per widget, never inside something that repeats (8).
 **Delete.** What goes away. Restructuring is authorised; say what dies.
 **Out of scope.** What this brief deliberately does not touch.
 ```
@@ -284,7 +297,9 @@ start and no memory of which change did it.
 ## Cohesion pass
 
 At the end, `magick montage` every `shot-after.png` into one contact sheet and review it in
-a single session. Naming the outliers is what makes a shell read as one person's work
+a single session. This is also where **motion** gets verified: every row that retimed
+something left the specific thing to watch in its `notes.md`, and a still frame proves
+none of it. The standing list so far is in `.audit/DECISIONS.md`. Naming the outliers is what makes a shell read as one person's work
 rather than 80 surfaces that are each fine alone. Cheapest session in the plan and the one
 that delivers the actual goal.
 
@@ -296,7 +311,7 @@ actually costs, which is the number the cadence depends on.
 
 ## Not built yet
 
-- `.audit/QUEUE.md` and its generator
-- `tools/audit/pack.py`
-- `tools/audit/smoke.sh`
 - `/audit` command that reads the queue and starts the next surface under this protocol
+
+Built since, and in use: `.audit/QUEUE.md` (hand-edited, generated once), `tools/audit/pack.py`
+(now including the effect budget) and `tools/audit/smoke.sh`.

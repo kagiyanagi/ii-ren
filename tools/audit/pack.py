@@ -52,6 +52,32 @@ def root_type(src):
             return m.group(1)
     return "-"
 
+# DESIGN.md 8: effects are a budget, and the expensive mistake is one inside a
+# delegate that repeats. ponytail: brace counting, not a QML parser -- it over-reports
+# a nested close on one line rather than missing an effect.
+EFFECTS = re.compile(
+    r"\b(layer\.enabled|MultiEffect|OpacityMask|ShaderEffectSource|ShaderEffect|GaussianBlur"
+    r"|StyledDropShadow|StyledRectangularShadow|StyledBlurEffect|DropShadow|ColorOverlay"
+    r"|Colorizer|ShapeCanvas|Canvas)\b")
+REPEATED = re.compile(r"\b(delegate\s*:|Repeater\s*\{|Instantiator\s*\{)")
+
+def effect_census(src):
+    """(line, what, repeated?) for every effect and every sub-100ms Timer."""
+    out, opens, depth = [], [], 0
+    for i, ln in enumerate(src.split("\n"), 1):
+        repeats = bool(opens)
+        for m in EFFECTS.finditer(ln):
+            out.append((i, m.group(1), repeats))
+        t = re.search(r"\binterval\s*:\s*(\d+)\b", ln)
+        if t and 0 < int(t.group(1)) < 100:
+            out.append((i, f"Timer {t.group(1)}ms", repeats))
+        if REPEATED.search(ln):
+            opens.append(depth)
+        depth += ln.count("{") - ln.count("}")
+        while opens and depth <= opens[-1]:
+            opens.pop()
+    return out
+
 def declarations(src):
     props = re.findall(r"^\s*(?:readonly\s+)?property\s+(?:list<)?(\w+)>?\s+(\w+)", src, re.M)
     signals = re.findall(r"^\s*signal\s+(\w+)", src, re.M)
@@ -82,6 +108,7 @@ def main():
     local = {f.stem for f in files if f.suffix == ".qml" and f.stem[:1].isupper()}
 
     rows, decls, conf, used, prims, ipc = [], {}, defaultdict(set), Counter(), Counter(), []
+    effects = []
     total = 0
     for f in files:
         src = f.read_text(errors="replace")
@@ -90,6 +117,8 @@ def main():
         rel = f.relative_to(target) if target.is_dir() else f.name
         rows.append((str(rel), n, root_type(src)))
         decls[str(rel)] = declarations(src)
+        for line, what, repeated in effect_census(src):
+            effects.append((str(rel), line, what, repeated))
         for m in re.finditer(r"Config\.options\.([A-Za-z0-9_.]+)", src):
             conf[m.group(1).rstrip(".")].add(str(rel))
         for m in re.finditer(r"\b([A-Z][A-Za-z0-9_]*)\s*\{", src):
@@ -146,6 +175,16 @@ def main():
     dup = sorted(local & shared)
     if dup:
         o += ["", f"**Name collision with a shared widget:** {', '.join('`'+d+'`' for d in dup)}"]
+
+    o += ["", "## Effect budget", "",
+          "One layer or effect per widget, never inside something that repeats (8). "
+          "A sub-100ms Timer is JS every frame or faster.", ""]
+    if not effects:
+        o.append("_no effects and no fast timers — nothing to spend here_")
+    else:
+        o += ["| file | line | what | repeated |", "|---|---:|---|---|"]
+        o += [f"| `{f}` | {n} | `{w}` | {'**yes**' if r else ''} |"
+              for f, n, w, r in sorted(effects, key=lambda e: (not e[3], e[0], e[1]))]
 
     o += ["", "## Used by", ""]
     if not callers:
