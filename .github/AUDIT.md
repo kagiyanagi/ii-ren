@@ -11,7 +11,7 @@ Two hard constraints shape every choice below:
   steady, to be stopped after any surface at zero cost, and to be resumed weeks later
   without re-reading anything.
 
-Read this before starting or resuming audit work. The tooling is built and 21 of the
+Read this before starting or resuming audit work. The tooling is built and 31 of the
 106 queue rows are done; what is left to build is in **Not built yet**.
 
 ## Why a process instead of just doing it
@@ -44,7 +44,7 @@ the same work*, and by a wide margin. Every rule below follows from that one fac
 | Rule | Why |
 |---|---|
 | **One surface per session, then stop and `/clear`.** | Context never grows past one surface. Two surfaces in one session costs far more than two sessions. |
-| **Or one session that only dispatches.** | The fifteen `cw-*` rows ran twelve at once as subagents, each fenced to its own files, with the parent holding no surface itself — it owned only git, the shell and the merge. Same rule underneath: no context holds two surfaces. See `.audit/common-widgets/notes.md` for the four fences that make it safe. |
+| **Or one session that only dispatches.** | The fifteen `cw-*` rows ran twelve at once as subagents, each fenced to its own files, with the parent holding no surface itself — it owned only git, the shell and the merge. Same rule underneath: no context holds two surfaces. See `.audit/common-widgets/notes.md` for the four fences that make it safe. The ten `sw-*` rows repeated it with two serialised first, because one deletes 122 files and the other changes a widget with 75 callers; `.audit/sw-clock-configs/notes.md` records how that dependency was measured away rather than assumed. |
 | **Read the pack, not the repo.** | `.audit/<id>/pack.md` is script-generated and ~150 lines. The surface itself is 1–3k. Read actual QML only for files being edited. |
 | **Read line ranges, not whole files.** | `sed -n '400,520p'` on a 2,000-line file like `ResourcesPopup.qml`. Whole-file reads are the single largest avoidable cost. |
 | **Checks run in Bash, never by reading.** | `check-design.py --diff` output is twenty lines. Deriving the same by reading is hundreds. |
@@ -287,6 +287,7 @@ start and no memory of which change did it.
 | `tools/check-m3-tokens.py`, `check-mpris-hover-preview.py`, `p3-widget-port/check-*.py` | Their own concerns; run what the change touches |
 | `tools/audit/smoke.sh` | Start `qs -c ii` and fail unless its layer surfaces appear — a QML error that blanks a whole panel family prints nothing at all |
 | `tools/audit/smoke-settings.sh` | The same for the settings app, which is a **second** quickshell process (`qs -p settings.qml`) that `smoke.sh` says nothing about. Required by every `modules/settings` row. It kills only the pid it started, never `pkill`s |
+| `tools/audit/probe-settings-pages.sh` | The 61 settings sub-pages, which `smoke-settings.sh` never reaches because every one of them loads on demand — a page that throws leaves an empty pane and says so only in a log. It writes a throwaway `qs -p` config into the shell dir, puts every sub-page in one `Repeater` and greps the log. Same pid discipline as above, and its probe file carries the pid, so several rows can run it at once |
 
 ## Order
 

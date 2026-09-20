@@ -111,3 +111,50 @@ Found while closing the open calls in `DECISIONS.md`; neither was known before.
 | `modules/ii/sidebarPolicies/StatusSeparator.qml` | A third separator-by-another-name, `colOutlineVariant` as a fill. Invisible to the old name-matching rule; the widened `no-separator-bars` shape check is what found it, along with 13 more sites of the same shape across the bar, overlay, overview, cheatsheet and settings widgets — all legacy, all `warn` | `ii-sidebarPolicies`, and each site's own row |
 | `modules/settings/configs/widgets/OsdPositionPicker.qml:87` | `Unable to assign [undefined] to QVariantMap`, twice per settings launch on the Interface page. Pre-existing; unrelated to the section-width fix that found it | `settings-widgets` |
 | `modules/ii/dock/widgets/DockPreviewPopup.qml:212` | A `layer.enabled` + `OpacityMask` pair **inside a repeated delegate** (§8). Found by the new *Effect budget* section of `pack.py` the moment it was pointed at the dock, which is the argument for that section existing | `ii-dock` |
+
+## From the eight parallel `sw-*` sessions, 2026-09-20
+
+The settings-widget tranche ran `sw-dead` and `sw-clock-configs` first — one deletes, the
+other changes a widget with 75 callers — then the remaining eight at once, each fenced to
+its own pages. Anything a row found outside its fence was reported instead of applied.
+What follows is what they reported.
+
+**Three rows found the same thing independently, which is why it is first.**
+
+| where | issue | owner |
+|---|---|---|
+| `modules/common/widgets/ContentGroup.qml:26-34` | **No config row on any of the ~61 widget pages is actually carded.** `ContentGroup` models `column.visibleChildren` and cards only a child declaring `wantsCard`. Every page in the directory nests its rows in one `ColumnLayout` carrying the `visible: Config.isWidgetActive(...)` gate, and that wrapper declares nothing — so the `ConfigSwitch`/`ConfigSlider`/`ConfigSpinBox`/`ConfigSelectionArray` inside it render with no card at all, against DESIGN.md 5.6. `ContentGroup` already reaches through one container level for `ConfigRow` (`:45`, `tiles`) but not for a gating wrapper. Found independently by `sw-media-configs`, `sw-system-pills` and `sw-desktop-misc`; `sw-system-pills` worked around it per page with `ContentSubsection`, which is the in-fence answer, not the fix | a `cw-scaffolding` revisit |
+| `dots/.config/quickshell/ii/scripts/fingerprint/fprintd_bridge.py:299-302` | The bridge evaluates `result in ENROLL_RETRY` and then **throws it away**, emitting a `phase="scanning"` event indistinguishable from a real stage pass — and `enroll-remove-and-retry` sends the same sentence a pass does, so text matching cannot recover it either. `sw-fingerprint` had to derive "finger moved too fast" from a `Qt.callLater` latch. One `retry=True` field here plus one `property bool enrollRetry` in `services/Fingerprint.qml` deletes that latch | `services` / `ii-settings` |
+| `modules/common/widgets/ConfigTextField.qml:97` | `onTextChanged` republishes `inputText` on every keystroke and the widget exposes no `accepted` / `editingFinished` signal, so a page whose field triggers a process or a file write cannot use it — eight settings pages reach past it to raw `MaterialTextField`. An `editingFinished` passthrough would close that exception | a `cw-config-rows` revisit |
+| `services/CursorTheme.qml`, `services/IconThemes.qml` | Both declare `refreshThemes()` and call it only from `Component.onCompleted`. Install a theme while the shell runs and neither list updates until restart — which is exactly the exit path the new "no packs found" placeholders point the user at | `services` |
+| `modules/settings/ServicesConfig.qml:998`, `:125` | Weather units (`bar.weather.useUSCS`) and calendar source (`calendar.icsUrls`) have their sole controls here, unreachable from any of the fifteen weather or calendar widget pages. `sw-weather-calendar` deliberately did **not** duplicate them across nine pages — that is the mistake `DesktopWidgetVisualOptions` was extracted to undo — so the answer is one shared block, which is a new file every row was fenced against | `settings-ServicesConfig` |
+| `modules/settings/AdvancedConfig.qml:66-193` | The two rows that open the Advanced sub-pages are duplicated hand-rolled `RippleButton`s with an inline `contentItem` (icon, two-line label, `chevron_right`). A nav-row widget waiting to be extracted | `settings-AdvancedConfig` |
+| `modules/common/Config.qml` | Keys with no reader, found by grepping each page's keys against the widget that consumes them: `:513` `circular_media.enableShadows`, `:514`–`:516` `showPrevButton`/`showNextButton`/`showDevicePill` (the widget hardwires those controls), `:1085` `compact_media.enableInnerShadow` (no inner shadow exists), plus `:517` `circular_media.progressShape` and `:1083` `compact_media.backgroundShape`, which never had UI at all. The switches bound to the first five were deleted by `sw-media-configs`; the keys remain | `config-defaults` |
+| `modules/common/Config.qml:761` | Expressive Weather's shape sits under the key `weather` while the widget ids are `weather_default` / `weather_expressive`, and no `weather_expressive` group is read at all — a leftover from the style split, and why that page needs three `isWidgetActive` calls to say something simple | `config-defaults` |
+| `modules/ii/background/widgets/WidgetsRegistry.qml:212`, `:221` | `circular_media` and `media_circular` are two different widgets whose ids differ only by word order. One transposition from silently gating the wrong widget | `ii-background-widgets` (skip) — recorded because the ids are read from `modules/settings` |
+| `modules/ii/background/widgets/WidgetsRegistry.qml` | **Thirteen of the fifteen weather/calendar pages configure nothing about their own widget** — the whole content is the global visual-options block plus a placeholder, yet the registry gives every one a `configPage`. Either the widgets gain options or the registry stops linking a page | `ii-background-widgets` (skip) / `settings-WidgetsConfig` |
+| the seven bluetooth/battery device widgets | `bluetooth_battery`, `bluetooth_earbuds_stem`, `bluetooth_fill_cards`, `devices_battery_list`, `devices_battery_list_1x1`, `pc_battery_bars`, `pc_battery_cable` have no per-widget option in `Config.qml` at all, so their page's "primary action" is a pair of global shadow switches | same as above |
+| `background.widgets.enableShadows` / `.enableInnerShadow` | Read across `modules/ii/background/widgets/` but settable only from a per-widget config page, so a user running only At a Glance or the Notification List — the two widgets that do not read them — cannot reach them at all | `settings-WidgetsConfig` |
+| `.github/EXTENSIONS.md:606-612` | The schema table promises `float` → "SpinBox (decimal)", but `StyledSpinBox` wraps QQC2's integer SpinBox, so a float renders as a slider. `:610` promises `enum` → "Dropdown"; no dropdown exists in this shell and M3's answer is a chip group, so that row is wrong rather than the code. Doc or widget has to give | `docs` / a `cw-inputs` revisit |
+| `services/WidgetExtensionManager.qml:27-29` | `loading` is one global flag covering install *and* update, with no id attached, so both extension pages have to guess which card owns it (`pendingInstall`, `installingId`). Before `sw-extensions`, every card in the community grid said "Installing…" at once. A `busyId` would let the right card show its own progress | `services` |
+| `services/WidgetExtensionManager.qml:29` | `lastError` only clears on the next `installWidget()`, so a user who gives up keeps the notice forever. A `clearError()` on the manager is the clean fix; a dismiss button would mean a view writing a service property | `services` |
+
+### Verified, because the claim was that something was already broken
+
+`DECISIONS.md` 20 set the rule: prove a "should be broken" before recording it. Two
+claims from these rows were driven rather than reasoned about.
+
+- **`ExtensionWidgetSettingsRenderer` really was broken**, and the reason nothing caught
+  it is instructive. Instantiating it bare is clean, because its bad assignments live in a
+  `Repeater` delegate keyed on the extension's schema — so with no schema, nothing is
+  built. Driven with a five-key schema, the pre-`sw-extensions` file gives a hard
+  `ERROR: Cannot assign to non-existent property "textField"` on the `string` delegate.
+  `cw-config-rows` had removed `isFirst`/`isLast` (run position moved to `ContentGroup`)
+  and `textField` was always a private id.
+- **The rewrite had its own version of the same class of bug**, found by that same probe
+  and fixed here: every control in the delegate is *built*, only gated by `visible:`, so a
+  string-typed option's value was being read into `ConfigSpinBox.value` — `Unable to assign
+  QString to int`. The two numeric bindings are now guarded on their own type the way
+  `visible:` already was. A control that is invisible still evaluates its bindings; that is
+  worth remembering for any page that stacks typed controls this way.
+

@@ -34,6 +34,9 @@ you touched; they are the only automated gate.
 - `python3 tools/check-scaffold-containers.py` — the page/section/scroll containers keep
   their header states, specify both motion directions, and anchor nothing a layout
   manages (Qt calls that undefined behavior and only says so at runtime)
+- `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
+  throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
+  script reaches them; run it after touching anything under `modules/settings/widgets/`
 
 Non-trivial logic that would otherwise only be verifiable by watching the shell gets a
 new `tools/check-*.py` in the same shape: pure asserts, no framework, one concern.
