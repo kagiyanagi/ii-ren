@@ -19,14 +19,17 @@ ProgressBar {
     property bool animateWave: true
     property real waveAmplitudeMultiplier: wavy ? 0.5 : 0
     property real waveFrequency: 6
-    property real waveFps: 60
 
     Behavior on waveAmplitudeMultiplier {
         animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
+    // Was elementMoveEnter - default spatial, which overshoots. AOSP animates a
+    // determinate indicator with ProgressIndicatorDefaults.ProgressAnimationSpec,
+    // a DampingRatioNoBouncy spring (ProgressIndicator.kt): a bar that swings
+    // past the value and comes back is reporting a number that never happened.
     Behavior on value {
-        animation: Appearance?.animation.elementMoveEnter.numberAnimation.createObject(this)
+        animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
     }
     
     background: Item {
@@ -48,7 +51,7 @@ ProgressBar {
                 id: wavyFill
                 frequency: root.waveFrequency
                 color: root.highlightColor
-                amplitudeMultiplier: root.wavy ? 0.5 : 0
+                amplitudeMultiplier: root.waveAmplitudeMultiplier
                 height: contentItem.height * 6
                 width: contentItem.width * root.visualPosition
                 lineWidth: contentItem.height

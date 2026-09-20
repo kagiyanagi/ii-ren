@@ -12,12 +12,7 @@ Item {
     property real value: 0
     property color colPrimary: Appearance?.colors.colOnSecondaryContainer ?? "#685496"
     property color colSecondary: ColorUtils.transparentize(colPrimary, 0.5) ?? "#F1D3F9"
-    property real gapAngle: 360 / 18
-    property bool fill: true
-    property int fillOverflow: 2
     property bool enableAnimation: true
-    property int animationDuration: 800
-    property var easingType: Easing.OutCubic
     property bool accountForLightBleeding: true
     default property Item textMask: Item {
         parent: root
@@ -27,7 +22,7 @@ Item {
         StyledText {
             anchors.centerIn: parent
             text: Math.round(root.value * 100)
-            font.pixelSize: 12
+            font.pixelSize: Appearance.font.pixelSize.smaller
             font.weight: Font.Medium
         }
     }
@@ -36,12 +31,15 @@ Item {
     implicitHeight: implicitSize
 
     property real animatedValue: value
+
+    // Geometry, but not on a spatial spec: AOSP animates a determinate
+    // indicator with ProgressIndicatorDefaults.ProgressAnimationSpec, a
+    // DampingRatioNoBouncy spring (ProgressIndicator.kt). An overshoot here
+    // would also push animatedValue past 1, where the square-mode tip walk
+    // below runs off the end of its last segment.
     Behavior on animatedValue {
         enabled: root.enableAnimation
-        NumberAnimation {
-            duration: root.animationDuration
-            easing.type: root.easingType
-        }
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     property real degree: animatedValue * 360
@@ -69,6 +67,11 @@ Item {
     property bool passedBottomRight: animatedValue > 0.5
     property bool passedBottomLeft:  animatedValue > 0.75
 
+    // Only the source the current shape mode samples gets a layer. Both used to
+    // carry one permanently, so every instance of this - and the bar runs up to
+    // five - paid for two offscreen surfaces to show one (DESIGN.md 8).
+    readonly property bool sharp: Config.options.appearance.sharpMode
+
     // Circular source
     Rectangle {
         id: circularContent
@@ -76,7 +79,7 @@ Item {
         radius: implicitSize / 2
         color: root.colSecondary
         visible: false
-        layer.enabled: true
+        layer.enabled: !root.sharp
         layer.smooth: true
 
         Shape {
@@ -118,7 +121,7 @@ Item {
         radius: 0
         color: root.colSecondary
         visible: false
-        layer.enabled: true
+        layer.enabled: root.sharp
         layer.smooth: true
 
         Shape {
@@ -157,16 +160,7 @@ Item {
 
     OpacityMask {
         anchors.fill: parent
-        visible: !Config.options.appearance.sharpMode
-        source: circularContent
-        invert: true
-        maskSource: root.textMask
-    }
-
-    OpacityMask {
-        anchors.fill: parent
-        visible: Config.options.appearance.sharpMode
-        source: squareContent
+        source: root.sharp ? squareContent : circularContent
         invert: true
         maskSource: root.textMask
     }

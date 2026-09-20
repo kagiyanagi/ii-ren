@@ -34,7 +34,7 @@ ProgressBar {
 
     text: Math.round(value * 100)
     font {
-        pixelSize: 13
+        pixelSize: Appearance.font.pixelSize.smallie
         weight: text.length > 2 ? 575 : 675
     }
 
@@ -46,7 +46,7 @@ ProgressBar {
     contentItem: Rectangle {
         id: contentItem
         anchors.fill: parent
-        radius: 9999
+        radius: Appearance.rounding.full
         color: root.trackColor
         visible: false
 

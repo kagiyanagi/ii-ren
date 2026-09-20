@@ -4,11 +4,15 @@ import qs.modules.common.functions
 
 Canvas {
     id: root
-    property color color: "#ffffff"
+    property color color: Appearance.colors.colOnLayer0
     property int dashLength: 6
     property int gapLength: 4
     property int borderWidth: 1
 
+    // Canvas repaints on request only, so every property onPaint reads needs
+    // one - colour above all, since it follows the wallpaper theme.
+    onColorChanged: requestPaint()
+    onBorderWidthChanged: requestPaint()
     onDashLengthChanged: requestPaint()
     onGapLengthChanged: requestPaint()
     onWidthChanged: requestPaint()

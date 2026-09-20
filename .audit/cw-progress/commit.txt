@@ -1,0 +1,72 @@
+refactor(cw-progress): a knob nobody had fired yet, and a bar in Qt's greys
+
+`CircularProgress` and `ClippedFilledCircularProgress` exported
+`animationDuration` and `easingType` as properties, which the brief calls the
+worst of its three motion findings: not a violation but a factory for them, in
+a file `check-design.py` can never connect back to the widget. The session was
+set up expecting caller fallout. There is none — zero call sites set either
+knob, on either type, anywhere including `user_widgets/`. Same for
+`fillOverflow` on both, and `gapAngle` and `fill` on the clipped one: declared,
+never read, never set.
+
+Determinate progress now animates on `elementMoveFast`, and it is an effects
+spec on purpose. DESIGN.md 2.1 sorts by medium and an arc sweep is geometry, so
+the table says spatial, which may overshoot. AOSP disagrees out loud:
+`ProgressIndicatorDefaults.ProgressAnimationSpec` is a `DampingRatioNoBouncy`
+spring. A progress indicator's geometry *is* its value, so an overshoot is not a
+spring settling, it is the widget reporting a number that never happened.
+`StyledProgressBar` was on `elementMoveEnter` — default spatial — and did.
+Measured 0 to 1: 188ms of travel, monotone, max exactly 1.0000. That also
+removes the need for a clamp: `ClippedFilledCircularProgress`'s square-mode tip
+walk runs off the end of its last segment above 1.0, and `QQC2` clamps
+`ProgressBar.value` but not this.
+
+`StyledIndeterminateProgressBar` has never rendered in this shell's colours.
+It was three lines — a bare `ProgressBar` plus `Material.accent` — and every
+entry point carries `QT_QUICK_CONTROLS_STYLE=Basic`, where that attached
+property is inert and the delegate paints `palette.dark` on `palette.midlight`.
+Qt's greys, Qt's block animation, in two dialogs and the wallpaper selector, and
+invisible to the checker because the violation is in Qt's file. Rewritten as the
+M3 two-segment sweep transcribed from `ProgressIndicator.kt`: 1750ms cycle, four
+head/tail windows, all on `emphasizedAccel`. Measured over 3.5s at 62fps, the
+cycle repeats at exactly 1750 and nothing draws outside the track. AOSP's
+`gapSize` track fragments are deliberately not transcribed — a full-width track
+under the segments is the same picture, 25 lines shorter.
+
+`MaterialLoadingIndicator`'s three hand fits had published values waiting:
+`GlobalRotationDurationMillis` 4666 against a spin that was running 2.6× too
+slow, `MorphIntervalMillis` 650, and a `dampingRatio 0.6 / stiffness 200` morph
+spring whose damping is the fast-spatial scheme's, so both leaps run on
+`elementMoveSmall`. The 750ms zoom pulse had to come down with the interval or
+it would have been cut off mid-shrink every cycle; measured, 3 restarts and 0
+cut off.
+
+Also, found while reading the family:
+
+- `SineCookie.constantlyRotate` drove a `FrameAnimation` that rebuilt 361
+  `Qt.point`s in JS at 60Hz, forever — DESIGN.md 8's worst case, for a knob no
+  caller ever set. `CookieClock` rotates the container instead, which is a
+  transform and free.
+- `Graph` and `DashedBorder` never requested a repaint when their colour
+  changed, and a `Canvas` repaints on request only. The resource graphs hid it
+  behind constantly changing values; `BatteryUsageChart` kept painting the old
+  palette across a theme change until the app restarted.
+- `ClippedFilledCircularProgress` kept a layer on both shape-mode sources and
+  an `OpacityMask` on each, gated with `visible:`. An invisible item's layer
+  still renders, so every instance held two offscreen surfaces to draw one, and
+  the bar runs up to five of them. One mask now, source switched, layers gated.
+- `StyledProgressBar.waveAmplitudeMultiplier` was declared with a correct
+  `Behavior` and then ignored by the fill, which hard-coded the same value;
+  `waveFps` was dead outright after the `WavyLine` shader port.
+- The literals: two `radius: 9999`, which is not a no-op swap — `rounding.full`
+  carries the sharp-mode scale — and two literal font sizes.
+
+§9 says indeterminate only where the duration is unknown, so all four call sites
+were checked: Bluetooth discovery and Wi-Fi scanning are unbounded, and the
+wallpaper selector already swaps to the determinate bar on the first tick.
+
+`tools/check-progress-indicators.py` is the gate: the knobs stay dead in the
+library *and* at every call site, determinate value animation stays on a
+non-overshooting spec, the indeterminate sweep stays AOSP's to the millisecond
+with every window closing inside the cycle, and no `FrameAnimation` comes back
+into either cookie.

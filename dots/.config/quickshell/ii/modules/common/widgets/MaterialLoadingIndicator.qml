@@ -37,16 +37,22 @@ Rectangle {
     property double leapRotation: 0
     rotation: pullRotation + continuousRotation + leapRotation
 
+    // One full turn, repeating. The 12000 this replaces was a hand pick.
     RotationAnimation on continuousRotation {
         running: root.loading
-        duration: 12000
+        // AOSP LoadingIndicator.kt: GlobalRotationDurationMillis, LinearEasing.
+        duration: 4666
         easing.type: Easing.Linear
         loops: Animation.Infinite
         from: 0
         to: 360
     }
+
+    // AOSP MorphIntervalMillis: a morph starts every 650ms, and its spring is
+    // required to have settled before the next one does. Both animations below
+    // run on elementMoveSmall (350), so they do.
     Timer {
-        interval: 800
+        interval: 650
         running: root.loading
         repeat: true
         onTriggered: leapAnimation.start()
@@ -54,20 +60,29 @@ Rectangle {
     ParallelAnimation {
         id: leapAnimation
         PropertyAction { target: root; property: "shapeIndex"; value: (root.shapeIndex + 1) % root.shapes.length }
+
+        // AOSP turns by QuarterRotation per morph on a dampingRatio 0.6 /
+        // stiffness 200 spring. 0.6 is the fast-spatial scheme's damping, so
+        // elementMoveSmall is the token that carries this shape.
         RotationAnimation {
             target: root
             direction: RotationAnimation.Shortest
             property: "leapRotation"
             to: (root.leapRotation + 90) % 360
-            duration: 350
-            easing.type: Easing.InOutQuad
+            duration: Appearance.animation.elementMoveSmall.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
         }
+
+        // The zoom pulse stands in for AOSP's shape morph, so it has to be done
+        // before the next interval - at the old 750 against a 650 interval it
+        // would be cut off mid-shrink and snap back to the base size.
         NumberAnimation {
             target: root
             property: "leapZoomProgress"
             from: 0
             to: 1
-            duration: 750
+            duration: Appearance.animation.elementMoveSmall.duration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Appearance.animationCurves.standard
         }

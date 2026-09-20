@@ -16,7 +16,13 @@ Canvas {
     property real fillOpacity: 0.5
     property var alignment: Graph.Alignment.Left
 
+    // A Canvas repaints on request only. `color` follows the wallpaper theme and
+    // `points` follows a config option, so a chart with a static `values` - the
+    // battery history one - kept painting the old palette until the app restarted.
     onValuesChanged: root.requestPaint()
+    onColorChanged: root.requestPaint()
+    onFillOpacityChanged: root.requestPaint()
+    onPointsChanged: root.requestPaint()
     onPaint: {
         var ctx = getContext("2d")
         ctx.clearRect(0, 0, width, height)

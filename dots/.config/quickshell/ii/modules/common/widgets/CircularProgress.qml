@@ -15,10 +15,7 @@ Item {
     property color colSecondary: Appearance.colors.colSecondaryContainer
     property real gapAngle: 360 / 18
     property bool fill: false
-    property int fillOverflow: 2
     property bool enableAnimation: true
-    property int animationDuration: 800
-    property var easingType: Easing.OutCubic
 
     implicitWidth: implicitSize
     implicitHeight: implicitSize
@@ -29,21 +26,23 @@ Item {
     property real arcRadius: root.implicitSize / 2 - root.lineWidth
     property real startAngle: -90
 
+    // The sweep is geometry, so 2.1 would put it on a spatial spec - but a
+    // determinate indicator must not overshoot. AOSP animates progress with
+    // ProgressIndicatorDefaults.ProgressAnimationSpec, a DampingRatioNoBouncy
+    // spring (ProgressIndicator.kt), because a ring that swings past the value
+    // and comes back is reporting a number that never happened.
+    // elementMoveFast is this repo's critically damped spec.
     Behavior on degree {
         enabled: root.enableAnimation
-        NumberAnimation {
-            duration: root.animationDuration
-            easing.type: root.easingType
-        }
-
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     Loader {
         active: root.fill
         anchors.fill: parent
-        
+
         sourceComponent: Rectangle {
-            radius: 9999
+            radius: Appearance.rounding.full
             color: root.colSecondary
         }
     }
