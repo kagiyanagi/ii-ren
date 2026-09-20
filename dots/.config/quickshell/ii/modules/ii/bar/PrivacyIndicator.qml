@@ -44,27 +44,39 @@ MouseArea {
     clip: true
     // Sized off the layout, not off the pill: the pill fills this item, so
     // taking its size back would be a binding loop.
-    implicitWidth: indicator.active ? contentLayout.implicitWidth + indicator.chipPadding * 2 : 0
-    implicitHeight: contentLayout.implicitHeight + indicator.chipPadding * 2
-    opacity: indicator.active ? 1 : 0
+    implicitWidth: indicator.openness > 0 ? contentLayout.implicitWidth + indicator.chipPadding * 2 : 0
+    implicitHeight: indicator.openness > 0 ? contentLayout.implicitHeight + indicator.chipPadding * 2 : 0
+
+    // DESIGN 2.9: a Behavior cannot read its own direction from a sibling
+    // binding, so the spec is assigned inside the binding everything else
+    // depends on -- that one runs first by construction.
+    property real transitionDuration: Appearance.animation.elementMoveEnter.duration
+    property var transitionCurve: Appearance.animation.elementMoveEnter.bezierCurve
+    readonly property real openness: {
+        // Springy expand on the way in; the exit accelerates away at the effects
+        // duration instead, since the effects curves front-load so hard the
+        // collapse was over in ~70ms of its 200 (DESIGN 2.5).
+        indicator.transitionDuration = indicator.active ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveFast.duration;
+        indicator.transitionCurve = indicator.active ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animationCurves.emphasizedAccel;
+        return indicator.active ? 1 : 0;
+    }
 
     // The pill widens out of nothing and snaps back shut, so it can't just be
     // shown and hidden: stay around until the closing animation lands on zero.
+    // `clip` above means the width alone hides it -- an extra opacity fade would
+    // have to overshoot on this spatial curve, which DESIGN 0.3 forbids.
     Behavior on implicitWidth {
         animation: indicator.transitionAnimation.createObject(indicator)
     }
-    Behavior on opacity {
+    Behavior on implicitHeight {
         animation: indicator.transitionAnimation.createObject(indicator)
     }
 
     readonly property Component transitionAnimation: Component {
         NumberAnimation {
-            // Springy expand on the way in; the exit accelerates away instead,
-            // since the effects curves front-load so hard the collapse was over
-            // in ~70ms of its 200.
-            duration: indicator.active ? Appearance.animation.elementMoveEnter.duration : 200
+            duration: indicator.transitionDuration
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: indicator.active ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animationCurves.emphasizedAccel
+            easing.bezierCurve: indicator.transitionCurve
         }
     }
 
@@ -116,7 +128,15 @@ MouseArea {
         id: pill
         anchors.fill: parent
         radius: Appearance.rounding.full
-        color: Appearance.m3colors.m3surfaceContainerHigh
+        // One layer above the bar group it sits on, with that layer's own hover
+        // film rather than a hand-mixed tint (DESIGN 6.1, 3.1). There is no
+        // pressed film because the chip has no click action -- hovering is the
+        // whole interaction -- and painting one would advertise an action that
+        // does not exist.
+        color: indicator.containsMouse ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
     }
 
     GridLayout {
@@ -143,7 +163,7 @@ MouseArea {
                 // away together as the pill closes over them.
                 property bool grown: false
                 Component.onCompleted: chip.grown = true
-                scale: (chip.grown && indicator.active) ? 1 : 0
+                scale: (chip.grown && indicator.openness > 0) ? 1 : 0
                 Behavior on scale {
                     animation: indicator.transitionAnimation.createObject(chip)
                 }
@@ -159,7 +179,6 @@ MouseArea {
         }
 
         MaterialSymbol {
-            Layout.leftMargin: 1
             text: "chevron_right"
             iconSize: Appearance.font.pixelSize.large
             color: Appearance.colors.colOnSurfaceVariant
@@ -188,7 +207,6 @@ MouseArea {
                     // GeoClue only tells a client its own name, so an app that
                     // talks to it over raw D-Bus stays anonymous.
                     subtitle: modelData.apps.length > 0 ? "" : Translation.tr("An unidentified app %1").arg(indicator.usageFor(modelData.kind))
-                    showDivider: modelData.apps.length > 0
                     spacing: 6
 
                     Repeater {

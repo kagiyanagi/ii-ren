@@ -1,6 +1,7 @@
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -25,8 +26,38 @@ Item {
     readonly property color colBackground: button.down ? colBackgroundActive : button.hovered ? colBackgroundHover : colBackgroundNormal
     readonly property color colText: Appearance.colors.colOnRecordChip
 
-    implicitWidth: pillContainer.implicitWidth
-    implicitHeight: indicator.vertical ? pillContainer.implicitHeight : indicator.pillHeight
+    clip: true
+    implicitWidth: indicator.openness > 0 ? pillContainer.implicitWidth : 0
+    implicitHeight: indicator.openness > 0 ? (indicator.vertical ? pillContainer.implicitHeight : indicator.pillHeight) : 0
+
+    // DESIGN 2.9: a Behavior cannot read its own direction from a sibling
+    // binding, so the spec is assigned inside the binding the sizes depend on --
+    // that one runs first by construction. Enter on the spatial enter spec, exit
+    // accelerating at the effects duration (DESIGN 2.5).
+    property real transitionDuration: Appearance.animation.elementMoveEnter.duration
+    property var transitionCurve: Appearance.animation.elementMoveEnter.bezierCurve
+    readonly property real openness: {
+        indicator.transitionDuration = indicator.activelyRecording ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveFast.duration;
+        indicator.transitionCurve = indicator.activelyRecording ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animationCurves.emphasizedAccel;
+        return indicator.activelyRecording ? 1 : 0;
+    }
+
+    readonly property Component transitionAnimation: Component {
+        NumberAnimation {
+            duration: indicator.transitionDuration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: indicator.transitionCurve
+        }
+    }
+
+    // The bar drops a widget by flipping `visible`, which snaps. The pill closes
+    // over its own content first and only then leaves the layout.
+    Behavior on implicitWidth {
+        animation: indicator.transitionAnimation.createObject(indicator)
+    }
+    Behavior on implicitHeight {
+        animation: indicator.transitionAnimation.createObject(indicator)
+    }
 
     Component.onCompleted: {
         if (typeof rootItem !== "undefined") {
@@ -37,7 +68,10 @@ Item {
         updateVisibility();
     }
 
-    onActivelyRecordingChanged: updateVisibility()
+    onActivelyRecordingChanged: if (indicator.activelyRecording)
+        indicator.updateVisibility()
+    onImplicitWidthChanged: if (!indicator.activelyRecording && indicator.implicitWidth === 0)
+        indicator.updateVisibility()
 
     function updateVisibility() {
         if (typeof rootItem !== "undefined") {
@@ -76,14 +110,13 @@ Item {
             colBackground: "transparent"
             colBackgroundHover: "transparent"
             colBackgroundActive: "transparent"
-            colRipple: Qt.rgba(1, 1, 1, 0.25)
+            colRipple: ColorUtils.transparentize(Appearance.colors.colOnRecordChip, 0.75)
             
             onClicked: {
                 Quickshell.execDetached([Directories.recordScriptPath, "--stop"])
             }
             StyledPopup {
                 hoverTarget: button
-                animate: false
                 stickyHover: true // The action buttons need the popup to survive the pointer leaving the bar
                 contentItem: PopupContent {}
             }

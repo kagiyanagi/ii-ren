@@ -76,8 +76,10 @@ Item {
         id: gridLayout
         columns: root.vertical ? 1 : -1
         anchors.fill: parent
-        rowSpacing: 8
-        columnSpacing: 15
+        // The items carry 6px of empty hit area per side now (32px box around a
+        // 20px icon), so 4 here lands the same ~16px optical gap on the 4dp grid.
+        rowSpacing: 4
+        columnSpacing: 4
 
         RippleButton {
             id: trayOverflowButton
@@ -89,6 +91,10 @@ Item {
 
             Layout.fillHeight: !root.vertical
             Layout.fillWidth: root.vertical
+            // Hit area to DESIGN 3.4's 32px minimum; the chevron keeps painting
+            // at 24 in the middle of it.
+            implicitWidth: 32
+            implicitHeight: 32
             background.implicitWidth: 24
             background.implicitHeight: 24
             background.anchors.centerIn: this
@@ -103,8 +109,10 @@ Item {
                 horizontalAlignment: Text.AlignHCenter
                 color: root.trayOverflowOpen ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer2
                 rotation: (root.trayOverflowOpen ? 180 : 0) - (90 * root.vertical) + (180 * root.invertSide)
+                // Rotation is spatial, not an effect (DESIGN 2.1), and this is a
+                // small widget, so it takes the fast spatial spec.
                 Behavior on rotation {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
             }
 
@@ -123,8 +131,8 @@ Item {
                     id: trayOverflowLayout
                     anchors.centerIn: parent
                     columns: Math.ceil(Math.sqrt(root.unpinnedItems.length))
-                    columnSpacing: 10
-                    rowSpacing: 10
+                    columnSpacing: 4
+                    rowSpacing: 4
 
                     Repeater {
                         model: root.unpinnedItems

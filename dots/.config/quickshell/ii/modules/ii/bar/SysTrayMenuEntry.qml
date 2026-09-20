@@ -20,22 +20,30 @@ RippleButton {
     signal dismiss()
     signal openSubmenu(handle: QsMenuHandle)
 
-    colBackground: menuEntry.isSeparator ? Appearance.m3colors.m3outlineVariant : ColorUtils.transparentize(Appearance.colors.colLayer0)
-    enabled: !menuEntry.isSeparator
-    opacity: 1
+    // The card under the rows paints the surface; a row only paints its own
+    // state films, which RippleButton takes from colLayer1 by default.
+    colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1, 1)
+    // A separator is whitespace on the grid, not a hairline (design law 11).
+    // The row stays in the column as an empty spacer so the app's own grouping
+    // still reads. `enabled` also carries the app's own greyed-out entries, which
+    // RippleButton renders as the 0.4 disabled opacity (DESIGN 3.1).
+    enabled: !menuEntry.isSeparator && menuEntry.enabled
+    focusPolicy: Qt.StrongFocus
 
     horizontalPadding: 12
-    implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
-    implicitHeight: menuEntry.isSeparator ? 1 : 36
-    Layout.topMargin: menuEntry.isSeparator ? 4 : 0
-    Layout.bottomMargin: menuEntry.isSeparator ? 4 : 0
+    implicitWidth: menuEntry.isSeparator ? 0 : contentItem.implicitWidth + horizontalPadding * 2
+    implicitHeight: menuEntry.isSeparator ? 8 : 36
     Layout.fillWidth: true
 
-    Component.onCompleted: {
-        if (menuEntry.isSeparator) {
-            root.buttonColor = root.colBackground;
-        }
-    }
+    // RippleButton fires its actions from its own MouseArea, so the keyboard has
+    // to take the same path. Up/Down walk the column's focus chain, which is in
+    // visual order, and wrap inside the menu window (DESIGN 3.7).
+    Keys.onUpPressed: root.nextItemInFocusChain(false)?.forceActiveFocus(Qt.TabFocusReason)
+    Keys.onDownPressed: root.nextItemInFocusChain(true)?.forceActiveFocus(Qt.TabFocusReason)
+    Keys.onRightPressed: if (root.menuEntry.hasChildren) root.releaseAction()
+    Keys.onReturnPressed: root.releaseAction()
+    Keys.onEnterPressed: root.releaseAction()
+    Keys.onSpacePressed: root.releaseAction()
 
     releaseAction: () => { 
         if (menuEntry.hasChildren) {
