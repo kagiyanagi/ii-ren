@@ -2,10 +2,10 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 
 /**
  * Docker section for ExpressiveResourcesPopup.
@@ -23,27 +23,14 @@ Item {
         interval: 1000
         running: root.visible && DockerService.dockerRunning
         repeat: true
-        onTriggered: uptimeUpdateTick++
+        onTriggered: root.uptimeUpdateTick++
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
-    function stateColor(c) {
-        if (c.isPaused)
-            return Appearance.colors.colTertiary;
-        if (c.isRunning)
-            return Appearance.colors.colPrimary;
-        return Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.38);
-    }
-
-    function stateLabel(c) {
-        if (c.isPaused)
-            return "Paused";
-        if (c.isRunning)
-            return "Running";
-        return "Stopped";
-    }
-
-    function uptimeShort(startedAt) {
+    // `tick` is unused in the body and required in the signature: it is what makes
+    // the binding re-run every second, and passing it beats the comma expression
+    // that used to smuggle the same dependency into the caller.
+    function uptimeShort(startedAt, tick) {
         if (!startedAt || startedAt === "0001-01-01T00:00:00Z")
             return "—";
         const ms = Date.now() - new Date(startedAt).getTime();
@@ -75,17 +62,17 @@ Item {
 
                 CustomIcon {
                     source: "docker.svg"
-                    width: 36
-                    height: 36
+                    implicitWidth: 36
+                    implicitHeight: 36
                     colorize: true
                     color: Appearance.colors.colOnLayer1
                 }
 
                 ColumnLayout {
-                    spacing: -2
+                    spacing: 0
                     StyledText {
                         text: "Docker"
-                        font.pixelSize: Appearance.font.pixelSize.normal + 2
+                        font.pixelSize: Appearance.font.pixelSize.large
                         font.weight: Font.Bold
                         color: Appearance.colors.colOnLayer1
                     }
@@ -111,9 +98,7 @@ Item {
                 implicitWidth: ramPillRow.implicitWidth + 24
 
                 Behavior on implicitWidth {
-                    NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                    }
+                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                 }
 
                 RowLayout {
@@ -141,14 +126,15 @@ Item {
                 implicitWidth: serviceToggleRow.implicitWidth + 24
                 implicitHeight: 32
                 buttonRadius: Appearance.rounding.full
-                colBackground: DockerService.dockerRunning ? Appearance.colors.colPrimary : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.12)
-                colBackgroundHover: DockerService.dockerRunning ? Appearance.colors.colPrimaryHover : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.18)
+                colBackground: DockerService.dockerRunning ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
+                colBackgroundHover: DockerService.dockerRunning ? Appearance.colors.colPrimaryHover : Appearance.colors.colSurfaceContainerHighestHover
+                // Without this, RippleButton defaults pressed to the hover colour and
+                // the button has three states, not four (DESIGN.md 3.1).
+                colBackgroundActive: DockerService.dockerRunning ? Appearance.colors.colPrimaryActive : Appearance.colors.colSurfaceContainerHighestActive
                 onClicked: DockerService.toggleDockerService(!DockerService.dockerRunning)
 
                 Behavior on colBackground {
-                    ColorAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
-                    }
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                 }
 
                 RowLayout {
@@ -159,13 +145,13 @@ Item {
                     MaterialSymbol {
                         text: DockerService.dockerRunning ? "power_settings_new" : "power_off"
                         iconSize: 14
-                        color: DockerService.dockerRunning ? Appearance.m3colors.m3onPrimary : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.6)
+                        color: DockerService.dockerRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnSurfaceVariant
                     }
                     StyledText {
                         text: DockerService.dockerRunning ? "On" : "Off"
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.Bold
-                        color: DockerService.dockerRunning ? Appearance.m3colors.m3onPrimary : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.6)
+                        color: DockerService.dockerRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnSurfaceVariant
                     }
                 }
             }
@@ -181,20 +167,10 @@ Item {
                 anchors.centerIn: parent
                 spacing: 8
 
-                MaterialSymbol {
-                    id: spinnerIcon
+                MaterialLoadingIndicator {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "progress_activity"
-                    iconSize: 24
-                    color: Appearance.colors.colPrimary
-
-                    RotationAnimator on rotation {
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        running: DockerService.isLoading
-                        loops: Animation.Infinite
-                    }
+                    implicitSize: 32
+                    loading: DockerService.isLoading
                 }
 
                 StyledText {
@@ -210,24 +186,22 @@ Item {
         // ── Empty / unavailable state ──────────────────────────────────────
         Item {
             Layout.fillWidth: true
-            implicitHeight: 90
+            implicitHeight: 88
             visible: !DockerService.isLoading && (!DockerService.dockerAvailable || DockerService.containers.length === 0)
 
             Rectangle {
                 anchors.fill: parent
                 radius: Appearance.rounding.large
                 color: Appearance.colors.colSurfaceContainerHigh
-                border.width: 1
-                border.color: Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.05)
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 14
+                    anchors.margins: 12
                     spacing: 12
 
                     MaterialShape {
                         shapeString: "Cookie6Sided"
-                        implicitSize: 42
+                        implicitSize: 40
                         color: DockerService.dockerRunning ? Appearance.colors.colSecondaryContainer : Appearance.colors.colErrorContainer
 
                         MaterialSymbol {
@@ -263,48 +237,42 @@ Item {
         }
 
         // ── Scrollable Container cards area (Extreme Conditions safe) ────────
-        ListView {
+        /*
+         * StyledListView brings the scrollbar, the wheel handler and the
+         * add/remove transitions a container list needs; the hand-rolled
+         * ScrollBar and HoverHandler here had neither an enter nor an exit for a
+         * row appearing (DESIGN.md 2.5, 9 *List*).
+         */
+        StyledListView {
             id: containersListView
+
+            // The row height, said once. It was spelled out three times and again
+            // as the 196 they multiply out to, which is how the three drift apart.
+            readonly property int rowHeight: 60
+            readonly property int maxRows: 3
+
             visible: !DockerService.isLoading && DockerService.dockerAvailable && DockerService.containers.length > 0
             Layout.fillWidth: true
             Layout.bottomMargin: 6
             clip: true
+            spacing: 8
 
-            // Restrict height to exactly 3 items (196px) when count > 3
             implicitHeight: {
-                let count = DockerService.containers.length;
-                if (count <= 3) {
-                    return count > 0 ? (count * 60 + (count - 1) * 8) : 0;
-                } else {
-                    // 3 full items: 3 * 60px + 2 * 8px spacing = 196px
-                    return 196;
-                }
+                const rows = Math.min(DockerService.containers.length, containersListView.maxRows);
+                return rows > 0 ? rows * containersListView.rowHeight + (rows - 1) * containersListView.spacing : 0;
             }
 
             model: DockerService.containers
-            spacing: 8
-
-            HoverHandler {
-                id: listHoverHandler
-            }
-
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                active: containersListView.moving || listHoverHandler.hovered
-            }
 
             delegate: ContainerCard {
                 required property var modelData
-                required property int index
                 width: containersListView.width
+                rowHeight: containersListView.rowHeight
                 containerData: modelData
             }
 
             Behavior on implicitHeight {
-                NumberAnimation {
-                    duration: Appearance.animation.elementMove.duration
-                    easing.type: Appearance.animation.elementMove.type
-                }
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
         }
     }
@@ -314,9 +282,26 @@ Item {
         id: card
         property var containerData: null
         property bool actionPanelOpen: false
+        property int rowHeight: 60
 
         implicitWidth: parent ? parent.width : 360
-        implicitHeight: 60
+        implicitHeight: card.rowHeight
+
+        /*
+         * A running card is filled colPrimary, so the chips on it have no
+         * container token to sit on: they are an on-primary film, with the
+         * StateTokens hover (+0.08) and pressed (+0.10) films over it
+         * (DESIGN.md 3.1). A stopped card is neutral and its chips take the
+         * layer above the card's own (DESIGN.md 6.1) -- which is what the ten
+         * hand-mixed `Qt.rgba(colOnLayer1, 0.07|0.08|0.12|0.15|0.38)` calls
+         * spread through this card were each approximating on their own.
+         */
+        readonly property bool onPrimary: card.containerData?.isRunning ?? false
+        readonly property color chipColor: card.onPrimary ? ColorUtils.applyAlpha(Appearance.m3colors.m3onPrimary, 0.12) : Appearance.colors.colSurfaceContainerHighest
+        readonly property color chipHover: card.onPrimary ? ColorUtils.applyAlpha(Appearance.m3colors.m3onPrimary, 0.20) : Appearance.colors.colSurfaceContainerHighestHover
+        readonly property color chipActive: card.onPrimary ? ColorUtils.applyAlpha(Appearance.m3colors.m3onPrimary, 0.22) : Appearance.colors.colSurfaceContainerHighestActive
+        readonly property color chipText: card.onPrimary ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnSurfaceVariant
+        readonly property color cardText: card.onPrimary ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
 
         // ── List of action items for this container ────────────────────────
         property var allActionItems: {
@@ -409,23 +394,17 @@ Item {
                 // ── Main Card ────────────────────────────────────────────────
                 Rectangle {
                     id: itemRect
-                    width: card.actionPanelOpen ? 185 : cardWrapper.width
-                    height: 60
+                    width: card.actionPanelOpen ? 184 : cardWrapper.width
+                    height: card.rowHeight
                     radius: Appearance.rounding.large
                     anchors.verticalCenter: parent.verticalCenter
-                    color: card.containerData?.isRunning ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHigh
+                    color: card.onPrimary ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHigh
 
                     Behavior on width {
-                        NumberAnimation {
-                            duration: 350
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
-                        }
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
                     Behavior on color {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
 
                     // Click whole card to collapse when open
@@ -446,7 +425,7 @@ Item {
                         MaterialShape {
                             shapeString: "Cookie9Sided"
                             implicitSize: 32
-                            color: card.containerData?.isRunning ? Appearance.colors.colPrimaryContainer : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.08)
+                            color: card.onPrimary ? Appearance.colors.colPrimaryContainer : card.chipColor
 
                             CustomIcon {
                                 anchors.centerIn: parent
@@ -454,13 +433,13 @@ Item {
                                 width: 16
                                 height: 16
                                 colorize: true
-                                color: card.containerData?.isRunning ? Appearance.colors.colOnPrimaryContainer : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.38)
+                                color: card.onPrimary ? Appearance.colors.colOnPrimaryContainer : card.chipText
                             }
                         }
 
                         // Text Content Column
                         ColumnLayout {
-                            spacing: 1
+                            spacing: 2
                             Layout.fillWidth: true
 
                             RowLayout {
@@ -470,7 +449,7 @@ Item {
                                     text: card.containerData?.name ?? ""
                                     font.pixelSize: Appearance.font.pixelSize.small
                                     font.weight: Font.Bold
-                                    color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+                                    color: card.cardText
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -479,7 +458,7 @@ Item {
                                 Rectangle {
                                     visible: (card.containerData?.isRunning ?? false) && !card.actionPanelOpen
                                     radius: Appearance.rounding.full
-                                    color: card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.15) : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.07)
+                                    color: card.chipColor
                                     implicitHeight: 16
                                     implicitWidth: uptimeTextRow.implicitWidth + 8
 
@@ -490,16 +469,13 @@ Item {
                                         MaterialSymbol {
                                             text: "schedule"
                                             iconSize: 8
-                                            color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
-                                            opacity: 0.8
+                                            color: card.chipText
                                         }
                                         StyledText {
-                                            id: uptimeText
-                                            text: (root.uptimeUpdateTick, root.uptimeShort(card.containerData?.startedAt))
-                                            font.pixelSize: Appearance.font.pixelSize.smaller - 1
+                                            text: root.uptimeShort(card.containerData?.startedAt, root.uptimeUpdateTick)
+                                            font.pixelSize: Appearance.font.pixelSize.smallest
                                             font.weight: Font.Bold
-                                            color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
-                                            opacity: 0.9
+                                            color: card.chipText
                                         }
                                     }
                                 }
@@ -513,18 +489,17 @@ Item {
                                 // Image name chip
                                 Rectangle {
                                     radius: Appearance.rounding.full
-                                    color: card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.12) : Qt.rgba(Appearance.colors.colOnLayer1.r, Appearance.colors.colOnLayer1.g, Appearance.colors.colOnLayer1.b, 0.07)
-                                    implicitHeight: 14
+                                    color: card.chipColor
+                                    implicitHeight: 16
                                     implicitWidth: imageText.implicitWidth + 10
-                                    Layout.maximumWidth: 90
+                                    Layout.maximumWidth: 88
 
                                     StyledText {
                                         id: imageText
                                         anchors.centerIn: parent
                                         text: card.containerData?.image ?? ""
-                                        font.pixelSize: Appearance.font.pixelSize.smaller - 1
-                                        color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
-                                        opacity: 0.8
+                                        font.pixelSize: Appearance.font.pixelSize.smallest
+                                        color: card.chipText
                                         elide: Text.ElideRight
                                         width: parent.width - 10
                                     }
@@ -533,43 +508,35 @@ Item {
                                 // Port chip
                                 Repeater {
                                     model: (card.containerData?.ports ?? []).slice(0, 2)
-                                    delegate: MouseArea {
-                                        id: portMouseArea
+
+                                    // Was a bare MouseArea rendering hover and nothing
+                                    // else; RippleButton carries all four states and the
+                                    // cursor (DESIGN.md 3.1). Ripple off: at chip size
+                                    // there is no room for one to read.
+                                    delegate: RippleButton {
+                                        id: portChip
                                         required property var modelData
-                                        hoverEnabled: true
-                                        implicitHeight: 14
+
+                                        implicitHeight: 16
                                         implicitWidth: portChipText.implicitWidth + 12
-                                        cursorShape: Qt.PointingHandCursor
+                                        buttonRadius: Appearance.rounding.full
+                                        rippleEnabled: false
+                                        colBackground: card.chipColor
+                                        colBackgroundHover: card.chipHover
+                                        colBackgroundActive: card.chipActive
+                                        onClicked: DockerService.openInBrowser(portChip.modelData.hostPort)
 
-                                        onClicked: {
-                                            DockerService.openInBrowser(modelData.hostPort);
-                                        }
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            radius: Appearance.rounding.full
-                                            color: portMouseArea.containsMouse ? (card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.22) : Appearance.colors.colPrimaryContainerHover) : (card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.12) : Appearance.colors.colPrimaryContainer)
-
-                                            Behavior on color {
-                                                ColorAnimation {
-                                                    duration: 100
-                                                }
-                                            }
-
-                                            StyledText {
-                                                id: portChipText
-                                                anchors.centerIn: parent
-                                                text: modelData.hostPort
-                                                font.pixelSize: Appearance.font.pixelSize.smaller - 1
-                                                font.weight: Font.Bold
-                                                color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnPrimaryContainer
-                                            }
+                                        StyledText {
+                                            id: portChipText
+                                            anchors.centerIn: parent
+                                            text: portChip.modelData.hostPort
+                                            font.pixelSize: Appearance.font.pixelSize.smallest
+                                            font.weight: Font.Bold
+                                            color: card.chipText
                                         }
 
                                         StyledToolTip {
-                                            alternativeVisibleCondition: portMouseArea.containsMouse
-                                            extraVisibleCondition: false
-                                            text: "Open http://localhost:" + modelData.hostPort + " in browser"
+                                            text: "Open http://localhost:" + portChip.modelData.hostPort + " in browser"
                                         }
                                     }
                                 }
@@ -582,15 +549,16 @@ Item {
                             implicitWidth: 32
                             implicitHeight: 32
                             buttonRadius: Appearance.rounding.full
-                            colBackground: card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.15) : Appearance.colors.colPrimaryContainer
-                            colBackgroundHover: card.containerData?.isRunning ? Qt.rgba(Appearance.m3colors.m3onPrimary.r, Appearance.m3colors.m3onPrimary.g, Appearance.m3colors.m3onPrimary.b, 0.25) : Appearance.colors.colPrimaryContainerHover
+                            colBackground: card.chipColor
+                            colBackgroundHover: card.chipHover
+                            colBackgroundActive: card.chipActive
                             onClicked: card.actionPanelOpen = true
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 text: "arrow_forward"
                                 iconSize: 16
-                                color: card.containerData?.isRunning ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnPrimaryContainer
+                                color: card.chipText
                             }
 
                             StyledToolTip {
@@ -604,7 +572,7 @@ Item {
                 Flickable {
                     id: actionsFlickable
                     visible: card.actionPanelOpen || itemRect.width < cardWrapper.width
-                    height: 60
+                    height: card.rowHeight
                     width: Math.max(0, cardWrapper.width - itemRect.width - slideRow.spacing)
                     anchors.verticalCenter: parent.verticalCenter
                     clip: true
@@ -624,51 +592,60 @@ Item {
                     Row {
                         id: buttonsRow
                         spacing: 8
-                        height: 60
+                        height: card.rowHeight
                         anchors.verticalCenter: parent.verticalCenter
 
                         Repeater {
-                            id: actionRepeater
                             model: card.allActionItems
 
                             delegate: RippleButton {
+                                id: actionButton
                                 required property var modelData
-                                required property int index
 
-                                implicitWidth: 60
-                                implicitHeight: 60
+                                implicitWidth: card.rowHeight
+                                implicitHeight: card.rowHeight
                                 anchors.verticalCenter: parent.verticalCenter
                                 buttonRadius: Appearance.rounding.full
 
-                                colBackground: modelData.isCollapse ? Appearance.colors.colSurfaceContainerHighest : (modelData.isRamGauge ? Appearance.colors.colTertiaryContainer : (modelData.isSecondaryContainer ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary))
-                                colBackgroundHover: modelData.isCollapse ? Appearance.colors.colSurfaceContainerLowest : (modelData.isRamGauge ? ColorUtils.transparentize(Appearance.colors.colTertiary, 0.2) : (modelData.isSecondaryContainer ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimaryHover))
+                                /*
+                                 * Each kind takes the hover and pressed siblings of the
+                                 * layer it actually paints (DESIGN.md 6.1). Before this
+                                 * the secondary-container buttons -- shell, logs, open in
+                                 * browser -- had hover set to their own rest colour and so
+                                 * rendered no hover at all, and none of the four had a
+                                 * pressed colour, which RippleButton then defaults to the
+                                 * hover one.
+                                 */
+                                colBackground: actionButton.modelData.isCollapse ? Appearance.colors.colSurfaceContainerHighest : (actionButton.modelData.isRamGauge ? Appearance.colors.colTertiaryContainer : (actionButton.modelData.isSecondaryContainer ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary))
+                                colBackgroundHover: actionButton.modelData.isCollapse ? Appearance.colors.colSurfaceContainerHighestHover : (actionButton.modelData.isRamGauge ? Appearance.colors.colTertiaryContainerHover : (actionButton.modelData.isSecondaryContainer ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colPrimaryHover))
+                                colBackgroundActive: actionButton.modelData.isCollapse ? Appearance.colors.colSurfaceContainerHighestActive : (actionButton.modelData.isRamGauge ? Appearance.colors.colTertiaryContainerActive : (actionButton.modelData.isSecondaryContainer ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colPrimaryActive))
 
-                                onClicked: modelData.execute()
+                                onClicked: actionButton.modelData.execute()
 
                                 // Material symbol for generic actions
                                 MaterialSymbol {
                                     anchors.centerIn: parent
-                                    visible: !modelData.isRamGauge
-                                    text: modelData.icon || ""
+                                    visible: !actionButton.modelData.isRamGauge
+                                    text: actionButton.modelData.icon || ""
                                     iconSize: 24
-                                    color: modelData.isCollapse ? Appearance.colors.colOnSurface : (modelData.isSecondaryContainer ? Appearance.colors.colOnSecondaryContainer : Appearance.m3colors.m3onPrimary)
+                                    color: actionButton.modelData.isCollapse ? Appearance.colors.colOnSurface : (actionButton.modelData.isSecondaryContainer ? Appearance.colors.colOnSecondaryContainer : Appearance.m3colors.m3onPrimary)
                                 }
 
                                 // Custom circular RAM Usage Gauge quick button
                                 Loader {
                                     anchors.centerIn: parent
-                                    active: modelData.isRamGauge || false
+                                    active: actionButton.modelData.isRamGauge || false
                                     visible: active
                                     sourceComponent: ClippedFilledCircularProgress {
                                         id: ramGaugeProgress
-                                        implicitSize: 60
+                                        implicitSize: card.rowHeight
                                         lineWidth: 4
                                         value: {
                                             const totalSysMb = (ResourceUsage.memoryTotal || 16777216) / 1024;
-                                            return Math.min(1.0, Math.max(0.005, (modelData.memMb || 0) / totalSysMb));
+                                            return Math.min(1.0, Math.max(0.005, (actionButton.modelData.memMb || 0) / totalSysMb));
                                         }
                                         colPrimary: Appearance.colors.colTertiary
-                                        colSecondary: Qt.rgba(Appearance.colors.colTertiary.r, Appearance.colors.colTertiary.g, Appearance.colors.colTertiary.b, 0.15)
+                                        colSecondary: ColorUtils.applyAlpha(Appearance.colors.colTertiary, 0.15)
                                         accountForLightBleeding: false
 
                                         Item {
@@ -679,7 +656,7 @@ Item {
                                             StyledText {
                                                 anchors.centerIn: parent
                                                 text: {
-                                                    const m = modelData.memMb || 0;
+                                                    const m = actionButton.modelData.memMb || 0;
                                                     if (m < 0.1)
                                                         return Math.round(m * 1024) + "K";
                                                     if (m < 1.0)
@@ -688,7 +665,7 @@ Item {
                                                         return m.toFixed(1) + "M";
                                                     return Math.round(m) + "M";
                                                 }
-                                                font.pixelSize: Appearance.font.pixelSize.smaller - 2
+                                                font.pixelSize: Appearance.font.pixelSize.smallest
                                                 font.weight: Font.Bold
                                                 color: Appearance.colors.colOnTertiaryContainer
                                             }
@@ -698,7 +675,7 @@ Item {
 
                                 // Tooltips for all quick actions to describe behavior
                                 StyledToolTip {
-                                    text: modelData.tooltip || ""
+                                    text: actionButton.modelData.tooltip || ""
                                 }
                             }
                         }
