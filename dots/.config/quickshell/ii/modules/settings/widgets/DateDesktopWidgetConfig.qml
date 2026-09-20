@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.settings.configs.widgets
 
 ContentPage {
     id: root
