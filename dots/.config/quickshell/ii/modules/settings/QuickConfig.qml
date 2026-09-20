@@ -215,7 +215,7 @@ ContentPage {
                     }
                     StyledText {
                         text: Translation.tr("No favourites yet\nAdd some from wallpaper selector")
-                        font.pixelSize: Appearance.font.pixelSize.body
+                        font.pixelSize: Appearance.font.pixelSize.normal
                         color: Appearance.colors.colOnLayer3
                         horizontalAlignment: Text.AlignHCenter
                     }

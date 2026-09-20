@@ -79,6 +79,9 @@ RippleButton {
 
         stdout: StdioCollector {
             onStreamFinished: {
+                // Nothing on stdout is a command that had nothing to say -- every
+                // settings launch logged a parse error for it.
+                if (this.text.trim().length === 0) return;
                 try {
                     //console.log("[ColorPreviewButton] Command:", root.effectiveCommand)
                     if (root.customTheme || root.builtInTheme) {

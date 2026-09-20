@@ -10,23 +10,6 @@ Item {
     property bool showBackButton: false
     signal goBack()
 
-    readonly property var usedIds: {
-        const ids = [];
-        const lists = [
-            Config.options.bar.layouts.left,
-            Config.options.bar.layouts.center,
-            Config.options.bar.layouts.right
-        ];
-        for (const list of lists) {
-            for (const item of list) {
-                ids.push(item.id);
-            }
-        }
-        return ids;
-    }
-
-    readonly property var availableComponents: BarComponentRegistry.getAvailableComponents(usedIds)
-
     ContentPage {
         anchors.fill: parent
         forceWidth: false
@@ -74,7 +57,6 @@ Item {
                     ConfigListView {
                         barSection: 0
                         listModel: Config.options.bar.layouts.left
-                        availableComponents: root.availableComponents
                         onUpdated: (newList) => {
                             Config.options.bar.layouts.left = newList;
                         }
@@ -103,7 +85,6 @@ Item {
                     ConfigListView {
                         barSection: 1
                         listModel: Config.options.bar.layouts.center
-                        availableComponents: root.availableComponents
                         enabled: !ShellModePolicy.barPositionLocked
                         opacity: ShellModePolicy.barPositionLocked ? 0.4 : 1
                         onUpdated: (newList) => {
@@ -120,7 +101,6 @@ Item {
                     ConfigListView {
                         barSection: 2
                         listModel: Config.options.bar.layouts.right
-                        availableComponents: root.availableComponents
                         onUpdated: (newList) => {
                             Config.options.bar.layouts.right = newList;
                         }
