@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import qs
 import qs.modules.common
 import qs.services
@@ -6,7 +8,6 @@ import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 
 Item { // Notification item area
@@ -14,6 +15,12 @@ Item { // Notification item area
     property var notificationObject
     property bool expanded: false
     property real fontSize: Appearance.font.pixelSize.small
+    // The row's index in the group's list, passed down rather than read off
+    // `parent.children`: SwipeDismissible nudges the neighbouring rows by it.
+    property int itemIndex: -1
+    // The card this row is drawn on. ScrollEdgeFade ramps from an opaque copy of
+    // it to transparent, so a wrong one shows as a band of the wrong layer (6.1).
+    property color surfaceColor: Appearance.colors.colLayer2
 
     implicitHeight: background.implicitHeight
 
@@ -21,10 +28,11 @@ Item { // Notification item area
         id: dragManager
         owner: root
         target: background
-        itemIndex: root.index ?? root.parent.children.indexOf(root)
+        itemIndex: root.itemIndex
 
         anchors.fill: root
-        interactive: expanded
+        // The group swipes as one until it is expanded, then each row does.
+        interactive: root.expanded
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
         onDismissed: Notifications.discardNotification(root.notificationObject.notificationId)
@@ -37,13 +45,11 @@ Item { // Notification item area
         anchors.leftMargin: dragManager.xOffset
         implicitHeight: contentColumn.implicitHeight
 
+        // The snap back after a released swipe: spatial, and on one spec rather
+        // than elementMove's duration wearing the fast curve.
         Behavior on anchors.leftMargin {
             enabled: !dragManager.dragging
-            NumberAnimation {
-                duration: Appearance.animation.elementMove.duration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-            }
+            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
         ColumnLayout {
@@ -62,7 +68,7 @@ Item { // Notification item area
                 ColumnLayout {
                     id: textColumn
                     Layout.fillWidth: true
-                    spacing: 1
+                    spacing: 4
 
                     StyledText { // Title
                         Layout.fillWidth: true
@@ -76,7 +82,7 @@ Item { // Notification item area
 
                     StyledText { // Text
                         id: notificationBodyText
-                        visible: text.length > 0
+                        visible: notificationBodyText.text.length > 0
                         Layout.fillWidth: true
                         font.pixelSize: root.fontSize
                         color: Appearance.colors.colSubtext
@@ -85,7 +91,7 @@ Item { // Notification item area
                         maximumLineCount: root.expanded ? 20 : 1
                         textFormat: root.expanded ? Text.RichText : Text.StyledText
                         text: {
-                            const body = NotificationUtils.processNotificationBody(notificationObject.body, notificationObject.appName || notificationObject.summary).replace(/\n/g, "<br/>")
+                            const body = NotificationUtils.processNotificationBody(root.notificationObject.body, root.notificationObject.appName || root.notificationObject.summary).replace(/\n/g, "<br/>")
                             return root.expanded ? `<style>img{max-width:${textColumn.width}px;}</style>${body}` : body
                         }
 
@@ -109,16 +115,35 @@ Item { // Notification item area
             }
 
             Item { // Actions
+                id: actionsArea
                 Layout.fillWidth: true
-                opacity: root.expanded ? 1 : 0
-                visible: opacity > 0
                 implicitWidth: actionsFlickable.implicitWidth
                 implicitHeight: actionsFlickable.implicitHeight
 
+                // Entering is the slower effects spec and leaving the fast one
+                // (2.5). The spec is set from inside the binding that writes
+                // opacity, because a Behavior bakes its duration when that write
+                // happens and a sibling binding on `expanded` is not necessarily
+                // current yet (2.9).
+                property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+                opacity: {
+                    actionsArea.fadeSpec = root.expanded ?
+                        Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit
+                    return root.expanded ? 1 : 0
+                }
+                visible: actionsArea.opacity > 0
+
                 Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    NumberAnimation {
+                        duration: actionsArea.fadeSpec.duration
+                        easing.type: actionsArea.fadeSpec.type
+                        easing.bezierCurve: actionsArea.fadeSpec.bezierCurve
+                    }
                 }
 
+                // design-ok: StyledFlickable does not clip, so this is the only
+                // thing keeping an action pill inside the card, and it has to be
+                // round to match them. Only an expanded row renders it.
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
@@ -131,6 +156,7 @@ Item { // Notification item area
                 ScrollEdgeFade {
                     target: actionsFlickable
                     vertical: false
+                    color: root.surfaceColor
                 }
 
                 StyledFlickable { // Notification actions
@@ -140,19 +166,21 @@ Item { // Notification item area
                     contentWidth: actionRowLayout.implicitWidth
 
                     Behavior on implicitHeight {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                     }
 
                     RowLayout {
                         id: actionRowLayout
                         Layout.alignment: Qt.AlignBottom
+                        spacing: 4 // 5.3: items in a chip row sit 4-6 apart
 
                         NotificationActionButton {
+                            id: closeButton
                             Layout.fillWidth: true
                             buttonText: Translation.tr("Close")
-                            urgency: notificationObject.urgency
-                            implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
-                                (contentItem.implicitWidth + leftPadding + rightPadding)
+                            urgency: root.notificationObject.urgency
+                            implicitWidth: (root.notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
+                                (closeButton.contentItem.implicitWidth + closeButton.leftPadding + closeButton.rightPadding)
 
                             onClicked: {
                                 dragManager.destroyWithAnimation()
@@ -161,42 +189,42 @@ Item { // Notification item area
                             contentItem: MaterialSymbol {
                                 iconSize: Appearance.font.pixelSize.larger
                                 horizontalAlignment: Text.AlignHCenter
-                                color: (notificationObject.urgency == NotificationUrgency.Critical) ?
-                                    Appearance.m3colors.m3onSurfaceVariant : Appearance.m3colors.m3onSurface
+                                color: closeButton.colContent
                                 text: "close"
                             }
                         }
 
                         Repeater {
                             id: actionRepeater
-                            model: notificationObject.actions
+                            model: root.notificationObject.actions
                             NotificationActionButton {
                                 id: notifAction
                                 required property var modelData
                                 Layout.fillWidth: true
-                                buttonText: modelData.text
-                                urgency: notificationObject.urgency
+                                buttonText: notifAction.modelData.text
+                                urgency: root.notificationObject.urgency
                                 onClicked: {
-                                    Notifications.attemptInvokeAction(notificationObject.notificationId, modelData.identifier);
+                                    Notifications.attemptInvokeAction(root.notificationObject.notificationId, notifAction.modelData.identifier);
                                 }
                             }
                         }
 
                         NotificationActionButton {
+                            id: copyButton
                             Layout.fillWidth: true
-                            urgency: notificationObject.urgency
-                            implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
-                                (contentItem.implicitWidth + leftPadding + rightPadding)
+                            urgency: root.notificationObject.urgency
+                            implicitWidth: (root.notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
+                                (copyButton.contentItem.implicitWidth + copyButton.leftPadding + copyButton.rightPadding)
 
                             onClicked: {
-                                Quickshell.clipboardText = notificationObject.body
+                                Quickshell.clipboardText = root.notificationObject.body
                                 copyIcon.text = "inventory"
                                 copyIconTimer.restart()
                             }
 
                             Timer {
                                 id: copyIconTimer
-                                interval: 1500
+                                interval: 1500 // How long the copied tick stays up, not an animation
                                 repeat: false
                                 onTriggered: {
                                     copyIcon.text = "content_copy"
@@ -207,8 +235,7 @@ Item { // Notification item area
                                 id: copyIcon
                                 iconSize: Appearance.font.pixelSize.larger
                                 horizontalAlignment: Text.AlignHCenter
-                                color: (notificationObject.urgency == NotificationUrgency.Critical) ?
-                                    Appearance.m3colors.m3onSurfaceVariant : Appearance.m3colors.m3onSurface
+                                color: copyButton.colContent
                                 text: "content_copy"
                             }
                         }
