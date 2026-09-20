@@ -67,14 +67,35 @@ Item {
         rotation: digit.mirrored ? -digit.tilt : digit.tilt
         transformOrigin: Item.Bottom
 
-        color: digit.selected ? Appearance.colors.colPrimary : digit.enrolled ? (digitMouse.containsMouse ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colPrimaryContainer) : (digitMouse.containsMouse ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2)
-        border.width: digit.selected ? 0 : 1
-        border.color: digit.enrolled ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+        // The fill carries every piece of state: selected is the filled
+        // container, enrolled is its quieter tonal sibling, and the rest is
+        // the hand's own surface. The outline is constant linework — it is
+        // what separates a digit from the palm and the card at all, and a
+        // border that thickens or changes colour to mean "selected" is state
+        // in a place the state layer belongs (DESIGN.md 3.1).
+        color: digit.selected ? Appearance.colors.colPrimary : digit.enrolled ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer2
+        border.width: 1
+        border.color: Appearance.colors.colOutlineVariant
 
         Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-            }
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // Hover, focus and pressed, composited so hover -> press -> release
+        // stays continuous. Stacked, hover plus press would read as the 0.16
+        // drag token, so they exclude each other. This is the whole reason the
+        // selected digit answers a pointer at all: it used to be a flat
+        // colPrimary slab with no hover and no press anywhere.
+        StateOverlay {
+            anchors.fill: parent
+            topLeftRadius: parent.radius
+            topRightRadius: parent.radius
+            bottomLeftRadius: parent.radius
+            bottomRightRadius: parent.radius
+            contentColor: digit.colContent
+            hover: digitMouse.containsMouse && !digitMouse.pressed
+            focused: digitMouse.activeFocus
+            press: digitMouse.pressed
         }
 
         MaterialSymbol {
@@ -88,13 +109,19 @@ Item {
             color: digit.colContent
         }
 
+        // Everything reachable by mouse is reachable by keyboard (DESIGN.md
+        // 3.7), and the focus ring is the StateOverlay's focus layer above.
         MouseArea {
             id: digitMouse
             anchors.fill: parent
             anchors.margins: -2
             hoverEnabled: true
+            activeFocusOnTab: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.fingerPicked(digit.finger)
+            Keys.onReturnPressed: root.fingerPicked(digit.finger)
+            Keys.onEnterPressed: root.fingerPicked(digit.finger)
+            Keys.onSpacePressed: root.fingerPicked(digit.finger)
         }
 
         // A plain Rectangle has no `hovered`, which would leave the tooltip

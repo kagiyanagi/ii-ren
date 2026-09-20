@@ -2,10 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Controls
-import Quickshell
-import Quickshell.Io
-import Quickshell.Widgets
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -43,42 +39,16 @@ Item {
     // finds the sensor busy.
     Component.onDestruction: Fingerprint.releaseReader()
 
+    // The header is ContentPage's. `showBackButton` and `goBack` stay on the
+    // Item root because that is what ConfigSubPageHost binds to; the page just
+    // forwards them.
     ContentPage {
         id: page
         anchors.fill: parent
         forceWidth: false
-
-        RowLayout {
-            visible: subPageRoot.showBackButton
-            spacing: 12
-
-            RippleButton {
-                implicitWidth: implicitHeight
-                implicitHeight: 40
-                topLeftRadius: Appearance.rounding.full
-                topRightRadius: Appearance.rounding.full
-                bottomLeftRadius: Appearance.rounding.full
-                bottomRightRadius: Appearance.rounding.full
-                colBackground: Appearance.colors.colSecondaryContainer
-                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                colRipple: Appearance.colors.colSecondaryContainerActive
-                onClicked: subPageRoot.goBack()
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: "arrow_back"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnSecondaryContainer
-                }
-            }
-
-            StyledText {
-                text: Translation.tr("Fingerprint")
-                font.pixelSize: Appearance.font.pixelSize.large
-                font.family: Appearance.font.family.title
-                color: Appearance.colors.colOnLayer0
-            }
-        }
+        title: Translation.tr("Fingerprint")
+        showBackButton: subPageRoot.showBackButton
+        onGoBack: subPageRoot.goBack()
 
         // ── Reader status ──────────────────────────────────────────────────
         ContentSection {
@@ -212,11 +182,15 @@ Item {
             icon: "list"
             title: Translation.tr("Your fingerprints")
 
+            // "Still asking fprintd" and "asked, there are none" are different
+            // answers and the section used to render neither, so the first
+            // moments of the page read as an empty list rather than a loading
+            // one.
             StyledText {
                 Layout.fillWidth: true
-                visible: Fingerprint.enrolledLoaded && !Fingerprint.hasEnrolled
+                visible: !Fingerprint.hasEnrolled
                 wrapMode: Text.WordWrap
-                text: Translation.tr("No fingerprints enrolled yet.")
+                text: Fingerprint.enrolledLoaded ? Translation.tr("No fingerprints enrolled yet.") : Translation.tr("Checking for enrolled fingerprints…")
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colSubtext
             }
