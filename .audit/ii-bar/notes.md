@@ -1,132 +1,229 @@
 # ii-bar — notes
 
-Written mid-flight, because the session that dispatched the cluster expected to
-be cut off by a quota limit before the rows landed. Everything a later session
-needs is here; nothing is in that conversation.
+Seven rows, one brief, seven parallel sessions, one dispatching session that held
+no surface of its own and owned only git, the gates and the merge. All seven
+landed. `brief.md` is what was decided before the code; this is what the diffs
+will not show.
 
-## Where the cluster was left
-
-| row | state |
+| row | commit |
 |---|---|
-| `ii-bar-chrome` | **committed** (`refactor(ii-bar-chrome)`) |
-| `ii-bar-cards` | dispatched, unreported |
-| `ii-bar-weather` | dispatched, unreported |
-| `ii-bar-widgets` | dispatched, unreported |
-| `ii-bar-tray` | dispatched, unreported |
-| `ii-bar-popups` | dispatched, unreported — **owns `StyledPopup`** |
-| `ii-bar-resources` | dispatched, unreported |
+| packs, cluster brief, seven row briefs, the stagger token | `docs(ii-bar): one brief for seven rows…` |
+| `ii-bar-chrome` | `refactor(ii-bar-chrome): a bar that slid in and out on the same spec…` |
+| `ii-bar-weather` | `refactor(ii-bar-weather): a popup that stated four wrong numbers…` |
+| `ii-bar-resources` | `refactor(ii-bar-resources): the same meter written three times…` |
+| `ii-bar-popups` | `refactor(ii-bar-popups): ninety lines that computed a stagger…` |
+| the popup-radius seam | `fix(ii-bar): two popups pinned to the radius the shell no longer uses` |
+| `ii-bar-cards` | `refactor(ii-bar-cards): four effects for a glow on one corner…` |
+| `ii-bar-tray` | `refactor(ii-bar-tray): two shader passes per tray icon…` |
+| `ii-bar-widgets` | `refactor(ii-bar-widgets): an indicator that summed raw indices…` |
 
-Packs, briefs and the stagger token are committed (`docs(ii-bar)`), so every
-unreported row can be re-run cold from two files with nothing reconstructed.
+Gates at the end: `check-design.py --diff` clean across the cluster, qmllint 0
+errors on all 52 files, `check-effect-budget.py` green, `check-m3-tokens.py`,
+`check-button-states.py`, `check-scaffold-containers.py`,
+`check-text-primitives.py` ok, and five new checks
+(`check-bar-reveal`, `check-weather-hourly`, `check-resources-popup`,
+`check-popup-pivot`, `check-bar-cards`, `check-systray-menu-origin`,
+`check-workspace-indicator`). `tools/audit/smoke.sh` passes: shell up, all four
+layers present, and **zero `modules/ii/bar` lines in the log**. The only log
+noise is the eight known `[undefined]` assignments in
+`modules/ii/background/widgets`, which are permanently out of scope
+(`DECISIONS.md` 3).
 
-## Resuming: first sort the working tree into three piles
+## Taking a screenshot of this bar — read this first, it cost an hour
 
-A row cut off mid-write leaves a broken file; a row that finished but never
-reported leaves a *complete* diff that was simply never gated. Those look
-identical in `git status` and are not the same thing. Sort them mechanically,
-per row's file set (the lists are in each row's `brief.md`):
+**A fullscreen window hides every layer surface on its workspace.** A bar
+screenshot taken while anything is fullscreen shows bare wallpaper, which looks
+exactly like a shell that renders nothing, and that reading survives a `qs`
+restart, so it survives a bisect too. Half this session's closing time went into
+bisecting a regression that did not exist.
+
+Before believing a blank bar:
 
 ```sh
-bash tools/p3-widget-port/mkshadow.sh \
-     dots/.config/quickshell/ii /tmp/shadow-resume
-/usr/lib/qt6/bin/qmllint -I /tmp/shadow-resume <that row's files>
-python3 tools/check-design.py --diff 2>&1 | grep -E '<that row's files>'
+hyprctl clients -j | python3 -c "import json,sys; [print('FULLSCREEN:', c['class'], c['workspace']['id']) for c in json.load(sys.stdin) if c.get('fullscreen')]"
+hyprctl layers | sed -n 's/.*namespace: \([^,]*\).*/\1/p' | sort -u   # is quickshell:bar even up
 ```
 
-- **qmllint Error-level output** (above all *assigning a property a type does
-  not have*) → cut off mid-write. `git checkout -- <that row's files>` and
-  re-run the row from its brief. Cheap: one row, not the cluster.
-- **clean qmllint + empty design-check** → finished, ungated, unreported. Read
-  the diff against the row's `brief.md` and commit it. Do not throw it away.
-- Use `/usr/lib/qt6/bin/qmllint`. `/usr/bin/qmllint` is a Qt5 stub that prints
-  nothing and exits 255, which looks exactly like a clean run.
+Shoot on an empty workspace with no fullscreen window anywhere, and confirm the
+switch landed before grabbing:
 
-Nuclear option, if the desktop is unusable and the diff is not worth triaging:
-`git checkout -- dots/` restores the last committed shell and costs only the
-uncommitted rows.
+```sh
+hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })'   # Lua, not hyprlang: plain `dispatch workspace 9` is a Lua syntax error here
+hyprctl activeworkspace -j                            # assert id == 9, windows == 0
+grim shot.png
+```
 
-## The gate that was deliberately deferred
+`smoke.sh` says the layer exists, not that it drew anything — its own docstring
+says a QML error that blanks a panel family prints nothing at all. A still frame
+is the only thing that catches a blank surface, and it only counts if the
+desktop state is known.
 
-`tools/audit/smoke.sh` has **not** been run for this cluster. It does
-`pkill -x qs`, so it cannot run while sibling rows are mid-edit — it would kill
-the user's desktop and gate six half-finished rows at once. Run it once, after
-the last row is committed, and `smoke-settings.sh` is not needed here (no
-`modules/settings` file is touched).
+## Parallel dispatch, for the next cluster that wants it
 
-## Fences, if the remaining rows are re-dispatched in parallel
+The four fences from `.audit/common-widgets/notes.md` plus two this cluster
+needed (`DECISIONS.md` 25). What actually mattered in practice:
 
-The four from `.audit/common-widgets/notes.md`, plus two this cluster needs:
+- **`smoke.sh` cannot run while siblings are editing.** It `pkill`s every
+  quickshell, which would kill the user's desktop and gate six half-finished
+  rows at once. Defer it to the end, once, and say so in every row brief.
+- **`check-design.py --diff` is repo-wide**, so every session sees every other
+  session's added lines. Each row filters to its own paths; the dispatcher runs
+  it unfiltered at the end.
+- **`mkshadow.sh` `rm -rf`s its output**, so a shared shadow dir races. One per
+  row.
+- **The seams are the dispatcher's job and they are real.** Two landed here: the
+  popup radius default moved while two files outside that row pinned the old
+  value, and `showDivider` had to be deleted at the callers *before* the
+  property, in the opposite order to the fence's natural instinct — a stale
+  assignment to a property a type no longer has is the one failure that stops
+  the shell booting.
+- **Rows find each other's bugs.** Four of the eight routed findings below came
+  from a row that was fenced out of fixing them. Ask for that section explicitly
+  in the brief; it is most of the value of running them together.
 
-1. Disjoint file lists, enumerated per row in its `brief.md`. The coupling is
-   real: `cards/` is composed by eight files across four rows, and
-   `StyledPopup` is the root type of ten popups.
-2. Frozen APIs — nothing another file reads gets renamed or removed, additive
-   only. This is what lets parallel diffs land without a merge.
-3. No git and no shell from a row session; the dispatcher owns both.
-4. Path-filtered `check-design.py --diff` — unfiltered, it reports every
-   concurrent session's added lines at once.
-5. **The popup shell and the card kit are frozen-API for every row that does
-   not own them.** `ii-bar-popups` owns `StyledPopup.qml`; `ii-bar-cards` owns
-   `cards/*.qml`.
-6. **Private qmllint shadow dir per row.** `mkshadow.sh` `rm -rf`s its output.
+## Routed — real, found with evidence, outside every row's fence
 
-## Cross-row findings, reported but not fixed
+Each needs a queue row or an owner; none is speculative.
 
-From `ii-bar-chrome`, which was fenced out of all three:
+- **`services/LocalSend.qml` is missing four members `cards/LocalSendSendCard`
+  calls** — `scanning`, `startScanning()`, `stopScanning()`, `openFilePicker()`
+  exist nowhere on the singleton. `Component.onCompleted` and `onDestruction`
+  throw on every card create and destroy, "Add Files…" does nothing, and "Scan"
+  never spins. Pre-existing.
+- **`services/Weather.qml`** — `getData()`'s ip-api branch and
+  `fetchCoordinates`'s empty-results branch both return without clearing
+  `forecastLoading` or arming a retry, so a misspelt city spins forever; and
+  `refineData` walks `hourly.time` while indexing `hourly.temperature_2m` with
+  no length check, which is where the `"NaN"` strings come from. `WeatherPopup`
+  works around both from outside.
+- **`BarGroup` / `BarComponent` paint no hover or press state anywhere**, so
+  Contract 3's four states have no implementation for `Resources`,
+  `ClockWidget`, `BatteryIndicator`, `NetworkSpeed` or `Media`. The fix belongs
+  in `BarGroup`, which already owns the background, the per-group radii and the
+  colour Behavior; five copies inside individual widgets would be five films at
+  the wrong radius (anti-pattern 13). **Deliberately left undone rather than
+  done badly** — it is the cluster's one real gap.
+- **`BarComponent.toggleVisible()` persists into
+  `Config.options.bar.layouts.*`**, so a widget that auto-hides writes its own
+  removal into the user's bar. Two widgets poke `visible` directly to avoid it.
+  Wants a non-persisting transient-visibility entry point.
+- **`RippleButton.qml:185` sets `layer.enabled` unconditionally** on its
+  background, so every RippleButton used as a delegate carries a texture. This
+  is why `SysTrayItem` stayed a `MouseArea` — converting it would have traded a
+  removed effect straight back. `modules/common/widgets` is closed; wants a row.
+- **`Appearance.colors` has no `colPositive`/`colOnPositive`** (`DECISIONS.md`
+  27). Two hand-rolled greens are waiting on it.
+- **`verticalBar/VerticalMedia.qml:96` overwrites `StyledPopup`'s `active`
+  binding** with its own hover condition, so that popup is destroyed the instant
+  the pointer leaves and has never played a close animation. `externalOpen`
+  exists for exactly this, and it is more visible now that the close is 233ms of
+  real motion.
+- **`verticalBar/VerticalBarContent.qml:19`** declares
+  `HorizontalBarSeparator` — a separator bar (law 11) that nothing instantiates.
+- **`dock/widgets/DockIcon.qml:28-47`** has the identical two-pass
+  `Desaturate` + `ColorOverlay` shape the tray row just collapsed into one
+  `MultiEffect`.
+- **`PoliciesPanelButton.qml:23` and `DashboardPanelButton.qml:35` use a
+  top-level `onPressed:` on a `RippleButton`** whose internal MouseArea never
+  emits `pressed()`. Either both handlers are dead or the reading is wrong.
+  These are the bar's two sidebar buttons — **needs one live click before
+  anyone touches it**.
 
-- `modules/ii/bar/NetworkSpeed.qml:44` — assigns `rootItem.visible` directly
-  instead of calling `toggleVisible()`, so that one widget still pops instead of
-  collapsing. Not a regression; it broke the old binding too. (`ii-bar-widgets`)
-- `modules/ii/bar/PrivacyIndicator.qml:74` — reads `rootItem.visible` as the
-  state flag, which is now true for the 130ms of the collapse. Harmless,
-  `toggleVisible`'s guard absorbs it, but `rootItem.shown` is the accurate read.
-  (`ii-bar-tray` owns the file, `ii-bar-widgets` owns the pattern)
-- `modules/ii/verticalBar/VerticalBarContent.qml:19` — `HorizontalBarSeparator`
-  is a separator bar (law 11) *and* dead: declared, never instantiated. Outside
-  this cluster entirely; for whoever takes `verticalBar`.
+## Watch at 60fps — the cohesion pass list
 
-## Open ruling, raised rather than decided
+Still frames prove none of this. Grouped by what to do, not by which row found
+it.
 
-`ii-bar-chrome` left the two `FocusedScrollMouseArea` halves of the bar without
-a state layer. Contract 3 asks for four states on a bar item, but these are
-half-screen-wide targets that toggle the sidebars, and a hover film over half
-the strip would outrank every widget in it. `ScrollHint` revealing on hover is
-the affordance today. Decide it in the cohesion pass, not in a row.
+**Open something**
 
-## For the 60fps cohesion pass
+1. Popup open/close and its pivot, every bar orientation, and a tray icon hard
+   against the right edge against the clock in the centre. The arithmetic is
+   asserted by `check-popup-pivot.py`; the look is not.
+2. The 1.02 overshoot against the 10px elevation margin — ~8px on a 380px
+   popup, inside the margin, but confirm the widest popup never clips its own
+   window.
+3. Reopen: pointer leaves and comes straight back mid-close. The `interval: 1`
+   timer is kept rather than dropped to 0 precisely because it waits on Qt's
+   `DeferredDelete`; if a popup ever fails to reopen, that is the number.
+4. Content entrance now crosses the `> 0.6` gate at ~50ms instead of ~130ms, so
+   the stagger tail finishes with the surface. Check it reads as one motion, not
+   as content arriving before its card.
+5. Tray menu open/close, plus a submenu push (the card resizes while the content
+   crossfades), and the one-frame teardown after `menuClosed`.
+6. Double opacity ramp in the weather popup: each card fades as a unit while its
+   own children fade inside it. Both on `elementMoveFast`, so it should read as
+   one — but it is opacity².
 
-Still frames prove nothing about any of this. From `ii-bar-chrome`:
+**Move between workspaces**
 
-1. The auto-hide reveal at both edges, with `autoHide.pushWindows` on and off —
-   the `exclusiveZone` flip is Hyprland's own animation running alongside. Check
-   the 500ms enter does not feel sticky against the 130ms exit, and that a
+7. The workspace indicator: slide and stretch, icons on *and* off,
+   `dynamicWorkspaces` on *and* off, and while a workspace's width is changing
+   (open a window on the workspace you are leaving). Geometry is asserted by
+   `check-workspace-indicator.py`; the **timing composite is not** —
+   `AnimatedTabIndexPair` 350/500, the delegates' `elementResize` 350 and
+   `visualInset` on `elementMove` 500 all overlap. If it reads wrong, the inset
+   is the knob.
+
+**Make something appear or vanish in the strip**
+
+8. The auto-hide reveal at both edges, with `pushWindows` on and off — the
+   `exclusiveZone` flip is Hyprland's own animation running alongside. Confirm a
    reversal mid-slide cuts in rather than finishing.
-2. The Super-press reveal (`showWhenPressingSuper`) — same motion, different
-   trigger, after the configured delay.
-3. A widget collapsing out of the row (start a recording or a timer, or empty
-   the tray): the 4px `RowLayout` spacing dropping at the end of the collapse
-   must not read as a hitch, and the neighbours' corner morph should land with
-   it rather than after it.
-4. `padding: 5 → 4` makes every bar item 2px narrower. One look at the strip as
-   a whole, especially the centre run.
-5. The vertical bar — the `root.vertical` → `rootItem.vertical` fix changes
-   which anchor the group takes there, and the collapse runs on height.
+9. Super-press reveal — same motion, different trigger.
+10. A widget collapsing out of the row (start a recording or a timer, empty the
+    tray): the 4px spacing dropping at the end of the collapse must not read as
+    a hitch, and the neighbours' corner morph should land with it.
+11. `toggleVisible(false)` writes the bar layout to disk at the end of the exit —
+    watch for a hitch on the last frame.
+12. `NotificationUnreadCount`'s ping, which now grows from `Item.BottomLeft`.
+13. `TimerWidget` when the second chip appears; `DashboardPanelButton` when a
+    toggle changes, now that the gap rides the same spec as the width.
 
-Later rows append here; `.audit/DECISIONS.md` holds the standing list.
+**Look at it at rest**
+
+14. `ClockHeaderCard` without the frosted corner — the soft blur is gone; judge
+    the flat face against `colPrimaryContainer`.
+15. `WorldClocksCard`'s decorative blob at 1, 2 and 4 clocks, and in sharp mode.
+16. The resources meter below ~17%, where the scissor shows the track's left cap
+    truncated — confirm it reads as a meter, not a blob.
+17. The graph well's bottom-left corner: the Canvas's 2px stroke may clip ~1px
+    where the arc turns in. Predicted sub-pixel; no off-grid fudge was added.
+18. Sizes shifted: bar padding 5 → 4, `CircleUtilButton` 26 → 32,
+    `PoliciesPanelButton` 29.5 → 32. Check the strip still reads balanced and
+    that `Appearance.sizes.barHeight` still contains them.
+19. Tray icon hover: the icon now carries `layer.enabled` (monochrome default)
+    *and* scales to 1.1, so a 20px texture is upscaled 10%. If it looks soft,
+    the fix is `layer.textureSize` or moving the scale off the layered item.
+20. The stagger cap — everything past the sixth sibling lands together, visible
+    on a 24-bar hourly forecast and a long alarm list. Intended per 2.8.
+
+**Re-measure if it feels wrong**
+
+21. `Visualizer` 80ms → 130ms. There is no faster token in `Appearance`; if the
+    bars read laggy against the audio, the fix is a new sub-130ms effects
+    duration, which is a token change.
+22. `Media` width, `elementMoveFast` (200, no overshoot) → `elementResize` (350,
+    overshoots). Track changes now nudge the centre group; `elementMove` is the
+    fallback.
+23. Keyboard in the tray menu: `hyprland-focus-grab-v1` enters "a
+    compositor-picked surface in the whitelist" and `SysTray` whitelists both
+    the bar and the menu. If Hyprland picks the bar, Escape and the arrows are
+    inert. No regression — there was no key handling at all before — but it
+    needs one live confirmation.
 
 ## Re-port hazard
 
 `cards/*.qml` and the five popups are vendored from ii-p3drovfx by
-`tools/p3-bar-popups/port-popups.sh`. Unlike the background widget tree it
-`cp`s named files rather than rsyncing with `--delete`, and it only runs when
-someone deliberately points `P3=` at a fresh clone — so this redesign stands.
-But a future re-port overwrites these files outright and must be reviewed file
-by file, not run blind. None of `ii-bar-chrome`'s six files is touched by it.
+`tools/p3-bar-popups/port-popups.sh`. Unlike the background widget tree it `cp`s
+named files rather than rsyncing with `--delete`, and it only runs when someone
+deliberately points `P3=` at a fresh clone, so this redesign stands. But a
+re-port overwrites all of it, and `BatteryPopup` in particular is now
+structurally different — four `MetricCard`s where there were 400 lines of
+hand-rolled cells. Review file by file, never run it blind. None of the chrome,
+widgets or tray files is touched by that script.
 
-## Screenshots
+## Superseded
 
-`shot-before.png` is the bar on a bare workspace
-(`hyprctl dispatch 'hl.dsp.focus({ workspace = 9 })'` — this machine's Hyprland
-takes Lua, not the hyprlang dispatch form). No popup shots: they need hover
-driving that a session cannot do unattended, and the Gemini vision tier was not
-available. The vision step of the protocol did not run for this cluster.
+`.audit/ii-bar-root/pack.md` is kept, not deleted: its **Used by** section is the
+only place the cross-group caller picture for the 36 top-level files exists. The
+five sub-packs replaced it for reading.
