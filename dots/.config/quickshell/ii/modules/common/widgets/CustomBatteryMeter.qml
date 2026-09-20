@@ -21,7 +21,11 @@ Item {
     property bool vertical: false
 
     property color highlightColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
-    property color trackColor: Appearance.colors.colSecondaryContainer
+    // `isCritical` was wired end to end and read by nothing, so critical and merely low
+    // rendered identically. The error *container* is the one token that separates them
+    // without inventing a recipe DESIGN.md does not carry: the track itself goes red,
+    // the content keeps colError from `isLow`.
+    property color trackColor: (isCritical && !isCharging) ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
     property color contentColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
 
     readonly property int percentageInt: Math.round(percentage * 100)

@@ -20,8 +20,10 @@ RippleButton {
     buttonRadius: Appearance.rounding.full
 
     colBackground: ColorUtils.transparentize(Appearance.colors.colSurfaceContainer)
-    colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnSurface, current ? 1 : 0.95)
-    colRipple: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.95)
+    // Hand-mixed films, so the alphas are the 3.1 tokens: 0.08 hover, 0.10 press.
+    // A current tab keeps no hover film of its own.
+    colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnSurface, current ? 1 : 0.92)
+    colRipple: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.90)
 
     // ToolbarTabBar paints the selected pill behind this button, so the state
     // film and the content both have to answer to what is underneath.
