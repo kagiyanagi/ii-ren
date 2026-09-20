@@ -40,9 +40,19 @@ AndroidQuickToggleButton {
                     id: netTallShape
                     anchors.fill: parent
                     shapeString: "Cookie7Sided"
-                    color: root.toggled
+                    // The state film is mixed into the fill rather than laid over it: the
+                    // film was a Rectangle over a ShapeCanvas, so it painted a square
+                    // and read a `radius` that does not exist there (3.1, 10.8).
+                    readonly property color colBase: root.toggled
                         ? Appearance.colors.colPrimary
                         : Appearance.colors.colLayer3
+                    readonly property color colFilm: root.toggled
+                        ? Appearance.colors.colOnPrimary
+                        : Appearance.colors.colOnLayer3
+                    color: !root.altAction ? colBase
+                        : netTallIconMouseArea.containsPress ? ColorUtils.mix(colFilm, colBase, 0.10)
+                        : netTallIconMouseArea.containsMouse ? ColorUtils.mix(colFilm, colBase, 0.08)
+                        : colBase
 
                     Behavior on color {
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -68,21 +78,6 @@ AndroidQuickToggleButton {
                             : Appearance.colors.colOnLayer3
                         text: root.buttonIcon
 
-                        Behavior on color {
-                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                        }
-                    }
-                }
-
-                Loader {
-                    anchors.fill: parent
-                    active: root.altAction
-                    sourceComponent: Rectangle {
-                        radius: netTallShape.radius
-                        color: ColorUtils.transparentize(
-                            root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3,
-                            netTallIconMouseArea.containsPress ? 0.88 : netTallIconMouseArea.containsMouse ? 0.95 : 1
-                        )
                         Behavior on color {
                             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
