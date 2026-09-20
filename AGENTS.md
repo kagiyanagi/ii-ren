@@ -193,3 +193,7 @@ see — transform origin, spatial-vs-effects, enter/exit pairing, layer nesting,
 effects in delegates, missed reuse.
 `tools/check-m3-tokens.py` asserts the tokens still match AOSP; run it after
 touching motion tokens or state layer values.
+
+The repo-wide pass that brings every existing surface up to that law — how the work is
+split, who runs which half, and the brief that gets written before any code — is
+`.github/AUDIT.md`. Read it before starting or resuming audit work.
