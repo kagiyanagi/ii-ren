@@ -81,10 +81,28 @@ StyledPopup {
     required property bool compact
     stickyHover: true
 
-    // All three sections switched off, in compact mode, with no LocalSend on the
-    // network, leaves a 400px-wide empty card under the pointer. _visList is
-    // already the "would this child be on screen" list, so ask it.
-    contentAvailable: !Config.ready || columnLayout._visList.some(v => v)
+    /*
+     * All three sections switched off, in compact mode, with no LocalSend on
+     * the network, leaves a 400px-wide empty card under the pointer.
+     *
+     * These live on the root and not on the column that draws them, because
+     * the column is inside the LazyLoader's content: it exists only while the
+     * popup is open. A `contentAvailable` that asked the content whether the
+     * content was worth showing could answer only once -- after the first
+     * close the ids are gone, the binding throws, and the popup never opens
+     * again. Every condition here is a config or singleton read, so none of
+     * them needs the content to be alive.
+     */
+    readonly property bool hasClockFace: Config.options.time.alarms.showAnalogClock
+    readonly property bool hasWorldClocks: Config.options.time.alarms.showWorldClocks
+        && Config.options.time.worldClocks && Config.options.time.worldClocks.length > 0
+    readonly property bool hasInfoColumn: (!root.compact
+        && (LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0)) || LocalSend.available
+    readonly property bool hasTransfer: LocalSend.currentTransfer !== null || LocalSend.droppedFiles.length > 0
+    readonly property bool hasAlarms: Config.options.time.alarms.showAlarmsSection
+
+    contentAvailable: !Config.ready || root.hasClockFace || root.hasWorldClocks
+        || root.hasInfoColumn || root.hasTransfer || root.hasAlarms
 
     property bool stopwatchPaused: !TimerService.stopwatchRunning && TimerService.stopwatchTime > 0
 
@@ -252,11 +270,11 @@ StyledPopup {
 
         // Delays computed dynamically based on visibility order to prevent stagger skipping
         readonly property var _visList: [
-            clockHero.visible,
-            worldClocksLoader.visible && worldClocksLoader.active,
-            infoPill.visible || localSendPill.visible, // info column Layout
-            localSendLoader.visible && localSendLoader.active,
-            alarmsCard.visible
+            root.hasClockFace,
+            root.hasWorldClocks,
+            root.hasInfoColumn,
+            root.hasTransfer,
+            root.hasAlarms
         ]
 
         // Counted over *visible* siblings: with a section hidden by config,
@@ -276,7 +294,7 @@ StyledPopup {
             id: clockHero
             Layout.fillWidth: true
             Layout.minimumWidth: 400
-            visible: Config.options.time.alarms.showAnalogClock
+            visible: root.hasClockFace
             startAnim: columnLayout.startAnim
             
             opacity: 0
@@ -296,8 +314,8 @@ StyledPopup {
             id: worldClocksLoader
             Layout.fillWidth: true
             Layout.minimumWidth: root.compact ? 320 : 360
-            visible: active && Config.options.time.alarms.showWorldClocks
-            active: Config.options.time.worldClocks && Config.options.time.worldClocks.length > 0
+            visible: root.hasWorldClocks
+            active: root.hasWorldClocks
             sourceComponent: worldClocksComponent
             
             opacity: 0
@@ -333,7 +351,7 @@ StyledPopup {
             InfoPill {
                 id: infoPill
                 startAnim: columnLayout.startAnim
-                visible: !root.compact ? LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0 : false
+                visible: !root.compact && (LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0)
                 
                 readonly property bool isTimerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning || root.stopwatchPaused || (TimerService.stopwatchTime > 0)
 
@@ -403,7 +421,7 @@ StyledPopup {
             Layout.fillWidth: true
             Layout.minimumWidth: root.compact ? 320 : 360
             visible: active
-            active: LocalSend.currentTransfer !== null || LocalSend.droppedFiles.length > 0
+            active: root.hasTransfer
             sourceComponent: LocalSend.currentTransfer !== null ? transferCard : sendCard
             
             opacity: 0
@@ -423,7 +441,7 @@ StyledPopup {
             id: alarmsCard
             Layout.fillWidth: true
             Layout.minimumWidth: root.compact ? 320 : 360
-            visible: Config.options.time.alarms.showAlarmsSection
+            visible: root.hasAlarms
             startAnim: columnLayout.startAnim
             
             opacity: 0
