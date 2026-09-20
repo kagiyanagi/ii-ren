@@ -6,7 +6,6 @@ import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.services
 
 Rectangle {
     id: root
@@ -19,7 +18,13 @@ Rectangle {
     property real maxHeight: 200
     property real imageWidth: -1
     property real imageHeight: -1
-    property real scale: Math.min(root.maxHeight / imageHeight, root.width / imageWidth)
+    // Named off "scale" on purpose: that name collides with Item.scale (qmllint
+    // property-override) and, because it is the same real-valued property, silently
+    // became the whole card's render transform -- Math.min() of two negative ratios
+    // whenever imageWidth/imageHeight are still -1 (every non-image attachment, or
+    // an image before its dimensions resolve), scaling the entire indicator instead
+    // of just the preview.
+    property real imageScale: Math.min(root.maxHeight / imageHeight, root.width / imageWidth)
     onFilePathChanged: refresh()
     visible: filePath !== ""
     
@@ -128,7 +133,7 @@ Rectangle {
             visible: (root.imageWidth != -1) && (root.imageHeight != -1)
             Layout.alignment: Qt.AlignHCenter
             sourceComponent: Item {
-                implicitHeight: root.imageHeight * root.scale
+                implicitHeight: root.imageHeight * root.imageScale
                 implicitWidth: imagePreview.implicitWidth
                 StyledImage {
                     id: imagePreview
@@ -136,10 +141,10 @@ Rectangle {
                     source: Qt.resolvedUrl(root.filePath)
                     fillMode: Image.PreserveAspectFit
                     antialiasing: true
-                    width: root.imageWidth * root.scale
-                    height: root.imageHeight * root.scale
-                    sourceSize.width: root.imageWidth * root.scale
-                    sourceSize.height: root.imageHeight * root.scale
+                    width: root.imageWidth * root.imageScale
+                    height: root.imageHeight * root.imageScale
+                    sourceSize.width: root.imageWidth * root.imageScale
+                    sourceSize.height: root.imageHeight * root.imageScale
 
                     layer.enabled: true
                     layer.effect: OpacityMask {

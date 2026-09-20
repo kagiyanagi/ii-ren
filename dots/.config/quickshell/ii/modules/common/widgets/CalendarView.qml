@@ -1,21 +1,16 @@
 pragma ComponentBehavior: Bound
 import QtQml
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell
-import qs
-import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.waffle.looks
 
 Item {
     id: root
 
     // Expose delegate
-    property Component delegate: Text {
+    property Component delegate: StyledText {
         required property var model
         text: model.day
     }
@@ -44,7 +39,7 @@ Item {
 
     Behavior on weekDiff {
         id: weekScrollBehavior
-        animation: Looks.transition.scroll.createObject(this)
+        animation: Appearance.animation.scroll.numberAnimation.createObject(this)
     }
     Timer {
         id: scrollAnimationCheckTimer

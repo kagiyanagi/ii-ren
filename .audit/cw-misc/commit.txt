@@ -1,0 +1,46 @@
+refactor(cw-misc): a scroll spec borrowed from waffle, and a scale that ate its own card
+
+CalendarView's week-scroll Behavior called Looks.transition.scroll -- the
+Waffle-only look system, imported into a file that lives under
+modules/common/widgets and ships to both panel families. Swapped for
+Appearance.animation.scroll (standardDecel @200), the exact token DESIGN.md
+2.3 lists for "programmatic scrolling", and dropped the now-dead
+qs.modules.waffle.looks import. AndroidClock's background ColorAnimation lost
+its bare `duration: 400` for Appearance.animation.elementMoveFast -- DESIGN.md
+2.3's own worked example is a Behavior on color on this exact spec.
+
+AttachedFileIndicator declared `property real scale: Math.min(maxHeight /
+imageHeight, width / imageWidth)` as a private sizing ratio, without noticing
+it collides with Item.scale (qmllint: property-override). Because it is the
+same real property, that ratio was the card's actual render transform, not
+just the preview's. Measured: imageWidth/imageHeight default to -1 and only
+leave it for image/* attachments, so for every non-image attachment -- pdf,
+audio, video, text, the icon-picker branch two lines up plans for all of them
+-- and for an image before its dimensions resolve, `scale` evaluated to
+Math.min(200 / -1, width / -1), a large negative number, transforming the
+whole card, not the image inside it. Renamed to imageScale; grepped the three
+callers (AiChat, Hermes, AiMessage) for `.scale` first, none read or set it.
+
+CalendarView's and WeekRow's fallback delegates -- bare Text, never actually
+instantiated since every real caller overrides `delegate` -- are StyledText
+now, closing both of check-design.py's bare-text hits in this family. Five
+imports confirmed unused by qmllint (QtQuick.Controls, Quickshell, qs,
+qs.services x2) came out of the files opened for the above; WeekRow gained
+qs.modules.common.widgets for StyledText, which it did not previously import.
+
+Measured CalendarView's hit targets per DESIGN.md 3.4: buttonSize defaults to
+40, the one live caller (CalendarWidget.qml, Waffle) passes 41 -- both already
+clear the 32px minimum and the 40px costly-misclick line. Neither CalendarView
+nor WeekRow paint the actual delegate; sizing its hit region is the caller's
+job, and the only caller that makes it clickable already sizes the hit area
+and the paint identically (WButton, radius: height/2). Nothing to expand.
+
+No new tools/check-*.py: nothing here is a branch, loop or parser, and the one
+real bug (the scale collision) is already guarded going forward by qmllint's
+own property-override rule, which is already a gate on this family.
+
+Gates: check-design.py --diff clean for these four files; qmllint clean
+(zero property-override, zero unused-imports; the remaining missing-property
+and unqualified-access lines are the Appearance-singleton pattern already
+accepted throughout the shipped library, e.g. RippleButton.qml); check-m3-
+tokens.py and check-text-primitives.py both pass, unaffected.

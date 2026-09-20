@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import qs.services
 import qs.modules.common.functions
+import qs.modules.common.widgets
 
 RowLayout {
     id: root
@@ -30,7 +30,7 @@ RowLayout {
         }
         return weekDates;
     }
-    property Component delegate: Text {
+    property Component delegate: StyledText {
         required property var model
         text: model.day
     }

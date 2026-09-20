@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Layouts
 import qs.modules.common
 
 Item {
@@ -43,7 +42,7 @@ Item {
         color:  root.backgroundColor
         radius: root.radius
 
-        Behavior on color { ColorAnimation { duration: 400 } }
+        Behavior on color { animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this) }
     }
 
     Canvas {
