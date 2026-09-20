@@ -31,8 +31,17 @@ LOG="$(mktemp /tmp/ii-probe-pages-XXXXXX.log)"
 # ContentPage's own header stops declaring the signal, and a signal-only selector
 # would quietly drop it from the gate. The other live files in this directory are
 # blocks and overlays that only make sense with properties set by a parent.
+# Plus the live pages that are neither: the Widgets tab contents, which
+# WidgetsConfig.qml loads by type. sw-extensions found that
+# ExtensionWidgetSettingsRenderer had been assigning three properties
+# cw-config-rows removed, so the extension settings overlay rendered nothing --
+# and no gate in this repo would have said so, because nothing instantiates
+# these three.
+EXTRA=(WidgetExtensionsContent.qml WidgetCommunityContent.qml ExtensionWidgetSettingsRenderer.qml)
+
 mapfile -t PAGES < <({ grep -lE '^ContentPage \{' "$PAGES_DIR"/*.qml
-                       grep -lE '^\s*signal goBack\b' "$PAGES_DIR"/*.qml; } |
+                       grep -lE '^\s*signal goBack\b' "$PAGES_DIR"/*.qml
+                       for e in "${EXTRA[@]}"; do [ -f "$PAGES_DIR/$e" ] && echo "$PAGES_DIR/$e"; done; } |
                      xargs -n1 basename | sort -u)
 [ "${#PAGES[@]}" -gt 0 ] || { echo "FAIL: no sub-pages found"; exit 1; }
 
