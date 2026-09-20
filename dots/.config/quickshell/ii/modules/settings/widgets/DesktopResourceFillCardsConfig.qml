@@ -8,37 +8,7 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack
-
-    RowLayout {
-        spacing: 12
-
-        RippleButton {
-            implicitWidth: implicitHeight
-            implicitHeight: 40
-            topLeftRadius:    Appearance.rounding.full
-            topRightRadius:   Appearance.rounding.full
-            bottomLeftRadius: Appearance.rounding.full
-            bottomRightRadius:Appearance.rounding.full
-            colBackground:      Appearance.colors.colSecondaryContainer
-            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple:          Appearance.colors.colSecondaryContainerActive
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: "arrow_back"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSecondaryContainer
-            }
-            onClicked: root.goBack()
-        }
-
-        StyledText {
-            text: Translation.tr("Resource Fill Cards Options")
-            font.pixelSize: Appearance.font.pixelSize.large
-            font.family:    Appearance.font.family.title
-            color: Appearance.colors.colOnLayer0
-        }
-    }
+    title: Translation.tr("Resource Fill Cards Options")
 
     ContentSection {
         title: Translation.tr("Resource Fill Cards Settings")
@@ -46,25 +16,21 @@ ContentPage {
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: 200
+            implicitHeight: Appearance.sizes.pagePlaceholderHeight
             visible: !Config.isWidgetActive("resource_fill_cards")
 
             PagePlaceholder {
                 anchors.fill: parent
-                icon:    "donut_large"
-                shape:   MaterialShape.Shape.Circle
-                title:       Translation.tr("Resource Fill Cards disabled")
-                description: Translation.tr("Enable Resource Fill Cards in Desktop Widgets settings to configure options.")
+                icon: "donut_large"
+                shape: MaterialShape.Shape.Circle
+                title: Translation.tr("Resource Fill Cards disabled")
+                description: Translation.tr("Enable the Resource Fill Cards in Desktop Widgets settings to use this page.")
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 8
+        ContentSubsection {
+            title: Translation.tr("Shape")
             visible: Config.isWidgetActive("resource_fill_cards")
-
-            // ── Orientation ──────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Layout Orientation") }
 
             ConfigSelectionArray {
                 currentValue: Config.options.background.widgets.resource_fill_cards.orientation ?? "horizontal"
@@ -74,15 +40,15 @@ ContentPage {
                     { displayName: Translation.tr("Vertical"), icon: "view_stream", value: "vertical" }
                 ]
             }
+        }
 
-            Item { Layout.preferredHeight: 4 }
-
-            // ── Scale ────────────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Widget Scale") }
+        ContentSubsection {
+            title: Translation.tr("Size")
+            visible: Config.isWidgetActive("resource_fill_cards")
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Scale")
+                text: Translation.tr("Widget scale")
                 value: Config.options.background.widgets.resource_fill_cards.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -91,15 +57,15 @@ ContentPage {
                     Config.options.background.widgets.resource_fill_cards.widgetSize = value;
                 }
             }
+        }
 
-            Item { Layout.preferredHeight: 4 }
-
-            // ── Active Card Toggles ──────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Active Resource Cards") }
+        ContentSubsection {
+            title: Translation.tr("Resources")
+            visible: Config.isWidgetActive("resource_fill_cards")
 
             ConfigSwitch {
                 buttonIcon: "memory"
-                text: Translation.tr("CPU Usage Card")
+                text: Translation.tr("CPU usage card")
                 checked: Config.options.background.widgets.resource_fill_cards.enableCpu ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.resource_fill_cards.enableCpu = checked;
@@ -108,7 +74,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "memory_alt"
-                text: Translation.tr("RAM Memory Card")
+                text: Translation.tr("RAM memory card")
                 checked: Config.options.background.widgets.resource_fill_cards.enableRam ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.resource_fill_cards.enableRam = checked;
@@ -117,12 +83,21 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "hard_drive"
-                text: Translation.tr("Disk Storage Card")
+                text: Translation.tr("Disk storage card")
                 checked: Config.options.background.widgets.resource_fill_cards.enableDisk ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.resource_fill_cards.enableDisk = checked;
                 }
             }
+        }
+
+        // Last, because the shadow toggles are global rather than this widget's.
+        // Present here and not on the three pill pages for one reason: this
+        // widget reads `enableShadows`, and CpuPillWidget/RamPillWidget/
+        // DiskPillWidget never do.
+        DesktopWidgetVisualOptions {
+            Layout.fillWidth: true
+            visible: Config.isWidgetActive("resource_fill_cards")
         }
     }
 }
