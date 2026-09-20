@@ -64,7 +64,7 @@ Item {
             visible: comp.visible !== undefined ? comp.visible : true
         }
         if (comp.id === "sacebar" || comp.id === "spacebar") {
-            base.style = comp.style !== undefined ? comp.style : "pipe"
+            base.style = comp.style !== undefined ? comp.style : "empty"
             base.leftPadding = comp.leftPadding !== undefined ? comp.leftPadding : 4
             base.rightPadding = comp.rightPadding !== undefined ? comp.rightPadding : 4
         }

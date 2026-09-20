@@ -14,7 +14,6 @@ Item {
     property bool vertical: false
     property bool invertSide: false
     property bool trayOverflowOpen: false
-    property bool showSeparator: true
     property bool showOverflowMenu: true
     property var activeMenu: null
 

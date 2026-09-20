@@ -1544,7 +1544,7 @@ Singleton {
                 property bool showAppsButtonBackground: true
                 property real itemSpacing: 0
                 property real sectionSpacing: 0
-                property string separatorStyle: "Line"
+                property string separatorStyle: "Empty" // Design law 11: sections separate by whitespace, not divider lines
                 property real cornerRadius: -1
                 property real paddingHorizontal: 0
                 property real paddingVertical: 0

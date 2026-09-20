@@ -9,13 +9,15 @@ Item {
     property var modelData: null
 
     readonly property string itemStyle: {
-        const raw = (modelData && (modelData.style || modelData.type)) ? (modelData.style || modelData.type) : "pipe"
+        // Design law 11: a spacer separates with whitespace unless its own config
+        // asks for a line. The styles stay for a config that already picked one.
+        const raw = (modelData && (modelData.style || modelData.type)) ? (modelData.style || modelData.type) : "empty"
         const s = raw.toString().toLowerCase()
         if (s === "line" || s === "pipe") return "pipe"
         if (s === "dot" || s === "circle") return "dot"
         if (s === "dash" || s === "hyphen") return "dash"
         if (s === "empty" || s === "space" || s === "none") return "empty"
-        return "pipe"
+        return "empty"
     }
 
     readonly property real leftPadding: Math.max(0, Number(modelData && modelData.leftPadding !== undefined ? modelData.leftPadding : (modelData && modelData.paddingLeft !== undefined ? modelData.paddingLeft : 4)))
