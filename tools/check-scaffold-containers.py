@@ -25,6 +25,10 @@ reports at runtime and nowhere else:
    zero, stacked its chips in a column and left the card a 4px sliver. Nothing
    warns -- not Qt, not qmllint, not check-design.py.
 
+6. ContentPage's page header is the shared RippleButton and vanishes for a
+   titleless page. 61 sub-pages deleted their own copy against it, and a
+   header that stops hiding itself widens 14 callers that never had one.
+
 Usage: python3 tools/check-scaffold-containers.py
 """
 
@@ -241,6 +245,40 @@ if re.search(r"(?<![A-Za-z])[oO]verscroll", WHEEL):
          "piling it up means eating wheel turns at a bound for nothing")
 
 
+# --- 6. ContentPage's page header ---------------------------------------------
+# 61 settings sub-pages hand-rolled the same header before sw-clock-configs moved
+# it here. Two things have to hold, and neither is visible in a diff of one page:
+# the back button has to be the shared RippleButton (so it inherits all four
+# states rather than re-mixing two of them), and the header has to disappear
+# entirely for a page that sets no title -- ContentPage reports
+# contentColumn.implicitWidth, and a header that is merely transparent would
+# widen all 14 titleless callers. Decision 21 is what a silent width change costs.
+
+PAGE = src("ContentPage")
+
+for prop in ("property string title", "property bool showBackButton", "signal goBack"):
+    if prop not in PAGE:
+        fail(f"ContentPage: no `{prop}` -- ConfigSubPageHost loads sub-pages against "
+             "showBackButton and goBack, and the 61 pages get their header from title")
+
+header = re.search(r"RowLayout \{(.*?)\n        \}", PAGE, re.S)
+if not header:
+    fail("ContentPage: no header RowLayout -- the 61 copies were deleted against it")
+else:
+    h = header.group(1)
+    if not re.search(r'visible:\s*root\.title !== ""', h):
+        fail('ContentPage: the header is not gated on `visible: root.title !== ""` -- a '
+             "ColumnLayout only skips an invisible child, and every titleless caller "
+             "would gain the header's width (decision 21)")
+    if "RippleButton" not in h:
+        fail("ContentPage: the header's back button is not a RippleButton -- hand-rolling "
+             "it is what put 61 copies of two of the four states in this directory")
+    for tok in ("Appearance.sizes.pageHeaderButtonSize", "Appearance.rounding.full"):
+        if tok not in h:
+            fail(f"ContentPage: header does not use {tok} -- the 40dp was written four "
+                 "different ways across the copies, one of them as arithmetic")
+
+
 if failures:
     print("FAIL: scaffolding containers")
     for f in failures:
@@ -252,3 +290,4 @@ print(f"ok: {len(FAMILY)} scaffolding files anchor nothing a layout manages")
 print("ok: Revealer and PagePlaceholder specify both directions")
 print(f"ok: {len(SECTIONS)} sections report an implicit width, so a non-filling cell keeps its card")
 print(f"ok: {len(STRETCHERS)} flickables scale nothing -- no overscroll stretch (3.6)")
+print("ok: ContentPage carries the page header, gated on title, on a shared RippleButton")
