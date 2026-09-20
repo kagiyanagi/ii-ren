@@ -11,8 +11,8 @@ Two hard constraints shape every choice below:
   steady, to be stopped after any surface at zero cost, and to be resumed weeks later
   without re-reading anything.
 
-Read this before starting or resuming audit work. The tooling is built and 17 of the
-96 queue rows are done; what is left to build is in **Not built yet**.
+Read this before starting or resuming audit work. The tooling is built and 21 of the
+106 queue rows are done; what is left to build is in **Not built yet**.
 
 ## Why a process instead of just doing it
 
@@ -168,7 +168,12 @@ State lives in the repo. No session needs to remember another one.
   exist — a missing member on a `JsonObject` reads as `undefined` with no warning at all
 - every component type instantiated, flagged when a same-named widget exists in
   `modules/common/widgets/` — the reuse-miss heuristic
-- reverse dependencies: who imports or instantiates this surface
+- reverse dependencies: who imports, instantiates (`Type {`) or *loads by url*
+  (`Qt.resolvedUrl("widgets/Type.qml")`, a registry string) a type defined here, plus the
+  names nothing reaches at all. The url form is how every settings sub-page is opened, and
+  until 2026-09-20 the scan missed it and called `modules/settings/widgets` self-contained.
+  `tools/audit/reachable.py <dir>` answers the same question transitively for a whole
+  directory — a file reached only by a file nothing reaches is dead too
 - an **effect budget**: every `layer.enabled` / `MultiEffect` / `OpacityMask` /
   `ShaderEffect` / shadow / `Canvas` and every sub-100ms `Timer`, flagged when it sits
   inside something that repeats. Until 2026-09-20 no session saw a single perf fact
@@ -280,7 +285,8 @@ start and no memory of which change did it.
 | `python3 tools/check-design.py --diff` (exit 1) | Every mechanical design-law rule |
 | qmllint via `mkshadow.sh`, using `/usr/lib/qt6/bin/qmllint` | Assigning a property a widget does not have — the one failure that stops the shell booting. `/usr/bin/qmllint` is a Qt5 stub that prints nothing and exits 255, which looks exactly like a clean run |
 | `tools/check-m3-tokens.py`, `check-mpris-hover-preview.py`, `p3-widget-port/check-*.py` | Their own concerns; run what the change touches |
-| `tools/audit/smoke.sh` *(to build)* | Start `qs -c ii`, watch stderr for N seconds, fail on any QML error |
+| `tools/audit/smoke.sh` | Start `qs -c ii` and fail unless its layer surfaces appear — a QML error that blanks a whole panel family prints nothing at all |
+| `tools/audit/smoke-settings.sh` | The same for the settings app, which is a **second** quickshell process (`qs -p settings.qml`) that `smoke.sh` says nothing about. Required by every `modules/settings` row. It kills only the pid it started, never `pkill`s |
 
 ## Order
 

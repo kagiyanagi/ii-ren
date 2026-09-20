@@ -10,8 +10,9 @@ Status: `todo` → `briefed` → `built` → `done`. Put the date in `done` when
 `common-widgets` was a tranche and is now split into the fifteen `cw-*` rows below, one
 session each — see `.audit/common-widgets/families.md` for membership and
 `.audit/common-widgets/brief.md`, which is the brief for all fifteen. `settings-widgets`
-is still a tranche (191 files) and splits the same way when reached, per the 2,500-line
-rule in AUDIT.md.
+was the other tranche and is now the ten `sw-*` rows, split the same way — but 120 of its
+190 files are reached by nothing at all, so the first of those rows deletes 25.5k lines
+rather than designing them. `.audit/settings-widgets/families.md` has the evidence.
 
 The `cw-*` rows run in the order listed: `cw-buttons` first because fourteen library
 widgets are rooted in `RippleButton`, then by caller count.
@@ -34,7 +35,17 @@ widgets are rooted in `RippleButton`, then by caller count.
 | `cw-gestures` | `modules/common/widgets` | shared-widgets | 2 | 6 | 446 | `wl-copy x`, notification swipe | done | 2026-09-20 | loosened the owner coupling behind a `hasSharedDragState` guard. `check-swipe-dismissible.py`. See notes — overscroll split out to its own row |
 | `cw-misc` | `modules/common/widgets` | shared-widgets | 2 | 4 | 463 | `ipc call sidebarRight` | done | 2026-09-20 | `AttachedFileIndicator.scale` shadowed `Item.scale`; `CalendarView` imported waffle's look system |
 | `cw-battery` | `modules/common/widgets` | shared-widgets | 2 | 1 | 1040 | `ipc call bar` | done | 2026-09-20 | the brief's hex/duration claims were wrong — the real fix was `m3colors.m3error` → `colors.colError` |
-| `settings-widgets` | `modules/settings/widgets` | shared-widgets | 1 | 191 | 35432 | ? | todo | | settings widget library |
+| `settings-widgets` | `modules/settings/widgets` | shared-widgets | 1 | 190 | 35099 | n/a | done | 2026-09-20 | tranche split only, no QML changed — 120 of 190 files are reached by nothing; see `families.md`, `brief.md`, `notes.md` |
+| `sw-dead` | `modules/settings/widgets` + `configs/widgets` | settings | 1 | 122 | 25531 | `qs -p ~/.config/quickshell/ii/settings.qml` | todo | | delete: `dead.txt` + the three OSD copies + `qmldir`. Gate with `tools/audit/smoke-settings.sh`, **not** `smoke.sh`. Read `notes.md` first |
+| `sw-clock-configs` | `modules/settings/widgets` | settings | 1 | 6 | 1970 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → a clock widget's cog | todo | | owns the `ContentPage` header extraction the other eight rows depend on |
+| `sw-clock-styles` | `modules/settings/widgets` | settings | 2 | 12 | 1228 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → a clock widget's cog | todo | | needs `sw-clock-configs` first |
+| `sw-weather-calendar` | `modules/settings/widgets` | settings | 2 | 15 | 1198 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → a weather or calendar widget's cog | todo | | needs `sw-clock-configs` first |
+| `sw-media-configs` | `modules/settings/widgets` | settings | 2 | 7 | 944 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → a media widget's cog | todo | | needs `sw-clock-configs` first |
+| `sw-system-pills` | `modules/settings/widgets` | settings | 2 | 11 | 969 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → a cpu/ram/disk/battery widget's cog | todo | | needs `sw-clock-configs` first |
+| `sw-desktop-misc` | `modules/settings/widgets` | settings | 2 | 11 | 1353 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → notes/quote/photo/notification widget's cog | todo | | holds `DesktopWidgetVisualOptions`, the one shared block in the directory |
+| `sw-fingerprint` | `modules/settings/widgets` | settings | 2 | 3 | 966 | `qs -p ~/.config/quickshell/ii/settings.qml` → Lock → Fingerprint | todo | | the only live pages with real state — enrolling |
+| `sw-extensions` | `modules/settings/widgets` | settings | 2 | 3 | 865 | `qs -p ~/.config/quickshell/ii/settings.qml` → Widgets → Extensions / Community | todo | | the only pages with a network edge state |
+| `sw-advanced-pages` | `modules/settings/widgets` | settings | 2 | 2 | 535 | `qs -p ~/.config/quickshell/ii/settings.qml` → Advanced → Themed icons / Custom cursor | todo | | |
 | `cw-overscroll` | `modules/common/widgets` | shared-widgets | 1 | 3 | 0 | any list or flickable | done | 2026-09-20 | `boundsMovement: StopAtBounds` + `verticalOvershoot` into the stretch; the `Behavior` is off while dragging, so nothing fights the drag. Measured live: 47px peak with `fasterTouchpadScroll` off |
 | `config-defaults` | `modules/common/Config.qml` | common | 1 | 1 | 0 | n/a | done | 2026-09-20 | resolved without touching the default: the handler no longer gates `visible` on `fasterTouchpadScroll`, so the key means only what its name says and the stretch is unconditional |
 | `services-Ai` | `services/Ai.qml` | services | 2 | 1 | 0 | n/a | done | 2026-09-20 | the `addUserModels()` call went — the two config-fed model lists are bindings. Boot is clean of it |
