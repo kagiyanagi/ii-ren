@@ -53,7 +53,9 @@ Scope {
     // ponytail: character metrics for this family (~0.55 and ~1.33 of the pixel
     // size per advance and per line) rather than a pixel-exact search. Measure with
     // a hidden Text and bisect if it ever misjudges a string.
-    readonly property real previewBox: 64 // the tile's text box, square
+    // The tile's text box, square: tileSize less the mat and the button padding
+    // on both sides (80 - 4 * 4). Keep it in step with those.
+    readonly property real previewBox: 64
     readonly property int previewFontSize: {
         if (root.copiedText === "")
             return Appearance.font.pixelSize.smallest;
@@ -131,8 +133,7 @@ Scope {
                 return;
             root.copiedText = text;
             root.shown = true;
-            if (hideTimer.interval > 0)
-                hideTimer.restart();
+            hideTimer.reset();
         }
     }
 
@@ -140,6 +141,15 @@ Scope {
         id: hideTimer
         interval: Config.options.clipboard.copyToast.dismissAfter * 1000
         onTriggered: root.shown = false
+
+        // The clock never runs while the pointer is on the card. Three seconds
+        // that expire mid-reach take the actions with them and there is no way
+        // back but copying again. An interval of 0 means "until clicked".
+        function reset(): void {
+            hideTimer.stop();
+            if (root.shown && hideTimer.interval > 0 && !cardHover.hovered)
+                hideTimer.restart();
+        }
     }
 
     PanelWindow {
@@ -239,13 +249,15 @@ Scope {
             y: root.atTop ? toastWindow.gutter + toastWindow.notificationInset + toastWindow.fastPairInset : toastWindow.height - card.height - toastWindow.gutter - toastWindow.fastPairInset
 
             // Glides out of the way when a sidebar opens or a notification lands,
-            // rather than jumping. Position, so a spatial spec.
+            // rather than jumping. Position, so a spatial spec - and elementMove
+            // rather than elementMoveEnter because the trip is driven by a toggle
+            // and has to reverse mid-flight, not queue the whole journey.
             Behavior on x {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
             Behavior on y {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
             // With nothing to act on, the pill goes and the card stands alone.
             implicitWidth: card.tileLeft + card.tileSize + (card.buttonCount === 0 ? 0 : card.gap + card.rowWidth + card.gap)
@@ -257,6 +269,11 @@ Scope {
             scale: 0.8
             // It lives in this corner, so it grows out of it.
             transformOrigin: root.atTop ? (root.atRight ? Item.TopRight : Item.TopLeft) : (root.atRight ? Item.BottomRight : Item.BottomLeft)
+
+            HoverHandler {
+                id: cardHover
+                onHoveredChanged: hideTimer.reset()
+            }
 
             onCardShownChanged: {
                 if (card.cardShown) {
@@ -296,6 +313,8 @@ Scope {
                     property: "opacity"
                     to: 1
                     duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
             }
 
@@ -317,6 +336,8 @@ Scope {
                     property: "opacity"
                     to: 0
                     duration: Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
             }
 
@@ -409,38 +430,52 @@ Scope {
             Rectangle {
                 id: previewFrame
 
-                readonly property real border: 4
+                // The light mat the reference has round its thumbnail. Not `border`:
+                // that is a real grouped property on Rectangle and shadowing it is
+                // how the QML state machine trap in DESIGN.md 10.9 starts.
+                readonly property real matWidth: 4
 
                 x: root.atRight ? card.width - card.tileSize - card.tileLeft : card.tileLeft
                 // Always overhangs away from the edge the pill is pinned to.
                 y: root.atTop ? card.height - card.tileSize : 0
                 width: card.tileSize
                 height: card.tileSize
-                radius: Appearance.rounding.normal + previewFrame.border
+                // Card radius outside, content-block radius inside. Adding the
+                // frame width to a token instead would survive sharp mode, where
+                // every rounding goes to 0 and the frame would keep a 4px arc.
+                radius: Appearance.rounding.large
                 // One state-layer step off the pill, mixed rather than taken from
                 // colLayer1 because that token is only opaque over another surface.
                 // This is the light mat the reference has round its thumbnail.
                 color: ColorUtils.mix(Appearance.colors.colLayer0, Appearance.colors.colOnLayer0, 0.9)
 
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: previewFrame.border
-                    radius: Appearance.rounding.normal
-                    clip: true
-                    color: previewArea.pressed ? Appearance.colors.colSecondaryContainerActive : previewArea.containsMouse ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSecondaryContainer
+                // The card's primary action, so a real button: hover, press and a
+                // ripple clipped to its own radius all come from the widget rather
+                // than a MouseArea and a hand-written colour ternary.
+                RippleButton {
+                    id: previewButton
 
-                    Behavior on color {
-                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    anchors {
+                        fill: parent
+                        margins: previewFrame.matWidth
+                    }
+                    // Matching the frame: 4 inside the 4 mat, eight all told from
+                    // the card's edge, which is what previewBox is measured against.
+                    padding: previewFrame.matWidth
+                    clip: true
+                    buttonRadius: Appearance.rounding.normal
+                    colBackground: Appearance.colors.colSecondaryContainer
+                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                    colBackgroundActive: Appearance.colors.colSecondaryContainerActive
+                    colRipple: Appearance.colors.colSecondaryContainerActive
+                    onClicked: {
+                        // The launcher's clipboard query is the closest thing here to
+                        // Android's clipboard editor.
+                        Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "search", "clipboardToggle"]);
+                        root.shown = false;
                     }
 
-                    StyledText {
-                        // Fills the tile, because Text.Fit needs a bounded height to
-                        // pick a size against. 4 inside the 4 frame: eight all told
-                        // from the card's edge.
-                        anchors {
-                            fill: parent
-                            margins: 4
-                        }
+                    contentItem: StyledText {
                         text: root.copiedText
                         textFormat: Text.PlainText
                         wrapMode: Text.Wrap
@@ -451,26 +486,10 @@ Scope {
                         elide: Text.ElideRight
                         color: Appearance.colors.colOnSecondaryContainer
                     }
-                }
 
-                MouseArea {
-                    id: previewArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        // The launcher's clipboard query is the closest thing here to
-                        // Android's clipboard editor.
-                        Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "search", "clipboardToggle"]);
-                        root.shown = false;
+                    StyledToolTip {
+                        text: Translation.tr("Open clipboard history")
                     }
-                }
-
-                StyledToolTip {
-                    // A Rectangle has no `hovered`, which the tooltip reads as
-                    // "always show".
-                    extraVisibleCondition: previewArea.containsMouse
-                    text: Translation.tr("Open clipboard history")
                 }
             }
         }

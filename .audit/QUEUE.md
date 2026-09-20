@@ -22,7 +22,7 @@ split into per-family sessions (buttons, lists, popups, inputs...) when reached,
 | `ii-bar-weather` | `modules/ii/bar/weather` | bar | 1 | 2 | 385 | ? | todo | |  |
 | `ii-bar-root` | `modules/ii/bar/*.qml` | bar | 1 | 36 | 9541 | `ipc call bar` | todo | | top-level files only |
 | `ii-cheatsheet` | `modules/ii/cheatsheet` | ii | 2 | 6 | 1122 | `ipc call cheatsheet` | todo | |  |
-| `ii-clipboardToast` | `modules/ii/clipboardToast` | ii | 2 | 1 | 479 | ? | todo | |  |
+| `ii-clipboardToast` | `modules/ii/clipboardToast` | ii | 1 | 1 | 497 | `wl-copy "text-$RANDOM"` | done | 2026-09-20 | pilot; ran lane 1 end to end. See notes.md before driving it |
 | `ii-desktopMenu` | `modules/ii/desktopMenu` | ii | 2 | 2 | 843 | `ipc call desktopMenu` | todo | |  |
 | `ii-dock` | `modules/ii/dock` | ii | 1 | 23 | 3860 | ? | todo | |  |
 | `ii-dropover` | `modules/ii/dropover` | ii | 2 | 3 | 339 | `ipc call dropShelf` | todo | |  |
