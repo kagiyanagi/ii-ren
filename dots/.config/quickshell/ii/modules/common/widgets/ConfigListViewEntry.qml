@@ -13,10 +13,11 @@ Item {
 
     property bool alternateColor: visualIndex % 2 == 0
     property color colBackground: alternateColor ? Appearance.colors.colLayer3 : Appearance.colors.colLayer2
-    property color colHover: alternateColor ? Appearance.colors.colLayer3Hover : Appearance.colors.colLayer2Hover
-    property color colActive: alternateColor ? Appearance.colors.colLayer3Active : Appearance.colors.colLayer2Active
+    // The content colour of the layer the row actually paints with, not layer
+    // 0's: the state film and the title both read off it (6.1).
+    property color colOnBackground: alternateColor ? Appearance.colors.colOnLayer3 : Appearance.colors.colOnLayer2
 
-    property color colTitle: Appearance.colors.colOnLayer0
+    property color colTitle: colOnBackground
 
     property int barSection
     readonly property bool expanded: root.isEntryExpanded(visualIndex)
@@ -86,13 +87,14 @@ Item {
             verticalCenter: parent.verticalCenter
         }
 
+        // A dragged row lifts, it does not fade: the 0.16 drag film plus the
+        // scale, where 0.8 opacity used to be (3.6). No shadow - this is a
+        // repeated delegate (8, 10.11). The scale is spatial and may overshoot;
+        // the opacity it replaced was animating on the same spatial spec and
+        // clipped past 1.
         scale: dragArea.held ? 1.02 : 1
-        opacity: dragArea.held ? 0.8 : 1
 
         Behavior on scale {
-            animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
-        }
-        Behavior on opacity {
             animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
         }
         
@@ -103,9 +105,24 @@ Item {
         
         height: mainColumn.implicitHeight + 8
 
-        color: dragArea.held ? colActive : colBackground
+        color: colBackground
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // The grab handle is the interactive part, but the row is what moves,
+        // so the film covers the row (3.1). It sits under mainColumn so the
+        // label and the buttons stay on top of it.
+        StateOverlay {
+            anchors.fill: parent
+            topLeftRadius: content.topLeftRadius
+            topRightRadius: content.topRightRadius
+            bottomLeftRadius: content.bottomLeftRadius
+            bottomRightRadius: content.bottomRightRadius
+            contentColor: wrapper.colOnBackground
+            hover: dragArea.containsMouse && !dragArea.held
+            press: dragArea.pressed && !dragArea.held
+            drag: dragArea.held
         }
 
         Drag.active: dragArea.held
@@ -165,6 +182,13 @@ Item {
 
                 StyledText {
                     id: title
+                    // Fills the row and elides: a long component title used to
+                    // draw straight over the buttons beside it (5.7, 10.17).
+                    // The Item that filled this cell before could not, and its
+                    // height: 40 never applied - a layout writes that itself.
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideRight
                     text: {
                         let base = wrapper.compInfo?.title ?? modelData.id
                         if (wrapper.isSpacer && modelData.style) {
@@ -179,11 +203,6 @@ Item {
                         family: Appearance.font.family.title
                         pixelSize: Appearance.font.pixelSize.normal
                     }
-                }
-                
-                Item {
-                    height: 40
-                    Layout.fillWidth: true
                 }
 
                 Loader {
@@ -248,7 +267,11 @@ Item {
                         text: Translation.tr("Style")
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
+                        // A fixed-width cell has to elide; a translation longer
+                        // than 60px drew straight over the combo box (5.7).
                         Layout.preferredWidth: 60
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
                     }
 
                     StyledComboBox {
@@ -285,6 +308,9 @@ Item {
                             text: Translation.tr("Left pad")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
                         }
                         StyledSpinBox {
                             from: 0
@@ -304,6 +330,9 @@ Item {
                             text: Translation.tr("Right pad")
                             color: Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
                         }
                         StyledSpinBox {
                             from: 0
@@ -340,7 +369,10 @@ Item {
         id: dragArea
 
         property bool held: false
-        cursorShape: root.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        hoverEnabled: true
+        // This row's own grab state, not the list's: every row showed a closed
+        // hand while any one of them was being dragged.
+        cursorShape: dragArea.held ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
         anchors {
             left: parent.left

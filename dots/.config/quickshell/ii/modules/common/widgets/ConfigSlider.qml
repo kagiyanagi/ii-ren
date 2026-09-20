@@ -7,6 +7,9 @@ import QtQuick.Layouts
 // left over, and a long label squeezed it to a stub.
 ColumnLayout {
     id: root
+    // 35 of the 124 instantiations were setting this themselves; the other 89
+    // sized to the label row's implicit width inside a full-width card (5.6).
+    Layout.fillWidth: true
     readonly property bool wantsCard: true
     spacing: 4
 

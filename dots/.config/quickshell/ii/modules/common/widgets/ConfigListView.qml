@@ -8,16 +8,16 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 
-Rectangle {
+// The card behind this row is ContentGroup's, at ContentGroup's radius; the
+// root used to be a transparent Rectangle carrying a rounding.large of its own,
+// which painted nothing and could only ever disagree with the card (5.6, 10.13).
+Item {
     id: root
 
     Layout.fillWidth: true
     readonly property bool wantsCard: true
-    
-    implicitHeight: Math.max(0, view.contentHeight) + componentSelectRow.implicitHeight + 28
 
-    color: "transparent"
-    radius: Appearance.rounding.large
+    implicitHeight: Math.max(0, view.contentHeight) + componentSelectRow.implicitHeight + 28
 
     property int barSection // 0: left, 1: center, 2: right
     property var listModel

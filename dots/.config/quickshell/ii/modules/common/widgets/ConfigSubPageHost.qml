@@ -124,8 +124,24 @@ Item {
                 overlayActive = false;
 
         }
+        // Entering is the default spatial spec and decelerates; leaving is the
+        // fast effects one, monotone and a quarter as long, because by then the
+        // user has already decided (2.5). Monotone also matters here: the old
+        // spatial spec overshot past `width` on the way out, and overlayActive
+        // is released at `x >= width - 1`.
+        //
+        // The spec is assigned from inside the x binding, not from a binding of
+        // its own. A Behavior bakes duration and curve at the instant the write
+        // happens, and a sibling binding on isOpen is not necessarily current by
+        // then, so the exit would run on the enter's curve. Revealer and
+        // PagePlaceholder are the worked examples; DESIGN.md 2.9.
+        property AnimSpec slideSpec: Appearance.animation.elementMove
+
         // Open: x=0. Closed: x=width (off-screen right).
-        x: host.isOpen ? 0 : slider.width
+        x: {
+            slider.slideSpec = host.isOpen ? Appearance.animation.elementMove : Appearance.animation.elementMoveExit;
+            return host.isOpen ? 0 : slider.width;
+        }
 
         Loader {
             id: subPageLoader
@@ -145,9 +161,10 @@ Item {
 
         Behavior on x {
             NumberAnimation {
-                duration: Appearance.animation.elementMove.duration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                alwaysRunToEnd: false
+                duration: slider.slideSpec.duration
+                easing.type: slider.slideSpec.type
+                easing.bezierCurve: slider.slideSpec.bezierCurve
             }
 
         }

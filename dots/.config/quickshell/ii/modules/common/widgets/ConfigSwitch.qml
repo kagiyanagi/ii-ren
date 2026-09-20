@@ -30,28 +30,40 @@ RippleButton {
         searchString: root.text
     }
 
+    // The search flash has to cover the card, not the button: ContentGroup
+    // makes the card 8px wider per side and rounds the ends of a run harder
+    // than its seams, so a single buttonEffectiveRadius stopped short of the
+    // card's edges and squared the corners it rounds (5.6, 10.13).
     HighlightOverlay {
         id: highlightOverlay
-        anchors.fill: parent
-        radius: root.buttonEffectiveRadius
+        x: -root.backgroundBleedLeft
+        width: root.width + root.backgroundBleedLeft + root.backgroundBleedRight
+        height: root.height
+        topLeftRadius: root.topLeftRadius
+        topRightRadius: root.topRightRadius
+        bottomLeftRadius: root.bottomLeftRadius
+        bottomRightRadius: root.bottomRightRadius
         color: root.highlightColor
     }
 
     contentItem: RowLayout {
         spacing: 10
+        // Disabled is 0.4 on the whole control and RippleButton already applies
+        // it; dimming the children as well multiplied out to 0.16 while the
+        // switch beside them sat at 0.4 (3.1).
         OptionalMaterialSymbol {
             id: iconWidget
             icon: root.buttonIcon
-            opacity: root.enabled ? 1 : 0.4
             iconSize: Appearance.font.pixelSize.larger
         }
         StyledText {
             id: labelWidget
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            elide: Text.ElideRight
             text: root.text
             font.pixelSize: root.font.pixelSize
             color: Appearance.colors.colOnSecondaryContainer
-            opacity: root.enabled ? 1 : 0.4
         }
         StyledSwitch {
             id: switchWidget

@@ -1,0 +1,51 @@
+refactor(cw-config-rows): a film that reaches its card, and a drag that lifts
+
+Twelve widgets, and almost all of modules/settings is six of them in a column.
+
+ContentGroup hands a row the card's four corner radii and its 8px per-side
+bleed only if the row exposes `buttonRadius`. ConfigSwitch is rooted in
+RippleButton and got them; nothing else in the family did. So the search flash
+on a spin box was anchored -2/-2/-4/-4 -- four pixels short of its card
+sideways and two pixels *past* it top and bottom, which is 10.13 word for word
+-- and ConfigTextField painted a rounding.verysmall rectangle of its own that
+was harmless only because its colour was transparentize(..., 1), alpha zero.
+Both now declare buttonRadius purely so the handshake fires, and read the
+card's geometry back out of it. That also makes the propagation reach through
+ConfigRow (5.6): a spin box in a row now takes only the edges it touches.
+
+Finding 1 mattered most here and this is where it landed: ConfigTextField had
+no focus state at all -- 3.7's "an activeFocus boolean nothing renders" --
+and now composites the 0.10 film; MonitorRect had hover only and no keyboard
+at all, and now has four states, activeFocusOnTab and Enter/Space to select.
+
+3.6 twice: a dragged bar component faded to 0.8 opacity on elementResize, a
+spatial spec that overshoots past 1 (the family's only check-design hit), and
+a dragged display dropped to 0.7 alpha. Both lift now -- the 0.16 drag film
+plus a scale -- and neither takes a shadow, because one is a repeated delegate
+(8, 10.11) and the other would have to restructure MonitorCanvas to get a
+sibling to cast it.
+
+5.7 on every label that could outgrow its cell: ConfigSwitch's (129 callers),
+ConfigTextField's, the bar entry's title, and the fixed-60px "Style" cell in
+the spacebar drawer. ConfigSlider's label-above-full-width-track was already
+right; what it was missing was Layout.fillWidth, which 35 of its 124
+instantiations set by hand while the other 89 sized to their label row inside
+a full-width card.
+
+Also: ConfigSwitch dimmed its icon and label a second time on top of
+RippleButton's, so a disabled row's text sat at 0.16 while its switch sat at
+0.4; ConfigSelectionArray overrode GroupButton's disabled 0.4 with 0.5;
+ConfigListViewEntry declared colHover and never used it, and coloured its
+title colOnLayer0 on a layer-2/3 surface; ConfigListView's root was a
+transparent Rectangle carrying a rounding.large that painted nothing; and
+ConfigSubPageHost slid in and out on the same 500ms spatial spec, whose
+overshoot could push x past the width that releases overlayActive.
+
+No row-level dividers or separator bars exist in this family; 5.5 had nothing
+to kill. ConfigListView is the only widget here that can be empty and it
+already collapses to the one control that fixes it, so no PagePlaceholder.
+
+tools/check-config-row-cards.py asserts both halves of the ContentGroup
+handshake, because these films are at opacity 0 except during the three blinks
+of a search hit -- break one and nobody sees it until somebody searches for
+that setting.

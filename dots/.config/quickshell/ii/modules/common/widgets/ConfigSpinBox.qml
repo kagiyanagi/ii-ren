@@ -20,6 +20,20 @@ Item {
     
     Layout.fillWidth: true
     readonly property bool wantsCard: true
+
+    // ContentGroup only hands a row the card's own corners and per-side reach
+    // when the row exposes buttonRadius; without them the search flash painted
+    // a rounding.small slab 4px short of the card on each side and 2px past it
+    // top and bottom (5.6, 10.13). Declaring them makes the row the card's one
+    // tile, so the card drives them and a spin box inside a ConfigRow picks up
+    // only the edges it actually touches.
+    property real buttonRadius: Appearance.rounding.verysmall
+    property real topLeftRadius: buttonRadius
+    property real topRightRadius: buttonRadius
+    property real bottomLeftRadius: buttonRadius
+    property real bottomRightRadius: buttonRadius
+    property real backgroundBleedLeft: 0
+    property real backgroundBleedRight: 0
     // Anchor margins don't feed implicitWidth the way Layout margins did, so
     // the row would ask for 16px less than it draws and clip its own spinner.
     implicitWidth: rowLayout.implicitWidth + 16
@@ -27,11 +41,13 @@ Item {
 
     HighlightOverlay {
         id: highlightOverlay
-        anchors.fill: parent
-        anchors.topMargin: -2
-        anchors.bottomMargin: -2
-        anchors.leftMargin: -4
-        anchors.rightMargin: -4
+        x: -root.backgroundBleedLeft
+        width: root.width + root.backgroundBleedLeft + root.backgroundBleedRight
+        height: root.height
+        topLeftRadius: root.topLeftRadius
+        topRightRadius: root.topRightRadius
+        bottomLeftRadius: root.bottomLeftRadius
+        bottomRightRadius: root.bottomRightRadius
     }
 
     SearchHandler {
