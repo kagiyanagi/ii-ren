@@ -1,10 +1,9 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 
@@ -12,156 +11,127 @@ Item {
     id: subPageRoot
     anchors.fill: parent
 
+    // ConfigSubPageHost binds these on whatever the Loader produced, and that is
+    // this Item -- so they stay here, and the nested ContentPage's own pair is
+    // driven from them rather than from a hand-rolled header.
     property bool showBackButton: false
     signal goBack()
+
+    readonly property bool hasCursorPacks: CursorTheme.availableThemes.length > 0
+    // The size range the page offers, named once: the spin box takes it as its
+    // bounds, and the preview reserves the widest of it so the lines beside the
+    // pointer hold still while the pointer grows.
+    readonly property int minCursorSize: 12
+    readonly property int maxCursorSize: 96
 
     ContentPage {
         id: page
         anchors.fill: parent
         forceWidth: false
-
-        RowLayout {
-            visible: subPageRoot.showBackButton
-            spacing: 12
-
-            RippleButton {
-                implicitWidth: implicitHeight
-                implicitHeight: 40
-                topLeftRadius: Appearance.rounding.full
-                topRightRadius: Appearance.rounding.full
-                bottomLeftRadius: Appearance.rounding.full
-                bottomRightRadius: Appearance.rounding.full
-                colBackground: Appearance.colors.colSecondaryContainer
-                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                colRipple: Appearance.colors.colSecondaryContainerActive
-                onClicked: subPageRoot.goBack()
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: "arrow_back"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnSecondaryContainer
-                }
-            }
-
-            StyledText {
-                text: Translation.tr("Cursor Configuration")
-                font.pixelSize: Appearance.font.pixelSize.large
-                font.family: Appearance.font.family.title
-                color: Appearance.colors.colOnLayer0
-            }
-        }
+        title: Translation.tr("Cursor Configuration")
+        showBackButton: subPageRoot.showBackButton
+        onGoBack: subPageRoot.goBack()
 
         ContentSection {
             title: Translation.tr("Cursor & Pointer")
             icon: "arrow_selector_tool"
+            // This was a 40-line explanation card sitting above the options. It
+            // is a scope note for the section, and a section already has a place
+            // to put one.
+            tooltip: Translation.tr("Configures the cursor theme and size across Hyprland, GTK apps, and Qt/KDE. Changes apply immediately without restarting your compositor.")
 
-            // Info Card
-            Rectangle {
+            // The preview is the page, and it comes first: the pointer at the
+            // size it will really be, beside the theme that is live right now.
+            // Everything below only changes what this shows.
+            Item {
+                id: preview
+                readonly property bool wantsCard: true
+
                 Layout.fillWidth: true
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer2
-                implicitHeight: infoLayout.implicitHeight + 24
+                visible: subPageRoot.hasCursorPacks
+                implicitHeight: previewRow.implicitHeight + 32
 
                 RowLayout {
-                    id: infoLayout
+                    id: previewRow
                     anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                    anchors.margins: 16
+                    spacing: 16
 
-                    MaterialSymbol {
-                        Layout.alignment: Qt.AlignTop
-                        iconSize: Appearance.font.pixelSize.larger
-                        text: "ads_click"
-                        color: Appearance.colors.colPrimary
-                    }
+                    // A fixed cell for a glyph that ranges over 12..96px, so the
+                    // text beside it does not reflow every time the size changes.
+                    Item {
+                        Layout.alignment: Qt.AlignVCenter
+                        implicitWidth: subPageRoot.maxCursorSize
+                        implicitHeight: pointerGlyph.implicitHeight
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: Translation.tr("System-wide Pointer Theme")
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.family: Appearance.font.family.title
-                            color: Appearance.colors.colOnLayer2
-                        }
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            wrapMode: Text.WordWrap
-                            text: Translation.tr("Configures the cursor theme and size across Hyprland, GTK apps, and Qt/KDE. Changes apply immediately without restarting your compositor.")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-                }
-            }
-
-            // Current Active System Status
-            Rectangle {
-                Layout.fillWidth: true
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer1
-                implicitHeight: statusLayout.implicitHeight + 20
-
-                RowLayout {
-                    id: statusLayout
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
-
-                    MaterialSymbol {
-                        iconSize: Appearance.font.pixelSize.large
-                        text: "mouse"
-                        color: Appearance.colors.colPrimary
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        StyledText {
-                            text: Translation.tr("Active System Cursor")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        StyledText {
-                            text: {
-                                if (!CursorTheme.currentSystemTheme) return Translation.tr("Detecting…");
-                                const base = `${CursorTheme.currentSystemTheme} · ${CursorTheme.currentSystemSize}px`;
-                                if (CursorTheme.currentThemeDetails?.sizes?.length > 0) {
-                                    return `${base} (supported: ${CursorTheme.currentThemeDetails.sizes.join(", ")}px)`;
-                                }
-                                return base;
-                            }
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.family: Appearance.font.family.title
-                            color: Appearance.colors.colOnLayer1
-                        }
-                    }
-
-                    Rectangle {
-                        radius: Appearance.rounding.full
-                        color: Appearance.colors.colPrimaryContainer
-                        implicitHeight: 28
-                        implicitWidth: activeBadgeText.implicitWidth + 16
-
-                        StyledText {
-                            id: activeBadgeText
+                        MaterialSymbol {
+                            id: pointerGlyph
                             anchors.centerIn: parent
-                            text: Translation.tr("Active")
+                            text: "arrow_selector_tool"
+                            // 1:1 with what the compositor will draw. Deliberately
+                            // not tweened: iconSize also feeds the symbol's `opsz`
+                            // axis, so animating it remaps a variable font every
+                            // frame, and this directory's effect budget is zero.
+                            iconSize: CursorTheme.configuredSize
+                            fill: 1
+                            color: Appearance.colors.colPrimary
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: CursorTheme.currentThemeDetails?.name ?? CursorTheme.configuredTheme
+                            font.pixelSize: Appearance.font.pixelSize.large
+                            font.family: Appearance.font.family.title
+                            color: Appearance.colors.colOnSurface
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            // The one line that says whether the system actually
+                            // took the selection -- which is why the apply button
+                            // below no longer needs a two-second "Applied!" flash.
+                            text: {
+                                if (!CursorTheme.currentSystemTheme)
+                                    return Translation.tr("Detecting the live pointer…");
+                                const live = Translation.tr("Live: %1 · %2px").arg(CursorTheme.currentSystemTheme).arg(CursorTheme.currentSystemSize);
+                                const sizes = CursorTheme.currentThemeDetails?.sizes ?? [];
+                                if (sizes.length === 0)
+                                    return live;
+                                return `${live} · ${Translation.tr("ships %1px").arg(sizes.join(", "))}`;
+                            }
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colOnPrimaryContainer
+                            color: Appearance.colors.colOnSurfaceVariant
                         }
                     }
                 }
             }
 
-            // Theme Selection
+            // Nothing to pick from. The text field further down is the way out,
+            // so the placeholder names it rather than leaving a dead end.
+            Item {
+                Layout.fillWidth: true
+                implicitHeight: Appearance.sizes.pagePlaceholderHeight
+                visible: !subPageRoot.hasCursorPacks
+
+                PagePlaceholder {
+                    anchors.fill: parent
+                    icon: "mouse"
+                    shape: MaterialShape.Shape.Circle
+                    title: Translation.tr("No cursor packs found")
+                    description: Translation.tr("Nothing in ~/.icons, ~/.local/share/icons or /usr/share/icons ships a cursor theme. Install one, or type its name under Custom Cursor Theme Name below.")
+                }
+            }
+
+            // Theme Selection -- the primary control, first under the header.
             ContentSubsection {
+                visible: subPageRoot.hasCursorPacks
                 title: Translation.tr("Installed Cursor Packs")
                 icon: "category"
                 Layout.fillWidth: true
@@ -182,26 +152,8 @@ Item {
                 }
             }
 
-            // Custom Theme Name Override
-            ContentSubsection {
-                title: Translation.tr("Custom Cursor Theme Name")
-                icon: "edit"
-                Layout.fillWidth: true
-                tooltip: Translation.tr("Manually enter a cursor theme name if you have a custom pack installed")
-
-                MaterialTextField {
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("e.g., macOS-White, Bibata-Modern-Classic")
-                    text: CursorTheme.configuredTheme
-                    onEditingFinished: {
-                        if (text.trim().length > 0) {
-                            CursorTheme.setCursor(text.trim(), CursorTheme.configuredSize);
-                        }
-                    }
-                }
-            }
-
-            // Size Presets
+            // Size: the presets, the exact value and the warning about it are one
+            // option, so they share one card run instead of three loose blocks.
             ContentSubsection {
                 title: Translation.tr("Cursor Size")
                 icon: "format_size"
@@ -223,59 +175,71 @@ Item {
                         { "displayName": "48 px", "value": 48, "icon": "mouse" }
                     ]
                 }
+
+                ConfigSpinBox {
+                    icon: "photo_size_select_small"
+                    text: Translation.tr("Custom size (px)")
+                    from: subPageRoot.minCursorSize
+                    to: subPageRoot.maxCursorSize
+                    stepSize: 2
+                    value: CursorTheme.configuredSize
+                    onValueChanged: {
+                        if (value !== CursorTheme.configuredSize) {
+                            CursorTheme.setCursor(CursorTheme.configuredTheme, value);
+                        }
+                    }
+                }
+
+                // Warning if chosen size is below theme's minimum available bitmap
+                NoticeBox {
+                    Layout.fillWidth: true
+                    visible: Boolean(CursorTheme.currentThemeDetails?.min_size && (CursorTheme.configuredSize < CursorTheme.currentThemeDetails.min_size))
+                    materialIcon: "warning"
+                    text: Translation.tr("The selected theme (%1) only includes bitmaps down to %2px. Hyprland and GTK will display %2px instead of %3px. Switch to a theme with smaller bitmaps (such as macOS-White or Breeze) to use %3px.")
+                        .arg(CursorTheme.configuredTheme)
+                        .arg(CursorTheme.currentThemeDetails?.min_size ?? 24)
+                        .arg(CursorTheme.configuredSize)
+                }
             }
 
-            ConfigSpinBox {
-                icon: "photo_size_select_small"
-                text: Translation.tr("Custom size (px)")
-                from: 12
-                to: 96
-                stepSize: 2
-                value: CursorTheme.configuredSize
-                onValueChanged: {
-                    if (value !== CursorTheme.configuredSize) {
-                        CursorTheme.setCursor(CursorTheme.configuredTheme, value);
+            // Custom Theme Name Override -- also the only way out of the empty
+            // state, which is why it stays visible when nothing was detected.
+            ContentSubsection {
+                title: Translation.tr("Custom Cursor Theme Name")
+                icon: "edit"
+                Layout.fillWidth: true
+                tooltip: Translation.tr("Manually enter a cursor theme name if you have a custom pack installed")
+
+                // Not ConfigTextField: it publishes `inputText` on every
+                // keystroke and exposes no commit signal, and each keystroke here
+                // would execDetached the apply script. MaterialTextField is the
+                // same shared input with an editingFinished to hang that on.
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("e.g., macOS-White, Bibata-Modern-Classic")
+                    text: CursorTheme.configuredTheme
+                    onEditingFinished: {
+                        if (text.trim().length > 0) {
+                            CursorTheme.setCursor(text.trim(), CursorTheme.configuredSize);
+                        }
                     }
                 }
             }
 
-            // Warning if chosen size is below theme's minimum available bitmap
-            NoticeBox {
-                Layout.fillWidth: true
-                visible: Boolean(CursorTheme.currentThemeDetails?.min_size && (CursorTheme.configuredSize < CursorTheme.currentThemeDetails.min_size))
-                materialIcon: "warning"
-                text: Translation.tr("The selected theme (%1) only includes bitmaps down to %2px. Hyprland and GTK will display %2px instead of %3px. Switch to a theme with smaller bitmaps (such as macOS-White or Breeze) to use %3px.")
-                    .arg(CursorTheme.configuredTheme)
-                    .arg(CursorTheme.currentThemeDetails?.min_size ?? 24)
-                    .arg(CursorTheme.configuredSize)
-            }
-
-            // Apply Button
+            // Every control above already applies on change -- CursorTheme.setCursor
+            // runs the script itself -- so this is the "it did not take" escape
+            // hatch, not the page's primary action. It is therefore shaped like a
+            // settings row rather than a full-width accented button, and its
+            // confirmation is the preview's live line, not a 2s label swap.
             RippleButtonWithIcon {
-                id: applyButton
-                property bool appliedRecently: false
-                materialIcon: appliedRecently ? "check" : "magic_button"
-                mainText: appliedRecently ? Translation.tr("Applied to Hyprland, GTK & Qt!") : Translation.tr("Apply Cursor Now")
-                buttonRadius: Appearance.rounding.small
-                implicitHeight: 48
                 Layout.fillWidth: true
-                colBackground: Appearance.colors.colPrimaryContainer
-                colBackgroundHover: Appearance.colors.colPrimaryContainerHover
-                colRipple: Appearance.colors.colPrimaryContainerActive
-                colText: Appearance.colors.colOnPrimaryContainer
-                onClicked: {
-                    CursorTheme.applyCurrent();
-                    appliedRecently = true;
-                    feedbackTimer.restart();
-                }
-
-                Timer {
-                    id: feedbackTimer
-                    interval: 2000
-                    onTriggered: {
-                        applyButton.appliedRecently = false;
-                    }
-                }
+                readonly property bool wantsCard: true
+                implicitHeight: contentItem.implicitHeight + 12 * 2
+                buttonRadius: Appearance.rounding.verysmall
+                materialIcon: "magic_button"
+                mainText: Translation.tr("Re-apply to Hyprland, GTK & Qt")
+                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
+                onClicked: CursorTheme.applyCurrent()
             }
         }
     }
