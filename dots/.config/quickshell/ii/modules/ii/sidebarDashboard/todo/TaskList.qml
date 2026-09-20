@@ -37,11 +37,7 @@ Item {
 
             Behavior on implicitHeight {
                 enabled: enableHeightAnimation
-                NumberAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                }
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
 
             Rectangle {
@@ -76,32 +72,18 @@ Item {
                         }
                         TodoItemActionButton {
                             Layout.fillWidth: false
+                            materialIcon: todoItem.modelData.done ? "remove_done" : "check"
                             onClicked: {
                                 if (!todoItem.modelData.done)
                                     Todo.markDone(todoItem.modelData.originalIndex);
                                 else
                                     Todo.markUnfinished(todoItem.modelData.originalIndex);
                             }
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                text: todoItem.modelData.done ? "remove_done" : "check"
-                                iconSize: Appearance.font.pixelSize.larger
-                                color: Appearance.colors.colOnLayer1
-                            }
                         }
                         TodoItemActionButton {
                             Layout.fillWidth: false
-                            onClicked: {
-                                Todo.deleteItem(todoItem.modelData.originalIndex);
-                            }
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                text: "delete_forever"
-                                iconSize: Appearance.font.pixelSize.larger
-                                color: Appearance.colors.colOnLayer1
-                            }
+                            materialIcon: "delete_forever"
+                            onClicked: Todo.deleteItem(todoItem.modelData.originalIndex)
                         }
                     }
                 }
@@ -109,33 +91,10 @@ Item {
         }
     }
 
-    Item {
-        // Placeholder when list is empty
-        visible: opacity > 0
-        opacity: taskList.length === 0 ? 1 : 0
-        anchors.fill: parent
-
-        Behavior on opacity {
-            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-        }
-
-        ColumnLayout {
-            anchors.centerIn: parent
-            spacing: 5
-
-            MaterialSymbol {
-                Layout.alignment: Qt.AlignHCenter
-                iconSize: 55
-                color: Appearance.m3colors.m3outline
-                text: emptyPlaceholderIcon
-            }
-            StyledText {
-                Layout.alignment: Qt.AlignHCenter
-                font.pixelSize: Appearance.font.pixelSize.normal
-                color: Appearance.m3colors.m3outline
-                horizontalAlignment: Text.AlignHCenter
-                text: emptyPlaceholderText
-            }
-        }
+    PagePlaceholder {
+        shown: root.taskList.length === 0
+        icon: root.emptyPlaceholderIcon
+        description: root.emptyPlaceholderText
+        descriptionHorizontalAlignment: Text.AlignHCenter
     }
 }

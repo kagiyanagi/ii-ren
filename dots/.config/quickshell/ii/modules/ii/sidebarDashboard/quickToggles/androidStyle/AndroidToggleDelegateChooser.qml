@@ -1,23 +1,16 @@
 pragma ComponentBehavior: Bound
-import qs.services
-import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
-import Quickshell
-import Quickshell.Bluetooth
 
+// One entry per toggle type. Everything a tile needs beyond its own data --
+// cell size, edit mode, which page it is on -- it reads back off this chooser,
+// so an entry stays down to the type, its data and where a long-press goes.
 DelegateChooser {
     id: root
-    property bool editMode: false
-    required property real baseCellWidth
-    required property real baseCellHeight
-    required property real spacing
-    property int pageIndex: 0
-    property int gridColumns: 4
-    property bool isUnused: false
     property var panel: null
     property var gridRef: null
-    property int entranceTrigger: -1
+    property int pageIndex: 0
+    property bool isUnused: false
     signal openAudioOutputDialog
     signal openAudioInputDialog
     signal openBluetoothDialog
@@ -33,21 +26,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openNightLightDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openNightLightDialog()
         }
     }
 
@@ -57,18 +38,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -78,21 +49,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openAudioOutputDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openAudioOutputDialog()
         }
     }
 
@@ -102,21 +61,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openBluetoothDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openBluetoothDialog()
         }
     }
 
@@ -126,18 +73,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -147,18 +84,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -168,18 +95,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -189,18 +106,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -210,18 +117,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -231,18 +128,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -252,18 +139,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -273,21 +150,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openAudioInputDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openAudioInputDialog()
         }
     }
 
@@ -297,18 +162,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -318,21 +173,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openWifiDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openWifiDialog()
         }
     }
 
@@ -342,21 +185,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openHotspotDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openHotspotDialog()
         }
     }
 
@@ -366,21 +197,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openNightLightDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openNightLightDialog()
         }
     }
 
@@ -390,18 +209,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -411,18 +220,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -432,18 +231,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -453,18 +242,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -474,18 +253,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -495,41 +264,20 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
+
     DelegateChoice {
         roleValue: "volumeSlider"
         AndroidVolumeSliderToggle {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openAudioOutputDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openAudioOutputDialog()
         }
     }
 
@@ -539,21 +287,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openAudioInputDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openAudioInputDialog()
         }
     }
 
@@ -563,18 +299,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -584,18 +310,8 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
+            chooser: root
         }
     }
 
@@ -605,21 +321,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openNightLightDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openNightLightDialog()
         }
     }
 
@@ -629,21 +333,9 @@ DelegateChooser {
             required property int index
             required property var modelData
             buttonIndex: index
-            isUnused: root.isUnused
             buttonData: modelData
-            editMode: root.editMode
-            baseCellWidth: root.baseCellWidth
-            baseCellHeight: root.baseCellHeight
-            cellSpacing: root.spacing
-            cellSize: modelData.sizeW
-            pageIndex: root.pageIndex
-            gridColumns: root.gridColumns
-            panel: root.panel
-            gridRef: root.gridRef
-            entranceTrigger: root.entranceTrigger
-            onOpenMenu: {
-                root.openNightLightDialog();
-            }
+            chooser: root
+            onOpenMenu: root.openNightLightDialog()
         }
     }
 }

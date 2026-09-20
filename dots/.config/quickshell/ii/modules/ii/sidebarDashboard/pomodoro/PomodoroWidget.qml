@@ -12,7 +12,6 @@ Item {
         {"name": Translation.tr("Stopwatch"), "icon": "timer"}
     ]
 
-    // These are keybinds for stopwatch and pomodoro
     Keys.onPressed: (event) => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) { // Switch tabs
             if (event.key === Qt.Key_PageDown) {
@@ -67,7 +66,6 @@ Item {
             clip: true
             currentIndex: tabBar.currentIndex
 
-            // Tabs
             PomodoroTimer {}
             Stopwatch {}
         }

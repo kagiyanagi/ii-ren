@@ -52,7 +52,6 @@ Item {
 
             spacing: 0
             StyledText {
-                // Layout.preferredWidth: elapsedIndicator.width * 0.6 // Prevent shakiness
                 font.pixelSize: 40
                 color: Appearance.m3colors.m3onSurface
                 text: Duration.format10ms(TimerService.stopwatchTime)
@@ -67,7 +66,6 @@ Item {
             }
         }
 
-        // Laps
         StyledListView {
             id: lapsList
             anchors {

@@ -19,12 +19,17 @@ Rectangle {
     property bool collapsed: Persistent.states.sidebar.bottomGroup.collapsed
     property var extensionTabs: ExtensionManager.ready ? ExtensionManager.getContributionPoint("sidebarRightBottom") : []
 
+    function syncExtensionTabs() {
+        root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom")
+        root.refreshCurrentTab()
+    }
+
     Connections {
         target: ExtensionManager
-        function onRefreshExtensions() { root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom"); root.refreshCurrentTab() }
-        function onExtensionInstalled() { root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom"); root.refreshCurrentTab() }
-        function onExtensionRemoved() { root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom"); root.refreshCurrentTab() }
-        function onExtensionToggled() { root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom"); root.refreshCurrentTab() }
+        function onRefreshExtensions() { root.syncExtensionTabs() }
+        function onExtensionInstalled() { root.syncExtensionTabs() }
+        function onExtensionRemoved() { root.syncExtensionTabs() }
+        function onExtensionToggled() { root.syncExtensionTabs() }
     }
 
     function refreshCurrentTab() {
@@ -78,11 +83,7 @@ Rectangle {
     ]
 
     Behavior on implicitHeight {
-        NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-        }
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
     }
 
     function setCollapsed(state) {
@@ -97,7 +98,7 @@ Rectangle {
 
     Timer {
         id: collapseCleanFadeTimer
-        interval: Appearance.animation.elementMove.duration / 2
+        interval: Appearance.animation.elementMoveFast.duration
         repeat: false
         onTriggered: {
             if (collapsed)
@@ -118,18 +119,12 @@ Rectangle {
         }
     }
 
-    // The thing when collapsed
-    RowLayout {
+    RowLayout { // Collapsed
         id: collapsedBottomWidgetGroupRow
         opacity: collapsed ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {
-            NumberAnimation {
-                id: collapsedBottomWidgetGroupRowFade
-                duration: Appearance.animation.elementMove.duration / 2
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
         spacing: 15
@@ -153,40 +148,30 @@ Rectangle {
             property int remainingTasks: Todo.list.filter(task => !task.done).length
             Layout.margins: 10
             Layout.leftMargin: 0
-            // text: `${DateTime.collapsedCalendarFormat}   •   ${remainingTasks} task${remainingTasks > 1 ? "s" : ""}`
             text: Translation.tr("%1   •   %2 tasks").arg(DateTime.collapsedCalendarFormat).arg(remainingTasks)
             font.pixelSize: Appearance.font.pixelSize.large
             color: Appearance.colors.colOnLayer1
         }
     }
 
-    // The thing when expanded
-    RowLayout {
+    RowLayout { // Expanded
         id: bottomWidgetGroupRow
 
         opacity: collapsed ? 0 : 1
         visible: opacity > 0
         Behavior on opacity {
-            NumberAnimation {
-                id: bottomWidgetGroupRowFade
-                duration: Appearance.animation.elementMove.duration / 2
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
         anchors.fill: parent
-        // implicitHeight: tabStack.implicitHeight
         spacing: 20
 
-        // Navigation rail
-        Item {
+        Item { // Navigation rail
             Layout.fillHeight: true
             Layout.fillWidth: false
             Layout.leftMargin: 10
             Layout.topMargin: 10
             implicitWidth: tabBar.implicitWidth
-            // Navigation rail buttons
             NavigationRailTabArray {
                 id: tabBar
                 anchors.verticalCenter: parent.verticalCenter
@@ -210,7 +195,6 @@ Rectangle {
                     }
                 }
             }
-            // Collapse button
             CalendarHeaderButton {
                 anchors.left: parent.left
                 anchors.top: parent.top
@@ -227,11 +211,9 @@ Rectangle {
             }
         }
 
-        // Content area
-        Item {
+        Item { // Content area
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // implicitHeight: tabStack.implicitHeight
 
             Loader {
                 id: tabStack
@@ -261,10 +243,9 @@ Rectangle {
                 Connections {
                     target: root
                     function onSelectedTabChanged() {
-                        if (root.currentTab > root.previousIndex)
-                            tabSwitchBehavior.animation.down = true;
-                        else if (root.currentTab < root.previousIndex)
-                            tabSwitchBehavior.animation.down = false;
+                        // `currentTab` never existed here, so which way the page
+                        // slid was whatever the last switch left behind.
+                        tabSwitchBehavior.animation.down = root.selectedTab > root.previousIndex;
                         tabStack.source = root.tabs[root.selectedTab].widget;
                     }
                 }

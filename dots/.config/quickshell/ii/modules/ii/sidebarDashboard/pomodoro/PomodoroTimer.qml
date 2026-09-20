@@ -19,7 +19,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // The timer circle
         CircularProgress {
             Layout.alignment: Qt.AlignHCenter
             lineWidth: 8
@@ -66,7 +65,6 @@ Item {
 
         }
 
-        // The Start/Stop and Reset buttons
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             spacing: 10

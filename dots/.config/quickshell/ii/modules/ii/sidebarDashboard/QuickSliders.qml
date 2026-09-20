@@ -39,21 +39,11 @@ Rectangle {
 
         spacing: 8
 
-
-        property int activeCount: {
-            let count = 0;
-            for (let i = 0; i < repeater.count; i++) {
-                if (repeater.itemAt(i) && repeater.itemAt(i).visible) count++;
-            }
-            return count;
-        }
-
-
         Repeater {
             id: repeater
             model: [
-                // Android's brightness slider swaps the sun between hollow, half
-                // and full as the level moves, rather than sitting on one glyph.
+                // Android swaps the sun between hollow, half and full as the
+                // level moves, rather than sitting on one glyph.
                 { show: showBrightness, getIcon: (val) => {
                     const v = (val !== undefined) ? val : (root.brightnessMonitor?.brightness ?? 0);
                     if (v <= 0.33) return "brightness_low";
@@ -66,7 +56,6 @@ Rectangle {
                     const muted = Audio.sink?.audio?.muted ?? false;
                     const v = (val !== undefined) ? val : (Audio.sink?.audio?.volume ?? 0);
                     if (muted) return "volume_off";
-                    if (v <= 0.0) return "volume_mute";
                     if (v <= 0.33) return "volume_mute";
                     if (v <= 0.66) return "volume_down";
                     return "volume_up";

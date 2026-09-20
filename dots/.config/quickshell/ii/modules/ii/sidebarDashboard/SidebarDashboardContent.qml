@@ -73,7 +73,6 @@ Item {
             SystemButtonRow {
                 Layout.fillHeight: false
                 Layout.fillWidth: true
-                // Layout.margins: 10
                 Layout.topMargin: 5
                 Layout.bottomMargin: 0
             }
@@ -266,8 +265,8 @@ Item {
                         id: uptimeAvatar
                         anchors.fill: parent
                         fillMode: Image.PreserveAspectCrop
-                        // Own fallback chain instead of StyledImage's: that one assigns
-                        // source imperatively, which kills the binding to the setting.
+                        // Its own fallback chain: StyledImage assigns source
+                        // imperatively, which would kill the binding to the setting.
                         property list<string> candidates: Config.options.sidebar.uptimeIcon.length > 0 ? [Config.options.sidebar.uptimeIcon.replace(/^~\//, Directories.home)] : [Directories.userAvatarPathAccountsService, Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
                         property int candidateIndex: 0
                         onCandidatesChanged: candidateIndex = 0

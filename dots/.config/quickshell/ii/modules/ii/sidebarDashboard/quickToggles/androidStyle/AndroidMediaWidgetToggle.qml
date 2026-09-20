@@ -17,26 +17,27 @@ Item {
 
     required property int buttonIndex
     required property var buttonData
-    required property real baseCellWidth
-    required property real baseCellHeight
-    required property real cellSpacing
-    required property int cellSize
+    // Where the tile sits comes from the chooser that built it, so a delegate
+    // entry is just a type and its data.
+    required property var chooser
+    property var panel: root.chooser?.panel ?? null
+    property var gridRef: root.chooser?.gridRef ?? null
+    property int pageIndex: root.chooser?.pageIndex ?? 0
+    property bool isUnused: root.chooser?.isUnused ?? false
+    property bool editMode: root.panel?.editMode ?? false
+    property real baseCellWidth: root.panel?.baseCellWidth ?? 0
+    property real baseCellHeight: root.panel?.baseCellHeight ?? 0
+    property real cellSpacing: root.panel?.spacing ?? 0
+    property int gridColumns: root.panel?.columns ?? 4
 
     readonly property var catalogSize: QuickToggleCatalog.normalizeSize(root.buttonData.type, root.buttonData.sizeW, root.buttonData.sizeH, root.gridColumns)
 
-    property bool editMode: false
-    property bool isUnused: false
     property bool isDragging: false
     property real dragOffsetX: 0
     property real dragOffsetY: 0
-    property int pageIndex: 0
-    property int gridColumns: 4
-    property var panel: null
-    property var gridRef: null
 
-    // Active pages and the drawer use one explicit packed coordinate system.
-    // Bind only when geometry is present so fixed sliders can still be owned by
-    // their Column positioner.
+    // Bind only when geometry is present, so fixed sliders can still be owned
+    // by their Column positioner.
     readonly property bool hasExplicitGeometry: root.buttonData
         && root.buttonData.layoutX !== undefined
         && root.buttonData.layoutY !== undefined
@@ -61,56 +62,6 @@ Item {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
-    property int entranceTrigger: -1
-    property real _entranceOpacity: 1.0
-    property real _entranceScale: 1.0
-    property real _entranceTranslateY: 0
-    property bool _entranceDone: true
-    readonly property bool _animationsDisabled: (Config.options?.appearance?.animationMultiplier ?? 1.0) <= 0.25
-
-    onEntranceTriggerChanged: {
-        if (_animationsDisabled) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceTranslateY = 0;
-            return;
-        }
-        // Only animate when the sidebar is opening on the current page (or for fixed sliders)
-        if (root.pageIndex !== -1 && root.panel && root.panel.currentPage !== root.pageIndex) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceTranslateY = 0;
-            return;
-        }
-        _entranceDone = false;
-        _entranceOpacity = 0;
-        _entranceScale = 0.85;
-        _entranceTranslateY = 20;
-        Qt.callLater(function() {
-            entranceAnim.start();
-        });
-    }
-
-    Component.onCompleted: {
-        _entranceDone = true;
-        _entranceOpacity = 1;
-        _entranceScale = 1.0;
-        _entranceTranslateY = 0;
-    }
-
-    SequentialAnimation {
-        id: entranceAnim
-        PauseAnimation { duration: Math.min(Math.max(root.buttonIndex, 0), 15) * 35 }
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "_entranceOpacity"; from: 0; to: 1; duration: 280; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "_entranceScale"; from: 0.85; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-            NumberAnimation { target: root; property: "_entranceTranslateY"; from: 20; to: 0; duration: 320; easing.type: Easing.OutCubic }
-        }
-        PropertyAction { target: root; property: "_entranceDone"; value: true }
-    }
-
     property string tooltipText: {
         var player = MprisController.activePlayer;
         if (player && player.trackTitle) {
@@ -120,7 +71,6 @@ Item {
         return Translation.tr("Media Player");
     }
 
-    // Effective sizes for live preview during resize
     readonly property int effectiveSizeW: root.catalogSize[0]
     readonly property int effectiveSizeH: root.catalogSize[1]
 
@@ -135,6 +85,49 @@ Item {
 
     implicitWidth: baseWidth
     implicitHeight: baseHeight
+
+    // One blurred backdrop for every layout below. `hasArt` is what decides
+    // whether the text on top is light or dark.
+    component CoverArt: StyledImage {
+        id: coverArt
+        readonly property string artUrl: MprisController.artUrl
+        readonly property bool isLocalArt: artUrl.startsWith("file://")
+        readonly property bool hasArt: artUrl.length > 0 && !isLocalArt
+        readonly property string artFilePath: hasArt ? `${Directories.coverArt}/${Qt.md5(artUrl)}` : ""
+        property bool cached: false
+
+        anchors.fill: parent
+        // Only once the file is on disk: pointing at it mid-download fails the
+        // load, and a failed load is not retried when the file appears.
+        source: isLocalArt ? artUrl : (cached ? `file://${artFilePath}` : "")
+        fillMode: Image.PreserveAspectCrop
+        cache: false
+        asynchronous: true
+        opacity: 0.8
+
+        onArtUrlChanged: {
+            cached = false;
+            if (!hasArt) return;
+            coverDownloader.running = true;
+        }
+
+        Process {
+            id: coverDownloader
+            command: ["bash", "-c", `[ -f '${coverArt.artFilePath}' ] || (curl -4 -sSL '${coverArt.artUrl}' -o '${coverArt.artFilePath}.tmp' && mv '${coverArt.artFilePath}.tmp' '${coverArt.artFilePath}')`]
+            onExited: exitCode => coverArt.cached = exitCode === 0
+        }
+
+        layer.enabled: true
+        layer.effect: StyledBlurEffect {
+            source: coverArt
+            blurMax: 32
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.6)
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -162,9 +155,8 @@ Item {
         width: root.width
         height: root.height
 
-        scale: (root.isDragging ? 1.05 : 1.0) * (root._entranceDone ? 1.0 : root._entranceScale)
+        scale: root.isDragging ? 1.05 : 1.0
         opacity: {
-            if (!root._entranceDone) return root._entranceOpacity;
             if (root.isUnused)
                 return 0.5;
             if (root.editMode && !root.isDragging)
@@ -177,15 +169,13 @@ Item {
 
         transform: Translate {
             x: root.isDragging ? root.dragOffsetX : 0
-            y: (root.isDragging ? root.dragOffsetY : 0) + (root._entranceDone ? 0 : root._entranceTranslateY)
+            y: root.isDragging ? root.dragOffsetY : 0
         }
 
         Behavior on scale {
-            enabled: !entranceAnim.running
             animation: Appearance.animation.clickBounce.numberAnimation.createObject(visualButton)
         }
         Behavior on opacity {
-            enabled: !entranceAnim.running
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
         }
 
@@ -262,57 +252,8 @@ Item {
 
                 property MprisPlayer player: MprisController.activePlayer
 
-                // Track downloader
-                property string artUrl: MprisController.artUrl
-                property bool isLocalArt: artUrl.startsWith("file://")
-                property string artFilePath: artUrl.length > 0 && !isLocalArt ? `${Directories.coverArt}/${Qt.md5(artUrl)}` : ""
-                property string artTempPath: artFilePath + ".tmp"
-                property string artSource: {
-                    if (artUrl.length === 0) return "";
-                    if (isLocalArt) return artUrl;
-                    if (coverDownloader2x1.running) return "";
-                    return `file://${artFilePath}`;
-                }
-
-                Process {
-                    id: coverDownloader2x1
-                    property string targetFile: widgetRoot2x1.artUrl
-                    property string artFilePath: widgetRoot2x1.artFilePath
-                    property string artTempPath: widgetRoot2x1.artTempPath
-                    command: ["bash", "-c", `[ -f '${artFilePath}' ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-                    onExited: {
-                        // Force reload by briefly clearing source
-                        widgetRoot2x1.artSource = "";
-                    }
-                }
-
-                onArtUrlChanged: {
-                    if (artUrl.length === 0 || isLocalArt) return;
-                    coverDownloader2x1.targetFile = artUrl;
-                    coverDownloader2x1.artFilePath = artFilePath;
-                    coverDownloader2x1.artTempPath = artTempPath;
-                    coverDownloader2x1.running = true;
-                }
-
-                StyledImage {
-                    id: blurredBg2x1
-                    anchors.fill: parent
-                    source: widgetRoot2x1.artSource
-                    fillMode: Image.PreserveAspectCrop
-                    cache: false
-                    asynchronous: true
-                    opacity: 0.8
-
-                    layer.enabled: true
-                    layer.effect: StyledBlurEffect {
-                        source: blurredBg2x1
-                        blurMax: 32
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.6)
-                    }
+                CoverArt {
+                    id: art2x1
                 }
 
                 RowLayout {
@@ -348,7 +289,7 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             text: widgetRoot2x1.player?.trackTitle || Translation.tr("Untitled")
-                            color: widgetRoot2x1.artFilePath.length > 0 ? "white" : Appearance.colors.colOnLayer0
+                            color: art2x1.hasArt ? "white" : Appearance.colors.colOnLayer0
                             font.pixelSize: Appearance.font.pixelSize.normal
                             font.weight: 600
                             elide: Text.ElideRight
@@ -356,7 +297,7 @@ Item {
                         StyledText {
                             Layout.fillWidth: true
                             text: widgetRoot2x1.player?.trackArtist || Translation.tr("Unknown Artist")
-                            color: widgetRoot2x1.artFilePath.length > 0 ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
+                            color: art2x1.hasArt ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideRight
                         }
@@ -385,65 +326,8 @@ Item {
 
                 property MprisPlayer player: MprisController.activePlayer
 
-                // Track downloader
-                property string artUrl: MprisController.artUrl
-                property bool isLocalArt: artUrl.startsWith("file://")
-                property string artFilePath: artUrl.length > 0 && !isLocalArt ? `${Directories.coverArt}/${Qt.md5(artUrl)}` : ""
-                property string artTempPath: artFilePath + ".tmp"
-                property bool cachedArtReady: false
-                property string artSource: {
-                    if (artUrl.length === 0) return "";
-                    if (isLocalArt) return cachedArtReady ? artUrl : "";
-                    if (coverDownloader.running) return "";
-                    if (!cachedArtReady) return "";
-                    return `file://${artFilePath}`;
-                }
-
-                Process {
-                    id: coverDownloader
-                    property string targetFile: widgetRoot.artUrl
-                    property string artFilePath: widgetRoot.artFilePath
-                    property string artTempPath: widgetRoot.artTempPath
-                    command: ["bash", "-c", `[ -f '${artFilePath}' ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-                    onExited: (exitCode, exitStatus) => {
-                        // The binding exposes the cached file only after the download
-                        // has completed, avoiding a failed image load on every change.
-                        widgetRoot.cachedArtReady = exitCode === 0;
-                    }
-                }
-
-                onArtUrlChanged: {
-                    cachedArtReady = false;
-                    if (artUrl.length === 0) return;
-                    if (isLocalArt) {
-                        cachedArtReady = true;
-                        return;
-                    }
-                    coverDownloader.targetFile = artUrl;
-                    coverDownloader.artFilePath = artFilePath;
-                    coverDownloader.artTempPath = artTempPath;
-                    coverDownloader.running = true;
-                }
-
-                StyledImage {
-                    id: blurredBg
-                    anchors.fill: parent
-                    source: (widgetRoot.artSource && widgetRoot.artSource.length > 0 && widgetRoot.artSource !== "file://" && widgetRoot.artSource !== "file:///") ? widgetRoot.artSource : ""
-                    fillMode: Image.PreserveAspectCrop
-                    cache: false
-                    asynchronous: true
-                    opacity: 0.8
-
-                    layer.enabled: true
-                    layer.effect: StyledBlurEffect {
-                        source: blurredBg
-                        blurMax: 32
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.6)
-                    }
+                CoverArt {
+                    id: art2x2
                 }
 
                 ColumnLayout {
@@ -453,7 +337,7 @@ Item {
                     StyledText {
                         Layout.fillWidth: true
                         text: widgetRoot.player?.trackTitle || Translation.tr("Untitled")
-                        color: widgetRoot.artFilePath.length > 0 ? "white" : Appearance.colors.colOnLayer0
+                        color: art2x2.hasArt ? "white" : Appearance.colors.colOnLayer0
                         font.pixelSize: Appearance.font.pixelSize.normal
                         font.weight: 600
                         elide: Text.ElideRight
@@ -461,7 +345,7 @@ Item {
                     StyledText {
                         Layout.fillWidth: true
                         text: widgetRoot.player?.trackArtist || Translation.tr("Unknown Artist")
-                        color: widgetRoot.artFilePath.length > 0 ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
+                        color: art2x2.hasArt ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
                         elide: Text.ElideRight
                     }
@@ -482,7 +366,7 @@ Item {
                             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                             contentItem: MaterialSymbol {
                                 text: "skip_previous"
-                                color: widgetRoot.artFilePath.length > 0 ? "white" : Appearance.colors.colOnSecondaryContainer
+                                color: art2x2.hasArt ? "white" : Appearance.colors.colOnSecondaryContainer
                                 iconSize: 24
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -510,7 +394,7 @@ Item {
                             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                             contentItem: MaterialSymbol {
                                 text: "skip_next"
-                                color: widgetRoot.artFilePath.length > 0 ? "white" : Appearance.colors.colOnSecondaryContainer
+                                color: art2x2.hasArt ? "white" : Appearance.colors.colOnSecondaryContainer
                                 iconSize: 24
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -526,6 +410,5 @@ Item {
     EditableQuickToggleItem {
         id: editableItem
         target: root
-        visualItem: visualButton
     }
 }

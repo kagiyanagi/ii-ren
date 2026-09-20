@@ -29,9 +29,8 @@ Item {
 
             cursorShape: Qt.PointingHandCursor
             onClicked: root.node.audio.muted = !root.node.audio.muted
-
             hoverEnabled: true
-            property bool hovered: containsMouse
+
             StyledToolTip {
                 text: root.node?.audio.muted ? Translation.tr("Click to unmute") : Translation.tr("Click to mute")
             }
@@ -58,14 +57,10 @@ Item {
                 opacity: root.node?.audio.muted ? 0.4 : 1.0
 
                 Behavior on opacity {
-                    NumberAnimation {
-                        duration: 150
-                    }
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
                 Behavior on desaturation {
-                    NumberAnimation {
-                        duration: 150
-                    }
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
 
@@ -88,7 +83,6 @@ Item {
                 color: Appearance.colors.colSubtext
                 elide: Text.ElideRight
                 text: {
-                    // application.name -> description -> name
                     const app = Audio.appNodeDisplayName(root.node);
                     const media = root.node.properties["media.name"];
                     return media != undefined ? `${app} • ${media}` : app;

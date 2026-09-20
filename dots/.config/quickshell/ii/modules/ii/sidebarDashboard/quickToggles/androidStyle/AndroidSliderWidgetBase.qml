@@ -13,26 +13,27 @@ Item {
 
     required property int buttonIndex
     required property var buttonData
-    required property real baseCellWidth
-    required property real baseCellHeight
-    required property real cellSpacing
-    required property int cellSize
+    // Where the tile sits comes from the chooser that built it, so a delegate
+    // entry is just a type and its data.
+    required property var chooser
+    property var panel: root.chooser?.panel ?? null
+    property var gridRef: root.chooser?.gridRef ?? null
+    property int pageIndex: root.chooser?.pageIndex ?? 0
+    property bool isUnused: root.chooser?.isUnused ?? false
+    property bool editMode: root.panel?.editMode ?? false
+    property real baseCellWidth: root.panel?.baseCellWidth ?? 0
+    property real baseCellHeight: root.panel?.baseCellHeight ?? 0
+    property real cellSpacing: root.panel?.spacing ?? 0
+    property int gridColumns: root.panel?.columns ?? 4
 
     readonly property var catalogSize: QuickToggleCatalog.normalizeSize(root.buttonData.type, root.buttonData.sizeW, root.buttonData.sizeH, root.gridColumns)
 
-    property bool editMode: false
-    property bool isUnused: false
     property bool isDragging: false
     property real dragOffsetX: 0
     property real dragOffsetY: 0
-    property int pageIndex: 0
-    property int gridColumns: 4
-    property var panel: null
-    property var gridRef: null
 
-    // Active pages and the drawer use one explicit packed coordinate system.
-    // Bind only when geometry is present so fixed sliders can still be owned by
-    // their Column positioner.
+    // Bind only when geometry is present, so fixed sliders can still be owned
+    // by their Column positioner.
     readonly property bool hasExplicitGeometry: root.buttonData
         && root.buttonData.layoutX !== undefined
         && root.buttonData.layoutY !== undefined
@@ -57,109 +58,15 @@ Item {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
-    // Entrance animation
-    property int entranceTrigger: -1
-    property real _entranceOpacity: 1.0
-    property real _entranceScale: 1.0
-    property real _entranceTranslateY: 0
-    property bool _entranceDone: true
-
-    property real currentSliderValue: root.sliderValue
-    property int _activeValueAnimDuration: 0
-
-    readonly property bool _animationsDisabled: (Config.options?.appearance?.animationMultiplier ?? 1.0) <= 0.25
-
-    onSliderValueChanged: {
-        if (_entranceDone && !sliderDelayTimer.running) {
-            currentSliderValue = root.sliderValue;
-        }
-    }
-
-    function resetAndAnimateSlider() {
-        if (_animationsDisabled) {
-            _activeValueAnimDuration = 0;
-            currentSliderValue = root.sliderValue;
-            return;
-        }
-        // Step 1: Instant reset to 0 without animation
-        _activeValueAnimDuration = 0;
-        currentSliderValue = 0;
-        
-        // Step 2: Set animation duration and assign final target value after entrance delay
-        sliderDelayTimer.restart();
-    }
-
-    Timer {
-        id: sliderDelayTimer
-        interval: 180 + Math.min(Math.max(root.buttonIndex, 0), 15) * 40
-        repeat: false
-        onTriggered: {
-            _activeValueAnimDuration = _animationsDisabled ? 0 : 650;
-            currentSliderValue = root.sliderValue;
-        }
-    }
-
-    onEntranceTriggerChanged: {
-        if (_animationsDisabled) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceTranslateY = 0;
-            _activeValueAnimDuration = 0;
-            currentSliderValue = root.sliderValue;
-            return;
-        }
-        // Only animate when the sidebar is opening on the current page (or for fixed sliders)
-        if (root.pageIndex !== -1 && root.panel && root.panel.currentPage !== root.pageIndex) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceTranslateY = 0;
-            _activeValueAnimDuration = 0;
-            currentSliderValue = root.sliderValue;
-            return;
-        }
-        _entranceDone = false;
-        _entranceOpacity = 0;
-        _entranceScale = 0.85;
-        _entranceTranslateY = 20;
-        resetAndAnimateSlider();
-        Qt.callLater(function() {
-            entranceAnim.start();
-        });
-    }
-
-    Component.onCompleted: {
-        _entranceDone = true;
-        _entranceOpacity = 1;
-        _entranceScale = 1;
-        _entranceTranslateY = 0;
-        _activeValueAnimDuration = 0;
-        currentSliderValue = root.sliderValue;
-    }
-
-    SequentialAnimation {
-        id: entranceAnim
-        PauseAnimation { duration: 150 + Math.min(Math.max(root.buttonIndex, 0), 15) * 55 }
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "_entranceOpacity"; from: 0; to: 1; duration: 280; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "_entranceScale"; from: 0.85; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-            NumberAnimation { target: root; property: "_entranceTranslateY"; from: 20; to: 0; duration: 320; easing.type: Easing.OutCubic }
-        }
-        PropertyAction { target: root; property: "_entranceDone"; value: true }
-    }
-
     property string tooltipText: ""
 
     property string materialSymbol: ""
     property string secondaryMaterialSymbol: ""
     property real sliderValue: 0
     signal moved(real value)
-    
-    // For specific toggles to handle right-click actions if they want
+    // Handled by the specific toggles that want a right-click action
     signal openMenu
 
-    // Effective sizes for live preview during resize
     readonly property int effectiveSizeW: root.catalogSize[0]
     readonly property int effectiveSizeH: root.catalogSize[1]
     readonly property bool isVertical: root.effectiveSizeH > root.effectiveSizeW
@@ -202,9 +109,8 @@ Item {
         width: root.width
         height: root.height
 
-        scale: (root.isDragging ? 1.05 : 1.0) * (root._entranceDone ? 1.0 : root._entranceScale)
+        scale: root.isDragging ? 1.05 : 1.0
         opacity: {
-            if (!root._entranceDone) return root._entranceOpacity;
             if (root.isUnused) return 0.5;
             if (root.editMode && !root.isDragging) return 0.9;
             if (root.isDragging) return 0.95;
@@ -214,15 +120,13 @@ Item {
         
         transform: Translate {
             x: root.isDragging ? root.dragOffsetX : 0
-            y: (root.isDragging ? root.dragOffsetY : 0) + (root._entranceDone ? 0 : root._entranceTranslateY)
+            y: root.isDragging ? root.dragOffsetY : 0
         }
-        
+
         Behavior on scale {
-            enabled: !entranceAnim.running
             animation: Appearance.animation.clickBounce.numberAnimation.createObject(visualButton)
         }
         Behavior on opacity {
-            enabled: !entranceAnim.running
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
         }
 
@@ -243,15 +147,12 @@ Item {
                 dividerValues: root.secondaryMaterialSymbol.length > 0 ? [secondaryIcon.iconLocation] : []
                 Binding on value {
                     when: !quickSliderHorizontal.pressed
-                    value: root.currentSliderValue
+                    value: root.sliderValue
                     restoreMode: Binding.RestoreBindingOrValue
                 }
-                onMoved: {
-                    root._activeValueAnimDuration = 0;
-                    root.moved(value);
-                }
-                
-                // To prevent flickable dragging when using slider
+                onMoved: root.moved(value)
+
+                // Keeps a drag on the slider from flicking the panel
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton
@@ -328,18 +229,14 @@ Item {
                 configuration: 48
                 showValueLabel: false
                 stopIndicatorValues: []
-                valueAnimationDuration: root._activeValueAnimDuration
                 Binding on value {
                     when: !quickSliderVertical.pressed
-                    value: root.currentSliderValue
+                    value: root.sliderValue
                     restoreMode: Binding.RestoreBindingOrValue
                 }
-                onMoved: {
-                    root._activeValueAnimDuration = 0;
-                    root.moved(value);
-                }
+                onMoved: root.moved(value)
 
-                // To prevent flickable dragging when using slider
+                // Keeps a drag on the slider from flicking the panel
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton
@@ -376,6 +273,5 @@ Item {
     EditableQuickToggleItem {
         id: editableItem
         target: root
-        visualItem: visualButton
     }
 }

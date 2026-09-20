@@ -16,7 +16,6 @@ AbstractQuickPanel {
     property bool editMode: false
     Layout.fillWidth: true
 
-    // Current page index
     property int currentPage: 0
 
     Connections {
@@ -38,7 +37,6 @@ AbstractQuickPanel {
         onActivated: editController.cancel()
     }
 
-    // Sizes
     property real spacing: 6
     property real padding: 6
     readonly property real baseCellWidth: {
@@ -47,16 +45,11 @@ AbstractQuickPanel {
     }
     readonly property real baseCellHeight: 56
 
-    // Toggles config
     readonly property list<string> availableToggleTypes: QuickToggleCatalog.allTypes()
-    function isToggleVisible(toggleType) {
-        return true
-    }
     readonly property int columns: Config.options.sidebar.quickToggles.android.columns
 
-    // Pages data — reads from Config and exposes the canonical in-memory shape.
-    // The legacy `size` field is read only by the catalog normalizer and is not
-    // returned to delegates.
+    // The canonical in-memory shape. The legacy `size` field is read only by
+    // the catalog normalizer and is never handed to a delegate.
     readonly property list<var> pages: {
         const cfg = Config.options.sidebar.quickToggles.android;
         if (!Config.ready)
@@ -93,7 +86,6 @@ AbstractQuickPanel {
         return root.pages;
     }
 
-    // All used toggle types across all pages
     readonly property list<string> allUsedTypes: {
         var types = [];
         for (var p = 0; p < root.pages.length; p++) {
@@ -109,7 +101,7 @@ AbstractQuickPanel {
     }
 
     readonly property list<var> unusedToggles: {
-        const types = availableToggleTypes.filter(type => root.isToggleVisible(type) && !allUsedTypes.includes(type));
+        const types = availableToggleTypes.filter(type => !allUsedTypes.includes(type));
         return types.map(type => QuickToggleCatalog.item(type, type, undefined, undefined, root.columns));
     }
 
@@ -145,7 +137,6 @@ AbstractQuickPanel {
         return result;
     }
 
-    // Calculate height for a specific page
     function pageHeight(pageIndex) {
         if (pageIndex < 0 || pageIndex >= root.pages.length)
             return baseCellHeight + 8;
@@ -154,7 +145,6 @@ AbstractQuickPanel {
         return Math.max(baseCellHeight, rows * (baseCellHeight + spacing) - spacing) + 8;
     }
 
-    // Dynamic height based on current page + page indicators
     readonly property real currentContentHeight: pageHeight(currentPage) + (editMode ? 14 : 0)
 
     implicitHeight: panelContent.implicitHeight + root.padding * 2
@@ -162,7 +152,6 @@ AbstractQuickPanel {
         animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
     }
 
-    // Page management functions
     function addPage() {
         if (editController.addPage())
             currentPage = editController.targetPage;
@@ -181,9 +170,7 @@ AbstractQuickPanel {
         currentPage = pageIndex;
     }
 
-    // Drag-scroll: called by toggle buttons during drag to auto-scroll pages
-    // absX: x coordinate mapped to panel root
-    // dragButton: the toggle button being dragged
+    // Held near an edge while dragging a tile, the panel turns the page.
     property real dragScrollEdgeThreshold: 40
     property int dragScrollPendingPage: -1
 
@@ -206,7 +193,7 @@ AbstractQuickPanel {
         dragScrollPendingPage = -1;
     }
 
-    function handleDragScrollRequest(absX, dragButton) {
+    function handleDragScrollRequest(absX) {
         var newPage = -1;
         if (absX < dragScrollEdgeThreshold && currentPage > 0) {
             newPage = currentPage - 1;
@@ -218,7 +205,6 @@ AbstractQuickPanel {
             dragScrollPendingPage = newPage;
             dragScrollTimer.restart();
         } else if (newPage < 0) {
-            // Back in safe zone — reset pending
             dragScrollPendingPage = -1;
             dragScrollTimer.stop();
         }
@@ -241,7 +227,6 @@ AbstractQuickPanel {
             width: panelScroll.width
             spacing: 8
 
-            // Horizontal paging container
             Item {
                 id: flickableContainer
                 width: parent.width
@@ -262,7 +247,6 @@ AbstractQuickPanel {
                     boundsBehavior: Flickable.StopAtBounds
                     interactive: !root.editMode
 
-                    // Snap to page on release
                     onMovementEnded: {
                         var targetPage = Math.round(contentX / width);
                         targetPage = Math.max(0, Math.min(targetPage, root.displayPages.length - 1));
@@ -271,20 +255,17 @@ AbstractQuickPanel {
                         snapAnimation.start();
                     }
 
-                    // Mouse wheel / scroll paging
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
                         onWheel: function (wheelEvent) {
                             if (Math.abs(wheelEvent.angleDelta.x) > Math.abs(wheelEvent.angleDelta.y)) {
-                                // Horizontal scroll
                                 if (wheelEvent.angleDelta.x < 0 && root.currentPage < root.displayPages.length - 1) {
                                     root.goToPage(root.currentPage + 1);
                                 } else if (wheelEvent.angleDelta.x > 0 && root.currentPage > 0) {
                                     root.goToPage(root.currentPage - 1);
                                 }
                             } else {
-                                // Vertical scroll → map to horizontal paging
                                 if (wheelEvent.angleDelta.y < 0 && root.currentPage < root.displayPages.length - 1) {
                                     root.goToPage(root.currentPage + 1);
                                 } else if (wheelEvent.angleDelta.y > 0 && root.currentPage > 0) {
@@ -299,16 +280,14 @@ AbstractQuickPanel {
                         id: snapAnimation
                         target: flickable
                         property: "contentX"
-                        duration: 350
+                        duration: Appearance.animation.elementMoveSmall.duration
                         easing.type: Easing.OutQuint
                     }
 
                     Row {
-                        id: pagesRow
                         height: parent.height
 
                         Repeater {
-                            id: pagesRepeater
                             model: root.displayPages.length
 
                             Item {
@@ -317,8 +296,6 @@ AbstractQuickPanel {
                                 width: flickable.width
                                 height: flickable.height
 
-                                // Show only current page content as visible when current
-                                property bool isCurrent: root.currentPage === index
                                 property list<var> pageToggles: root.positionedPages[index] || []
 
                                 Item {
@@ -330,7 +307,6 @@ AbstractQuickPanel {
                                     }
                                     implicitHeight: root.pageHeight(pageContainer.index)
                                     height: implicitHeight
-                                    objectName: "pageContent_" + pageContainer.index
 
                                     StableQuickToggleModel {
                                         id: pageToggleModel
@@ -338,17 +314,10 @@ AbstractQuickPanel {
                                     }
 
                                     Repeater {
-                                        id: gridRepeater
                                         model: pageToggleModel
                                         delegate: AndroidToggleDelegateChooser {
-
-                                            editMode: root.editMode
-                                            baseCellWidth: root.baseCellWidth
-                                            baseCellHeight: root.baseCellHeight
-                                            spacing: root.spacing
                                             isUnused: false
                                             pageIndex: pageContainer.index
-                                            gridColumns: root.columns
                                             panel: root
                                             gridRef: pageContentCanvas
 
@@ -367,9 +336,7 @@ AbstractQuickPanel {
                 }
             }
 
-            // Page indicators (dots)
             Row {
-                id: pageIndicators
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 6
                 visible: root.displayPages.length > 1
@@ -404,7 +371,6 @@ AbstractQuickPanel {
                 }
             }
 
-            // Edit mode: page navigation + add page buttons
             FadeLoader {
                 shown: root.editMode
                 anchors {
@@ -414,7 +380,6 @@ AbstractQuickPanel {
                 sourceComponent: RowLayout {
                     spacing: 6
 
-                    // Previous page button
                     RippleButton {
                         Layout.preferredWidth: root.baseCellHeight
                         Layout.preferredHeight: root.baseCellHeight * 0.6
@@ -432,7 +397,6 @@ AbstractQuickPanel {
                         }
                     }
 
-                    // Page label
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.baseCellHeight * 0.6
@@ -458,7 +422,6 @@ AbstractQuickPanel {
                         }
                     }
 
-                    // Next page button
                     RippleButton {
                         Layout.preferredWidth: root.baseCellHeight
                         Layout.preferredHeight: root.baseCellHeight * 0.6
@@ -479,7 +442,6 @@ AbstractQuickPanel {
                         }
                     }
 
-                    // Add page button
                     RippleButton {
                         Layout.preferredWidth: root.baseCellHeight
                         Layout.preferredHeight: root.baseCellHeight * 0.6
@@ -502,7 +464,6 @@ AbstractQuickPanel {
                         }
                     }
 
-                    // Delete current page (only if >1 pages and current is empty)
                     RippleButton {
                         Layout.preferredWidth: root.baseCellHeight
                         Layout.preferredHeight: root.baseCellHeight * 0.6
@@ -528,22 +489,7 @@ AbstractQuickPanel {
                 }
             }
 
-            // Separator between used and unused toggles in edit mode
-            FadeLoader {
-                shown: root.editMode
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    leftMargin: root.baseCellHeight / 2
-                    rightMargin: root.baseCellHeight / 2
-                }
-                sourceComponent: Rectangle {
-                    implicitHeight: 1
-                    color: Appearance.colors.colOutlineVariant
-                }
-            }
-
-            // Unused toggles (edit mode)
+            // The drawer of toggles not on any page
             FadeLoader {
                 shown: root.editMode
                 anchors {
@@ -564,14 +510,8 @@ AbstractQuickPanel {
                     Repeater {
                         model: unusedToggleModel
                         delegate: AndroidToggleDelegateChooser {
-
-                            editMode: root.editMode
-                            baseCellWidth: root.baseCellWidth
-                            baseCellHeight: root.baseCellHeight
-                            spacing: root.spacing
                             isUnused: true
                             pageIndex: root.currentPage
-                            gridColumns: root.columns
                             panel: root
                             gridRef: unusedCanvas
 
@@ -588,8 +528,6 @@ AbstractQuickPanel {
         }
     }
 
-
-    // Keep flickable in sync with currentPage
     onCurrentPageChanged: {
         if (!flickable.moving) {
             snapAnimation.stop();
@@ -598,7 +536,6 @@ AbstractQuickPanel {
         }
     }
 
-    // Clamp currentPage when pages are removed
     onPagesChanged: {
         if (currentPage >= pages.length) {
             currentPage = Math.max(0, pages.length - 1);

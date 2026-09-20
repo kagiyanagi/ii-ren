@@ -1,9 +1,9 @@
 import QtQuick
 
-// Keyed adapter between immutable JS records and QML delegates. ScriptModel
-// updates equal-key JS clones with dataChanged and removes only the trailing
-// row, which is unsafe for DelegateChooser. This model emits exact insert,
-// remove and move operations and never changes the type attached to an id.
+// ScriptModel reports an equal-key clone as dataChanged and drops only the
+// trailing row, which lets DelegateChooser hand a row to the wrong delegate.
+// This model emits exact inserts, removes and moves, and never changes the
+// type attached to an id.
 ListModel {
     id: root
 

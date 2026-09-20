@@ -26,8 +26,8 @@ WindowDialog {
         Layout.fillWidth: true
         Layout.bottomMargin: -8
     }
-    // ClippingRectangle, not a plain Rectangle: `clip` only clips to the
-    // bounding box, so a row's hover fill would square off the card's corners.
+    // ClippingRectangle: plain `clip` only clips to the bounding box, so a
+    // row's hover fill would square off the card's corners.
     ClippingRectangle {
         Layout.fillWidth: true
         Layout.fillHeight: true

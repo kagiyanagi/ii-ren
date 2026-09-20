@@ -6,7 +6,6 @@ import Quickshell.Hyprland
 AndroidSliderWidgetBase {
     id: root
 
-    property var screen: Brightness.targetScreen
     property var brightnessMonitor: Brightness.getTargetMonitor()
 
     tooltipText: Translation.tr("Gamma / Brightness")

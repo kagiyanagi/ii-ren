@@ -11,7 +11,6 @@ Item {
     property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
     property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, Config.options.time.firstDayOfWeek)
 
-    // Layout.topMargin: 10
     anchors.topMargin: 10
     width: calendarColumn.width
     implicitHeight: calendarColumn.height + 10 * 2
@@ -41,7 +40,6 @@ Item {
         anchors.centerIn: parent
         spacing: 5
 
-        // Calendar header
         RowLayout {
             Layout.fillWidth: true
             spacing: 5
@@ -92,7 +90,6 @@ Item {
 
         }
 
-        // Week days row
         RowLayout {
             id: weekDaysRow
 
@@ -118,11 +115,9 @@ Item {
 
         }
 
-        // Real week rows
         Repeater {
             id: calendarRows
 
-            // model: calendarLayout
             model: 6
 
             delegate: RowLayout {

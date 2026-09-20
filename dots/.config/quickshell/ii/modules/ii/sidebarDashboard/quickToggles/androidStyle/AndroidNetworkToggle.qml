@@ -16,7 +16,6 @@ AndroidQuickToggleButton {
 
     backgroundIcon: Network.ethernet ? "" : "wifi"
     
-    // ── 1x2 (tall, narrow) component ─────────────────────────────────────────
     Component {
         id: netTall1x2
 
@@ -46,7 +45,7 @@ AndroidQuickToggleButton {
                         : Appearance.colors.colLayer3
 
                     Behavior on color {
-                        ColorAnimation { duration: 200 }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
 
                     MaterialSymbol {
@@ -70,12 +69,11 @@ AndroidQuickToggleButton {
                         text: root.buttonIcon
 
                         Behavior on color {
-                            ColorAnimation { duration: 200 }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
                     }
                 }
 
-                // Hover/Press state layer
                 Loader {
                     anchors.fill: parent
                     active: root.altAction
@@ -127,7 +125,6 @@ AndroidQuickToggleButton {
         }
     }
 
-    // ── 2x2 component ────────────────────────────────────────────────────────
     Component {
         id: netWide2x2
 
@@ -135,7 +132,6 @@ AndroidQuickToggleButton {
             spacing: 0
             anchors.fill: parent
 
-            // ── Icon area (60% height) ────────────────────────────────────────
             Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Math.round(root.height * 0.60)
@@ -160,7 +156,7 @@ AndroidQuickToggleButton {
                             : Appearance.colors.colLayer3
 
                         Behavior on color {
-                            ColorAnimation { duration: 200 }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
 
                         MaterialSymbol {
@@ -184,13 +180,12 @@ AndroidQuickToggleButton {
                             text: root.buttonIcon
 
                             Behavior on color {
-                                ColorAnimation { duration: 200 }
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                             }
                         }
                     }
 
-                    // Hover/Press state layer
-                    Loader {
+                        Loader {
                         anchors.fill: parent
                         active: root.altAction
                         sourceComponent: Rectangle {
@@ -207,7 +202,6 @@ AndroidQuickToggleButton {
                 }
             }
 
-            // ── Device name ───────────────────────────────────────────────────
             StyledText {
                 Layout.fillWidth: true
                 Layout.leftMargin: 8
@@ -220,7 +214,6 @@ AndroidQuickToggleButton {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            // ── Status ────────────────────────────────────────────────────────
             StyledText {
                 visible: root.statusText !== ""
                 Layout.fillWidth: true

@@ -2,10 +2,9 @@ import QtQuick
 import "QuickToggleCatalog.js" as QuickToggleCatalog
 import "QuickToggleLayout.js" as QuickToggleLayout
 
-// Transaction boundary for every editable quick-toggle operation. This item
-// intentionally receives the JsonObject through `config` instead of importing
-// Config directly, which keeps the editing state testable and makes the write
-// boundary explicit at the panel integration point.
+// The transaction boundary for every quick-toggle edit. It takes the
+// JsonObject through `config` rather than importing Config, so the one place
+// that writes settings is the one place the panel hands them to.
 Item {
     id: root
 

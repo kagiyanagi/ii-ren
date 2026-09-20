@@ -4,14 +4,12 @@ import qs.modules.common.functions
 import qs.modules.common.widgets
 import "QuickToggleLayout.js" as QuickToggleLayout
 
-// Shared editing surface for every Android quick-toggle delegate. The visual
-// widget stays owned by its base component; this item only handles gestures,
-// draft mutations, and edit affordances.
+// The editing surface over every quick-toggle tile: gestures, draft changes
+// and the edit affordances. The tile itself stays owned by its base.
 Item {
     id: root
 
     required property var target
-    required property var visualItem
 
     readonly property var controller: target && target.panel ? target.panel.editController : null
     readonly property bool editMode: target ? target.editMode : false
@@ -167,9 +165,8 @@ Item {
             if (!root.target.isDragging)
                 return;
 
-            // Preview packing may move the delegate root. Compensate that move
-            // so the visual remains under the grabbed pointer without
-            // reparenting it out of the stable delegate.
+            // Preview packing moves the delegate root, so undo that move here:
+            // the tile stays under the pointer without being reparented out.
             if (root.target.panel) {
                 var currentOrigin = root.target.panel.mapFromItem(root.target, 0, 0);
                 root.target.dragOffsetX = root.pressItemPanelX + dx - currentOrigin.x;
@@ -202,7 +199,7 @@ Item {
             if (root.target.panel && root.target.panel.handleDragScrollRequest) {
                 if (!panelPos)
                     panelPos = root.target.panel.mapFromItem(editInteraction, event.x, event.y);
-                root.target.panel.handleDragScrollRequest(panelPos.x, root.target);
+                root.target.panel.handleDragScrollRequest(panelPos.x);
             }
         }
 

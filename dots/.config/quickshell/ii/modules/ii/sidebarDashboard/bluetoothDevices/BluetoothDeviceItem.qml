@@ -31,7 +31,6 @@ DialogListItem {
         spacing: 0
 
         RowLayout {
-            // Name
             spacing: 10
 
             MaterialSymbol {

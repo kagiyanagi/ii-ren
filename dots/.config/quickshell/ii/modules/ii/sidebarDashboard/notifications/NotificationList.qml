@@ -31,7 +31,6 @@ Item {
         popup: false
     }
 
-    // Placeholder when list is empty
     PagePlaceholder {
         shown: Notifications.list.length === 0
         icon: "notifications_active"

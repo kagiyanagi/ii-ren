@@ -14,13 +14,9 @@ AndroidQuickToggleButton {
 
     toggleModel: BluetoothToggle {}
 
-    // Always use our custom 2x2 layout (connected or empty state)
     wide2x2OverrideComponent: btWide2x2
-
-    // Also use custom layout for 1x2 (tall, narrow)
     tall1x2OverrideComponent: btTall1x2
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
     function getDeviceImageSource(device) {
         if (!device)
             return "";
@@ -32,14 +28,12 @@ AndroidQuickToggleButton {
         return "";
     }
 
-    // ── Master 2x2 component (connected or empty) ────────────────────────────
     Component {
         id: btWide2x2
 
         Item {
             anchors.fill: parent
 
-            // ── CONNECTED STATE ───────────────────────────────────────────────
             Item {
                 id: connectedView
                 anchors.fill: parent
@@ -63,13 +57,12 @@ AndroidQuickToggleButton {
                     && connectedView.batteryFraction >= 0
                 readonly property int batteryPct: Math.round(connectedView.batteryFraction * 100)
 
-                // earbud asset paths (same depth as ExpressiveBluetoothDevicesPopup)
+                // Same depth as ExpressiveBluetoothDevicesPopup
                 readonly property string pathCushion:
                     "../../../../../assets/images/devices/earbuds_cushion.svg"
                 readonly property string pathStem:
                     "../../../../../assets/images/devices/earbuds_stem.svg"
 
-                // colours matching the popup
                 readonly property color colCushion: root.toggled
                     ? Appearance.colors.colOnPrimary
                     : Appearance.colors.colOnLayer3
@@ -81,7 +74,6 @@ AndroidQuickToggleButton {
                     anchors.fill: parent
                     spacing: 0
 
-                    // ── Icon area (60% height) ────────────────────────────────
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.round(connectedView.height * 0.60)
@@ -97,10 +89,9 @@ AndroidQuickToggleButton {
                                 : Appearance.colors.colLayer3
 
                             Behavior on color {
-                                ColorAnimation { duration: 200 }
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                             }
 
-                            // Custom image (takes priority)
                             Image {
                                 anchors.centerIn: parent
                                 visible: connectedView.hasCustomImg
@@ -112,13 +103,11 @@ AndroidQuickToggleButton {
                                 mipmap: true
                             }
 
-                            // Earbud SVG pair — side by side, outward-facing
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 2
                                 visible: connectedView.isEarbud
 
-                                // Left earbud — mirrored (outward)
                                 Item {
                                     width: 22; height: 36
                                     anchors.verticalCenter: parent.verticalCenter
@@ -146,7 +135,6 @@ AndroidQuickToggleButton {
                                     }
                                 }
 
-                                // Right earbud — normal (outward)
                                 Item {
                                     width: 22; height: 36
                                     anchors.verticalCenter: parent.verticalCenter
@@ -173,7 +161,6 @@ AndroidQuickToggleButton {
                                 }
                             }
 
-                            // Generic MaterialSymbol fallback
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 visible: !connectedView.hasCustomImg && !connectedView.isEarbud
@@ -186,13 +173,12 @@ AndroidQuickToggleButton {
                                 horizontalAlignment: Text.AlignHCenter
 
                                 Behavior on color {
-                                    ColorAnimation { duration: 200 }
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                                 }
                             }
                         }
                     }
 
-                    // ── Device name ───────────────────────────────────────────
                     StyledText {
                         Layout.fillWidth: true
                         Layout.leftMargin: 8
@@ -205,7 +191,6 @@ AndroidQuickToggleButton {
                         horizontalAlignment: Text.AlignHCenter
                     }
 
-                    // ── Battery ───────────────────────────────────────────────
                     StyledText {
                         Layout.fillWidth: true
                         Layout.leftMargin: 8
@@ -222,7 +207,6 @@ AndroidQuickToggleButton {
                 }
             }
 
-            // ── EMPTY / DISCONNECTED STATE ────────────────────────────────────
             Item {
                 anchors.fill: parent
                 visible: !BluetoothStatus.connected
@@ -231,7 +215,6 @@ AndroidQuickToggleButton {
                     anchors.centerIn: parent
                     spacing: 8
 
-                    // Large Clover8Leaf BT icon
                     MaterialShape {
                         Layout.alignment: Qt.AlignHCenter
                         shapeString: "Clover8Leaf"
@@ -241,7 +224,7 @@ AndroidQuickToggleButton {
                             : Appearance.colors.colSurfaceContainerLow
 
                         Behavior on color {
-                            ColorAnimation { duration: 200 }
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
 
                         MaterialSymbol {
@@ -254,12 +237,11 @@ AndroidQuickToggleButton {
                             horizontalAlignment: Text.AlignHCenter
 
                             Behavior on color {
-                                ColorAnimation { duration: 200 }
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                             }
                         }
                     }
 
-                    // Status label
                     StyledText {
                         Layout.fillWidth: true
                         Layout.leftMargin: 6
@@ -278,14 +260,12 @@ AndroidQuickToggleButton {
         }
     }
 
-    // ── 1x2 (tall, narrow) component ─────────────────────────────────────────
     Component {
         id: btTall1x2
 
         Item {
             anchors.fill: parent
 
-            // ── CONNECTED STATE ───────────────────────────────────────────────
             Item {
                 id: connectedTall
                 anchors.fill: parent
@@ -324,7 +304,6 @@ AndroidQuickToggleButton {
                     anchors.fill: parent
                     spacing: -4
 
-                    // ── Icon area (60% height, fixed icon size) ───────────────
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Math.round(connectedTall.height * 0.60)
@@ -349,10 +328,9 @@ AndroidQuickToggleButton {
                                     : Appearance.colors.colLayer3
 
                                 Behavior on color {
-                                    ColorAnimation { duration: 200 }
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                                 }
 
-                                // Custom image
                                 Image {
                                     anchors.centerIn: parent
                                     visible: connectedTall.hasCustomImg
@@ -363,7 +341,6 @@ AndroidQuickToggleButton {
                                     smooth: true; mipmap: true
                                 }
 
-                                // Earbud pair — fixed size, side by side
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 2
@@ -421,7 +398,6 @@ AndroidQuickToggleButton {
                                     }
                                 }
 
-                                // Generic symbol fallback
                                 MaterialSymbol {
                                     anchors.centerIn: parent
                                     visible: !connectedTall.hasCustomImg && !connectedTall.isEarbud
@@ -434,12 +410,11 @@ AndroidQuickToggleButton {
                                     horizontalAlignment: Text.AlignHCenter
 
                                     Behavior on color {
-                                        ColorAnimation { duration: 200 }
+                                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                                     }
                                 }
                             }
 
-                            // Hover/Press state layer
                             Loader {
                                 anchors.fill: parent
                                 active: root.altAction
@@ -457,7 +432,6 @@ AndroidQuickToggleButton {
                         }
                     }
 
-                    // ── Device name ───────────────────────────────────────────
                     StyledText {
                         Layout.fillWidth: true
                         Layout.leftMargin: 8
@@ -470,7 +444,6 @@ AndroidQuickToggleButton {
                         horizontalAlignment: Text.AlignHCenter
                     }
 
-                    // ── Battery ───────────────────────────────────────────────
                     StyledText {
                         Layout.fillWidth: true
                         Layout.leftMargin: 6
@@ -487,7 +460,6 @@ AndroidQuickToggleButton {
                 }
             }
 
-            // ── EMPTY / DISCONNECTED STATE ────────────────────────────────────
             Item {
                 anchors.fill: parent
                 visible: !BluetoothStatus.connected
@@ -515,7 +487,9 @@ AndroidQuickToggleButton {
                             color: BluetoothStatus.enabled
                                 ? Appearance.colors.colLayer3
                                 : Appearance.colors.colSurfaceContainerLow
-                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
 
                             MaterialSymbol {
                                 anchors.centerIn: parent
@@ -525,10 +499,11 @@ AndroidQuickToggleButton {
                                     ? Appearance.colors.colOnLayer3
                                     : Appearance.colors.colOnSurfaceVariant
                                 horizontalAlignment: Text.AlignHCenter
-                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on color {
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                }
                             }
 
-                            // Hover/Press state layer
                             Loader {
                                 anchors.fill: parent
                                 active: root.altAction

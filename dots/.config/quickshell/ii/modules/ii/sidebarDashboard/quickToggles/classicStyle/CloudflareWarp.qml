@@ -11,7 +11,6 @@ QuickToggleButton {
     visible: false
     
     contentItem: CustomIcon {
-        id: distroIcon
         source: 'cloudflare-dns-symbolic'
 
         anchors.centerIn: parent
@@ -53,7 +52,6 @@ QuickToggleButton {
         id: registrationProc
         command: ["warp-cli", "registration", "new"]
         onExited: (exitCode, exitStatus) => {
-            console.log("Warp registration exited with code and status:", exitCode, exitStatus)
             if (exitCode === 0) {
                 connectProc.running = true
             } else {

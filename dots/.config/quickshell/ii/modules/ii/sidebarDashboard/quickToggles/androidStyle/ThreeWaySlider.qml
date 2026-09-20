@@ -13,55 +13,6 @@ Item {
     required property string toggleType
     required property var toggleModel
 
-    // Entrance animation
-    property int entranceTrigger: -1
-    property real _entranceOpacity: 1.0
-    property real _entranceScale: 1.0
-    property real _entranceTranslateY: 0
-    property bool _entranceDone: true
-    property real _knobEntranceTranslateX: 0
-    property real _knobEntranceScale: 1.0
-    property real _knobEntranceRotation: 0
-
-    onEntranceTriggerChanged: {
-        _entranceDone = false;
-        _entranceOpacity = 0;
-        _entranceScale = 0.85;
-        _entranceTranslateY = 20;
-        _knobEntranceTranslateX = -50;
-        _knobEntranceScale = 0.7;
-        _knobEntranceRotation = -20;
-        Qt.callLater(function() {
-            entranceAnim.start();
-        });
-    }
-
-    Component.onCompleted: {
-        _entranceDone = true;
-        _entranceOpacity = 1.0;
-        _entranceScale = 1.0;
-        _entranceTranslateY = 0;
-        _knobEntranceTranslateX = 0;
-        _knobEntranceScale = 1.0;
-        _knobEntranceRotation = 0;
-    }
-
-    SequentialAnimation {
-        id: entranceAnim
-        PauseAnimation { duration: 50 }
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "_entranceOpacity"; from: 0; to: 1; duration: 280; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "_entranceScale"; from: 0.85; to: 1.0; duration: 350; easing.type: Easing.OutBack }
-            NumberAnimation { target: root; property: "_entranceTranslateY"; from: 20; to: 0; duration: 320; easing.type: Easing.OutCubic }
-        }
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "_knobEntranceTranslateX"; from: -50; to: 0; duration: 400; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "_knobEntranceScale"; from: 0.7; to: 1.0; duration: 400; easing.type: Easing.OutBack }
-            NumberAnimation { target: root; property: "_knobEntranceRotation"; from: -20; to: 0; duration: 400; easing.type: Easing.OutBack }
-        }
-        PropertyAction { target: root; property: "_entranceDone"; value: true }
-    }
-
     readonly property real margin: 4
     readonly property real knobSize: root.height - (margin * 2)
 
@@ -72,7 +23,6 @@ Item {
     readonly property real thresholdLeftCenter: (posLeft + posCenter) / 2
     readonly property real thresholdCenterRight: (posCenter + posRight) / 2
 
-    // Current state index based on the underlying service
     readonly property int currentStateIndex: {
         if (toggleType === "soundcoreAnc") {
             let mode = SoundcoreService.isConnected ? SoundcoreService.currentMode : (BudsService.isConnected ? BudsService.currentMode : "Normal");
@@ -96,7 +46,8 @@ Item {
         return 1;
     }
 
-    // Local override state to prevent snapback during async service updates
+    // Holds the position the user picked until the service catches up,
+    // so the knob does not snap back mid-gesture.
     property int localOverrideIndex: -1
     readonly property int activeVisualIndex: localOverrideIndex !== -1 ? localOverrideIndex : currentStateIndex
 
@@ -111,11 +62,9 @@ Item {
         onTriggered: localOverrideIndex = -1
     }
 
-    // Interactive dragging state
     property bool isDraggingKnob: false
     property real knobDragX: posCenter
 
-    // Calculate hover index dynamically during drag
     readonly property int hoverIndex: {
         let xVal = isDraggingKnob ? knobDragX : targetX;
         if (xVal < thresholdLeftCenter) return 0;
@@ -174,17 +123,13 @@ Item {
         return toggleModel?.icon ?? "close";
     }
 
-    // Capsule pill background
     Rectangle {
         id: bgPill
         anchors.fill: parent
         radius: height / 2
         color: Appearance.colors.colLayer2
         border.width: 0
-        opacity: root._entranceDone ? 1.0 : root._entranceOpacity
-        scale: root._entranceDone ? 1.0 : root._entranceScale
 
-        // Left, Center, and Right Dots (Position indicators)
         Rectangle {
             id: dotLeft
             width: 6
@@ -194,8 +139,10 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.left
             anchors.horizontalCenterOffset: root.posLeft + (root.knobSize / 2)
-            opacity: (root.hoverIndex === 0 ? 0.0 : 1.0) * (root._entranceDone ? 1.0 : root._entranceOpacity)
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            opacity: root.hoverIndex === 0 ? 0.0 : 1.0
+            Behavior on opacity {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
         }
 
         Rectangle {
@@ -206,8 +153,10 @@ Item {
             color: ColorUtils.transparentize(Appearance.colors.colOnLayer2, 0.4)
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.horizontalCenter
-            opacity: (root.hoverIndex === 1 ? 0.0 : 1.0) * (root._entranceDone ? 1.0 : root._entranceOpacity)
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            opacity: root.hoverIndex === 1 ? 0.0 : 1.0
+            Behavior on opacity {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
         }
 
         Rectangle {
@@ -219,34 +168,28 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.right
             anchors.horizontalCenterOffset: -(root.posLeft + (root.knobSize / 2))
-            opacity: (root.hoverIndex === 2 ? 0.0 : 1.0) * (root._entranceDone ? 1.0 : root._entranceOpacity)
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            opacity: root.hoverIndex === 2 ? 0.0 : 1.0
+            Behavior on opacity {
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            }
         }
     }
 
-    // Draggable Knob (Active/Inactive Indicator)
     Rectangle {
         id: knob
         width: root.knobSize
         height: root.knobSize
         radius: width / 2
         y: root.margin
-        x: (root.isDraggingKnob ? root.knobDragX : root.targetX) + (root._entranceDone ? 0 : root._knobEntranceTranslateX)
+        x: root.isDraggingKnob ? root.knobDragX : root.targetX
 
         color: Appearance.colors.colPrimary
-        opacity: root._entranceDone ? 1.0 : root._entranceOpacity
-        scale: root._entranceDone ? 1.0 : root._knobEntranceScale
-        rotation: root._entranceDone ? 0 : root._knobEntranceRotation
 
         Behavior on x {
             enabled: !root.isDraggingKnob
-            NumberAnimation {
-                duration: 200
-                easing.type: Easing.OutCubic
-            }
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
-        // Active State Icon inside Knob
         MaterialSymbol {
             id: knobIcon
             anchors.centerIn: parent
@@ -256,7 +199,6 @@ Item {
         }
     }
 
-    // Mouse area for slide drag and tap snapping
     MouseArea {
         id: dragArea
         anchors.fill: parent

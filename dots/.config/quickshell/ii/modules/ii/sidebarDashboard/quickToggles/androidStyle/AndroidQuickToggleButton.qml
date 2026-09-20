@@ -10,19 +10,25 @@ import "QuickToggleCatalog.js" as QuickToggleCatalog
 Item {
     id: root
 
-    // Info to be passed to by repeaterestou
     required property int buttonIndex
     required property var buttonData
-    required property real baseCellWidth
-    required property real baseCellHeight
-    required property real cellSpacing
-    required property int cellSize
+    // Where the tile sits comes from the chooser that built it, so a delegate
+    // entry is just a type and its data.
+    required property var chooser
+    property var panel: root.chooser?.panel ?? null
+    property var gridRef: root.chooser?.gridRef ?? null
+    property int pageIndex: root.chooser?.pageIndex ?? 0
+    property bool isUnused: root.chooser?.isUnused ?? false
+    property bool editMode: root.panel?.editMode ?? false
+    property real baseCellWidth: root.panel?.baseCellWidth ?? 0
+    property real baseCellHeight: root.panel?.baseCellHeight ?? 0
+    property real cellSpacing: root.panel?.spacing ?? 0
+    property int gridColumns: root.panel?.columns ?? 4
 
     readonly property var catalogSize: QuickToggleCatalog.normalizeSize(root.buttonData.type, root.buttonData.sizeW, root.buttonData.sizeH, root.gridColumns)
 
-    // Effective sizes for live preview during resize
-    // The controller updates the draft during resize; rendering reads that
-    // canonical size directly instead of applying a second local geometry.
+    // The controller updates the draft during a resize; rendering reads that
+    // size rather than applying a second local geometry.
     readonly property int effectiveSizeW: root.catalogSize[0]
     readonly property int effectiveSizeH: root.catalogSize[1]
 
@@ -32,12 +38,11 @@ Item {
     readonly property bool is3Way: (root.buttonData.type === "soundcoreAnc" || root.buttonData.type === "powerProfile" || root.buttonData.type === "keyboardBacklight")
     readonly property bool is3WaySlider: is3Way && effectiveSizeW === 2 && effectiveSizeH === 1 && (Config.options.sidebar.quickToggles.useThreeWaySliders ?? false)
 
-    // Use the rendered widget's hover state while keeping it in this delegate's
-    // local scene graph. The stable canvas delegate remains the layout owner.
+    // The rendered widget's hover state, kept in this delegate's scene graph:
+    // the stable canvas delegate stays the layout owner.
     property bool hovered: (visualButton.hovered || visualButton.mouseArea.containsMouse)
                            || (root.editMode && editableItem.containsMouse)
 
-    // Signals
     signal openMenu
 
     // Declared in specific toggles
@@ -52,29 +57,18 @@ Item {
     property bool hasMenu: toggleModel?.hasMenu ?? false
     property var altAction: root.hasMenu ? (() => root.openMenu()) : (toggleModel?.altAction ?? null)
 
-    // Optional custom layout for 2x2 size — set by subclasses to override ios2x2Layout
+    // Subclasses may replace the 2x2 and 1x2 layouts
     property Component wide2x2OverrideComponent: null
-
-    // Optional custom layout for 1x2 (tall) size — set by subclasses to override tallLayout
     property Component tall1x2OverrideComponent: null
-
-    // Optional background icon for wifi signal effect (ghost behind foreground)
+    // Ghost behind the foreground icon, for the wifi signal effect
     property string backgroundIcon: ""
 
-    // Edit mode state
-    property bool editMode: false
-    property bool isUnused: false // injected by delegate chooser
     property bool isDragging: false
     property real dragOffsetX: 0
     property real dragOffsetY: 0
-    property int pageIndex: 0
-    property int gridColumns: 4
-    property var panel: null
-    property var gridRef: null
 
-    // Active pages and the drawer use one explicit packed coordinate system.
-    // Bind only when geometry is present so fixed sliders can still be owned by
-    // their Column positioner.
+    // Bind only when geometry is present, so fixed sliders can still be owned
+    // by their Column positioner.
     readonly property bool hasExplicitGeometry: root.buttonData
         && root.buttonData.layoutX !== undefined
         && root.buttonData.layoutY !== undefined
@@ -99,72 +93,13 @@ Item {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
     }
 
-    // Entrance animation (Reorder animation effect - tuned delay & full opacity fade)
-    property int entranceTrigger: -1
-    property real _entranceOpacity: 1.0
-    property real _entranceScale: 1.0
-    property real _entranceOffsetX: 0
-    property real _entranceOffsetY: 0
-    property bool _entranceDone: true
-    readonly property bool _animationsDisabled: (Config.options?.appearance?.animationMultiplier ?? 1.0) <= 0.25
-
-    onEntranceTriggerChanged: {
-        if (_animationsDisabled) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceOffsetX = 0;
-            _entranceOffsetY = 0;
-            return;
-        }
-        // Only animate when the sidebar is opening on the current page (or for fixed sliders)
-        if (root.pageIndex !== -1 && root.panel && root.panel.currentPage !== root.pageIndex) {
-            _entranceDone = true;
-            _entranceOpacity = 1;
-            _entranceScale = 1;
-            _entranceOffsetX = 0;
-            _entranceOffsetY = 0;
-            return;
-        }
-        _entranceDone = false;
-        _entranceOpacity = 0;
-        _entranceScale = 0.92;
-        _entranceOffsetX = ((buttonIndex % 3 === 0) ? -18 : (buttonIndex % 3 === 1) ? 0 : 18);
-        _entranceOffsetY = ((buttonIndex % 2 === 0) ? -12 : 12);
-        Qt.callLater(function() {
-            entranceAnim.start();
-        });
-    }
-
-    Component.onCompleted: {
-        _entranceDone = true;
-        _entranceOpacity = 1;
-        _entranceScale = 1;
-        _entranceOffsetX = 0;
-        _entranceOffsetY = 0;
-    }
-
-    SequentialAnimation {
-        id: entranceAnim
-        PauseAnimation { duration: 80 + Math.min(Math.max(root.buttonIndex, 0), 15) * 25 }
-        ParallelAnimation {
-            NumberAnimation { target: root; property: "_entranceOpacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
-            NumberAnimation { target: root; property: "_entranceScale"; from: 0.92; to: 1.0; duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
-            NumberAnimation { target: root; property: "_entranceOffsetX"; from: ((root.buttonIndex % 3 === 0) ? -18 : (root.buttonIndex % 3 === 1) ? 0 : 18); to: 0; duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
-            NumberAnimation { target: root; property: "_entranceOffsetY"; from: ((root.buttonIndex % 2 === 0) ? -12 : 12); to: 0; duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
-        }
-        PropertyAction { target: root; property: "_entranceDone"; value: true }
-    }
-
-    // Sizing shenanigans - use effective sizes for live resize preview
     property real baseWidth: root.baseCellWidth * root.effectiveSizeW + cellSpacing * (root.effectiveSizeW - 1)
     property real baseHeight: root.baseCellHeight * root.effectiveSizeH + cellSpacing * (root.effectiveSizeH - 1)
 
     implicitWidth: baseWidth
     implicitHeight: baseHeight
-    
-    // Ghost block visibility when dragging
-    Rectangle {
+
+    Rectangle { // Ghost block left behind while dragging
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colors.colSurfaceContainer
@@ -190,9 +125,8 @@ Item {
         width: root.width
         height: root.height
 
-        scale: (root.isDragging ? 1.05 : 1.0) * (root._entranceDone ? 1.0 : root._entranceScale)
+        scale: root.isDragging ? 1.05 : 1.0
         opacity: {
-            if (!root._entranceDone) return root._entranceOpacity;
             if (!root.available && !root.editMode) return 0.4;
             if (root.isUnused) return 0.5;
             if (root.editMode && !root.isDragging) return (!root.available ? 0.4 : 0.9);
@@ -202,16 +136,15 @@ Item {
         z: root.isDragging ? 99 : 1
 
         transform: Translate {
-            x: (root.isDragging ? root.dragOffsetX : 0) + (root._entranceDone ? 0 : root._entranceOffsetX)
-            y: (root.isDragging ? root.dragOffsetY : 0) + (root._entranceDone ? 0 : root._entranceOffsetY)
+            x: root.isDragging ? root.dragOffsetX : 0
+            y: root.isDragging ? root.dragOffsetY : 0
         }
-        
+
         Behavior on scale {
-            enabled: !root.isDragging && !entranceAnim.running
+            enabled: !root.isDragging
             animation: Appearance.animation.clickBounce.numberAnimation.createObject(visualButton)
         }
         Behavior on opacity {
-            enabled: !entranceAnim.running
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
         }
 
@@ -246,7 +179,6 @@ Item {
         }
 
         contentItem: Loader {
-            id: contentItemLoader
             anchors.fill: parent
             sourceComponent: is3WaySlider ? threeWaySliderLayout
                            : (root.isWide && root.isTall && root.wide2x2OverrideComponent) ? root.wide2x2OverrideComponent
@@ -311,7 +243,6 @@ Item {
                         }
                     }
 
-                    // Hover/Press state layer
                     Loader {
                         anchors.fill: parent
                         active: root.altAction
@@ -373,7 +304,6 @@ Item {
                 bottomMargin: visualButton.verticalPadding + 4
             }
 
-            // Top section: Icon aligned to top-left
             MouseArea {
                 id: iosIconMouseArea
                 hoverEnabled: true
@@ -389,13 +319,7 @@ Item {
                     id: iosIconBackground
                     anchors.fill: parent
                     radius: width / 2
-                    color: {
-                        if (root.toggled) {
-                            return root.altAction ? Appearance.colors.colPrimary : Appearance.colors.colPrimary;
-                        } else {
-                            return Appearance.colors.colLayer3;
-                        }
-                    }
+                    color: root.toggled ? Appearance.colors.colPrimary : Appearance.colors.colLayer3
 
                     Behavior on color {
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -418,7 +342,6 @@ Item {
                         text: root.buttonIcon
                     }
 
-                    // Hover/Press state layer
                     Loader {
                         anchors.fill: parent
                         active: root.altAction
@@ -433,12 +356,10 @@ Item {
                 }
             }
 
-            // Spacer
             Item {
                 Layout.fillHeight: true
             }
 
-            // Bottom section: Text aligned to bottom-left
             Column {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignLeft | Qt.AlignBottom
@@ -485,7 +406,6 @@ Item {
                 rightMargin: visualButton.horizontalPadding
             }
 
-            // Icon
             MouseArea {
                 id: iconMouseArea
                 hoverEnabled: true
@@ -495,7 +415,7 @@ Item {
                 Layout.topMargin: root.isWide ? visualButton.verticalPadding : 0
                 Layout.bottomMargin: root.isWide ? visualButton.verticalPadding : 0
                 
-                Layout.preferredWidth: (root.isWide && !root.toggled && !root.isTall) ? (root.baseCellHeight - visualButton.verticalPadding * 2) : (root.isWide ? (root.baseCellHeight - visualButton.verticalPadding * 2) : -1)
+                Layout.preferredWidth: root.isWide ? (root.baseCellHeight - visualButton.verticalPadding * 2) : -1
                 Layout.preferredHeight: (!root.isWide && root.isTall) ? (root.baseHeight - visualButton.verticalPadding * 2) : -1
 
                 implicitWidth: root.baseCellHeight - visualButton.verticalPadding * 2
@@ -507,11 +427,7 @@ Item {
                 Rectangle {
                     id: iconBackground
                     anchors.fill: parent
-                    radius: {
-                        if (root.isTall && !root.isWide) return Appearance.rounding.full;
-                        if (root.isWide && !root.isTall && !root.toggled) return visualButton.radius - visualButton.verticalPadding;
-                        return visualButton.radius - visualButton.verticalPadding;
-                    }
+                    radius: (root.isTall && !root.isWide) ? Appearance.rounding.full : visualButton.radius - visualButton.verticalPadding
                     color: {
                         const baseColor = root.toggled ? Appearance.colors.colPrimary : Appearance.colors.colLayer3;
                         const transparentizeAmount = (root.altAction && root.isWide) ? 0 : (root.toggled ? 0 : 1);
@@ -543,7 +459,6 @@ Item {
                         text: root.buttonIcon
                     }
 
-                    // State layer
                     Loader {
                         anchors.fill: parent
                         active: (root.isWide && root.altAction)
@@ -558,11 +473,9 @@ Item {
                 }
             }
 
-            // Text column for expanded size
             Loader {
                 Layout.alignment: root.isTall ? Qt.AlignTop : Qt.AlignVCenter
                 Layout.topMargin: root.isTall ? visualButton.verticalPadding * 1.5 : 0
-                Layout.leftMargin: 0 // Keep consistent spacing across toggles
                 Layout.fillWidth: true
                 visible: root.isWide
                 active: visible
@@ -606,7 +519,6 @@ Item {
             anchors.fill: parent
             toggleType: root.buttonData.type
             toggleModel: root.toggleModel
-            entranceTrigger: root.entranceTrigger
         }
     }
 
@@ -615,6 +527,5 @@ Item {
     EditableQuickToggleItem {
         id: editableItem
         target: root
-        visualItem: visualButton
     }
 }

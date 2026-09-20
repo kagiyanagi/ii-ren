@@ -161,7 +161,6 @@ WindowDialog {
                     Layout.fillWidth: true
                     spacing: 12
 
-                // SSID Field
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
@@ -180,7 +179,6 @@ WindowDialog {
                     }
                 }
 
-                // Password Field
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
@@ -230,7 +228,6 @@ WindowDialog {
                     }
                 }
 
-                // Band Selection
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
@@ -253,7 +250,6 @@ WindowDialog {
                     }
                 }
 
-                // Security Type Selection
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4

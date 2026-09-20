@@ -5,7 +5,6 @@ import qs.services
 AndroidSliderWidgetBase {
     id: root
 
-    property var screen: Brightness.targetScreen
     property var brightnessMonitor: Brightness.getTargetMonitor()
 
     tooltipText: Translation.tr("Brightness")

@@ -21,9 +21,6 @@ Item {
     property int fabMargins: 14
 
     Keys.onPressed: (event) => {
-        // Open add dialog on "N" (any modifiers)
-        // Close dialog on Esc if open
-
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageDown)
                 tabBar.incrementCurrentIndex();
@@ -70,7 +67,6 @@ Item {
             clip: true
             currentIndex: tabBar.currentIndex
 
-            // To Do tab
             TaskList {
                 listBottomPadding: root.fabSize + root.fabMargins * 2
                 emptyPlaceholderIcon: "check_circle"
@@ -103,7 +99,6 @@ Item {
 
     }
 
-    // + FAB
     StyledRectangularShadow {
         target: fabButton
         radius: fabButton.buttonRadius
@@ -133,8 +128,7 @@ Item {
             }
         }
 
-        // Scrim
-        Rectangle {
+        Rectangle { // Scrim
             anchors.fill: parent
             radius: Appearance.rounding.small
             color: Appearance.colors.colScrim
@@ -148,7 +142,6 @@ Item {
 
         }
 
-        // The dialog
         Rectangle {
             id: dialog
 
@@ -243,12 +236,7 @@ Item {
         }
 
         Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Appearance.animation.elementMoveFast.type
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-            }
-
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
     }

@@ -16,8 +16,8 @@ ColumnLayout {
     readonly property bool hasApps: appPwNodes.length > 0
     spacing: 16
 
-    // ClippingRectangle, not a plain Rectangle: `clip` only clips to the
-    // bounding box, so a row's hover fill would square off the card's corners.
+    // ClippingRectangle: plain `clip` only clips to the bounding box, so a
+    // row's hover fill would square off the card's corners.
     ClippingRectangle {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -84,10 +84,5 @@ ColumnLayout {
         clip: true
         spacing: 4
         animateAppearance: false
-    }
-
-    Component {
-        id: listElementComp
-        ListElement {}
     }
 }

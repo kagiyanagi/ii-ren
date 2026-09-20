@@ -27,7 +27,6 @@ DialogListItem {
         spacing: 0
 
         RowLayout {
-            // Name
             spacing: 10
             MaterialSymbol {
                 iconSize: Appearance.font.pixelSize.larger
@@ -50,8 +49,7 @@ DialogListItem {
             }
         }
 
-        ColumnLayout { // Password
-            id: passwordPrompt
+        ColumnLayout { // Password prompt
             Layout.topMargin: 8
             visible: root.wifiNetwork?.askingPassword ?? false
 
@@ -60,7 +58,6 @@ DialogListItem {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Password")
 
-                // Password
                 echoMode: TextInput.Password
                 inputMethodHints: Qt.ImhSensitiveData
 
@@ -93,7 +90,6 @@ DialogListItem {
         }
 
         ColumnLayout { // Public wifi login page
-            id: publicWifiPortal
             Layout.topMargin: 8
             visible: (root.wifiNetwork?.active && (root.wifiNetwork?.security ?? "").trim().length === 0) ?? false
 
