@@ -24,7 +24,7 @@ ContentPage {
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
                 title: Translation.tr("Dial Clock disabled")
-                description: Translation.tr("Enable the Dial Clock widget in Desktop Widgets settings to use this page.")
+                description: Translation.tr("Enable the Dial Clock in Desktop Widgets settings to use this page.")
             }
         }
 

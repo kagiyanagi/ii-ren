@@ -12,7 +12,7 @@ ContentPage {
 
     ContentSection {
         title: Translation.tr("Clock Settings")
-        icon: "calendar_month"
+        icon: "schedule"
 
         Item {
             Layout.fillWidth: true
@@ -21,9 +21,9 @@ ContentPage {
 
             PagePlaceholder {
                 anchors.fill: parent
-                icon:    "calendar_month"
-                shape:   MaterialShape.Shape.Circle
-                title:       Translation.tr("Month Clock disabled")
+                icon: "watch"
+                shape: MaterialShape.Shape.Circle
+                title: Translation.tr("Month Clock disabled")
                 description: Translation.tr("Enable the Month Clock in Desktop Widgets settings to use this page.")
             }
         }

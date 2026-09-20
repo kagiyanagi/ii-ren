@@ -8,7 +8,7 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("WearOS Clock Options")
+    title: Translation.tr("WearOS Clock (Watch) Options")
 
     ContentSection {
         title: Translation.tr("Clock Settings")
@@ -23,8 +23,8 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("WearOS Clock disabled")
-                description: Translation.tr("Enable the WearOS Clock in Desktop Widgets settings to use this page.")
+                title: Translation.tr("WearOS Clock (Watch) disabled")
+                description: Translation.tr("Enable the WearOS Clock (Watch) in Desktop Widgets settings to use this page.")
             }
         }
 

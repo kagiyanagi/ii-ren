@@ -11,7 +11,7 @@ ContentPage {
     title: Translation.tr("WearOS Arc Clock Options")
 
     ContentSection {
-        title: Translation.tr("Arc Clock Settings")
+        title: Translation.tr("Clock Settings")
         icon: "schedule"
 
         Item {
@@ -50,7 +50,7 @@ ContentPage {
                 }
             }
 
-            Item { Layout.preferredHeight: 8 }
+            Item { Layout.preferredHeight: 4 }
 
             // ── Appearance Toggles ──
             ContentSubsectionLabel {
@@ -93,7 +93,7 @@ ContentPage {
                 }
             }
 
-            Item { Layout.preferredHeight: 8 }
+            Item { Layout.preferredHeight: 4 }
 
             // ── Complications ──
             ContentSubsectionLabel {

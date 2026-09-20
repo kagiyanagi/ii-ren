@@ -11,7 +11,7 @@ ContentPage {
     title: Translation.tr("Cookie Clock Options")
 
     ContentSection {
-        title: Translation.tr("Cookie Clock Settings")
+        title: Translation.tr("Clock Settings")
         icon: "schedule"
 
         Item {
@@ -31,6 +31,7 @@ ContentPage {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 4
+            visible: Config.isWidgetActive("clock_cookie")
 
             // Cookie Style Settings
             ColumnLayout {
@@ -368,7 +369,7 @@ ContentPage {
             }
 
             Item {
-                Layout.preferredHeight: 16
+                Layout.preferredHeight: 4
             }
 
             // Quote Settings
@@ -401,19 +402,11 @@ ContentPage {
             }
 
             Item {
-                Layout.preferredHeight: 16
-                visible: Config.isWidgetActive("clock_cookie")
+                Layout.preferredHeight: 4
             }
 
-            // Visual Options (Shadows)
-            ColumnLayout {
+            DesktopWidgetVisualOptions {
                 Layout.fillWidth: true
-                spacing: 4
-                visible: Config.isWidgetActive("clock_cookie")
-
-                DesktopWidgetVisualOptions {
-                    Layout.fillWidth: true
-                }
             }
         }
     }
