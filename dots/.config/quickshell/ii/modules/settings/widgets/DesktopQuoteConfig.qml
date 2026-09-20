@@ -8,39 +8,7 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack
-
-    RowLayout {
-        spacing: 12
-
-        RippleButton {
-            implicitWidth: implicitHeight
-            implicitHeight: 40
-            topLeftRadius: Appearance.rounding.full
-            topRightRadius: Appearance.rounding.full
-            bottomLeftRadius: Appearance.rounding.full
-            bottomRightRadius: Appearance.rounding.full
-            colBackground: Appearance.colors.colSecondaryContainer
-            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple: Appearance.colors.colSecondaryContainerActive
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: "arrow_back"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSecondaryContainer
-            }
-
-            onClicked: root.goBack()
-        }
-
-        StyledText {
-            text: Translation.tr("Quote Widget Options")
-            font.pixelSize: Appearance.font.pixelSize.large
-            font.family: Appearance.font.family.title
-            color: Appearance.colors.colOnLayer0
-        }
-    }
+    title: Translation.tr("Quote Widget Options")
 
     ContentSection {
         title: Translation.tr("Quote Widget Settings")
@@ -48,7 +16,7 @@ ContentPage {
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: 250
+            implicitHeight: Appearance.sizes.pagePlaceholderHeight
             visible: !Config.isWidgetActive("quote")
 
             PagePlaceholder {
@@ -132,39 +100,14 @@ ContentPage {
                         elide: Text.ElideRight
                     }
 
-                    RippleButton {
+                    RippleButtonWithIcon {
                         Layout.fillWidth: true
-                        implicitHeight: 36
-                        buttonRadius: Appearance.rounding.normal
-                        colBackground: Appearance.colors.colSecondaryContainer
-                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                        colRipple: Appearance.colors.colSecondaryContainerActive
-
-                        contentItem: RowLayout {
-                            anchors.centerIn: parent
-                            spacing: 8
-
-                            MaterialSymbol {
-                                text: "refresh"
-                                iconSize: Appearance.font.pixelSize.large
-                                color: Appearance.colors.colOnSecondaryContainer
-                                RotationAnimation on rotation {
-                                    running: QuoteService.loading
-                                    from: 0
-                                    to: 360
-                                    loops: Animation.Infinite
-                                    duration: Appearance.animation.elementMove.duration * 4
-                                }
-                            }
-
-                            StyledText {
-                                text: QuoteService.loading ? Translation.tr("Fetching…") : Translation.tr("Fetch new quote")
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                font.weight: Font.Medium
-                                color: Appearance.colors.colOnSecondaryContainer
-                            }
-                        }
-
+                        // Disabled while fetching: the 0.4 state plus the label
+                        // is the whole loading affordance, which is why the
+                        // spinning icon this replaced is not missed.
+                        enabled: !QuoteService.loading
+                        materialIcon: "refresh"
+                        mainText: QuoteService.loading ? Translation.tr("Fetching…") : Translation.tr("Fetch new quote")
                         onClicked: QuoteService.fetchRandomQuote()
                     }
                 }

@@ -8,55 +8,23 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack
-
-    RowLayout {
-        spacing: Appearance.font.pixelSize.small
-
-        RippleButton {
-            implicitWidth: implicitHeight
-            implicitHeight: Appearance.font.pixelSize.huge * 2
-            topLeftRadius: Appearance.rounding.full
-            topRightRadius: Appearance.rounding.full
-            bottomLeftRadius: Appearance.rounding.full
-            bottomRightRadius: Appearance.rounding.full
-            colBackground: Appearance.colors.colSecondaryContainer
-            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple: Appearance.colors.colSecondaryContainerActive
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: "arrow_back"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSecondaryContainer
-            }
-
-            onClicked: root.goBack()
-        }
-
-        StyledText {
-            text: Translation.tr("At a Glance Widget Options")
-            font.pixelSize: Appearance.font.pixelSize.large
-            font.family: Appearance.font.family.title
-            color: Appearance.colors.colOnLayer0
-        }
-    }
+    title: Translation.tr("At a Glance Widget Options")
 
     ContentSection {
-        title: Translation.tr("At a Glance Settings")
-        icon: "schedule"
+        title: Translation.tr("At a Glance Widget Settings")
+        icon: "dashboard"
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: 250
+            implicitHeight: Appearance.sizes.pagePlaceholderHeight
             visible: !Config.isWidgetActive("at_a_glance")
 
             PagePlaceholder {
                 anchors.fill: parent
-                icon: "schedule"
+                icon: "dashboard"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("At a Glance disabled")
-                description: Translation.tr("Enable At a Glance in Desktop Widgets settings to configure options.")
+                title: Translation.tr("At a Glance Widget disabled")
+                description: Translation.tr("Enable the At a Glance Widget in Desktop Widgets settings to use this page.")
             }
         }
 

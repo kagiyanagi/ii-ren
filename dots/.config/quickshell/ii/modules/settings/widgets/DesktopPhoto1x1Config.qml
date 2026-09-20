@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import Quickshell.Io
 import qs.services
 import qs.modules.common
@@ -10,7 +9,7 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack
+    title: Translation.tr("Photo 1x1 Widget Options")
 
     Process {
         id: pickImageProc
@@ -25,51 +24,21 @@ ContentPage {
         }
     }
 
-    RowLayout {
-        spacing: 12
-
-        RippleButton {
-            implicitWidth: implicitHeight
-            implicitHeight: 40
-            topLeftRadius:    Appearance.rounding.full
-            topRightRadius:   Appearance.rounding.full
-            bottomLeftRadius: Appearance.rounding.full
-            bottomRightRadius:Appearance.rounding.full
-            colBackground:      Appearance.colors.colSecondaryContainer
-            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple:          Appearance.colors.colSecondaryContainerActive
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: "arrow_back"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSecondaryContainer
-            }
-            onClicked: root.goBack()
-        }
-
-        StyledText {
-            text: Translation.tr("Photo 1x1 Widget Options")
-            font.pixelSize: Appearance.font.pixelSize.large
-            font.family:    Appearance.font.family.title
-            color: Appearance.colors.colOnLayer0
-        }
-    }
-
     ContentSection {
-        title: Translation.tr("Photo Settings")
+        title: Translation.tr("Photo 1x1 Widget Settings")
         icon: "image"
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: 250
+            implicitHeight: Appearance.sizes.pagePlaceholderHeight
             visible: !Config.isWidgetActive("photo_1x1")
 
             PagePlaceholder {
                 anchors.fill: parent
                 icon:    "image"
                 shape:   MaterialShape.Shape.Circle
-                title:       Translation.tr("Photo 1x1 disabled")
-                description: Translation.tr("Enable Photo 1x1 in Desktop Widgets settings to configure options.")
+                title:       Translation.tr("Photo 1x1 Widget disabled")
+                description: Translation.tr("Enable the Photo 1x1 Widget in Desktop Widgets settings to use this page.")
             }
         }
 
@@ -132,8 +101,8 @@ ContentPage {
                 })
             }
 
-            // ── Size & Appearance ────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Size & Appearance") }
+            // ── Size ─────────────────────────────────────────────────────────
+            ContentSubsectionLabel { text: Translation.tr("Size") }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
@@ -143,11 +112,8 @@ ContentPage {
                 onValueChanged: Config.options.background.widgets.photo_1x1.widgetSize = value
             }
 
-            ConfigSwitch {
-                buttonIcon: "wb_sunny"
-                text: Translation.tr("Enable Shadows")
-                checked: Config.options.background.widgets.enableShadows ?? true
-                onCheckedChanged: Config.options.background.widgets.enableShadows = checked
+            DesktopWidgetVisualOptions {
+                Layout.fillWidth: true
             }
         }
     }

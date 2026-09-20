@@ -8,47 +8,15 @@ ContentPage {
     id: root
     forceWidth: false
 
-    signal goBack
-
-    RowLayout {
-        spacing: 12
-
-        RippleButton {
-            implicitWidth: implicitHeight
-            implicitHeight: 40
-            topLeftRadius: Appearance.rounding.full
-            topRightRadius: Appearance.rounding.full
-            bottomLeftRadius: Appearance.rounding.full
-            bottomRightRadius: Appearance.rounding.full
-            colBackground: Appearance.colors.colSecondaryContainer
-            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-            colRipple: Appearance.colors.colSecondaryContainerActive
-
-            MaterialSymbol {
-                anchors.centerIn: parent
-                text: "arrow_back"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSecondaryContainer
-            }
-
-            onClicked: root.goBack()
-        }
-
-        StyledText {
-            text: Translation.tr("Water Reminder Widget Options")
-            font.pixelSize: Appearance.font.pixelSize.large
-            font.family: Appearance.font.family.title
-            color: Appearance.colors.colOnLayer0
-        }
-    }
+    title: Translation.tr("Water Reminder Widget Options")
 
     ContentSection {
-        title: Translation.tr("Water Reminder Settings")
+        title: Translation.tr("Water Reminder Widget Settings")
         icon: "water_drop"
 
         Item {
             Layout.fillWidth: true
-            implicitHeight: 250
+            implicitHeight: Appearance.sizes.pagePlaceholderHeight
             visible: !Config.isWidgetActive("water_reminder")
 
             PagePlaceholder {
@@ -132,39 +100,11 @@ ContentPage {
                 }
             }
 
-            Item {
+            RippleButtonWithIcon {
                 Layout.fillWidth: true
-                implicitHeight: 44
-
-                RippleButton {
-                    id: resetTodayBtn
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    implicitHeight: 40
-                    buttonRadius: Appearance.rounding.normal
-                    colBackground: Appearance.colors.colSecondaryContainer
-                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                    colRipple: Appearance.colors.colSecondaryContainerActive
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialSymbol {
-                            text: "restart_alt"
-                            iconSize: Appearance.font.pixelSize.large
-                            color: Appearance.colors.colOnSecondaryContainer
-                        }
-
-                        StyledText {
-                            text: Translation.tr("Reset today's count")
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            color: Appearance.colors.colOnSecondaryContainer
-                        }
-                    }
-
-                    onClicked: WaterReminderService.resetCounter()
-                }
+                materialIcon: "restart_alt"
+                mainText: Translation.tr("Reset today's count")
+                onClicked: WaterReminderService.resetCounter()
             }
 
             DesktopWidgetVisualOptions {
