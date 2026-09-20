@@ -1,5 +1,3 @@
-import qs.modules.common
-import qs.services
 import QtQuick
 
 /**
@@ -67,10 +65,12 @@ MouseArea {
             root.dragging = true;
         }
     }
-    onCanceled: (mouse) => {
+    onCanceled: () => {
+        // `canceled` itself carries no MouseEvent -- re-firing `released` (whose
+        // one caller here never reads it) treats a stolen grab like a release.
         if (!root.interactive) {
             return;
         }
-        released(mouse);
+        released();
     }
 }

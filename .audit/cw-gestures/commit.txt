@@ -1,0 +1,59 @@
+refactor(cw-gestures): a swipe that survives without a list, and a guess that can't crash it
+
+`SwipeDismissible` read `owner.parent.parent`, guessed it was the parent
+`ListView` two hops up a delegate's own document, and then called
+`.resetDrag()` and wrote `.dragIndex`/`.dragDistance` on whatever that
+resolved to -- correct inside a `StyledListView`, where that ancestor really
+does carry the contract, and a crash anywhere else, because the guess still
+lands on a real Item, just one with none of those three members.
+`ii-clipboardToast` hit exactly this for its lone card and hand-rolled its own
+dismiss instead of using the shared widget.
+
+Loosened rather than documented list-only. `qmlParent` is a plain property
+now, not `readonly`, so a caller whose shared state lives somewhere else can
+hand it in directly. Every call or write through it is gated on
+`hasSharedDragState`, which checks that the guess actually implements the
+contract rather than merely existing -- a wrong-but-truthy ancestor is now a
+no-op, not a crash. Underneath that, the row's own slide was silently dead
+with no parent at all: the self-drag branch of `xOffset` read
+`parentDragDistance`, a value that only becomes nonzero because the dragging
+row itself broadcasts it up for its neighbours -- with no parent to hold that
+broadcast, the round trip always returned 0. It now reads `dragDiffX`
+directly, the same live value `DragManager` already tracked. The *condition*
+guarding that branch stays `dragIndexDiff == 0`, deliberately not switched to
+`root.dragging`: `dragging` is already false by the time the exit animation's
+own "break binding" line runs, which would have frozen the exit at the wrong
+starting position. `dragIndexDiff == 0` does not have that problem, and
+`resetDrag()` already invalidates it for the real `StyledListView` case the
+same way in both versions, so nothing changes there.
+
+Neither `SwipeDismissible` nor `DragManager` fades -- checked, neither touches
+opacity anywhere. The lift DESIGN.md 3.6 asks for stays a caller decision:
+`dragging` was already public, and now the file's own docstring says so.
+Checked `AbstractWidget.drag.target` as the other candidate for a shared
+lift and rejected it -- both real callers (`AbstractBackgroundWidget`,
+`StyledOverlayWidget`) already override it to `undefined` and drive their own
+position, and one of them (`AbstractBackgroundWidget`) already multiplies its
+own drag lift into `scale`; a second, base-class write to the same property
+would just be two bindings fighting over one.
+
+The overscroll item in the brief turned out to need nothing from this family
+at all: a Flickable's own drag-to-scroll is native Qt, entirely separate from
+this MouseArea-based DragManager, and `Flickable.verticalOvershoot` plus
+`boundsBehavior: StopAtBounds` (both confirmed present in this Qt6) already
+report the drag overhang with no tracking code anywhere. Written up as a
+concrete, ready diff for `cw-scaffolding`'s `StyledFlickable.qml`/
+`StyledListView.qml` in notes.md.
+
+Also, found while reading the family: two unused imports in `DragManager.qml`
+(`qs.modules.common`, `qs.services`), one each in `AbstractOverlayWidget.qml`
+and `AbstractWidget.qml`, and `DragManager.onCanceled` declaring a `mouse`
+parameter that `MouseArea.canceled` never actually supplies -- re-firing
+`released()` with no argument is identical in behaviour, since nothing
+downstream reads it.
+
+`tools/check-swipe-dismissible.py` holds DESIGN.md 3.6's two numbers (the 70px
+threshold, the 0.3/0.1 neighbour fractions) and the coupling fix itself: all
+three reaches into `qmlParent` stay gated, `qmlParent` stays overridable, and
+the self-drag branch stays sourced from this instance's own state rather than
+the parent's broadcast copy. Mutation-tested against all seven assertions.

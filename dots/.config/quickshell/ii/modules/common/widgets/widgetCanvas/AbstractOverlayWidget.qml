@@ -1,6 +1,4 @@
 import QtQuick
-import Quickshell
-import qs.modules.common
 
 /*
  * Abstract widgets for an overlay. Doesn't contain any visuals.
