@@ -14,6 +14,11 @@ reports at runtime and nowhere else:
 3. The two show/hide containers name a different spec for entering than for
    leaving (2.5). One shared spec is the easy "simplification" that puts the
    asymmetry back on the floor.
+4. An Item wrapping a child for a layout reports both implicit dimensions. The
+   header rewrite in (2) reported only a height, and a section is sized by its
+   header: every `ConfigRow` cell with `Layout.fillWidth: false` collapsed to
+   zero, stacked its chips in a column and left the card a 4px sliver. Nothing
+   warns -- not Qt, not qmllint, not check-design.py.
 
 Usage: python3 tools/check-scaffold-containers.py
 """
@@ -177,6 +182,32 @@ missing = [w for w in FAMILY if not (WIDGETS / f"{w}.qml").exists()]
 if missing:
     fail(f"family member(s) gone: {', '.join(missing)} -- update this list with the queue row")
 
+# --- 4. a wrapper Item reports both implicit dimensions -----------------------
+
+def item_blocks(text):
+    """Every `Item { ... }` block in the file, outermost first."""
+    for m in re.finditer(r"\bItem\s*\{", text):
+        yield block_at(text[m.start():], "Item {")
+
+
+def check_wrapper_implicit_size(name):
+    s = src(name)
+    for block in item_blocks(s):
+        # only the ones standing in for a child inside a layout
+        if "implicitHeight:" not in block:
+            continue
+        if "Layout." not in block:
+            continue
+        if "implicitWidth:" not in block:
+            head = block.strip().splitlines()[1].strip() if len(block.splitlines()) > 1 else block[:40]
+            fail(f"{name}: an Item reports implicitHeight but no implicitWidth ({head!r}) -- "
+                 "a section is sized by it, so a non-filling cell collapses to zero")
+
+
+for n in SECTIONS:
+    check_wrapper_implicit_size(n)
+
+
 if failures:
     print("FAIL: scaffolding containers")
     for f in failures:
@@ -186,3 +217,4 @@ if failures:
 print(f"ok: {len(SECTIONS)} collapsible headers render hover, focus and pressed and take the keyboard")
 print(f"ok: {len(FAMILY)} scaffolding files anchor nothing a layout manages")
 print("ok: Revealer and PagePlaceholder specify both directions")
+print(f"ok: {len(SECTIONS)} sections report an implicit width, so a non-filling cell keeps its card")

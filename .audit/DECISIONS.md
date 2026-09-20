@@ -33,6 +33,22 @@ says **declined**, the reason is the whole point of writing it down.
 | 19 | `services/Ai.qml:396` called `addUserModels()`, which was never written | **Delete the call.** Both config-fed model lists (`modelsOfProviders`, `otherModels`) are bindings and already update when the config arrives | **done** |
 | 20 | `modules/settings/widgets/LauncherResultsConfig.qml` assigns five properties `ConfigListView` never declared | **Delete the file; drop the three stray assignments in `BarLayoutConfig`.** It has zero callers, and its `SearchResultSectionRegistry` singleton and `Config.options.search.sectionOrder` path do not exist anywhere in the repo. **Measured, and the earlier `FINDINGS.md` claim was wrong:** re-adding one bogus assignment and opening the page shows it loads and works — QML accepted it silently — so this was dead weight, not a dead page | **done** |
 
+## Found after the fact
+
+**21 — `ContentSubsection` lost its implicit width** (`cw-scaffolding`, 74f5253d6). Moving
+the header from a `RowLayout` into an `Item` that reported only `implicitHeight` took the
+section's whole implicit width with it: measured 106→0, 124→0, 154→0, 196→0. Every
+`ConfigRow` cell with `Layout.fillWidth: false` collapsed, so its chips stacked in a column
+and its card drew as a 4px sliver, with the titles of two such cells overlapping each
+other. Fixed in both section widgets, with the content wrapper now reporting its
+`ContentGroup`'s width too, so a card hugs its chips rather than its title -- measured
+better than the pre-audit layout, which wrapped "Group style" into three rows.
+`check-scaffold-containers.py` gained the assertion; it caught the second wrapper while
+being written. **The lesson for the rest of the audit:** a widget that wraps a child for a
+layout has to report both implicit dimensions, and nothing in the toolchain says otherwise
+-- not Qt, not qmllint, not `check-design.py`, and not a still frame of the surface that
+row owns.
+
 ## What the cohesion pass has to watch at 60fps
 
 From the rows that retimed something and could not drive the shell:

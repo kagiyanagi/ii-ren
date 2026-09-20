@@ -33,6 +33,11 @@ ColumnLayout {
     // state film needs to sit behind the row without taking a cell in it.
     Item {
         Layout.fillWidth: true
+        // The subsection's whole implicit width comes from this row, and a
+        // `ConfigRow` cell with `Layout.fillWidth: false` is sized by it -- an
+        // Item that reports only a height collapses that cell to zero, which
+        // stacks its chips in a column and leaves the card a 4px sliver.
+        implicitWidth: headerRow.implicitWidth + headerRow.anchors.leftMargin
         // A collapsible header is a hit target and takes 3.4's 32px minimum; a
         // plain label header stays as tall as its text, so the 63 callers that
         // never collapse keep their spacing.
@@ -115,6 +120,9 @@ ColumnLayout {
 
     Item {
         Layout.fillWidth: true
+        // The card hugs its chips, so the cell has to ask for their width too --
+        // a title is not what decides whether a two-chip row fits on one line.
+        implicitWidth: sectionContent.implicitWidth
         implicitHeight: root.expanded || !root.collapsible ? sectionContent.implicitHeight : 0
         visible: root.expanded || !root.collapsible
 

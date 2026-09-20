@@ -109,4 +109,5 @@ Found while closing the open calls in `DECISIONS.md`; neither was known before.
 | where | issue | owner |
 |---|---|---|
 | `modules/ii/sidebarPolicies/StatusSeparator.qml` | A third separator-by-another-name, `colOutlineVariant` as a fill. Invisible to the old name-matching rule; the widened `no-separator-bars` shape check is what found it, along with 13 more sites of the same shape across the bar, overlay, overview, cheatsheet and settings widgets — all legacy, all `warn` | `ii-sidebarPolicies`, and each site's own row |
+| `modules/settings/configs/widgets/OsdPositionPicker.qml:87` | `Unable to assign [undefined] to QVariantMap`, twice per settings launch on the Interface page. Pre-existing; unrelated to the section-width fix that found it | `settings-widgets` |
 | `modules/ii/dock/widgets/DockPreviewPopup.qml:212` | A `layer.enabled` + `OpacityMask` pair **inside a repeated delegate** (§8). Found by the new *Effect budget* section of `pack.py` the moment it was pointed at the dock, which is the argument for that section existing | `ii-dock` |

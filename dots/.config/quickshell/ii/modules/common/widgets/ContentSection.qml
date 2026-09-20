@@ -50,6 +50,10 @@ ColumnLayout {
     // state film needs to sit behind the row without taking a cell in it.
     Item {
         Layout.fillWidth: true
+        // Same as ContentSubsection: a header Item that reports no width leaves
+        // the whole section with none, and any cell that is not told to fill
+        // collapses to zero.
+        implicitWidth: headerRow.implicitWidth
         implicitHeight: headerRow.implicitHeight
 
         StateOverlay {
@@ -148,6 +152,9 @@ ColumnLayout {
 
     Item {
         Layout.fillWidth: true
+        // Both dimensions: a wrapper that reports only a height sizes its
+        // section to nothing in the other direction.
+        implicitWidth: sectionContent.implicitWidth
         implicitHeight: root.expanded || !root.collapsible ? sectionContent.implicitHeight : 0
         visible: root.expanded || !root.collapsible
 
