@@ -132,6 +132,11 @@ Scope {
             if (text === "")
                 return;
             root.copiedText = text;
+            // A copy landing mid-swipe cancels the swipe. Without this the
+            // escape runs to its end and hides the card that just arrived,
+            // because `shown` was already true and nothing reopened it.
+            escapeAnim.stop();
+            card.dragOffset = 0;
             root.shown = true;
             hideTimer.reset();
         }
@@ -208,16 +213,13 @@ Scope {
         // the shadow, plus the room the card needs to dodge a sidebar.
         implicitWidth: card.width + toastWindow.gutter + Appearance.sizes.elevationMargin + Appearance.sizes.sidebarWidth
 
-        // Only the two surfaces, so the empty corner above the pill stays
-        // click-through.
+        // The card, not its two surfaces separately. A Region per surface with
+        // the pill's nulled out when there is nothing to act on left all but a
+        // few pixels of the tile's left edge click-through, so hover and press
+        // both died in the middle of the preview. The card's own box is also
+        // what the dismiss drag needs to be grabbable by.
         mask: Region {
-            item: previewFrame
-
-            // Null when there is nothing to act on, so the hidden pill's strip does
-            // not go on swallowing clicks in an empty corner.
-            Region {
-                item: pill.visible ? pill : null
-            }
+            item: card
         }
 
         Item {
@@ -272,7 +274,119 @@ Scope {
 
             HoverHandler {
                 id: cardHover
+
+                // The whole card, not just the tile: every part of it is
+                // grabbable, and the pill, the mat and the tile reading as three
+                // different controls is worse than one honest one. The only
+                // cursor 3.4 names is this one, so an open hand on the draggable
+                // parts would be a shape invented here.
+                cursorShape: Qt.PointingHandCursor
                 onHoveredChanged: hideTimer.reset()
+            }
+
+            // Swipe the card either way and it goes. Composed through a
+            // Translate rather than written to x: x carries
+            // the binding that keeps the card clear of a sidebar, and its
+            // Behavior would leave the card 500ms behind the pointer (2.9).
+            property real dragOffset: 0
+            property real dragVelocity: 0
+
+            transform: Translate {
+                x: card.dragOffset
+            }
+
+            // AOSP SwipeHelper, the model NotificationStackView already follows
+            // here: SWIPED_FAR_ENOUGH_SIZE_FRACTION 0.6 of the card's own width,
+            // or a fling past SWIPE_ESCAPE_VELOCITY (500dp/s). Not
+            // SwipeDismissible's flat 70 (3.6) - that one wants a ListView parent
+            // for its neighbour nudging, and a fraction scales with a card whose
+            // width changes with the number of actions.
+            readonly property real dismissFraction: 0.6
+            readonly property real escapeVelocity: 500
+            // DEFAULT_ESCAPE_ANIMATION_DURATION / MAX_ESCAPE_ANIMATION_DURATION.
+            readonly property int escapeDurationDefault: 200
+            readonly property int escapeDurationMax: 400
+            // So the card ends fully clear of the corner it leaves.
+            readonly property real dismissOvershoot: 20
+
+            Behavior on dragOffset {
+                // Off while the finger is down, or the card lags the drag, and
+                // off during the escape so the two do not fight over the write.
+                enabled: !dragHandler.active && !escapeAnim.running
+                // Fast spatial, the closest this shell has to the spring
+                // SwipeHelper snaps back with.
+                animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+            }
+
+            DragHandler {
+                id: dragHandler
+
+                // Nothing to move: the offset is composed in above. Below the
+                // drag threshold the buttons keep the grab, so a tap still
+                // clicks and only a real drag steals it.
+                target: null
+                yAxis.enabled: false
+                cursorShape: Qt.ClosedHandCursor
+
+                onActiveTranslationChanged: {
+                    if (!dragHandler.active)
+                        return;
+                    card.dragOffset = dragHandler.activeTranslation.x;
+                    // Latched, because the centroid's velocity is not worth
+                    // trusting once the press has been released.
+                    card.dragVelocity = dragHandler.centroid.velocity.x;
+                }
+
+                onActiveChanged: {
+                    if (dragHandler.active)
+                        return;
+                    const distance = card.dragOffset;
+                    const velocity = card.dragVelocity;
+                    const farEnough = Math.abs(distance) > card.width * card.dismissFraction;
+                    // A fling only counts if it is going the way the card went.
+                    const fastEnough = Math.abs(velocity) > card.escapeVelocity && (velocity > 0) === (distance > 0);
+                    card.dragVelocity = 0;
+                    if (!farEnough && !fastEnough) {
+                        card.dragOffset = 0;
+                        return;
+                    }
+                    // Either way out. The card sits a gutter from its own screen
+                    // edge, so that direction runs the pointer into the edge well
+                    // before the threshold; inward has the whole screen.
+                    const goingLeft = fastEnough ? velocity < 0 : distance < 0;
+                    escapeAnim.to = (card.width + card.dismissOvershoot) * (goingLeft ? -1 : 1);
+                    // Carry the speed it was thrown at into the way it leaves.
+                    escapeAnim.escapeDuration = velocity !== 0 ? Math.min(card.escapeDurationMax, Math.abs(escapeAnim.to - distance) * 1000 / Math.abs(velocity)) : card.escapeDurationDefault;
+                    escapeAnim.restart();
+                }
+            }
+
+            // A swiped card leaves the way it was pushed. It does not shrink the
+            // way the timeout exit does - that one is the card giving up, this is
+            // the user throwing it away.
+            ParallelAnimation {
+                id: escapeAnim
+
+                property real to: 0
+                property int escapeDuration: card.escapeDurationDefault
+
+                NumberAnimation {
+                    target: card
+                    property: "dragOffset"
+                    to: escapeAnim.to
+                    duration: escapeAnim.escapeDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                }
+                NumberAnimation {
+                    target: card
+                    property: "opacity"
+                    to: 0
+                    duration: escapeAnim.escapeDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
+                onFinished: root.shown = false
             }
 
             onCardShownChanged: {
@@ -339,6 +453,10 @@ Scope {
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
+
+                // Invisible by now, so the spring back is not seen. Without it
+                // the next copy opens at the offset this drag ended on (2.7).
+                onFinished: card.dragOffset = 0
             }
 
             // The action pill, behind the preview card. Its left end runs on under

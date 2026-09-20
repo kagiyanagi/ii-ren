@@ -32,6 +32,16 @@ the 6s timeout and the thumbnail-plus-actions split, so it is the only sensible 
 - **The dismissal clock stops under the pointer.** Six seconds that expire while the
   pointer is crossing the card take the actions with them, and there is no way back but
   copying again. Hover holds the timer; leaving restarts the full clock.
+- **Swipe to dismiss, either way**, on AOSP `SwipeHelper` as `NotificationStackView`
+  already reads it: past `SWIPED_FAR_ENOUGH_SIZE_FRACTION` (0.6 of the card's width) or a
+  fling past `SWIPE_ESCAPE_VELOCITY` (500dp/s). The card leaves the way it was thrown, on
+  `emphasizedAccel`, over a duration carried from the fling speed and clamped to AOSP's
+  200/400 escape ladder — it does not shrink, the way the timeout exit does. Under
+  threshold it snaps back on fast spatial. Not `SwipeDismissible`: that widget needs a
+  ListView parent for its neighbour nudging, and a flat 70px does not scale with a card
+  whose width changes with the number of actions.
+- **Three cursors.** Pointing hand on the tile (it is a click target), open hand on the
+  rest of the card (draggable but not clickable), closed hand for as long as a drag runs.
 
 **Edge states.**
 - *No actions* (not a link, no phone): pill and row go, the card is the tile alone.
@@ -58,5 +68,7 @@ the 6s timeout and the thumbnail-plus-actions split, so it is the only sensible 
   composition, and `RectangularShadow` with `cached: true` is on 8's cheap list.
 - `RippleButton` rendering no focus state. Shared-widget gap, belongs to `common-widgets`
   — logged in FINDINGS.md.
-- Swipe-to-dismiss. The reference has it; nothing else on this shell's overlay layer does,
-  and `SwipeDismissible` on a masked layer surface is its own session.
+- The dragged-item half of 3.6 — the 0.16 state layer and an elevation lift while a drag
+  is in flight. That rule is about dragging an item inside a container; the swipe-away path
+  is `SwipeHelper`, and `NotificationStackView` does not apply it either. The card also
+  carries two shadows, so lifting means animating both.
