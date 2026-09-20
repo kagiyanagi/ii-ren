@@ -65,6 +65,19 @@ MouseArea {
             root.dragging = true;
         }
     }
+    // Losing `interactive` mid-drag -- a notification group collapsing under the
+    // finger, a row going non-interactive as the list rebuilds -- used to leave
+    // `dragging` true and the last offset standing, because the release below
+    // early-returns on exactly that flag and nothing else ever took it back.
+    // Treated as a cancelled grab, which snaps back rather than dismissing: the
+    // gesture was never finished, so it must not count as a confirmed one.
+    onInteractiveChanged: () => {
+        if (root.interactive || !root.dragging) {
+            return;
+        }
+        root.dragging = false;
+        root.resetDrag();
+    }
     onCanceled: () => {
         // `canceled` itself carries no MouseEvent -- re-firing `released` (whose
         // one caller here never reads it) treats a stolen grab like a release.

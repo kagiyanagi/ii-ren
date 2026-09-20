@@ -89,6 +89,17 @@ DragManager {
             root.qmlParent.dragDistance = dragDiffX;
     }
 
+    // The row can go away in the middle of a drag -- a popup expiring under the
+    // finger, a group closing, the model dropping it. `dragReleased` never
+    // arrives, so nothing hands the broadcast back, and `dragDistance` stays at
+    // whatever the vanished row last wrote: every surviving neighbour keeps its
+    // 0.3 / 0.1 nudge for as long as the list lives. That is the notification
+    // that sits half a swipe to the right and will not come back.
+    Component.onDestruction: {
+        if (root.hasSharedDragState && root.qmlParent.dragIndex === root.itemIndex)
+            root.qmlParent.resetDrag();
+    }
+
     onDragReleased: (diffX, diffY) => {
         if (Math.abs(diffX) > root.dragConfirmThreshold)
             root.destroyWithAnimation(diffX < 0);

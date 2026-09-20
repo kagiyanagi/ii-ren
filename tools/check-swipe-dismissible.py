@@ -83,6 +83,24 @@ DRAG_MANAGER_SRC = (WIDGETS / "DragManager.qml").read_text()
 if not re.search(r"property real dragDiffX\b", DRAG_MANAGER_SRC):
     fail("DragManager no longer exposes dragDiffX -- SwipeDismissible's own-row xOffset depends on it")
 
+# --- 3. the broadcast is always handed back ----------------------------------
+
+# `dragDistance` lives on the shared parent and moves every neighbour by 0.3 /
+# 0.1 of it. Two ways the dragging row can stop without a `dragReleased`, both
+# of which used to leave that value standing for the life of the list -- rows
+# stuck half a swipe aside, with no gesture left to take them back.
+
+if not re.search(r"Component\.onDestruction:\s*\{[^}]*resetDrag\(\)", SRC, re.S):
+    fail("SwipeDismissible does not reset the shared drag on destruction -- a row "
+         "destroyed mid-drag (a popup expiring under the finger) leaves dragDistance "
+         "set, and every neighbour keeps its nudge")
+
+if not re.search(r"onInteractiveChanged[^{]*\{(?:[^{}]|\{[^{}]*\})*resetDrag\(\)",
+                 DRAG_MANAGER_SRC, re.S):
+    fail("DragManager does not end the drag when `interactive` goes false -- `onReleased` "
+         "early-returns on that same flag, so a row that loses interactivity mid-drag "
+         "(a group collapsing under the finger) never releases and never snaps back")
+
 if failures:
     print("FAIL: SwipeDismissible's dismiss contract")
     for f in failures:
@@ -92,3 +110,4 @@ if failures:
 print("ok: dragConfirmThreshold is 70, neighbour fractions are 0.3/0.1 (DESIGN.md 3.6)")
 print(f"ok: all {len(DANGEROUS)} reaches into qmlParent are gated on {GUARD}")
 print("ok: qmlParent is overridable and the own-row case does not depend on it")
+print("ok: the shared drag is handed back on destruction and on losing interactivity")
