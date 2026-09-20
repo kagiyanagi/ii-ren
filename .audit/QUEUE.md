@@ -35,11 +35,11 @@ widgets are rooted in `RippleButton`, then by caller count.
 | `cw-misc` | `modules/common/widgets` | shared-widgets | 2 | 4 | 463 | `ipc call sidebarRight` | done | 2026-09-20 | `AttachedFileIndicator.scale` shadowed `Item.scale`; `CalendarView` imported waffle's look system |
 | `cw-battery` | `modules/common/widgets` | shared-widgets | 2 | 1 | 1040 | `ipc call bar` | done | 2026-09-20 | the brief's hex/duration claims were wrong — the real fix was `m3colors.m3error` → `colors.colError` |
 | `settings-widgets` | `modules/settings/widgets` | shared-widgets | 1 | 191 | 35432 | ? | todo | | settings widget library |
-| `cw-overscroll` | `modules/common/widgets` | shared-widgets | 1 | 3 | 0 | any list or flickable | todo | | split out of `cw-gestures`: `StopAtBounds` + feed `verticalOvershoot` into `overscroll` in `StyledListView`/`StyledFlickable`. Needs a 60fps harness — the existing 500ms `Behavior on overscroll` will fight a live drag, and `WheelScrollHandler` is invisible on a default config (see `cw-gestures`/`cw-scaffolding` notes) |
-| `config-defaults` | `modules/common/Config.qml` | common | 1 | 1 | 0 | n/a | todo | | no row owned `interactions.scrolling`. `fasterTouchpadScroll` defaults false and gates `WheelScrollHandler.visible`, so the M3 stretch overscroll is dead for everyone. Reads as a speed preference, is actually an on switch |
-| `services-Ai` | `services/Ai.qml` | services | 2 | 1 | 0 | n/a | todo | | `Ai.qml:396` `TypeError: Property 'addUserModels' of object Ai is not a function` on every boot. First row in a `services` cluster that did not exist |
+| `cw-overscroll` | `modules/common/widgets` | shared-widgets | 1 | 3 | 0 | any list or flickable | done | 2026-09-20 | `boundsMovement: StopAtBounds` + `verticalOvershoot` into the stretch; the `Behavior` is off while dragging, so nothing fights the drag. Measured live: 47px peak with `fasterTouchpadScroll` off |
+| `config-defaults` | `modules/common/Config.qml` | common | 1 | 1 | 0 | n/a | done | 2026-09-20 | resolved without touching the default: the handler no longer gates `visible` on `fasterTouchpadScroll`, so the key means only what its name says and the stretch is unconditional |
+| `services-Ai` | `services/Ai.qml` | services | 2 | 1 | 0 | n/a | done | 2026-09-20 | the `addUserModels()` call went — the two config-fed model lists are bindings. Boot is clean of it |
 | `ii-altTab` | `modules/ii/altTab` | ii | 2 | 1 | 243 | `ipc call altTab` | todo | |  |
-| `ii-background-widgets` | `modules/ii/background/widgets` | background | 2 | 122 | 27746 | ? | todo | | **deferred — vendored, see re-port hazard** |
+| `ii-background-widgets` | `modules/ii/background/widgets` | background | 2 | 122 | 27746 | ? | skip | 2026-09-20 | **out permanently** — vendored and rsynced with `--delete`; decided in `DECISIONS.md` 3 and `AUDIT.md`'s re-port hazard |
 | `ii-background-root` | `modules/ii/background/*.qml` | background | 2 | 3 | 1437 | ? | todo | | top-level files only |
 | `ii-bar-cards` | `modules/ii/bar/cards` | bar | 1 | 14 | 3204 | ? | todo | |  |
 | `ii-bar-weather` | `modules/ii/bar/weather` | bar | 1 | 2 | 385 | ? | todo | |  |
