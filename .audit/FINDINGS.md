@@ -86,3 +86,15 @@ each line is owned by a row that has not run yet.
   `[\d\s+\-*/().]+` and add a rule for a `property` whose name ends in `Duration` or
   `Curve` inside `modules/common/widgets`. All three instances are now fixed at source,
   so the tightening is prophylactic — but the trigger has fired.
+
+## From the vision pass over the tranche's after-shots, 2026-09-20
+
+`gemini-3.1-pro-high` via agy, per AUDIT.md step 6. Full result and the false-positive
+tally in `.audit/common-widgets/vision.md` — one genuine defect out of thirteen claims,
+so verify anything else that pass produced before acting on it.
+
+| where | issue | owner |
+|---|---|---|
+| `modules/ii/bar/Spacebar.qml`, `modules/ii/bar/SysTray.qml` | The bar paints **vertical separator bars** — `Spacebar` draws a pipe in `colOutlineVariant` (its comment: "Matches DockSeparator.qml"), and `SysTray` ships `showSeparator: true`. Design law 11 and DESIGN.md §5.5 forbid separator lines outright; sections separate by whitespace on the 4dp grid and layer cards. Instantiated via `BarComponent.qml`. Confirmed in the pixels and the source | `ii-bar-root` |
+| `modules/ii/dock/widgets/SectionSeparator.qml` | The dock's copy of the same shape, which is what `Spacebar`'s comment points at | `ii-dock` |
+| `tools/check-design.py` `no-separator-bars` | **Blind spot.** The rule matches `WindowDialogSeparator` by *name*, so a separator class called `Spacebar`, `DockSeparator` or `SectionSeparator` passes it silently — which is how the two rows above survived every automated gate. Worth widening to a thin-`Rectangle`-in-`colOutlineVariant` shape check when either row above is worked, rather than adding names one at a time | whichever row fixes the two above |
