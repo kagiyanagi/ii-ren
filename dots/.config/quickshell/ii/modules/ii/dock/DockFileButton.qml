@@ -207,8 +207,11 @@ DockButton {
         anchorItem: root
     }
 
+    // `?? null`: fileContextMenu is a Loader, and a Connections whose target is
+    // not a live QObject segfaults in QQmlConnections::connectSignalsToMethods()
+    // (DESIGN.md 2.9, anti-pattern 5).
     Connections {
-        target: fileContextMenu
+        target: fileContextMenu ?? null
         function onActiveChanged() {
             if (dockContent) dockContent.anyContextMenuOpen = fileContextMenu.active
         }

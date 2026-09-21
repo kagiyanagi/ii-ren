@@ -291,9 +291,12 @@ Singleton {
          *
          * Not an AnimSpec: it is a composite -- a scale that overshoots and
          * settles on its own curve, with alpha riding underneath and held back
-         * on the way out -- so the parts are named here and assembled by each
-         * caller. DockFolderPopup, DesktopMenu, HermesContextMeter and
-         * HermesApprovalModeMenu all build the same thing out of these.
+         * on the way out -- so the parts are named here and assembled by
+         * `modules/common/widgets/ArrowPopupMotion.qml`. Use that rather than
+         * reading these directly; four callers assembled them by hand and two
+         * of the four had drifted by the time anyone checked. DesktopMenu,
+         * HermesContextMeter and HermesApprovalModeMenu are the three still to
+         * move over.
          */
         readonly property list<real> arrowPopupSettle: [0.3, 0, 0.33, 1, 1, 1]
         readonly property real arrowPopupOvershoot: 1.02
@@ -342,6 +345,27 @@ Singleton {
             duration: root.animationCurves.expressiveFastSpatialDuration
             bezierCurve: root.animationCurves.expressiveFastSpatial
             velocity: 850
+        }
+
+        /*
+         * Launcher3 FastBitmapDrawable, the icon-sized press/hover recipe of
+         * DESIGN.md 3.3. HOVER_FEEDBACK_DURATION is 300ms on
+         * PathInterpolator(0.05, 0.7, 0.1, 1.0), which is emphasizedDecel;
+         * alwaysRunToEnd is false because a hover has to reverse mid-flight
+         * (2.7). The squish is the shell's own -- AOSP's PRESSED_SCALE is 1.1,
+         * the same as hover, so on a pointer the press would be invisible --
+         * and it is short and decelerating so the clickBounce leg after it is
+         * what the eye actually reads.
+         */
+        property AnimSpec iconHover: AnimSpec {
+            duration: 300
+            bezierCurve: root.animationCurves.emphasizedDecel
+            alwaysRunToEnd: false
+        }
+
+        property AnimSpec iconPressSquish: AnimSpec {
+            duration: 90
+            bezierCurve: root.animationCurves.standardDecel
         }
 
         property AnimSpec scroll: AnimSpec {

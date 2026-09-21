@@ -47,13 +47,12 @@ DockContextMenuBase {
             }
         }
 
-        Rectangle {
+        // Law 11: the three groups below -- the app's own actions, launch and
+        // pin, then the folders -- used to be ruled off from each other with
+        // 1px border-coloured Rectangles. 12dp of nothing says the same thing.
+        Item {
             visible: (root.desktopEntry?.actions?.length ?? 0) > 0
-            Layout.fillWidth: true
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
-            implicitHeight: 1
-            color: Appearance.colors.colLayer0Border
+            implicitHeight: 12
         }
 
         DockMenuButton {
@@ -73,12 +72,8 @@ DockContextMenuBase {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
-            implicitHeight: 1
-            color: Appearance.colors.colLayer0Border
+        Item {
+            implicitHeight: 12
         }
 
         // Folders: drop the app into an existing one, or start a new one from it.

@@ -86,11 +86,10 @@ Loader {
         Connections {
             target: root
             function onShownChanged(): void {
-                if (root.shown) {
-                    closeAnim.stop();
-                    openAnim.restart();
-                } else
-                    closeAnim.start();
+                if (root.shown)
+                    motion.open();
+                else
+                    motion.close();
             }
         }
 
@@ -140,7 +139,7 @@ Loader {
             color: Qt.rgba(base.r, base.g, base.b, 1)
 
             opacity: 0
-            scale: 0.5
+            scale: Appearance.animationCurves.arrowPopupScale
             transformOrigin: {
                 if (root.dockPos === "top")
                     return Item.Top;
@@ -151,61 +150,14 @@ Loader {
                 return Item.Bottom;
             }
 
-            // ArrowPopup.animateOpen(), the same numbers the desktop menu pops on.
-            ParallelAnimation {
-                id: openAnim
-                running: true
-                SequentialAnimation {
-                    NumberAnimation {
-                        target: card
-                        property: "scale"
-                        from: 0.5
-                        to: 1.02
-                        duration: 200
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
-                    }
-                    NumberAnimation {
-                        target: card
-                        property: "scale"
-                        to: 1
-                        duration: 200
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: [0.3, 0, 0.33, 1, 1, 1]
-                    }
-                }
-                NumberAnimation {
-                    target: card
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: 83
-                }
+            // The card is rebuilt on every open, so it pops as it appears.
+            ArrowPopupMotion {
+                id: motion
+                target: card
+                onClosed: root.closing = false
             }
 
-            ParallelAnimation {
-                id: closeAnim
-                NumberAnimation {
-                    target: card
-                    property: "scale"
-                    to: 0.5
-                    duration: 233
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
-                }
-                SequentialAnimation {
-                    PauseAnimation {
-                        duration: 150
-                    }
-                    NumberAnimation {
-                        target: card
-                        property: "opacity"
-                        to: 0
-                        duration: 83
-                    }
-                }
-                onFinished: root.closing = false
-            }
+            Component.onCompleted: motion.open()
 
             // Swallows what the dismiss handler underneath would otherwise take.
             MouseArea {

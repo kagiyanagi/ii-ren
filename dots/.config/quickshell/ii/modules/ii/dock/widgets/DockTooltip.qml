@@ -12,9 +12,9 @@ PopupWindow {
     property string text: ""
     property bool showTooltip: false
     // Gap from the dock window's edge, not from the button - this is what makes
-    // the pill start exactly where the window preview card starts. 5 is the
-    // preview background's own margin.
-    property int tooltipOffset: 5
+    // the pill start exactly where the window preview card starts, which insets
+    // itself by the same token.
+    property real tooltipOffset: Appearance.sizes.hyprlandGapsOut
     
     property string dockPosition: {
         const pos = Config.options?.dock?.position ?? "bottom"

@@ -219,23 +219,10 @@ DockButton {
             && !(dockContent?.suppressHover ?? false)
     }
 
-    // Resting elevation on the icon, lifted a touch on hover so the Launcher3
-    // hover scale reads as the icon coming toward you.
-    StyledDropShadow {
-        target: appIcon
-        radius: root.hovered ? 10 : 5
-        verticalOffset: root.hovered ? 3 : 1
-
-        Behavior on radius {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-        Behavior on verticalOffset {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-    }
-
-    DockAppIcon {
-        id: appIcon
-    }
+    // No elevation on the icon. Launcher3's taskbar icons have none -- they sit
+    // on the taskbar's own surface, and the hover scale is the whole feedback
+    // (DESIGN.md 3.3) -- and this is a delegate, so a blurred shadow here was a
+    // third framebuffer per app on the strip, on top of DockIcon's two (8).
+    DockAppIcon {}
     DockAppIndicator {}
 }

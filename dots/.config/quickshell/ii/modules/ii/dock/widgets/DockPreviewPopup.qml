@@ -98,7 +98,10 @@ PopupWindow {
     Rectangle {
         id: popupBackground
 
-        property real margins: 5
+        // The same 5 the dock itself is inset by, and the same number
+        // DockTooltip offsets by so the name pill starts exactly where this
+        // card does. Both read the token so they cannot drift apart.
+        property real margins: Appearance.sizes.hyprlandGapsOut
         property real padding: 6
 
         onImplicitWidthChanged: { dockRoot.popupIsResizing = true; resizeTimer.restart() }
@@ -251,9 +254,13 @@ PopupWindow {
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 text: windowButton.modelData?.title ?? ""
                                 elide: Text.ElideRight
-                                // Fixed white: it sits on the shot's own pixels,
-                                // not on a themed surface.
-                                color: "#ffffff"
+                                // Fixed white, like the privacy
+                                // chip's fixed green (DECISIONS.md 27). It sits
+                                // on the shot's own pixels under a black scrim,
+                                // not on a themed surface -- a title that shifts
+                                // hue with the wallpaper is unreadable half the
+                                // time.
+                                color: "#ffffff" // design-ok
                             }
                         }
 
@@ -281,7 +288,10 @@ PopupWindow {
                                 anchors.centerIn: parent
                                 text: "close"
                                 iconSize: Appearance.font.pixelSize.normal
-                                color: "#ffffff"
+                                // On colBackground's own black, and
+                                // on colError once hovered. Same argument as the
+                                // window title above.
+                                color: "#ffffff" // design-ok
                             }
                             onClicked: windowButton.modelData?.close()
                         }

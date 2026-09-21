@@ -32,6 +32,7 @@ Loader {
         if (!active || isClosing) return
         isClosing = true
         if (root.item) root.item.startCloseAnimation()
+        else root.active = false
     }
 
     onActiveChanged: {
@@ -81,13 +82,11 @@ Loader {
         implicitHeight: menuContent.implicitHeight + popupWindow.shadowMargin * 2
 
         function startOpenAnimation() {
-            menuContent.scale = 1.0
-            menuContent.opacity = 1.0
+            motion.open()
         }
 
         function startCloseAnimation() {
-            menuContent.scale = 0.8
-            menuContent.opacity = 0.0
+            motion.close()
         }
 
         HyprlandFocusGrab {
@@ -113,25 +112,36 @@ Loader {
             implicitHeight: menuColumn.implicitHeight + headerRow.Layout.topMargin + menuMargin * 2
 
             opacity: 0.0
-            scale: 0.8
-            transformOrigin: Item.Center
+            scale: Appearance.animationCurves.arrowPopupScale
 
-            Component.onCompleted: startOpenAnimation()
-
-            Behavior on opacity {
-                animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+            // The menu belongs to the icon it was opened from, and the icon is
+            // against the dock's edge, so it grows out of that edge -- the same
+            // pivot DockTooltip and DockFolderPopup take (DESIGN.md 2.6). This
+            // used to be Item.Center on a pair of Behaviors that ran the enter
+            // and the exit on one spatial spec, which is not an exit at all (2.5).
+            transformOrigin: {
+                if (root.dockPos === "top") return Item.Top
+                if (root.dockPos === "left") return Item.Left
+                if (root.dockPos === "right") return Item.Right
+                return Item.Bottom
             }
 
-            Behavior on scale {
-                animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
-            }
-
-            onOpacityChanged: {
-                if (opacity === 0.0 && root.isClosing) {
+            ArrowPopupMotion {
+                id: motion
+                target: menuContent
+                onClosed: {
                     root.active = false
                     root.isClosing = false
                 }
             }
+
+            Component.onCompleted: startOpenAnimation()
+
+            // No Keys handler here on purpose: this is an xdg popup on the
+            // dock's layer surface, which takes no keyboard focus, so Escape
+            // never arrives. Giving it one means becoming an OnDemand panel of
+            // its own, which is exactly what DockFolderPopup had to do and says
+            // so at the top of that file. The focus grab handles the click.
 
             ColumnLayout {
                 id: menuColumn
@@ -146,7 +156,8 @@ Loader {
                     id: headerRow
                     Layout.fillWidth: true
                     Layout.topMargin: menuContent.menuMargin
-                    Layout.bottomMargin: menuContent.menuMargin
+                    // 16dp, the law-11 gap that replaced the rule below.
+                    Layout.bottomMargin: menuContent.menuMargin * 2
                     Layout.leftMargin: 2
                     Layout.rightMargin: 2
                     implicitHeight: headerRowLayout.implicitHeight
@@ -183,12 +194,11 @@ Loader {
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.bottomMargin: menuContent.menuMargin
-                    implicitHeight: 1
-                    color: Appearance.colors.colLayer0Border
-                }
+                // The header used to be ruled off from the rows with a 1px
+                // border-coloured Rectangle. Law 11: sections separate by
+                // whitespace on the 4dp grid, not by a line. headerRow already
+                // carries menuMargin top and bottom, so removing the rule and
+                // its own bottom margin leaves the gap doing the work.
 
                 // Placeholder for content
                 Loader {

@@ -46,12 +46,9 @@ DockContextMenuBase {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
-            implicitHeight: 1
-            color: Appearance.colors.colLayer0Border
+        // Law 11: whitespace, not a rule, holds the destructive row apart.
+        Item {
+            implicitHeight: 12
         }
 
         DockMenuButton {

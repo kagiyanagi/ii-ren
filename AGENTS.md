@@ -60,6 +60,13 @@ you touched; they are the only automated gate.
   removal must go through a temp file and take one exact match. It also mirrors the lua
   escaping and the Qt-key-to-Hyprland-name table, both of which fail silently (a
   mis-escaped command writes a line that parses and never fires)
+- `python3 tools/check-dock.py` — the dock's per-icon cost and the motion its popups
+  open on. `check-effect-budget.py` finds a nested effect by reading a `Repeater` or
+  `delegate:` block *inside one file*, and every dock delegate is its own file, so it
+  never saw that each app icon was paying three offscreen passes — a `Desaturate` and a
+  `ColorOverlay` on the default config plus a blurred shadow. This states the ceiling per
+  delegate file. It also pins the `ArrowPopup` open/close to the one widget that now
+  assembles it and asserts both dock popups pivot on the dock's edge, not their own centre
 - `python3 tools/check-desktop-menu.py` — the desktop menu still grows out of the corner
   nearest the cursor, and its wallpaper strip still earns the 132dp it takes. The pivot is
   arithmetic over a card that gets shifted back inside the screen, and asking the shift

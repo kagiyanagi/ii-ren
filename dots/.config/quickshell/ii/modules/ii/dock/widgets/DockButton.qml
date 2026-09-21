@@ -21,8 +21,8 @@ RippleButton {
     colBackgroundToggled: "transparent"
     colBackgroundToggledHover: "transparent"
 
-    // Launcher3 FastBitmapDrawable: HOVERED_SCALE 1.1 over HOVER_FEEDBACK_DURATION 300ms
-    // on PathInterpolator(0.05, 0.7, 0.1, 1.0), which is emphasizedDecel.
+    // Launcher3 FastBitmapDrawable: HOVERED_SCALE 1.1 over HOVER_FEEDBACK_DURATION,
+    // which is what Appearance.animation.iconHover holds.
     property real hoverScale: root.hovered ? 1.1 : 1.0
     // Launcher3 puts PRESSED_SCALE at 1.1 too, so on a pointer -- which is always hovering
     // before it clicks -- the press would be invisible. Keep the squish and multiply it in
@@ -31,11 +31,7 @@ RippleButton {
     scale: root.hoverScale * root.pressScale
 
     Behavior on hoverScale {
-        NumberAnimation {
-            duration: 300
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
-        }
+        animation: Appearance.animation.iconHover.numberAnimation.createObject(root)
     }
 
     // Click feedback: squish in, then spring back - clickBounce's curve
@@ -50,8 +46,9 @@ RippleButton {
             target: root
             property: "pressScale"
             to: 0.88
-            duration: 90
-            easing.type: Easing.OutCubic
+            duration: Appearance.animation.iconPressSquish.duration
+            easing.type: Appearance.animation.iconPressSquish.type
+            easing.bezierCurve: Appearance.animation.iconPressSquish.bezierCurve
         }
         NumberAnimation {
             target: root

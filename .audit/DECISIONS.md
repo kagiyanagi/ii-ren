@@ -25,7 +25,7 @@ says **declined**, the reason is the whole point of writing it down.
 | 11 | `check-design.py`'s `no-separator-bars` matched `WindowDialogSeparator` **by name** | **Check the shape.** An outline colour used as a fill is a divider whatever the type is called. Catches `Spacebar`, `DockSeparator` and a third nobody had noticed (`sidebarPolicies/StatusSeparator.qml`); 16 hits, all legacy, all `warn` | **done** |
 | 12 | The checker's exported-knob blind spot fired its third instance | **Tighten both halves.** `literal-duration` now reads an arithmetic expression (`duration: 300 / 2` hid a literal in a 471-caller widget), and a new `exported-motion-knob` rule flags a `*Duration` / `*Curve` property with a literal default | **done** |
 | 13 | `ColorOverlay` → `Colorizer` (9 sites) and `StyledDropShadow` → `StyledRectangularShadow` (~20 sites) | **Do not bulk-migrate.** `ColorOverlay` blends and `Colorizer` flattens; the shadow swap is only right where the target is a plain rounded rectangle. Per-caller judgement, inside each caller's own row | **declined** as a batch |
-| 14 | The `ArrowPopup` enter/exit recipe is transcribed in four files | **Extract it in the first popup row that opens**, not as a library change with no surface to test it on | **queued** |
+| 14 | The `ArrowPopup` enter/exit recipe is transcribed in four files | **Extracted as `modules/common/widgets/ArrowPopupMotion.qml`, in `ii-dock`**, which held two of the four and so had two surfaces to test it on. Both had drifted, in opposite directions: `DockFolderPopup` into an inline bezier and six literal durations, `DockContextMenuBase` into no exit at all -- one spatial `Behavior` running both directions out of `Item.Center`. The caller still owns the `transformOrigin`, because that is the one part of the recipe that is per-surface. `DesktopMenu`, `HermesContextMeter` and `HermesApprovalModeMenu` still assemble it by hand and move over in their own rows | **done** (2 of 4) |
 | 15 | `WindowDialogSlider` — zero callers, fell between `cw-inputs` and `cw-dialogs` | **Delete.** Nothing imports it; `git revert` is the undo | **done** |
 | 16 | `StyledScrollBar.active: hovered \|\| pressed` — the bar never appears while the content scrolls | **Restore what QQC2 binds.** A wheel or a flick shows the bar; the drop was not a decision anyone made | **done** |
 | 17 | `AGENTS.md` / `AUDIT.md` still said one surface per session, and listed three built tools as "not built yet" | **Document what actually happened.** The tranche ran twelve families at once from a session that held no surface itself; that is the same rule, not an exception to it | **done** |
@@ -70,6 +70,13 @@ From the rows that retimed something and could not drive the shell:
 - The **desktop menu's close**, 190/60 → `arrowPopupCloseDuration` 233 / `arrowPopupFadeHold`
   150 — AOSP's own numbers, but on a menu that is dismissed constantly, and the comment
   they replaced argued that is exactly where AOSP drags (`ii-desktopMenu`).
+- The **dock context menus' enter and exit**, which did not exist — one `Behavior on
+  scale` and one `Behavior on opacity`, both `elementResize`, both directions, out of
+  `Item.Center`. Now the `ArrowPopup` composite out of the dock's edge. Most-opened
+  popup in the surface and the biggest motion change in the row (`ii-dock`).
+- The **dock icon hover**, same 300ms `emphasizedDecel` but now `alwaysRunToEnd: false`
+  via `Appearance.animation.iconHover`. A pointer flicked along the strip should
+  reverse mid-flight rather than finish each icon's growth (`ii-dock`).
 
 ## Still nobody's call but yours
 

@@ -315,7 +315,7 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 7
+            anchors.leftMargin: 8
             anchors.rightMargin: 4
             clip: true
             spacing: 8
@@ -326,6 +326,9 @@ Item {
                 implicitHeight: root.artSize
             }
 
+            // Title first, at full strength. It was the other way round -- the
+            // artist on top and the *track* dimmed to 0.7 underneath it -- which
+            // reads as the card being about whoever is playing rather than what.
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
@@ -333,19 +336,18 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.trackArtist
-                    font.pixelSize: Appearance.font.pixelSize.small - 2
-                    color: root.blendedColors.colSubtext
+                    text: root.trackTitle
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: root.blendedColors.colOnLayer0
                     elide: Text.ElideRight
                 }
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.trackTitle
-                    font.pixelSize: Appearance.font.pixelSize.normal - 4
-                    color: root.blendedColors.colOnLayer0
+                    text: root.trackArtist
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: root.blendedColors.colSubtext
                     elide: Text.ElideRight
-                    opacity: 0.7
                 }
             }
 
