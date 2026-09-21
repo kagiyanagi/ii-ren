@@ -53,7 +53,10 @@ def get_qml_type(val: Any) -> str:
     if isinstance(val, bool):
         return "bool"
     if isinstance(val, int):
-        return "int"
+        # QML's int is 32-bit signed. An epoch-ms timestamp overflows it and
+        # the whole singleton fails to load, which drops SDDM to its embedded
+        # theme. real is a double: exact to 2^53.
+        return "int" if -2**31 <= val < 2**31 else "real"
     if isinstance(val, float):
         return "real"
     if isinstance(val, str):

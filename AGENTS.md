@@ -127,6 +127,12 @@ you touched; they are the only automated gate.
   testable only pushes *shortcut* chips, which are the one opaque fill, so it hid the
   second one. It sweeps the whole reachable settings range (the slider bounds are lifted
   from the settings page) and resolves every fill against `Appearance.qml`
+- `python3 tools/check-sddm-settings-gen.py` — the SDDM theme's `Settings.qml` generator
+  cannot emit a type QML refuses. Every type in the greeter resolves through that singleton,
+  so one bad declaration makes all of them unavailable and SDDM falls back to its embedded
+  theme with nothing on screen to say why. It shipped that way: QML's `int` is 32-bit and
+  the generator typed `bluetooth.fastPair.mutedUntil` — epoch ms — as one. matugen re-runs
+  the generator on every colour change, so the greeter broke on a wallpaper switch
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
