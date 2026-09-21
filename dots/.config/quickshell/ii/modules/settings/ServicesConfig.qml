@@ -201,6 +201,17 @@ ContentPage {
             }
         }
 
+        // The mute now outlives the shell, so there has to be a way back out of
+        // a six-hour one that does not involve editing config.json.
+        RippleButtonWithIcon {
+            visible: Config.options.bluetooth.fastPair.mutedUntil > 0
+            materialIcon: "notifications_active"
+            mainText: Translation.tr("Unmute pairing popups (muted until %1)").arg(Qt.formatDateTime(new Date(Config.options.bluetooth.fastPair.mutedUntil), "HH:mm"))
+            onClicked: {
+                Config.options.bluetooth.fastPair.mutedUntil = 0;
+            }
+        }
+
         RippleButtonWithIcon {
             visible: Config.options.bluetooth.fastPair.ignoredDevices.length > 0
             materialIcon: "playlist_remove"

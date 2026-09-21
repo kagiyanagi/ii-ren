@@ -69,3 +69,47 @@ centres a `Text` box that is a line height tall, so the glyph rides below centre
 - **A brief-level redesign of the options** into a menu. The `Revealer` is reuse and
   the card growing downward from a fixed top edge is the right direction for a
   top-corner popup.
+
+## The snooze and the mute (follow-up pass)
+
+The user reported both "hide this device for a while" and "hide all of it for a while"
+as working sometimes and not others. Four causes, all in `services/FastPair.qml`.
+
+**One address is not one device.** Suppression and `ignoredDevices` were keyed by
+`device.address` alone. During discovery BlueZ hands back a separate `Device1` for the
+classic inquiry hit and the LE scan hit - different addresses, same name - and an
+unbonded LE address is rotated by the peripheral every few minutes. Snoozing the
+address the card happened to be showing left the sibling offerable on the next dump,
+two seconds later. The live config is the evidence: nine entries in `ignoredDevices`,
+several of them random addresses (`41:42:FF:…`, `5C:16:48:…`), and the card was still
+coming back. Keys are now the address *and* the name, via `identityKeys`/`suppressed`/
+`ignored`; `ignoreCandidate` stores the name, and address entries written by earlier
+versions still match.
+
+**A dump landing mid-attempt.** `pickCandidate` refused while `popupShown` but not while
+`busy`. Discovery is shared - Quickshell has one D-Bus connection for the whole shell -
+so the Bluetooth dialog or blueman can hold the adapter discovering while our attempt
+runs. Dismiss the card mid-connect and the next dump overwrote `candidate` and cleared
+`busy`, orphaning the pairing and leaking the `bluetoothctl` agent. One guard.
+
+**A mute that died with the process.** `mutedUntil` was a plain property, so a QML
+reload or `iiren run` voided it - and this shell reloads on every file save. It is
+`Config.options.bluetooth.fastPair.mutedUntil` now, which also means it has to expire on
+its own (a 30s poll, because a Qt interval is not the wall clock across a suspend) and
+has to be escapable: settings grew an "Unmute pairing popups (muted until HH:MM)" row
+next to the "clear ignored devices" one. A mute also drops out of `shouldScan` now, so
+six muted hours no longer cost six hours of radio.
+
+**The timeout ran through the options menu.** Opening the chevron to pick "1h" could get
+the card snoozed for the default five minutes mid-reach. `autoDismiss` is declarative
+now - `popupShown && !busy && !interacting && popupTimeout > 0` - and the card binds
+`interacting` to its own hover plus `optionsOpen`. Four hand-written `restart()`/`stop()`
+calls deleted.
+
+Measured live: pointer parked on the card, still mapped at 30s against a 20s timeout;
+moved away, gone between 15s and 20s; the dismissed device stayed away for the 40s
+watched. `tools/check-fastpair.py` is new and covers all four.
+
+**Left alone.** The per-device snooze map is still in memory, so a snooze does not
+survive a restart - a map needs a schema in `Config` and the mute is the case the user
+named. `ponytail:` comment on the property says so.

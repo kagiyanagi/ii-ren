@@ -1485,7 +1485,8 @@ Singleton {
                     property bool audioOnly: true // Only offer headsets, earbuds and speakers
                     property int popupTimeout: 20 // Seconds before the popup snoozes itself; 0 to never
                     property int snoozeSeconds: 300 // How long a dismissed device stays quiet
-                    property list<string> ignoredDevices: [] // Addresses to never offer again
+                    property real mutedUntil: 0 // Epoch ms; nothing is offered before this
+                    property list<string> ignoredDevices: [] // Names to never offer again
                 }
             }
 

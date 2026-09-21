@@ -36,28 +36,63 @@ Singleton {
 
     // address -> advert, straight from BlueZ. See fastPairAdverts.js.
     property var adverts: ({})
-    // address -> ms timestamp before which a device must not be offered again.
+    // key -> ms timestamp before which a device must not be offered again.
     // Dismissing is a snooze, never a blacklist: closing the card means "not
     // now", and earbuds sitting in pairing mode are worth offering again later.
     // Permanent ignores go in options.ignoredDevices instead.
+    // ponytail: in memory, so a snooze does not survive a shell restart. The
+    // mute does, because it is one number; a map needs a schema in Config.
     property var suppressedUntil: ({})
-    // Wall-clock ms before which nothing at all is offered.
-    property real mutedUntil: 0
+
+    // Snoozes and permanent ignores are keyed by the address and the name
+    // both, because one address is not one device. A pair of earbuds shows up
+    // as two BlueZ objects during discovery - the classic one from the inquiry
+    // and the LE one from the scan - with different addresses and the same
+    // name, and an unbonded LE address is rotated by the peripheral every few
+    // minutes. Suppressing only the address the card happened to be showing is
+    // why a snooze looked like it did nothing: the sibling was offered on the
+    // next dump, two seconds later.
+    function identityKeys(device) {
+        return [device?.address, device?.name].filter(key => !!key);
+    }
+
+    function suppressed(device) {
+        const now = Date.now();
+        return root.identityKeys(device).some(key => (root.suppressedUntil[key] ?? 0) > now);
+    }
+
+    function ignored(device) {
+        return root.identityKeys(device).some(key => root.options.ignoredDevices.includes(key));
+    }
+
+    // Wall-clock ms before which nothing at all is offered. Kept in Config:
+    // "do not offer anything for six hours" is a promise about the clock, not
+    // about how long the shell happens to stay up, and a QML reload or an
+    // `iiren run` used to void it.
+    readonly property real mutedUntil: root.options.mutedUntil
+    readonly property bool muted: root.mutedUntil > 0
+    // Set by the popup while the pointer is on the card or the options are
+    // open. Holds autoDismiss off; see the timer.
+    property bool interacting: false
 
     // An unresolved name is just the MAC, which is nothing worth offering.
     readonly property var macNameRegex: /^([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}$/
 
     function pickCandidate() {
-        if (root.popupShown || Date.now() < root.mutedUntil)
+        // busy, because discovery is shared: the Bluetooth dialog or blueman
+        // can hold the adapter in discovery while an attempt of ours is in
+        // flight, and a dump that landed then used to overwrite the candidate
+        // and clear busy - orphaning the pairing and leaking the agent.
+        if (root.popupShown || root.busy || root.muted)
             return;
         let best = null;
         let bestRssi = -999;
         for (const device of (Bluetooth.devices?.values ?? [])) {
             if (!device || device.paired || device.connected || device.pairing)
                 continue;
-            if ((root.suppressedUntil[device.address] ?? 0) > Date.now())
+            if (root.suppressed(device))
                 continue;
-            if (root.options.ignoredDevices.includes(device.address))
+            if (root.ignored(device))
                 continue;
             if (root.macNameRegex.test(device.name ?? ""))
                 continue;
@@ -78,15 +113,12 @@ Singleton {
         root.failed = false;
         root.agentUnavailable = false;
         root.popupShown = true;
-        if (root.options.popupTimeout > 0)
-            autoDismiss.restart();
     }
 
     function connectCandidate() {
         const device = root.candidate;
         if (!device)
             return;
-        autoDismiss.stop();
         // Drops shouldScan, which stops discovery: pairing during an inquiry is
         // unreliable.
         root.busy = true;
@@ -125,32 +157,51 @@ Singleton {
         settle.stop();
         root.releaseAgent();
         root.failed = true;
-        if (root.popupShown && root.options.popupTimeout > 0)
-            autoDismiss.restart();
     }
 
     // Hides the card. UI only: an in-flight attempt keeps running.
     function dismiss(suppressMs) {
-        if (suppressMs > 0 && root.candidate) {
+        const keys = suppressMs > 0 ? root.identityKeys(root.candidate) : [];
+        if (keys.length > 0) {
             let next = Object.assign({}, root.suppressedUntil);
-            next[root.candidate.address] = Date.now() + suppressMs;
+            for (const key of keys)
+                next[key] = Date.now() + suppressMs;
             root.suppressedUntil = next;
         }
-        autoDismiss.stop();
         root.popupShown = false;
     }
 
     function muteAll(ms) {
-        root.mutedUntil = Date.now() + ms;
+        root.options.mutedUntil = Date.now() + ms;
         root.dismiss(0);
     }
 
-    // Unlike a snooze, this survives a restart.
+    function unmute() {
+        root.options.mutedUntil = 0;
+    }
+
+    // Unlike a snooze, this survives a restart. Stored by name for the same
+    // reason snoozes are: the address it was offered under may be gone in a
+    // quarter of an hour. Addresses written by earlier versions still match.
     function ignoreCandidate() {
-        const address = root.candidate?.address;
-        if (address && !root.options.ignoredDevices.includes(address))
-            root.options.ignoredDevices = [...root.options.ignoredDevices, address];
+        const key = root.candidate?.name || root.candidate?.address;
+        if (key && !root.options.ignoredDevices.includes(key))
+            root.options.ignoredDevices = [...root.options.ignoredDevices, key];
         root.dismiss(0);
+    }
+
+    // Polled rather than armed for the remaining time: a Qt interval is not
+    // the wall clock across a suspend, and a mute read back from Config at
+    // startup has usually already expired.
+    Timer {
+        running: root.muted
+        repeat: true
+        triggeredOnStart: true
+        interval: 30000
+        onTriggered: {
+            if (Date.now() >= root.mutedUntil)
+                root.unmute();
+        }
     }
 
     Connections {
@@ -223,8 +274,13 @@ Singleton {
         }
     }
 
+    // Declarative, so every reason to hold it off is in one place: an attempt
+    // in flight, and the pointer resting on the card or its options open. The
+    // countdown used to run through the options menu, so opening it to pick an
+    // hour could snooze the device for five minutes instead, mid-reach.
     Timer {
         id: autoDismiss
+        running: root.popupShown && !root.busy && !root.interacting && root.options.popupTimeout > 0
         interval: 1000 * root.options.popupTimeout
         onTriggered: root.dismiss(root.options.snoozeSeconds * 1000)
     }
@@ -233,7 +289,7 @@ Singleton {
     // not work: a BR/EDR inquiry round takes ~10s, so a few seconds of scanning
     // turns up BLE beacons and misses the earbuds. It still stops the moment
     // anything connects, since scanning stutters A2DP.
-    readonly property bool shouldScan: Config.ready && root.options.enable && (root.adapter?.enabled ?? false) && !BluetoothStatus.connected && !root.busy
+    readonly property bool shouldScan: Config.ready && root.options.enable && !root.muted && (root.adapter?.enabled ?? false) && !BluetoothStatus.connected && !root.busy
 
     function applyScanState() {
         if (!root.adapter)
@@ -265,7 +321,7 @@ Singleton {
     // so this checks the option too: the singleton outlives the popup when the
     // option is switched off, and must go quiet rather than keep polling.
     Timer {
-        running: root.options.enable && (root.adapter?.discovering ?? false) && !root.popupShown
+        running: root.options.enable && !root.muted && !root.busy && (root.adapter?.discovering ?? false) && !root.popupShown
         repeat: true
         interval: 2000
         triggeredOnStart: true

@@ -178,6 +178,19 @@ Scope {
                     onDismissed: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
                 }
 
+                // Holds the popup timeout off while the card is being read or
+                // used, the way a heads-up notification waits for the pointer
+                // to leave.
+                HoverHandler {
+                    id: cardHover
+                }
+
+                Binding {
+                    target: FastPair
+                    property: "interacting"
+                    value: cardHover.hovered || card.optionsOpen
+                }
+
                 StyledRectangularShadow {
                     target: background
                 }
