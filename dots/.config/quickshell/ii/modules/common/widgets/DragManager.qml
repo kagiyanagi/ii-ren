@@ -65,25 +65,34 @@ MouseArea {
             root.dragging = true;
         }
     }
-    // Losing `interactive` mid-drag -- a notification group collapsing under the
-    // finger, a row going non-interactive as the list rebuilds -- used to leave
-    // `dragging` true and the last offset standing, because the release below
-    // early-returns on exactly that flag and nothing else ever took it back.
-    // Treated as a cancelled grab, which snaps back rather than dismissing: the
-    // gesture was never finished, so it must not count as a confirmed one.
-    onInteractiveChanged: () => {
-        if (root.interactive || !root.dragging) {
+    /**
+     * A drag that stopped without a release. Two ways in, and the release above
+     * reaches neither: the row loses `interactive` mid-gesture -- a notification
+     * group collapsing under the finger -- and `onReleased` early-returns on
+     * exactly that flag; or the grab is taken away, which is what a wheel turn
+     * during a swipe does, and what a Flickable does when it starts scrolling
+     * under one. Either way `dragging` stayed true, which is what callers gate
+     * their snap-back Behavior on, and the last offset stood: the row sat where
+     * the finger left it for as long as it lived.
+     *
+     * Neither is a finished gesture, so both snap back and neither dismisses.
+     * `dragging` is cleared first, or the offset is taken away while the
+     * Behavior is still switched off and the row jumps home with no animation.
+     */
+    function cancelDrag(): void {
+        if (!root.dragging) {
             return;
         }
         root.dragging = false;
         root.resetDrag();
     }
-    onCanceled: () => {
-        // `canceled` itself carries no MouseEvent -- re-firing `released` (whose
-        // one caller here never reads it) treats a stolen grab like a release.
-        if (!root.interactive) {
-            return;
-        }
-        released();
+
+    onInteractiveChanged: () => {
+        if (!root.interactive)
+            root.cancelDrag();
     }
+    // Not `released()`: `canceled` carries no MouseEvent, and emitting the
+    // one-argument signal with no argument threw "Insufficient arguments" on
+    // every cancelled grab, so nothing after that line ever ran.
+    onCanceled: () => root.cancelDrag()
 }

@@ -179,6 +179,15 @@ you touched; they are the only automated gate.
   shared list's remove duration so retiming that fails here. It also holds the contract three
   other corner surfaces read: `notificationPopupHeight` must be 0 when the corner is empty,
   because all three take any positive number as a stack to drop below
+- `python3 tools/check-swipe-dismissible.py` — swipe-to-dismiss survives a gesture that never
+  releases. `onReleased` is the only thing that takes `dragging` back, and two endings never
+  reach it: the row losing `interactive` under the finger, and the grab being taken away —
+  which is what a wheel turn during a swipe does. `onCanceled` covered the second by
+  re-emitting `released()`, a signal that takes a MouseEvent, so QML threw "Insufficient
+  arguments" and abandoned the handler on that line every time; the card then stopped dead
+  wherever the gesture died, because the snap-back Behavior is gated on `dragging`. It also
+  holds the 3.6 numbers, the null-safety that lets a lone card use the widget, and the two
+  hand-backs of the shared `dragDistance` every neighbour follows
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
