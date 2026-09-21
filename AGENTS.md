@@ -41,6 +41,12 @@ you touched; they are the only automated gate.
 - `python3 tools/check-alttab-grid.py` — the Alt+Tab tile grid still fits inside its card
   at every screen width and window count. It evaluates the layout expressions lifted out
   of `AltTab.qml`, because a desktop with four windows exercises none of the wrap
+- `python3 tools/check-cheatsheet.py` — the cheatsheet still shows all of its content and
+  still opens and closes on a spec. It evaluates the keybinds content-bounds expressions
+  against categories that do not fit the window — whether they fit depends on the screen,
+  the font size and how many binds the user declares — and asserts that the window keeps
+  intent and mapping apart, since `Loader.active` destroys the surface and merging the two
+  booleans deletes the exit animation with no other symptom
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

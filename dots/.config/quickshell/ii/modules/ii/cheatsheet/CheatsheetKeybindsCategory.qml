@@ -11,10 +11,20 @@ import Quickshell
 Column {
     id: root
     required property string categoryName
+    // The binds this block shows, already filtered and already cut to a length
+    // that fits a column -- CheatsheetKeybinds owns the packing, because only it
+    // knows how tall the viewport is.
+    required property var binds
+    // True when this is the second or later block of a category too long for one
+    // column, so the heading says it is picking up where the last one left off.
+    property bool continued: false
     readonly property bool isCategorized: categoryName?.length > 0
-    property int maxBindWidth: 0
+    // Reported up so every block of every category lands on one key-column width.
+    property int measuredBindWidth: 0
+    property int sharedBindWidth: 0
     property real columnSpacing: 40
-    property real titleSpacing: 7
+    property real titleSpacing: 8
+    property real rowSpacing: 4
 
     // Excellent symbol explaination and source :
     // http://xahlee.info/comp/unicode_computing_symbols.html
@@ -96,19 +106,15 @@ Column {
     spacing: titleSpacing
 
     StyledText {
-        text: root.isCategorized ? root.categoryName : "Uncategorized"
+        readonly property string categoryTitle: root.isCategorized ? root.categoryName : Translation.tr("Uncategorized")
+        text: root.continued ? Translation.tr("%1 (cont.)").arg(categoryTitle) : categoryTitle
         font.pixelSize: Appearance.font.pixelSize.title
     }
 
     Column {
-        spacing: 4
+        spacing: root.rowSpacing
         Repeater {
-            model: {
-                if (!root.isCategorized) {
-                    return HyprlandKeybinds.keybinds.filter(bind => bind.description?.length > 0 && bind.description.indexOf(":") === -1);
-                }
-                return HyprlandKeybinds.keybinds.filter(bind => bind.description?.length > 0 && bind.description.substring(0, bind.description.indexOf(":")) === root.categoryName);
-            }
+            model: root.binds
             delegate: BindLine {
                 required property var modelData
                 keyData: modelData
@@ -126,8 +132,11 @@ Column {
             spacing: 16
             Row {
                 id: modRow
-                Component.onCompleted: root.maxBindWidth = Math.max(root.maxBindWidth, implicitWidth)
-                width: root.maxBindWidth
+                // Re-measured, not latched at completion: the key size and the
+                // split-buttons switch are live config, and a one-shot max kept
+                // the old column width after either changed.
+                onImplicitWidthChanged: root.measuredBindWidth = Math.max(root.measuredBindWidth, implicitWidth)
+                width: Math.max(root.sharedBindWidth, root.measuredBindWidth)
                 spacing: 4
                 Repeater {
                     model: {
@@ -145,13 +154,13 @@ Column {
                 StyledText {
                     id: keybindPlus
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: !keyBlacklist.includes(bindLine.keyData.key) && bindLine.keyData.modmask > 0
+                    visible: !root.keyBlacklist.includes(bindLine.keyData.key) && bindLine.keyData.modmask > 0
                     text: "+"
                 }
                 KeyboardKey {
                     id: keybindKey
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: !keyBlacklist.includes(bindLine.keyData.key)
+                    visible: !root.keyBlacklist.includes(bindLine.keyData.key)
                     key: {
                         const k = StringUtils.toTitleCase(bindLine.keyData.key)
                         return root.keySubstitutions[k] || k

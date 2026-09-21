@@ -5,7 +5,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Qt.labs.synchronizer
-import Qt5Compat.GraphicalEffects
 import Quickshell.Io
 import Quickshell
 import Quickshell.Wayland
@@ -13,6 +12,20 @@ import Quickshell.Hyprland
 
 Scope { // Scope
     id: root
+    // Intent and mapping are separate: `Loader.active` destroys the window, so
+    // an exit animation driven by it would never once render (DESIGN.md 2.5,
+    // and the defect AltTab had with `visible: root.open`). `rendered` is
+    // cleared by the exit animation landing on 0, not by the keybind.
+    property bool open: false
+    property bool rendered: false
+    // 0.92 on a 1400x860 card is 112px of travel per axis; the card is the
+    // largest surface in the shell and a fraction that suits AltTab's 400px one
+    // reads as a lurch here. Less travel, more time (2.4: 500ms+ is the rung for
+    // something screen-sized).
+    readonly property real closedScale: 0.96
+
+    onOpenChanged: if (root.open) root.rendered = true
+
     property var extensionCheatsheetTabs: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("cheatsheet") : []
 
@@ -42,11 +55,16 @@ Scope { // Scope
 
     Loader {
         id: cheatsheetLoader
-        active: false
+        active: root.rendered
 
         sourceComponent: PanelWindow { // Window
             id: cheatsheetRoot
-            visible: cheatsheetLoader.active
+            visible: true
+            // Flipped after initialisation so the Behavior on `reveal` is live
+            // when it changes -- a Behavior is skipped during initial binding
+            // evaluation, which is how a card written this way opens at full
+            // size with no enter at all.
+            property bool shown: false
 
             anchors {
                 top: true
@@ -56,23 +74,14 @@ Scope { // Scope
             }
 
             function hide() {
-                cheatsheetLoader.active = false;
+                root.open = false;
             }
             exclusiveZone: 0
             implicitWidth: cheatsheetBackground.width + Appearance.sizes.elevationMargin * 2
             implicitHeight: cheatsheetBackground.height + Appearance.sizes.elevationMargin * 2
             WlrLayershell.namespace: "quickshell:cheatsheet"
-            // Setting this value makes it take its sweet time to open, so we use a timer to force it
-            // WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
             color: "transparent"
-
-            Timer {
-                id: keyboardFocusTimer
-                interval: 2000
-                onTriggered: {
-                    cheatsheetRoot.WlrLayershell.keyboardFocus = WlrKeyboardFocus.OnDemand
-                }
-            }
 
             mask: Region {
                 item: cheatsheetBackground
@@ -80,7 +89,7 @@ Scope { // Scope
 
             Component.onCompleted: {
                 GlobalFocusGrab.addDismissable(cheatsheetRoot);
-                keyboardFocusTimer.start();
+                cheatsheetRoot.shown = true;
             }
             Component.onDestruction: {
                 GlobalFocusGrab.removeDismissable(cheatsheetRoot);
@@ -106,6 +115,47 @@ Scope { // Scope
                 property real padding: 20
                 implicitWidth: cheatsheetColumnLayout.implicitWidth + padding * 2
                 implicitHeight: cheatsheetColumnLayout.implicitHeight + padding * 2
+
+                // Screen-centred and opened from a keybind, so there is nothing
+                // on screen for it to grow out of (2.6).
+                transformOrigin: Item.Center
+
+                // Scale and opacity ride one driver, so the enter/exit spec is
+                // assigned from the only binding that writes it -- the shape
+                // 2.9's Behavior trap requires. Enter decelerates over the full
+                // spec, exit accelerates at half of it (2.5).
+                //
+                // Default *spatial* duration, not effects: scale is a spatial
+                // property and this is a screen-sized surface, which 2.4 puts at
+                // 500ms. emphasizedDecel is front-loaded hard -- it is at 0.7 of
+                // the distance by 5% of the time -- so it still reads as
+                // immediate. Opacity rides the same curve, which is safe because
+                // emphasizedDecel has no control point above 1 and so cannot
+                // overshoot (2.1).
+                property int revealDuration: Appearance.animation.elementMove.duration
+                property list<real> revealCurve: Appearance.animationCurves.emphasizedDecel
+                property real reveal: {
+                    const entering = cheatsheetRoot.shown && root.open;
+                    cheatsheetBackground.revealDuration = entering
+                        ? Appearance.animation.elementMove.duration
+                        : Math.round(Appearance.animation.elementMove.duration / 2);
+                    cheatsheetBackground.revealCurve = entering
+                        ? Appearance.animationCurves.emphasizedDecel
+                        : Appearance.animationCurves.emphasizedAccel;
+                    return entering ? 1 : 0;
+                }
+                Behavior on reveal {
+                    NumberAnimation {
+                        duration: cheatsheetBackground.revealDuration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: cheatsheetBackground.revealCurve
+                    }
+                }
+                // The exit is what unmaps the window, not the keybind.
+                onRevealChanged: if (cheatsheetBackground.reveal === 0 && !root.open) root.rendered = false
+
+                scale: root.closedScale + (1 - root.closedScale) * cheatsheetBackground.reveal
+                opacity: cheatsheetBackground.reveal
 
                 Keys.onPressed: event => { // Esc to close
                     if (event.key === Qt.Key_Escape) {
@@ -137,8 +187,8 @@ Scope { // Scope
                     anchors {
                         top: parent.top
                         right: parent.right
-                        topMargin: 20
-                        rightMargin: 20
+                        topMargin: cheatsheetBackground.padding
+                        rightMargin: cheatsheetBackground.padding
                     }
 
                     onClicked: {
@@ -156,7 +206,7 @@ Scope { // Scope
                 ColumnLayout { // Real content
                     id: cheatsheetColumnLayout
                     anchors.centerIn: parent
-                    spacing: 10
+                    spacing: 12
 
                     Toolbar {
                         Layout.alignment: Qt.AlignHCenter
@@ -173,11 +223,9 @@ Scope { // Scope
 
                     SwipeView { // Content pages
                         id: swipeView
-                        Layout.topMargin: 5
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 10
-                        currentIndex: Persistent.states.cheatsheet.tabIndex
+                        spacing: 12
                         onCurrentIndexChanged: {
                             Persistent.states.cheatsheet.tabIndex = currentIndex;
                         }
@@ -186,13 +234,19 @@ Scope { // Scope
                         implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
 
                         clip: true
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: swipeView.width
-                                height: swipeView.height
-                                radius: Appearance.rounding.small
-                            }
+
+                        // The page slide is the style's own ListView, whose
+                        // `highlightMoveDuration: 250` is a literal in
+                        // QtQuick/Controls/Basic/SwipeView.qml. Bound rather than
+                        // restated: overriding contentItem would copy fifteen
+                        // lines of Qt's config that then drift. The easing is not
+                        // exposed by ListView's highlight move, so the duration is
+                        // all there is to take from the token.
+                        Binding {
+                            target: swipeView.contentItem
+                            property: "highlightMoveDuration"
+                            value: Appearance.animation.elementMove.duration
+                            when: swipeView.contentItem !== null
                         }
 
                         CheatsheetTimetable {}
@@ -227,6 +281,11 @@ Scope { // Scope
                                     loader.loaded.connect(setExtId)
                                 }
                             }
+                            // Set once, after the extension tabs exist -- a
+                            // `currentIndex:` binding here is destroyed by the
+                            // first tab change anyway, and a persisted index
+                            // can name an extension tab.
+                            swipeView.currentIndex = Math.min(Persistent.states.cheatsheet.tabIndex, swipeView.count - 1);
                         }
                     }
                 }
@@ -238,15 +297,15 @@ Scope { // Scope
         target: "cheatsheet"
 
         function toggle(): void {
-            cheatsheetLoader.active = !cheatsheetLoader.active;
+            root.open = !root.open;
         }
 
         function close(): void {
-            cheatsheetLoader.active = false;
+            root.open = false;
         }
 
         function open(): void {
-            cheatsheetLoader.active = true;
+            root.open = true;
         }
     }
 
@@ -255,7 +314,7 @@ Scope { // Scope
         description: "Toggles cheatsheet on press"
 
         onPressed: {
-            cheatsheetLoader.active = !cheatsheetLoader.active;
+            root.open = !root.open;
         }
     }
 
@@ -264,7 +323,7 @@ Scope { // Scope
         description: "Opens cheatsheet on press"
 
         onPressed: {
-            cheatsheetLoader.active = true;
+            root.open = true;
         }
     }
 
@@ -273,7 +332,7 @@ Scope { // Scope
         description: "Closes cheatsheet on press"
 
         onPressed: {
-            cheatsheetLoader.active = false;
+            root.open = false;
         }
     }
 }

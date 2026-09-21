@@ -1,78 +1,72 @@
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 import QtQuick
 
-RippleButton {
+Rectangle {
     id: root
     required property var element
-    opacity: element.type != "empty" ? 1 : 0
-    implicitHeight: 70
-    implicitWidth: 70
-    colBackground: Appearance.colors.colLayer2
-    buttonRadius: Appearance.rounding.small
+    readonly property int padding: 4
+    // The 44 spacer cells hold their column in the grid, so they stay in the
+    // layout -- a `visible: false` here collapses the Row and the table with it.
+    readonly property bool filled: root.element.type !== "empty"
 
-    Rectangle {
-        anchors {
-            top: parent.top
-            left: parent.left
-            topMargin: 4
-            leftMargin: 4
-        }
-        color: ColorUtils.transparentize(Appearance.colors.colLayer2)
-        radius: Appearance.rounding.full
-        implicitWidth: Math.max(20, elementNumber.implicitWidth)
-        implicitHeight: Math.max(20, elementNumber.implicitHeight)
-        width: height
+    // A reference tile, not a control. It was a RippleButton with no onClicked,
+    // so all 162 tiles carried a ripple and a hover film for an action that does
+    // not exist -- and the spacers were transparent buttons that still
+    // hit-tested and rippled under the pointer. Law 6's four states belong to
+    // things that can be pressed.
+    implicitWidth: 72
+    implicitHeight: 72
+    color: root.filled ? Appearance.colors.colLayer2 : "transparent"
+    radius: Appearance.rounding.small
+
+    Item {
+        anchors.fill: parent
+        visible: root.filled
 
         StyledText {
-            id: elementNumber
-            anchors.left: parent.left
+            anchors {
+                top: parent.top
+                left: parent.left
+                margins: root.padding
+            }
             color: Appearance.colors.colOnLayer2
             text: root.element.number
             font.pixelSize: Appearance.font.pixelSize.smallest
         }
-    }
-
-    Rectangle {
-        anchors {
-            top: parent.top
-            right: parent.right
-            topMargin: 4
-            rightMargin: 4
-        }
-        color: ColorUtils.transparentize(Appearance.colors.colLayer2)
-        radius: Appearance.rounding.full
-        implicitWidth: Math.max(20, elementWeight.implicitWidth)
-        implicitHeight: Math.max(20, elementWeight.implicitHeight)
-        width: height
 
         StyledText {
-            id: elementWeight
-            anchors.right: parent.right
+            anchors {
+                top: parent.top
+                right: parent.right
+                margins: root.padding
+            }
             color: Appearance.colors.colOnLayer2
             text: root.element.weight
             font.pixelSize: Appearance.font.pixelSize.smallest
         }
-    }
 
-    StyledText {
-        id: elementSymbol
-        anchors.centerIn: parent
-        color: Appearance.colors.colSecondary
-        font.pixelSize: Appearance.font.pixelSize.huge
-        text: root.element.symbol
-    }
-
-    StyledText {
-        id: elementName
-        anchors {
-            horizontalCenter: parent.horizontalCenter
-            bottom: parent.bottom
-            bottomMargin: 4
+        StyledText {
+            anchors.centerIn: parent
+            color: Appearance.colors.colSecondary
+            font.pixelSize: Appearance.font.pixelSize.huge
+            text: root.element.symbol
         }
-        font.pixelSize: Appearance.font.pixelSize.smallest
-        color: Appearance.colors.colOnLayer2
-        text: root.element.name
+
+        StyledText {
+            // Eight names are wider than the tile and used to paint straight
+            // through its sides and over the neighbouring tiles. A width is what
+            // lets StyledText elide at all (cw-primitives).
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: root.padding
+            }
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: Appearance.font.pixelSize.smallest
+            color: Appearance.colors.colOnLayer2
+            text: root.element.name
+        }
     }
 }

@@ -10,53 +10,36 @@ import qs.modules.common.functions
 Item {
     id: root
     property real spacing: 8
-    property color backgroundColor: "transparent"
 
     property int startHour: 0
     property int startMinute: 0
     property int endHour: 24
-    property int slotDuration: 60 // in minutes
+    // Minutes, not milliseconds -- the old name read as an animation duration to
+    // both the design checker and to anyone skimming the file.
+    property int slotMinutes: 60
     property int slotHeight: 60 // in pixels
     property int timeColumnWidth: 100
     property real maxContentWidth: 1350
 
-    readonly property int totalSlots: Math.floor(((endHour * 60) - (startHour * 60 + startMinute)) / slotDuration)
-    readonly property real pixelsPerMinute: slotHeight / slotDuration
+    readonly property int totalSlots: Math.floor(((endHour * 60) - (startHour * 60 + startMinute)) / slotMinutes)
+    readonly property real pixelsPerMinute: slotHeight / slotMinutes
     readonly property int contentHeight: totalSlots * slotHeight
 
     property real maxHeight: 700
     property real headerHeight: 64 // Material 3 standard header height
     property real currentTimeY: -1
     property bool initialScrollApplied: false
-    readonly property real dayColumnWidth: Math.min(180, (maxContentWidth - timeColumnWidth - (days.length + 1) * spacing) / days.length)
+    property var days: CalendarService.eventsInWeek
+    // A week with no days divided by zero and rendered as a 108px sliver with a
+    // lone clock in it. It gets the placeholder instead.
+    readonly property bool hasDays: root.days?.length > 0
+    readonly property real dayColumnWidth: !root.hasDays ? 0
+        : Math.min(180, (maxContentWidth - timeColumnWidth - (days.length + 1) * spacing) / days.length)
     readonly property int currentDayIndex: (DateTime.clock.date.getDay() - Config.options.time.firstDayOfWeek+ 6)%7
 
-    implicitWidth: Math.min(maxContentWidth, timeColumnWidth + (dayColumnWidth * days.length) + ((days.length + 1) * spacing))
+    implicitWidth: !root.hasDays ? maxContentWidth
+        : Math.min(maxContentWidth, timeColumnWidth + (dayColumnWidth * days.length) + ((days.length + 1) * spacing))
     implicitHeight: Math.min(headerHeight + contentHeight, maxHeight)
-    property var days: CalendarService.eventsInWeek
-    readonly property int allDayChipHeight: 36
-    readonly property int allDayChipSpacing: 6
-    readonly property int maxAllDayEventCount: {
-        if (!root.days || root.days.length === 0)
-            return 0;
-
-        var maxCount = 0;
-        for (var i = 0; i < root.days.length; i++) {
-            var day = root.days[i];
-            if (!day || !day.events)
-                continue;
-
-            var count = 0;
-            for (var j = 0; j < day.events.length; j++) {
-                if (root.isAllDayEvent(day.events[j]))
-                    count++;
-            }
-            if (count > maxCount)
-                maxCount = count;
-        }
-        return maxCount;
-    }
-    readonly property bool hasAllDayEvents: maxAllDayEventCount > 0
     readonly property color todayHighlightFill: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.12)
     readonly property color todayHighlightBorder: ColorUtils.applyAlpha(Appearance.colors.colPrimary, 0.28)
     readonly property color dayBackgroundFill: ColorUtils.applyAlpha(Appearance.colors.colSecondary, 0.04)
@@ -198,6 +181,27 @@ Item {
         root.initialScrollApplied = true;
     }
 
+    component TimeChip: Rectangle {
+        required property real maxWidth
+        readonly property int horizontalPadding: 8
+
+        implicitWidth: Math.min(chipText.implicitWidth + horizontalPadding * 2, maxWidth)
+        implicitHeight: 32
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colPrimary
+
+        StyledText {
+            id: chipText
+            anchors.centerIn: parent
+            width: parent.width - parent.horizontalPadding * 2
+            horizontalAlignment: Text.AlignHCenter
+            text: DateTime.time
+            font.weight: Font.Medium
+            color: Appearance.colors.colOnPrimary
+            elide: Text.ElideRight
+        }
+    }
+
     Connections {
         target: DateTime.clock
         function onDateChanged() {
@@ -225,9 +229,19 @@ Item {
         border.color: Appearance.colors.colOutlineVariant
     }
 
+    PagePlaceholder {
+        anchors.centerIn: parent
+        shown: !root.hasDays
+        icon: "calendar_month"
+        title: Translation.tr("Nothing this week")
+        description: Translation.tr("Events from your calendars show up here")
+        descriptionHorizontalAlignment: Text.AlignHCenter
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
+        visible: root.hasDays
 
         Row {
             id: headerRow
@@ -240,91 +254,69 @@ Item {
                 height: root.headerHeight
 
                 // Current time indicator
-                Rectangle {
+                TimeChip {
                     anchors.centerIn: parent
-                    width: Math.min(timeHeaderText.implicitWidth + 16, parent.width - 4)
-                    height: 32
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colPrimary
-
-                    StyledText {
-                        id: timeHeaderText
-                        anchors.centerIn: parent
-                        text: DateTime.time
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnPrimary
-                        elide: Text.ElideRight
-                    }
+                    maxWidth: parent.width - 8
                 }
             }
 
             Repeater {
                 model: root.days
                 delegate: Item {
+                    id: dayHeader
                     width: root.dayColumnWidth
                     height: root.headerHeight
 
-                    property var allDayEvents: root.getAllDayEvents(modelData.events) 
+                    readonly property var allDayEvents: root.getAllDayEvents(modelData.events)
+                    readonly property bool isToday: index === root.currentDayIndex
 
                     Rectangle {
-                        property bool isToday: index === root.currentDayIndex
-
                         anchors.centerIn: parent
-                        width: parent.width - 4
+                        width: parent.width - 8
                         height: 40
                         radius: Appearance.rounding.large
-                        color: allDayEvents.length > 0 ? Appearance.colors.colPrimaryContainer : isToday ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHigh
+                        color: dayHeader.allDayEvents.length > 0 ? Appearance.colors.colPrimaryContainer
+                            : dayHeader.isToday ? Appearance.colors.colPrimary
+                            : Appearance.colors.colSurfaceContainerHigh
 
                         StyledText {
-                            id: dayTitle
                             anchors.centerIn: parent
+                            // An elide with no width never elides.
+                            width: parent.width - 16
+                            horizontalAlignment: Text.AlignHCenter
                             font.weight: Font.Medium
-                            color: allDayEvents.length > 0 ? Appearance.colors.colOnPrimaryContainer : parent.isToday ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                            color: dayHeader.allDayEvents.length > 0 ? Appearance.colors.colOnPrimaryContainer
+                                : dayHeader.isToday ? Appearance.colors.colOnPrimary
+                                : Appearance.colors.colOnSurfaceVariant
                             text: modelData.name
                             elide: Text.ElideRight
-                          }
-                            
-                         HoverHandler {
+                        }
+
+                        HoverHandler {
                             id: allDayHover
-                          }
-        
+                        }
 
-                         Column {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width - 4
-                            spacing: root.allDayChipSpacing
-
-                            Repeater {
-                                model: allDayEvents
-                                delegate: Rectangle {
-                                    width: parent.width
-                                    height: root.allDayChipHeight
-                                    color: 'transparent' 
-
-                                   
-                                    StyledToolTip {
-                                        extraVisibleCondition: allDayHover.hovered
-                                        text: root.formatEventTooltip(modelData)
-                                    }
-                                }
-                            }
+                        // The pill's recolour is the all-day indicator, and this
+                        // is how you read them. It used to be a column of
+                        // transparent rectangles, anchored horizontally but not
+                        // vertically so they spilled out of the 40px pill, each
+                        // holding a tooltip bound to *this* handler -- so one
+                        // hover popped every one of that day's tooltips at once.
+                        StyledToolTip {
+                            extraVisibleCondition: allDayHover.hovered && dayHeader.allDayEvents.length > 0
+                            text: dayHeader.allDayEvents.map(event => root.formatEventTooltip(event)).join("\n")
                         }
                     }
                 }
             }
         }
 
-     
-
-        // Subtle separator
-        Rectangle {
+        // Whitespace on the grid, not a hairline (law 11).
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 1
-            color: Appearance.colors.colOutlineVariant
-            Layout.bottomMargin: 8
+            Layout.preferredHeight: 12
         }
 
-        // TODO: replace or check for StyledScrollBar
         StyledFlickable {
             id: styledFlickable
             Layout.fillWidth: true
@@ -351,7 +343,7 @@ Item {
                             height: root.slotHeight
 
                             StyledText {
-                                text: root.formatMinutes(root.startHour * 60 + root.startMinute + index * root.slotDuration)
+                                text: root.formatMinutes(root.startHour * 60 + root.startMinute + index * root.slotMinutes)
                                 anchors.top: parent.top
                                 anchors.topMargin: -font.pixelSize / 2
                                 anchors.horizontalCenter: parent.horizontalCenter
@@ -390,7 +382,17 @@ Item {
                             Repeater {
                                 model: timedEvents
                                 Rectangle {
-                                    width: parent.width - 10
+                                    id: eventCard
+                                    // An event with no colour of its own fell
+                                    // back to colTertiaryContainer here but had
+                                    // its label contrast computed from the
+                                    // *undefined* original -- a NaN luminance
+                                    // fails `< 0.5` and returns black, on a dark
+                                    // card. Both read the colour on screen.
+                                    readonly property color fill: modelData.color || Appearance.colors.colTertiaryContainer
+                                    readonly property color onFill: ColorUtils.getContrastingTextColor(eventCard.fill)
+
+                                    width: parent.width - 8
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     radius: Appearance.rounding.normal
                                     clip: true
@@ -400,7 +402,7 @@ Item {
                                         return Math.max(totalMins * root.pixelsPerMinute - 4, 48); // Minimum height for touch targets
                                     }
 
-                                    color: modelData.color || Appearance.colors.colTertiaryContainer
+                                    color: eventCard.fill
 
                                     HoverHandler {
                                         id: eventHover
@@ -425,7 +427,7 @@ Item {
                                             font.weight: Font.DemiBold
                                             elide: Text.ElideRight
                                             width: parent.width
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
+                                            color: eventCard.onFill
                                         }
 
                                         StyledText {
@@ -434,7 +436,7 @@ Item {
                                             font.weight: Font.Medium
                                             width: parent.width
                                             wrapMode: Text.NoWrap
-                                            color: ColorUtils.getContrastingTextColor(modelData.color)
+                                            color: eventCard.onFill
                                             elide: Text.ElideRight
                                             visible: !truncated
                                         }
@@ -448,31 +450,23 @@ Item {
 
             Rectangle {
                 id: currentTimeLine
-                width: contentRow.width + 20
-                height: 3
+                width: contentRow.width + root.spacing * 2
+                height: 4
                 color: Appearance.colors.colPrimary
                 y: root.currentTimeY
                 visible: root.currentTimeY >= 0 && root.currentTimeY <= contentRow.height
                 z: 10
                 radius: Appearance.rounding.unsharpen
 
+                Behavior on y {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+
                 // Material 3 time chip
-                Rectangle {
+                TimeChip {
                     x: (timeColumn.width / 2) - (width / 2)
                     anchors.verticalCenter: parent.verticalCenter
-                    width: Math.min(timeText.implicitWidth + 20, timeColumn.width - 4)
-                    height: 32
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colors.colPrimary
-
-                    Text {
-                        id: timeText
-                        anchors.centerIn: parent
-                        text: DateTime.time
-                        color: Appearance.colors.colOnPrimary
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                    }
+                    maxWidth: timeColumn.width - 8
                 }
             }
         }
