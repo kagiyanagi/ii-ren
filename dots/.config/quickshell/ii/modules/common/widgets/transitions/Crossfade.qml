@@ -31,8 +31,13 @@ Item {
         from: 0
         to: 1
         duration: effect.duration
-        easing.type: Easing.BezierSpline
-        easing.bezierCurve: Appearance.animationCurves.expressiveEffects // opacity: never overshoot
+        // Linear: the two images are weighted evenly across the duration, which
+        // is what a crossfade is and what AOSP's own wallpaper crossfade does.
+        // expressiveEffects was 90% faded by the halfway point, so the second
+        // half was the old wallpaper sitting under 10% opacity -- invisible, but
+        // still counted against the duration. Never overshoots, as opacity must
+        // not (DESIGN.md 3).
+        easing.type: Easing.Linear
         onFinished: effect.finished()
     }
 }

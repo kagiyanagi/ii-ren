@@ -67,6 +67,13 @@ you touched; they are the only automated gate.
   of every screen — one pixel wide at the flip, then wrong for half a card. It also pins the
   rows to the single `MenuRow` they were collapsed into, and the motion to the `arrowPopup*`
   tokens
+- `python3 tools/check-wallpaper-transition.py` — the wallpaper wipe still spends its
+  duration on the wipe. Every transition base ran on `emphasizedDecel`, which is half done
+  at 6% of the duration, so `background.transitionDuration` bought tail rather than
+  animation and raising it made the change feel slower *and* still too fast. The reveal is
+  linear now — neither end of that travel is on screen — and this evaluates the curve to
+  prove it, because the animation runs for the full duration either way and no still frame
+  of a wipe shows the difference
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

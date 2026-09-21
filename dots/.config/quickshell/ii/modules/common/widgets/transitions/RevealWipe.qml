@@ -75,8 +75,15 @@ Item {
         target: circleMask
         property: "scale"
         duration: effect.duration
-        easing.type: Easing.BezierSpline
-        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel // "entering, appearing, expanding" -- DESIGN.md 2.4
+        // Linear, and not the decelerate DESIGN.md 2.4 asks for, because neither
+        // end of this travel is on screen: the mask starts as a point and
+        // finishes past the far corner, so there is no arrival to decelerate
+        // into. emphasizedDecel spends 6% of the duration on the first half of
+        // the reveal and the remaining 94% creeping the last sliver into the
+        // corners -- which is why raising `transitionDuration` only ever added
+        // tail, never animation. A mask crossing the whole screen travels at one
+        // speed. check-wallpaper-transition.py holds this.
+        easing.type: Easing.Linear
         onFinished: effect.finished()
     }
 

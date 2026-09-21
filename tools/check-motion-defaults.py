@@ -43,12 +43,28 @@ must_trace_to_appearance("animations/BounceAnimation.qml", "totalDuration defaul
 
 # The wipes: `duration`'s own default, plus the curve the one NumberAnimation
 # each carries actually runs on.
+#
+# `Easing.Linear` counts here, and only here. The rule this file enforces is
+# "no bare number, no hand-fit bezier array" -- a named Qt easing with no
+# numbers in it satisfies that as well as an Appearance token does. The wipes
+# are the one place where no Appearance curve is *correct*: every bezier in
+# that singleton is shaped for an element arriving at a resting position on
+# screen, and a wipe mask starts as a point and finishes past the far corner,
+# so there is no arrival. emphasizedDecel put half the reveal in the first 6%
+# of the duration, which made the user's own `transitionDuration` knob buy
+# tail instead of animation. `check-wallpaper-transition.py` is what holds the
+# replacement even; this one only has to stop a hand-fit array coming back.
 for rel in ("transitions/Crossfade.qml", "transitions/RevealWipe.qml", "transitions/Wipe.qml"):
     text = (WIDGETS / rel).read_text()
     must_trace_to_appearance(rel, "duration default",
                               find(text, r"property int duration\s*:\s*.+"))
-    must_trace_to_appearance(rel, "easing.bezierCurve",
-                              find(text, r"easing\.bezierCurve:\s*.+"))
+    curve = find(text, r"easing\.bezierCurve:\s*.+")
+    if curve is None:
+        linear = find(text, r"easing\.type:\s*Easing\.Linear")
+        if linear is None:
+            failures.append(f"{rel}: no `easing.bezierCurve` and not Easing.Linear either")
+    else:
+        must_trace_to_appearance(rel, "easing.bezierCurve", curve)
 
 if failures:
     print("FAIL: a motion default regressed to an untokenised guess")
