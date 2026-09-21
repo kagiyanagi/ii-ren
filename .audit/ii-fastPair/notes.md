@@ -34,11 +34,26 @@ was the hover state on the chip under the cursor, one misread "behind the chevro
 is fixed in the brief, and one said the reserved 4px progress strip is invisible, which
 it is meant to be.
 
+**Swipe to dismiss, added on request after the first commit.** The clipboard toast had
+the AOSP `SwipeHelper` transcription inline (offset through a `Translate`, 0.6 width or
+500dp/s, escape at the thrown speed) with a comment explaining why `SwipeDismissible`
+did not fit. It is `modules/common/widgets/SwipeToDismiss.qml` now, and the toast is
+its first caller, 103 lines shorter. Here it sits on a `body` Item *inside* the masked
+`card`, because the mask bakes a transform on the item it follows — the widget's
+doc comment says so, so the third caller does not rediscover `ii-dropover`'s bug.
+Measured with a real `ydotool` drag: the Fast Pair card unmapped 164ms after release,
+the toast 46ms after a faster fling. Both re-open clean.
+
+**The chevron sat low in its hover circle.** `anchors.centerIn` on a `MaterialSymbol`
+centres a `Text` box that is a line height tall, so the glyph rides below centre.
+`IconToolbarButton` already had the answer: fill the button and set both alignments.
+
 ## For the cohesion pass
 
 - **The slide-out**, new: `elementMoveExit` where the enter is `elementMoveEnter`. The
   only edge-anchored surface with that exact pairing; the sidebars are the comparison.
 - **Chevron rotation** `elementMoveFast` → `elementMoveSmall`.
+- **The swipe**, now shared: the toast and this card should feel identical thrown.
 - **The busy state** is unmeasured — no pairable device was in range this session, so
   the progress strip fading in and Connect dropping to 0.4 were verified by reading,
   not by pairing.

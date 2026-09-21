@@ -102,7 +102,13 @@ Scope {
             property bool optionsOpen: false
 
             readonly property bool shown: FastPair.popupShown
-            onShownChanged: if (card.shown) card.optionsOpen = false
+            onShownChanged: {
+                if (!card.shown)
+                    return;
+                card.optionsOpen = false;
+                swipe.reset();
+                body.opacity = 1;
+            }
 
             readonly property string statusText: {
                 // Names the binary rather than any one distro's package name.
@@ -156,228 +162,249 @@ Scope {
                 animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
-            StyledRectangularShadow {
-                target: background
-            }
-
-            Rectangle {
-                id: background
+            // The window masks `card`, so `card` owns the geometry and nothing
+            // else: a mask bakes a transform on the item it follows
+            // (check-mask-regions.py). The swipe moves and fades this body.
+            Item {
+                id: body
                 anchors.fill: parent
-                radius: Appearance.rounding.verylarge
-                color: Appearance.colors.colLayer0
-            }
 
-            component Chip: DialogButton {
-                padding: 8
-                implicitHeight: 32
-            }
-
-            // DESIGN 9 icon button: square, full radius, size the button not
-            // the padding.
-            component IconButton: DialogButton {
-                id: iconButton
-                property alias symbol: iconSymbol.text
-                property alias iconRotation: iconSymbol.rotation
-                implicitWidth: 40
-                implicitHeight: 40
-                padding: 0
-
-                contentItem: MaterialSymbol {
-                    id: iconSymbol
-                    anchors.centerIn: parent
-                    iconSize: Appearance.font.pixelSize.huge
-                    color: iconButton.colEnabled
-
-                    Behavior on rotation {
-                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
-                    }
-                }
-            }
-
-            IconButton {
-                anchors {
-                    top: parent.top
-                    right: parent.right
-                    margins: card.padding
-                }
-                symbol: "close"
-                onClicked: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
-
-                StyledToolTip {
-                    text: Translation.tr("Close")
-                }
-            }
-
-            ColumnLayout {
-                id: content
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                    leftMargin: card.padding
-                    rightMargin: card.padding
-                }
-                spacing: 4
-
-                MaterialShapeWrappedMaterialSymbol {
-                    Layout.alignment: Qt.AlignHCenter
-                    shape: MaterialShape.Shape.Cookie12Sided
-                    iconSize: 48
-                    padding: 24
-                    text: Icons.getBluetoothDeviceMaterialSymbol(FastPair.candidate?.icon ?? "")
+                transform: Translate {
+                    x: swipe.offset
                 }
 
-                // The strip is always reserved so the card does not jump when a
-                // connect starts; the bar itself only sweeps while busy.
-                Item {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.topMargin: 8
-                    implicitWidth: progress.implicitWidth
-                    implicitHeight: progress.implicitHeight
+                SwipeToDismiss {
+                    id: swipe
+                    onDismissed: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
+                }
 
-                    StyledIndeterminateProgressBar {
-                        id: progress
+                StyledRectangularShadow {
+                    target: background
+                }
+
+                Rectangle {
+                    id: background
+                    anchors.fill: parent
+                    radius: Appearance.rounding.verylarge
+                    color: Appearance.colors.colLayer0
+                }
+
+                component Chip: DialogButton {
+                    padding: 8
+                    implicitHeight: 32
+                }
+
+                // DESIGN 9 icon button: square, full radius, size the button not
+                // the padding.
+                component IconButton: DialogButton {
+                    id: iconButton
+                    property alias symbol: iconSymbol.text
+                    property alias iconRotation: iconSymbol.rotation
+                    implicitWidth: 40
+                    implicitHeight: 40
+                    padding: 0
+
+                    contentItem: MaterialSymbol {
+                        id: iconSymbol
+                        // Fill and align, not centerIn: a Text's box is a line
+                        // height, so centring the box leaves the glyph low.
                         anchors.fill: parent
-                        visible: FastPair.busy || progress.opacity > 0
-                        opacity: FastPair.busy ? 1 : 0
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        iconSize: Appearance.font.pixelSize.huge
+                        color: iconButton.colEnabled
 
-                        Behavior on opacity {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        Behavior on rotation {
+                            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                         }
                     }
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 8
-                    horizontalAlignment: Text.AlignHCenter
-                    font.pixelSize: Appearance.font.pixelSize.larger
-                    color: Appearance.colors.colOnLayer0
-                    elide: Text.ElideRight
-                    textFormat: Text.PlainText
-                    text: FastPair.candidate?.name || Translation.tr("Bluetooth device")
-                }
+                IconButton {
+                    anchors {
+                        top: parent.top
+                        right: parent.right
+                        margins: card.padding
+                    }
+                    symbol: "close"
+                    onClicked: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
 
-                StyledText {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: FastPair.failed || FastPair.agentUnavailable ? Appearance.colors.colError : Appearance.colors.colSubtext
-                    textFormat: Text.PlainText
-                    text: card.statusText
-
-                    Behavior on color {
-                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    StyledToolTip {
+                        text: Translation.tr("Close")
                     }
                 }
 
-                // Revealer clips and animates the reveal rather than snapping the
-                // card to a new height. Held visible at zero height so the
-                // layout's spacing does not pop once it finishes collapsing.
-                Revealer {
-                    Layout.fillWidth: true
-                    vertical: true
-                    reveal: card.optionsOpen
-                    visible: true
+                ColumnLayout {
+                    id: content
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        leftMargin: card.padding
+                        rightMargin: card.padding
+                    }
+                    spacing: 4
 
-                    ColumnLayout {
-                        // Explicit width: taking it from the Revealer would make
-                        // the Revealer's implicitWidth depend on its own child.
-                        width: card.width - card.padding * 2
-                        spacing: 4
+                    MaterialShapeWrappedMaterialSymbol {
+                        Layout.alignment: Qt.AlignHCenter
+                        shape: MaterialShape.Shape.Cookie12Sided
+                        iconSize: 48
+                        padding: 24
+                        text: Icons.getBluetoothDeviceMaterialSymbol(FastPair.candidate?.icon ?? "")
+                    }
 
-                        StyledText {
-                            Layout.topMargin: 12
-                            text: Translation.tr("Snooze this device")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
+                    // The strip is always reserved so the card does not jump when a
+                    // connect starts; the bar itself only sweeps while busy.
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.topMargin: 8
+                        implicitWidth: progress.implicitWidth
+                        implicitHeight: progress.implicitHeight
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
+                        StyledIndeterminateProgressBar {
+                            id: progress
+                            anchors.fill: parent
+                            visible: FastPair.busy || progress.opacity > 0
+                            opacity: FastPair.busy ? 1 : 0
 
-                            Repeater {
-                                model: card.snoozePresets
-
-                                Chip {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    buttonText: modelData.label
-                                    onClicked: FastPair.dismiss(modelData.ms)
-                                }
-                            }
-                        }
-
-                        Chip {
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            colText: Appearance.colors.colError
-                            buttonText: Translation.tr("Never show this device")
-                            onClicked: FastPair.ignoreCandidate()
-                        }
-
-                        StyledText {
-                            Layout.topMargin: 8
-                            text: Translation.tr("Mute all pairing popups")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Repeater {
-                                model: card.snoozePresets
-
-                                Chip {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    buttonText: modelData.label
-                                    onClicked: FastPair.muteAll(modelData.ms)
-                                }
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                             }
                         }
                     }
-                }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 12
-                    spacing: 8
-
-                    IconButton {
-                        symbol: "expand_more"
-                        iconRotation: card.optionsOpen ? 180 : 0
-                        onClicked: card.optionsOpen = !card.optionsOpen
-
-                        StyledToolTip {
-                            text: Translation.tr("More options")
-                        }
-                    }
-
-                    DialogButton {
+                    StyledText {
                         Layout.fillWidth: true
-                        implicitHeight: 40
-                        enabled: !FastPair.busy && !FastPair.agentUnavailable
-                        // Disabled is the whole control at 0.4 (DESIGN 6), not a
-                        // filled primary with outline-coloured text.
-                        opacity: enabled ? 1 : 0.4
-                        colBackground: Appearance.colors.colPrimary
-                        colBackgroundHover: Appearance.colors.colPrimaryHover
-                        colRipple: Appearance.colors.colPrimaryActive
-                        colEnabled: Appearance.colors.colOnPrimary
-                        colDisabled: Appearance.colors.colOnPrimary
-                        buttonText: Translation.tr("Connect")
-                        onClicked: FastPair.connectCandidate()
+                        Layout.topMargin: 8
+                        horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnLayer0
+                        elide: Text.ElideRight
+                        textFormat: Text.PlainText
+                        text: FastPair.candidate?.name || Translation.tr("Bluetooth device")
+                    }
 
-                        Behavior on opacity {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    StyledText {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: FastPair.failed || FastPair.agentUnavailable ? Appearance.colors.colError : Appearance.colors.colSubtext
+                        textFormat: Text.PlainText
+                        text: card.statusText
+
+                        Behavior on color {
+                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                         }
                     }
-                }
+
+                    // Revealer clips and animates the reveal rather than snapping the
+                    // card to a new height. Held visible at zero height so the
+                    // layout's spacing does not pop once it finishes collapsing.
+                    Revealer {
+                        Layout.fillWidth: true
+                        vertical: true
+                        reveal: card.optionsOpen
+                        visible: true
+
+                        ColumnLayout {
+                            // Explicit width: taking it from the Revealer would make
+                            // the Revealer's implicitWidth depend on its own child.
+                            width: card.width - card.padding * 2
+                            spacing: 4
+
+                            StyledText {
+                                Layout.topMargin: 12
+                                text: Translation.tr("Snooze this device")
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Repeater {
+                                    model: card.snoozePresets
+
+                                    Chip {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        buttonText: modelData.label
+                                        onClicked: FastPair.dismiss(modelData.ms)
+                                    }
+                                }
+                            }
+
+                            Chip {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 4
+                                colText: Appearance.colors.colError
+                                buttonText: Translation.tr("Never show this device")
+                                onClicked: FastPair.ignoreCandidate()
+                            }
+
+                            StyledText {
+                                Layout.topMargin: 8
+                                text: Translation.tr("Mute all pairing popups")
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Repeater {
+                                    model: card.snoozePresets
+
+                                    Chip {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        buttonText: modelData.label
+                                        onClicked: FastPair.muteAll(modelData.ms)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 12
+                        spacing: 8
+
+                        IconButton {
+                            symbol: "expand_more"
+                            iconRotation: card.optionsOpen ? 180 : 0
+                            onClicked: card.optionsOpen = !card.optionsOpen
+
+                            StyledToolTip {
+                                text: Translation.tr("More options")
+                            }
+                        }
+
+                        DialogButton {
+                            Layout.fillWidth: true
+                            implicitHeight: 40
+                            enabled: !FastPair.busy && !FastPair.agentUnavailable
+                            // Disabled is the whole control at 0.4 (DESIGN 6), not a
+                            // filled primary with outline-coloured text.
+                            opacity: enabled ? 1 : 0.4
+                            colBackground: Appearance.colors.colPrimary
+                            colBackgroundHover: Appearance.colors.colPrimaryHover
+                            colRipple: Appearance.colors.colPrimaryActive
+                            colEnabled: Appearance.colors.colOnPrimary
+                            colDisabled: Appearance.colors.colOnPrimary
+                            buttonText: Translation.tr("Connect")
+                            onClicked: FastPair.connectCandidate()
+
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            }
+                        }
+                    }
+            }
             }
         }
     }
