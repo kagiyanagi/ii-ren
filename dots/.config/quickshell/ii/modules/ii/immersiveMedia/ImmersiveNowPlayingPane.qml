@@ -22,6 +22,15 @@ Rectangle {
     // How far the glass controls and tracks are thinned against the card.
     readonly property real glassAlpha: 0.35
 
+    // Everything in this card that is not the album art. The art is square, so
+    // the card is only worth being as wide as the art can be tall -- any wider
+    // leaves a void either side of it, any narrower leaves one above and below.
+    // `ImmersiveMediaContent` sizes the card from this. Measured rather than
+    // hand-counted, because a constant rots the first time a row lands here, and
+    // it cannot feed back into the width: every label below elides instead of
+    // wrapping, so none of these heights knows how wide the card turned out.
+    readonly property real chromeHeight: paneLayout.implicitHeight + paneLayout.anchors.margins * 2
+
     radius: Appearance.rounding.verylarge
     color: ColorUtils.transparentize(root.scheme.card, 1 - Config.options.media.immersive.surfaceOpacityPercentage / 100)
 
@@ -72,6 +81,7 @@ Rectangle {
     }
 
     ColumnLayout {
+        id: paneLayout
         anchors.fill: parent
         anchors.margins: 16
         spacing: 16
@@ -80,7 +90,9 @@ Rectangle {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 160
+            // Contributes nothing to `chromeHeight`: it is the one child that
+            // takes whatever height is left rather than asking for any.
+            Layout.preferredHeight: 0
 
             ClippingRectangle {
                 id: artFrame

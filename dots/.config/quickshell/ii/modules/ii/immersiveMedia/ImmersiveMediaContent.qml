@@ -25,11 +25,6 @@ Item {
     readonly property var options: Config.options.media.immersive
     readonly property bool lyricsShown: root.options.showLyrics
 
-    // DESIGN 2.5: a screen-sized surface enters on the default spatial duration
-    // and leaves at about half of it. Both land on the MotionTokens.kt ladder.
-    readonly property int enterDuration: Appearance.animation.elementMoveEnter.duration
-    readonly property int exitDuration: Math.round(root.enterDuration / 2)
-
     // ── Album art ────────────────────────────────────────────────────────────
     readonly property string artUrl: MprisController.artUrlFor(root.player)
     readonly property bool isLocalArt: root.artUrl.startsWith("file://")
@@ -162,21 +157,33 @@ Item {
     transitions: [
         Transition {
             to: "shown"
+            // Scale is spatial and may overshoot, opacity is effects and may not,
+            // so they run on their own specs at their own durations (DESIGN 2.1).
+            // One NumberAnimation over both put the fade on a 500ms spatial curve.
             NumberAnimation {
-                properties: "opacity,contentScale"
-                duration: root.enterDuration
+                property: "contentScale"
+                duration: Appearance.animation.elementMoveEnter.duration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            }
+            NumberAnimation {
+                property: "opacity"
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
             }
         },
         Transition {
             to: "hidden"
+            // `elementMoveExit` is the fast-effects exit spec (DESIGN 2.5); this
+            // used to hand-compute half the enter duration and pick a curve next
+            // to the token that already names both.
             SequentialAnimation {
                 NumberAnimation {
                     properties: "opacity,contentScale"
-                    duration: root.exitDuration
+                    duration: Appearance.animation.elementMoveExit.duration
                     easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+                    easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
                 }
                 ScriptAction {
                     script: if (!root.shown && root.entered) root.closed()
@@ -250,6 +257,7 @@ Item {
             }
 
             RowLayout {
+                id: mediaRow
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 16
@@ -260,8 +268,14 @@ Item {
                 }
 
                 ImmersiveNowPlayingPane {
+                    id: nowPlaying
                     Layout.fillHeight: true
-                    Layout.preferredWidth: root.lyricsShown ? Math.min(540, root.width * 0.36) : Math.min(620, root.width * 0.6)
+                    // As wide as the album art can be tall, because the art is
+                    // square: a fixed width left ~180px of void above and below
+                    // it on a 16:9 screen while the lyrics pane took 68% of the
+                    // screen to centre a 350px line in it. The cap is what stops
+                    // a tall screen from doing the same thing in reverse.
+                    Layout.preferredWidth: Math.min(mediaRow.height - nowPlaying.chromeHeight + 32, root.width * (root.lyricsShown ? 0.45 : 0.6))
                     scheme: root.scheme
                     player: root.player
                     artSource: root.artSource

@@ -83,40 +83,51 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            LyricScroller {
-                id: lyricScroller
-                anchors.fill: parent
-                visible: root.hasSynced
-                defaultLyricsSize: Config.options.media.immersive.lyricSize
-                useGradientMask: Config.options.media.immersive.useGradientMask
-                halfVisibleLines: 3
-                changeTextWeight: true
-                rowHeight: Math.max(48, Math.min(Math.floor(height / 5), Config.options.media.immersive.lyricSize * 3))
-            }
+            // Lyrics are read a line at a time, so the column is capped at a ~34em
+            // measure and centred rather than run the full width of the pane: at the
+            // default size that is a 60-odd character line instead of the 120-character
+            // one a 21:9 screen hands it. Ems rather than pixels, because `lyricSize`
+            // is the user's to set.
+            Item {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(parent.width, Config.options.media.immersive.lyricSize * 34)
+                height: parent.height
 
-            StyledFlickable {
-                anchors.fill: parent
-                visible: !root.hasSynced && root.hasPlain
-                contentWidth: width
-                contentHeight: plainLyrics.implicitHeight
-
-                StyledText {
-                    id: plainLyrics
-                    width: parent.width
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: LyricsService.plainLyrics
-                    font.family: Appearance.font.family.reading
-                    font.pixelSize: Config.options.media.immersive.lyricSize
-                    color: root.scheme.onSurface
+                LyricScroller {
+                    id: lyricScroller
+                    anchors.fill: parent
+                    visible: root.hasSynced
+                    defaultLyricsSize: Config.options.media.immersive.lyricSize
+                    useGradientMask: Config.options.media.immersive.useGradientMask
+                    halfVisibleLines: 3
+                    changeTextWeight: true
+                    rowHeight: Math.max(48, Math.min(Math.floor(height / 5), Config.options.media.immersive.lyricSize * 3))
                 }
-            }
 
-            PagePlaceholder {
-                shown: !root.hasSynced && !root.hasPlain
-                icon: "music_note"
-                title: Translation.tr("No lyrics")
-                description: LyricsService.lyricsEnabled ? Translation.tr("Nothing found for this track") : Translation.tr("Lyrics are turned off in settings")
+                StyledFlickable {
+                    anchors.fill: parent
+                    visible: !root.hasSynced && root.hasPlain
+                    contentWidth: width
+                    contentHeight: plainLyrics.implicitHeight
+
+                    StyledText {
+                        id: plainLyrics
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
+                        text: LyricsService.plainLyrics
+                        font.family: Appearance.font.family.reading
+                        font.pixelSize: Config.options.media.immersive.lyricSize
+                        color: root.scheme.onSurface
+                    }
+                }
+
+                PagePlaceholder {
+                    shown: !root.hasSynced && !root.hasPlain
+                    icon: "music_note"
+                    title: Translation.tr("No lyrics")
+                    description: LyricsService.lyricsEnabled ? Translation.tr("Nothing found for this track") : Translation.tr("Lyrics are turned off in settings")
+                }
             }
         }
     }

@@ -59,12 +59,6 @@ RowLayout {
         }
     }
 
-    StyledText {
-        text: Translation.tr("Media Player")
-        font.pixelSize: Appearance.font.pixelSize.small
-        color: root.scheme.subtext
-    }
-
     RippleButton {
         id: playerChip
         readonly property int playerIndex: root.players.indexOf(root.player)

@@ -97,6 +97,14 @@ you touched; they are the only automated gate.
   has no symptom: the surface paints at full size and the clicks go to the window behind.
   The drop shelf shipped that way and could only be dismissed by restarting the shell.
   Two pre-existing instances are in `KNOWN` with what each one measured
+- `python3 tools/check-immersive-media.py` — the fullscreen player's card is still sized
+  by its album art, and the surface still enters and leaves on two specs. The card was
+  `min(540, width * 0.36)` and the art inside it is square, so 180px of it was void while
+  the lyrics pane took 68% of the screen to centre a 350px line; the card is now derived
+  from the pane's own measured chrome, which only works while the art box is the one child
+  asking for no height of its own. Put a `Layout.minimumHeight` back on it and the void
+  returns with nothing to show for it. It also pins the enter's opacity off the 500ms
+  spatial curve it used to share with the scale, and the exit onto `elementMoveExit`
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
