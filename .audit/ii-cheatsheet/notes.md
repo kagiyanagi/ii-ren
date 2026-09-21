@@ -161,6 +161,48 @@ ionisation chart have only been checked by the gates and by reading — the desk
 use and driving it further was not reasonable. If the detail card misbehaves, that is
 where to look first.
 
+## What the first Elements pass got wrong
+
+Four things, all from the person using it, all fixed in the follow-up:
+
+- **The toolbar read as a sentence of links.** `GroupButton.colBackground` defaults to fully
+  transparent, so only the selected mode had a container and the other seven were bare
+  labels floating next to a thin outlined search box — two visual languages in one row. It
+  is now one strip: a tonal search pill at `rounding.full` on `colLayer2` with a leading
+  magnifier and a clear button, and eight filter chips in that same shape, `colPrimary`
+  when selected. `MaterialTextField` sits inside the pill with `background: null`, because
+  an outlined box inside a filled pill is two containers for one control.
+- **The detail card was see-through.** It took `colLayer1`, which is solved against the
+  shell's transparency setting — and `contentTransparency` resolves to 0.9 even with
+  `transparency.enable: false`, because the `automatic` branch ignores the enable flag. The
+  whole periodic table showed through and fought every number on the card. It is
+  `colLayer1Base` — the opaque tone underneath — at 0.98 now. Measured: 3/255 of what is
+  behind it comes through, which is what 98% means.
+- **The card's content ran off its right-hand edge.** `body.width: parent.width` inside a
+  `StyledFlickable`: a Flickable reparents its children into a `contentItem` whose width is
+  not the viewport's, so the two-column grid and the ionisation bars overflowed. Bound to
+  the flickable instead.
+- **The corners.** An inset rounded card stacked three corner treatments — the sheet's
+  `windowRounding`, the square clip of the SwipeView it sits in, and its own `verylarge` —
+  and the scrim behind it was square. The card is full-bleed now with no scrim and no
+  border: the tab already lives inside the sheet's rounded card, so that is the only corner
+  in play, and the toolbar and legend are covered rather than peeking out from behind it.
+
+Two follow-ons found while fixing those:
+
+- **The tile tooltip drew on top of the card.** Disabling the grid is not enough — the
+  pointer has not moved, so `containsMouse` stays latched. `ElementTile.interactive` gates
+  both `hoverEnabled` and the tooltip.
+- **Escape closed the whole cheatsheet instead of the card.** `focus: true` cannot take
+  focus from the sheet's close button, which holds it. A window-context `Shortcut` is
+  delivered before key events reach any item, and disabling it when the card is shut hands
+  Escape straight back to the sheet. Verified: first Escape closes the card, second closes
+  the sheet.
+
+`parent.mode` inside the chip's `contentItem` resolved only by luck — a `contentItem` is
+reparented into its control, so qmllint types `parent` as a bare Item. It is `chip.mode`
+now; that finding is the reason the qmllint gate exists.
+
 ## Left alone, deliberately
 
 - **Colouring the element tiles by series.** The `type` field is in `periodic_table.js`

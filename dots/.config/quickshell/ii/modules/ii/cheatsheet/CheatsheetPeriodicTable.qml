@@ -70,45 +70,76 @@ Item {
         anchors.fill: parent
         spacing: 12
 
-        // --- toolbar ---------------------------------------------------------
+        // --- toolbar -------------------------------------------------------
+        //
+        // One strip in one visual language: a tonal search pill and a row of
+        // filter chips, all at `rounding.full` on `colLayer2`. Before this the
+        // unselected modes were bare labels on no container, so the row read as
+        // a sentence of links rather than a control.
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
 
-            MaterialTextField {
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: 40
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                placeholderText: Translation.tr("Symbol, name or number")
-                text: root.query
-                onTextChanged: root.query = text
-            }
+            Rectangle { // search
+                Layout.preferredWidth: 224
+                Layout.preferredHeight: 36
+                radius: Appearance.rounding.full
+                color: Appearance.colors.colLayer2
 
-            StyledText {
-                Layout.leftMargin: 4
-                font.pixelSize: Appearance.font.pixelSize.smallest
-                color: Appearance.colors.colSubtext
-                text: Translation.tr("Colour by")
-            }
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 4
+                    spacing: 8
 
-            ButtonGroup {
-                Layout.alignment: Qt.AlignVCenter
-
-                Repeater {
-                    model: ETheme.modes
-                    delegate: GroupButton {
-                        required property var modelData
-                        // Sized to its own label: filling the row stretches the
-                        // selected pill to a quarter of the toolbar.
-                        Layout.fillWidth: false
-                        toggled: root.modeId === modelData.id
-                        buttonText: modelData.label
-                        releaseAction: () => root.modeId = modelData.id
+                    MaterialSymbol {
+                        text: "search"
+                        iconSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colSubtext
+                    }
+                    MaterialTextField {
+                        id: search
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        // The pill is the container, so the field brings none of
+                        // its own -- an outlined box inside a filled pill is two
+                        // containers for one control.
+                        background: null
+                        leftPadding: 0
+                        rightPadding: 0
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        placeholderText: Translation.tr("Symbol, name or number")
+                        onTextChanged: root.query = text
+                    }
+                    RippleButton {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        visible: root.query.length > 0
+                        buttonRadius: Appearance.rounding.full
+                        onClicked: search.clear()
+                        contentItem: MaterialSymbol {
+                            anchors.centerIn: parent
+                            horizontalAlignment: Text.AlignHCenter
+                            iconSize: Appearance.font.pixelSize.large
+                            text: "close"
+                        }
                     }
                 }
             }
 
-            Item { Layout.fillWidth: true }
+            Flow { // colour-by chips, wrapping rather than overflowing a narrow sheet
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 6
+
+                Repeater {
+                    model: ETheme.modes
+                    delegate: ModeChip {
+                        required property var modelData
+                        mode: modelData
+                    }
+                }
+            }
         }
 
         // --- the table -------------------------------------------------------
@@ -120,6 +151,7 @@ Item {
             Item {
                 id: grid
                 anchors.centerIn: parent
+                enabled: root.selected === null
                 implicitWidth: root.columns * root.tileSize + (root.columns - 1) * root.gap
                 implicitHeight: root.rows * root.tileSize + (root.rows - 1) * root.gap
                 width: implicitWidth
@@ -172,6 +204,7 @@ Item {
                         y: grid.cellY(modelData.y)
                         fill: root.tileColor(modelData)
                         dimmed: !root.matches(modelData)
+                        interactive: root.selected === null
                         onActivated: root.selected = modelData
                     }
                 }
@@ -183,6 +216,37 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: item?.implicitHeight ?? 0
             sourceComponent: root.mode.key === null ? categoricalLegend : rampLegend
+        }
+    }
+
+    // A filter chip (9): full radius, tonal container when off, `colPrimary`
+    // when on, colour on an effects spec.
+    component ModeChip: RippleButton {
+        id: chip
+        required property var mode
+        readonly property bool selected: root.modeId === chip.mode.id
+
+        implicitHeight: 36
+        buttonRadius: Appearance.rounding.full
+        toggled: chip.selected
+        colBackground: Appearance.colors.colLayer2
+        colBackgroundHover: Appearance.colors.colLayer2Hover
+        onClicked: root.modeId = chip.mode.id
+
+        contentItem: StyledText {
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            leftPadding: 16
+            rightPadding: 16
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            // `chip`, not `parent`: a contentItem is reparented into the
+            // control, so `parent` is typed as a bare Item and the two lookups
+            // only resolved by luck.
+            color: chip.selected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
+            text: chip.mode.label
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
         }
     }
 

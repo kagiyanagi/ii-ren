@@ -12,6 +12,10 @@ Rectangle {
     // Set while a search is narrowing the table: the tile stays in place so the
     // grid keeps its shape, and recedes instead of disappearing.
     property bool dimmed: false
+    // False while the detail card is up. Disabling the grid is not enough on its
+    // own: the pointer has not moved, so `containsMouse` stays latched and the
+    // tooltip of whichever tile it was resting on draws on top of the card.
+    property bool interactive: true
 
     signal activated
 
@@ -92,13 +96,13 @@ Rectangle {
     MouseArea {
         id: mouse
         anchors.fill: parent
-        hoverEnabled: true
+        hoverEnabled: root.interactive
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
     }
 
     StyledToolTip {
-        extraVisibleCondition: mouse.containsMouse
+        extraVisibleCondition: root.interactive && mouse.containsMouse
         text: `${root.element.name} · ${root.element.category}\n`
             + `${root.element.configShort} · ${Translation.tr("group")} ${root.element.group}, `
             + `${Translation.tr("period")} ${root.element.period}, ${root.element.block}-${Translation.tr("block")}`

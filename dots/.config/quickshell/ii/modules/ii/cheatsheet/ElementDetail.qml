@@ -29,6 +29,16 @@ Item {
     visible: root.open || card.reveal > 0
     // Nothing behind the card is reachable while it is up.
     enabled: root.open
+    // Escape closes the card, not the whole cheatsheet. `focus: true` cannot do
+    // this: the sheet's close button holds the window's focus and a nested item
+    // does not take it just by asking. A window-context Shortcut is delivered
+    // before key events reach any item, and disabling it hands Escape straight
+    // back to the sheet's own handler.
+    Shortcut {
+        sequences: ["Escape"]
+        enabled: root.open
+        onActivated: root.closed()
+    }
 
     function kelvinToCelsius(k) {
         return k === null || k === undefined ? null : Math.round((k - 273.15) * 10) / 10;
@@ -45,25 +55,23 @@ Item {
         return unit ? `${value} ${unit}` : String(value);
     }
 
-    // Scrim: the table underneath stays legible but stops competing.
-    Rectangle {
-        anchors.fill: parent
-        color: Appearance.m3colors.m3scrim
-        opacity: card.reveal * 0.55
-    }
-    MouseArea {
-        anchors.fill: parent
-        onClicked: root.closed()
-    }
-
+    // Full bleed, and no scrim. An inset rounded card here stacked three
+    // different corner treatments on top of each other -- the sheet's own
+    // `windowRounding`, the square clip of the SwipeView it sits in, and the
+    // card's `verylarge` -- which is what made the corners look wrong. The tab
+    // is already inside the sheet's rounded card, so this one takes its bounds
+    // and lets that corner be the only one. It also means the toolbar and the
+    // legend are covered rather than left peeking out from behind it.
     Rectangle {
         id: card
         anchors.fill: parent
-        anchors.margins: 8
-        radius: Appearance.rounding.verylarge
-        color: Appearance.colors.colLayer1
-        border.width: 1
-        border.color: Appearance.colors.colLayer0Border
+        radius: 0
+        // Deliberately NOT colLayer1: that is solved against the shell's
+        // transparency setting, which made the whole periodic table show through
+        // the card and fight every number on it. colLayer1Base is the opaque
+        // tone under it, and 0.98 keeps a hint of the surface without the card
+        // ever being read *through*.
+        color: ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, 0.98)
         clip: true
 
         // One driver for scale and opacity, with the spec assigned from inside
@@ -175,14 +183,19 @@ Item {
 
             // --- body --------------------------------------------------------
             StyledFlickable {
+                id: bodyFlick
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                contentWidth: width
                 contentHeight: body.implicitHeight
                 clip: true
 
                 ColumnLayout {
                     id: body
-                    width: parent.width
+                    // The viewport, not `parent.width` -- a Flickable reparents
+                    // its children into a contentItem whose width is not the
+                    // width you can see, so the layout ran off the card's edge.
+                    width: bodyFlick.width
                     spacing: 16
 
                     // Electron configuration and the shell diagram read together.
