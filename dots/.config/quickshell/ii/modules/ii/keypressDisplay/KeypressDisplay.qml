@@ -72,6 +72,15 @@ Scope {
                 readonly property real chipHeight: Math.round(chipList.fontSize * 2)
 
                 width: Math.min(parent.width, contentWidth)
+                // A row too wide for the screen scrolls off its *old* end. The
+                // view otherwise sits at the head, so the key that was just
+                // pressed -- the only one anybody is waiting to read -- is the
+                // one the screen edge cuts. Twelve keys at scale 2.0 is two
+                // settings sliders away, and long merged words get there sooner.
+                contentX: Math.max(0, contentWidth - width)
+                Behavior on contentX {
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+                }
                 height: chipList.chipHeight
                 // Newest chips sit at the model's tail, so a run of keys grows
                 // away from the anchored edge instead of jumping around.
@@ -139,7 +148,12 @@ Scope {
                     implicitWidth: chipBackground.implicitWidth
                     width: implicitWidth
                     height: chipList.chipHeight
+                    // A chip appears where it is; it did not come from anywhere.
+                    transformOrigin: Item.Center
 
+                    // In the delegate on purpose. DESIGN.md 8 lists a cached
+                    // RectangularShadow as cheap and draws the line at ~20
+                    // repeats; the settings slider caps maxKeys at 12.
                     StyledRectangularShadow {
                         target: chipBackground
                     }
@@ -154,7 +168,19 @@ Scope {
                         radius: Appearance.rounding.full
                         // Shortcuts are what a viewer is meant to notice, so they
                         // carry the accent while plain typing stays quiet.
-                        color: chip.isCombo ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHigh
+                        //
+                        // The neutral fill comes from m3colors, not colors: every
+                        // colSurfaceContainer* is solved by solveOverlayColor and
+                        // carries alpha 1 - contentTransparency, which is 0.1 out of
+                        // the box (contentTransparency reads autoContentTransparency
+                        // without consulting transparency.enable). That works for a
+                        // panel painted over its own layer below; this window is
+                        // transparent and there is nothing underneath, so a typed
+                        // chip was drawn onto the recording at 10% and only shortcut
+                        // chips -- which are m3primaryContainer, opaque -- ever
+                        // looked right. The background widgets pick m3colors over a
+                        // wallpaper for the same reason.
+                        color: chip.isCombo ? Appearance.colors.colPrimaryContainer : Appearance.m3colors.m3surfaceContainerHigh
                         border.width: 1
                         border.color: Appearance.colors.colOutlineVariant
 

@@ -105,6 +105,15 @@ you touched; they are the only automated gate.
   asking for no height of its own. Put a `Layout.minimumHeight` back on it and the void
   returns with nothing to show for it. It also pins the enter's opacity off the 500ms
   spatial curve it used to share with the scale, and the exit onto `elementMoveExit`
+- `python3 tools/check-keypress-display.py` — the keystroke overlay still shows the key
+  that was just *pressed*. Both of its defects were invisible in a screenshot: a
+  horizontal `ListView` shows its head, so an overflowing row kept four stale chips and
+  clipped the newest one, and the neutral chip fill resolved to alpha 0.1 because every
+  `colSurfaceContainer*` is solved by `solveOverlayColor` for a layer that a
+  `color: "transparent"` overlay window does not have. The IPC that makes the surface
+  testable only pushes *shortcut* chips, which are the one opaque fill, so it hid the
+  second one. It sweeps the whole reachable settings range (the slider bounds are lifted
+  from the settings page) and resolves every fill against `Appearance.qml`
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
