@@ -127,6 +127,18 @@ you touched; they are the only automated gate.
   testable only pushes *shortcut* chips, which are the one opaque fill, so it hid the
   second one. It sweeps the whole reachable settings range (the slider bounds are lifted
   from the settings page) and resolves every fill against `Appearance.qml`
+- `python3 tools/check-hermes-desktop.py` — the Hermes sidebar's desktop fast path
+  cannot fire on the wrong thing. `scripts/hermes/desktop.py` answers a request without
+  consulting a model, so nothing downstream catches a mistake: the wrong IPC call just
+  runs. It pins the router's timidity (a question, a compound request or a long one must
+  escalate — and the guard is tested directly, because every catalogue pattern is anchored
+  today so nothing reaches it), asserts every action it can emit is an `IpcHandler` the QML
+  actually declares, and refuses a plain `hyprctl dispatch <word>`, which is a Lua syntax
+  error in this config and cost the agent two rediscoveries in one session. It also holds
+  the two perception guards that have no visible symptom: OCR coordinates scaled by what
+  grim actually wrote rather than an assumed 1:1, and the refusal to read a window that is
+  not on screen — grim captures the screen, so reading a window parked on another workspace
+  returns whatever is displayed at those coordinates and the click lands there
 - `python3 tools/check-sddm-settings-gen.py` — the SDDM theme's `Settings.qml` generator
   cannot emit a type QML refuses. Every type in the greeter resolves through that singleton,
   so one bad declaration makes all of them unavailable and SDDM falls back to its embedded

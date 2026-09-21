@@ -974,19 +974,91 @@ Singleton {
         if (trimmed.length === 0)
             return;
 
-        if (root.sessionId.length === 0) {
-            // Session still being created: send once it lands.
-            root._newMessage("user", trimmed);
-            root._deferredPrompt = trimmed;
-            root.ensureStarted();
-            return;
-        }
-
         root._newMessage("user", trimmed);
-        root._submit(trimmed);
+        root._tryRoute(trimmed);
     }
 
     property string _deferredPrompt: ""
+
+    // ── Local fast path ──────────────────────────────────────────────────
+    //
+    // A request the shell can already answer by itself resolves here, with no
+    // model call: about 50ms against the ~6s one agent step cost on 2026-09-21.
+    // The catalogue lives in scripts/hermes/desktop.py and is deliberately
+    // timid -- a question, two actions in one, or anything long exits 2 and
+    // falls through to the agent untouched, because a wrong instant answer is
+    // worse than a slow right one.
+    //
+    // ponytail: a routed action never enters the agent's history, so a later
+    // "undo that" has nothing to undo against. The catalogue is held to
+    // self-evident, individually reversible toggles for exactly that reason;
+    // widening it is what would make the missing history matter.
+
+    readonly property string desktopScript: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hermes/desktop.py"))
+    property string _routingText: ""
+
+    function _tryRoute(text: string): void {
+        // One at a time: a second message while the first is still routing goes
+        // straight to the agent rather than queueing behind it.
+        if (routeProc.running || root.desktopScript.length === 0) {
+            root._sendOrDefer(text);
+            return;
+        }
+        root._routingText = text;
+        // `timeout` is the whole guard against a wedged helper: the process is
+        // then certain to exit, and exit settles the message either way.
+        routeProc.command = ["timeout", "5", root.desktopScript, "do", text];
+        routeProc.running = true;
+    }
+
+    function _sendOrDefer(text: string): void {
+        if (root.sessionId.length === 0) {
+            // Session still being created: send once it lands.
+            root._deferredPrompt = text;
+            root.ensureStarted();
+            return;
+        }
+        root._submit(text);
+    }
+
+    /**
+     * Whichever of the two paths below arrives first decides; clearing
+     * `_routingText` makes the other a no-op. Only a route the helper confirms
+     * it both matched *and* ran replaces the agent's turn -- everything else,
+     * including a helper that never started, goes to the agent unchanged.
+     */
+    function _finishRoute(output: string): void {
+        const text = root._routingText;
+        if (text.length === 0)
+            return;
+        root._routingText = "";
+        let reply = null;
+        try {
+            reply = JSON.parse(output);
+        } catch (e) {
+            reply = null;
+        }
+        if (reply?.routed === true && reply?.ok === true) {
+            root.addMessage(Translation.tr("Done · %1").arg(reply.action ?? ""), root.interfaceRole);
+            return;
+        }
+        root._sendOrDefer(text);
+    }
+
+    Process {
+        id: routeProc
+
+        // The collector is what the rest of this repo reads from, and it is the
+        // only point where the output is known to be complete.
+        stdout: StdioCollector {
+            onStreamFinished: root._finishRoute(this.text)
+        }
+
+        // Safety net. A helper that never starts produces no stream to finish,
+        // and the message would sit here forever -- so exit always settles it
+        // too. callLater lets a stream that *is* coming win the race.
+        onExited: Qt.callLater(() => root._finishRoute(""))
+    }
 
     function _submit(text: string): void {
         // The user's next request is the one unambiguous end of the previous run.

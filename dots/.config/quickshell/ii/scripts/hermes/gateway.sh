@@ -11,6 +11,19 @@
 
 set -euo pipefail
 
+# The sidebar's toolsets: the configured `platform_toolsets.cli` list minus
+# computer_use, which cannot work on this machine. cua-driver drives X11 only
+# (XSendEvent + AT-SPI); under Hyprland its window discovery returns an empty
+# list, so `list_windows` says 0 windows and `capture` fails. It is also a
+# deferred tool, so the agent spent two extra round trips discovering it before
+# finding that out -- measured on 2026-09-21, ~40s before the first real action.
+# Everything else stays: dropping toolsets would make the sidebar worse at the
+# tasks that are not desktop control.
+#
+# tools/check-hermes-desktop.py asserts this stays in sync with config.yaml.
+: "${HERMES_TUI_TOOLSETS:=a2a,browser,clarify,code_execution,connections,context_engine,cronjob,delegation,file,image_gen,memory,session_search,skills,terminal,todo,tts,video,video_gen,vision,web,yuanbao}"
+export HERMES_TUI_TOOLSETS
+
 # HERMES_HOME is where config/sessions live; the agent checkout sits under it.
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 agent_dir="$hermes_home/hermes-agent"
