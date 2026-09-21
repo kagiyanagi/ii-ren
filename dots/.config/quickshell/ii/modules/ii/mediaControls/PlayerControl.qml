@@ -26,6 +26,10 @@ Item { // Player instance
     property int visualizerSmoothing: 2 // Number of points to average for smoothing
     property real radius
 
+    // Off by default: the dock renders exactly one of these, and a control for
+    // picking between players has nothing to pick when it is the only card.
+    property bool canPickPlayer: false
+
     readonly property real cardPadding: 12
     // The art is a square of whatever height the card's interior has.
     readonly property real artSize: Math.max(0, background.height - cardPadding * 2)
@@ -40,10 +44,14 @@ Item { // Player instance
     component TrackChangeButton: RippleButton {
         id: button
         property int buttonSize: 24
+        // Split from buttonSize so a control can meet the 32px minimum target
+        // without inflating the glyph to match (DESIGN.md 3.4).
+        property int iconSize: buttonSize
         property bool fill: true
 
         implicitWidth: buttonSize
         implicitHeight: buttonSize
+        buttonRadius: Appearance.rounding.full
 
         property var iconName
         colBackground: ColorUtils.transparentize(blendedColors.colSecondaryContainer, 1)
@@ -51,7 +59,7 @@ Item { // Player instance
         colRipple: blendedColors.colSecondaryContainerActive
 
         contentItem: MaterialSymbol {
-            iconSize: buttonSize
+            iconSize: button.iconSize
             fill: button.fill ? 1 : 0
             horizontalAlignment: Text.AlignHCenter
             color: blendedColors.colSecondary
@@ -160,7 +168,7 @@ Item { // Player instance
         RowLayout {
             anchors.fill: parent
             anchors.margins: root.cardPadding
-            spacing: 14
+            spacing: 12
 
             Rectangle { // Art background
                 id: artBackground
@@ -204,15 +212,21 @@ Item { // Player instance
                 id: infoColumn
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.rightMargin: 14 // room for the pin button
+                // Only while there is a picker to get out of the way of. It used to
+                // be permanent, which cost every card the width whether or not
+                // anything sat there.
+                Layout.rightMargin: root.canPickPlayer ? 20 : 0
                 spacing: 2
 
                 Item { Layout.fillHeight: true }
 
+                // Left-aligned against the art, not centred: the seek row below is
+                // read left to right from its elapsed time, and four centred rows
+                // beside a square of art give the eye no spine to follow.
                 StyledText {
                     id: trackTitle
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
+                    horizontalAlignment: Text.AlignLeft
                     font.pixelSize: Appearance.font.pixelSize.large
                     color: blendedColors.colOnLayer0
                     elide: Text.ElideRight
@@ -225,7 +239,7 @@ Item { // Player instance
                 StyledText {
                     id: trackArtist
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
+                    horizontalAlignment: Text.AlignLeft
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: blendedColors.colSubtext
                     elide: Text.ElideRight
@@ -337,14 +351,23 @@ Item { // Player instance
         }
 
         // Out of the centered stack: it picks the active player, it is not transport.
+        // The visual stays 18px; the target is 32, which is the minimum for a
+        // pointer-driven surface (DESIGN.md 3.4) and was not met before.
         TrackChangeButton {
+            id: playerPicker
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: 6
+            anchors.margins: 4
+            visible: root.canPickPlayer
             iconName: "keep"
-            buttonSize: 18
+            buttonSize: 32
+            iconSize: 18
             fill: MprisController.activePlayer == root.player
             downAction: () => MprisController.setActivePlayer(root.player)
+
+            StyledToolTip {
+                text: playerPicker.fill ? Translation.tr("Controlled by media keys") : Translation.tr("Control this player with media keys")
+            }
         }
     }
 }

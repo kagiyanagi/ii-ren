@@ -12,7 +12,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.common.models
 
 Item {
     id: root
@@ -22,7 +21,10 @@ Item {
     property list<real> visualizerPoints: []
 
     readonly property bool playing: player ? player.playbackState === MprisPlaybackState.Playing : false
-    readonly property string artUrl: MprisController.artUrl
+    // Of `player`, not of whatever is active. They are the same today because the
+    // one caller passes the active player, and they stop being the same the moment
+    // a second caller does not.
+    readonly property string artUrl: MprisController.artUrlFor(player)
     readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("No media")
     readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
     readonly property string identity: player ? (player.identity ?? "") : ""
@@ -76,32 +78,20 @@ Item {
 
     property real artVignetteBlur: root.playing ? 50 : 90
 
-    readonly property bool useDynamicColors: Config.options.media.dynamicAlbumColors && root.artSource !== ""
-
-    ColorQuantizer {
-        id: colorQuantizer
-        source: root.artSource
-        depth: 0
-        rescaleSize: 1
-    }
-
-    property color artDominantColor: ColorUtils.mix(
-        (colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary),
-        Appearance.colors.colPrimaryContainer, 0.8
-    ) || Appearance.m3colors.m3secondaryContainer
-
-    property QtObject blendedColors: AdaptedMaterialScheme {
-        color: root.artDominantColor
-    }
+    // No album-derived scheme here. It was gated on
+    // `Config.options.media.dynamicAlbumColors`, which is not a member of that
+    // JsonObject -- it reads `undefined`, silently -- so the ColorQuantizer
+    // rescaled the art to 1x1 and built a whole AdaptedMaterialScheme per track
+    // change to feed fourteen ternaries that only ever took their else branch.
+    // The controls are on the theme's own container roles, which is what was on
+    // screen all along.
 
     readonly property color artTextColor: Appearance.colors.colOnSurface
     readonly property color artSubtextColor: Appearance.colors.colOnSurfaceVariant
 
+    // A blur radius is an effect, so it settles rather than overshooting (2.1).
     Behavior on artVignetteBlur {
-        NumberAnimation {
-            duration: 500
-            easing.type: Easing.OutCubic
-        }
+        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
     }
 
     readonly property string displaySongText: {
@@ -116,34 +106,44 @@ Item {
         lyricTransitionAnimation.start();
     }
 
+    // The old line leaves before the new one arrives, so it is an exit followed by
+    // an enter and takes those two specs rather than one duration used twice
+    // (DESIGN.md 2.5). The slide and the fade run together; sequencing them made
+    // the line arrive already in place.
     SequentialAnimation {
         id: lyricTransitionAnimation
+
         NumberAnimation {
             target: root
             property: "lyricOpacity"
             to: 0.0
-            duration: 120
-            easing.type: Easing.OutQuad
+            duration: Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
         }
         PropertyAction {
             target: root
             property: "activeLyricText"
             value: root.displaySongText
         }
-        NumberAnimation {
-            target: root
-            property: "lyricYOffset"
-            from: 15
-            to: 0.0
-            duration: 180
-            easing.type: Easing.OutCubic
-        }
-        NumberAnimation {
-            target: root
-            property: "lyricOpacity"
-            to: 1.0
-            duration: 180
-            easing.type: Easing.OutCubic
+        ParallelAnimation {
+            NumberAnimation {
+                target: root
+                property: "lyricYOffset"
+                from: 16
+                to: 0.0
+                duration: Appearance.animation.elementMoveEnter.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+            }
+            NumberAnimation {
+                target: root
+                property: "lyricOpacity"
+                to: 1.0
+                duration: Appearance.animation.elementMoveEnter.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
+            }
         }
     }
 
@@ -258,10 +258,7 @@ Item {
             opacity: root.playing ? 0.55 : 0.75
 
             Behavior on opacity {
-                NumberAnimation {
-                    duration: 400
-                    easing.type: Easing.OutCubic
-                }
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
 
             Rectangle {
@@ -280,18 +277,15 @@ Item {
                 opacity: root.playing ? 0.0 : 0.5
 
                 Behavior on opacity {
-                    NumberAnimation {
-                        duration: 500
-                        easing.type: Easing.OutCubic
-                    }
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
         }
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: 14
-            anchors.rightMargin: 14
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
             anchors.topMargin: 12
             anchors.bottomMargin: 10
             spacing: 6
@@ -340,9 +334,9 @@ Item {
                     leftPadding: 8
                     rightPadding: 8
                     Layout.alignment: Qt.AlignTop
-                    colBackground: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
-                    colBackgroundHover: root.useDynamicColors ? root.blendedColors.colPrimaryContainerHover : Appearance.colors.colPrimaryContainerHover
-                    colRipple: root.useDynamicColors ? root.blendedColors.colOnPrimaryContainer : Appearance.colors.colOnPrimaryContainer
+                    colBackground: Appearance.colors.colPrimaryContainer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                    colRipple: Appearance.colors.colOnPrimaryContainer
                     buttonRadius: Appearance.rounding.full
 
                     readonly property string activeAudioDeviceName: Audio.sink ? (Audio.sink.description || "") : ""
@@ -368,14 +362,14 @@ Item {
                         MaterialSymbol {
                             text: audioPill.audioDeviceIcon
                             iconSize: Appearance.font.pixelSize.smallest
-                            color: root.useDynamicColors ? root.blendedColors.colOnPrimaryContainer : Appearance.colors.colOnPrimaryContainer
+                            color: Appearance.colors.colOnPrimaryContainer
                         }
 
                         StyledText {
                             text: audioPill.activeAudioDeviceName !== "" ? audioPill.activeAudioDeviceName : Translation.tr("Audio")
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             font.bold: true
-                            color: root.useDynamicColors ? root.blendedColors.colOnPrimaryContainer : Appearance.colors.colOnPrimaryContainer
+                            color: Appearance.colors.colOnPrimaryContainer
                             Layout.maximumWidth: 100
                             elide: Text.ElideRight
                         }
@@ -428,8 +422,9 @@ Item {
                                 target: lyricsContainer
                                 property: "scrollOffset"
                                 to: 0
-                                duration: 400
-                                easing.type: Easing.OutQuart
+                                duration: Appearance.animation.elementMoveEnter.duration
+                                easing.type: Easing.BezierSpline
+                                easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
                             }
 
                             Repeater {
@@ -515,10 +510,10 @@ Item {
                     id: playBtn
                     implicitWidth: 52
                     implicitHeight: 52
-                    buttonRadius: 18
-                    colBackground: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
-                    colBackgroundHover: root.useDynamicColors ? root.blendedColors.colPrimaryContainerHover : Appearance.colors.colPrimaryContainerHover
-                    colRipple: root.useDynamicColors ? root.blendedColors.colPrimaryContainerActive : Appearance.colors.colPrimaryContainerActive
+                    buttonRadius: Appearance.rounding.normal
+                    colBackground: Appearance.colors.colPrimaryContainer
+                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                    colRipple: Appearance.colors.colPrimaryContainerActive
                     Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
 
                     onClicked: {
@@ -537,7 +532,7 @@ Item {
                             anchors.centerIn: parent
                             text: root.playing ? "pause" : "play_arrow"
                             iconSize: Appearance.font.pixelSize.hugeass
-                            color: root.useDynamicColors ? root.blendedColors.colOnPrimaryContainer : Appearance.colors.colOnPrimaryContainer
+                            color: Appearance.colors.colOnPrimaryContainer
                             fill: 1
                         }
                     }
@@ -552,34 +547,35 @@ Item {
 
                 RippleButton {
                     id: prevBtn
-                    implicitWidth: 24
-                    implicitHeight: 24
-                    buttonRadius: 12
-                    colBackground: "transparent"
-                    colBackgroundHover: Qt.rgba(1, 1, 1, 0.1)
-                    colRipple: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
+                    // 24px of glyph in a 32px target, which is the pointer minimum
+                    // (DESIGN.md 3.4).
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1, 1)
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    colRipple: Appearance.colors.colPrimaryContainer
+
+                    // Disabled is the control at 0.4, not a dimmed glyph over a
+                    // button that still hovers, ripples and fires (DESIGN.md 3.1).
+                    enabled: root.player?.canGoPrevious ?? false
+                    opacity: enabled ? 1 : 0.4
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
 
                     onClicked: {
                         if (root.player)
                             root.player.previous();
                     }
 
-                    contentItem: Item {
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "skip_previous"
-                            iconSize: Appearance.font.pixelSize.normal
-                            fill: 1
-                            color: {
-                                if (!root.player || !root.player.canGoPrevious) {
-                                    return Appearance.colors.colOnSurfaceVariant;
-                                }
-                                return Appearance.colors.colOnSurface;
-                            }
-                            opacity: root.player && root.player.canGoPrevious ? 1.0 : 0.4
-                        }
+                    contentItem: MaterialSymbol {
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "skip_previous"
+                        iconSize: Appearance.font.pixelSize.normal
+                        fill: 1
+                        color: Appearance.colors.colOnSurface
                     }
                 }
 
@@ -596,9 +592,9 @@ Item {
                         sourceComponent: StyledSlider {
                             configuration: StyledSlider.Configuration.Wavy
                             animateWave: root.playing && root.visible
-                            highlightColor: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
-                            trackColor: Qt.rgba(1, 1, 1, 0.2)
-                            handleColor: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
+                            highlightColor: Appearance.colors.colPrimaryContainer
+                            trackColor: Appearance.colors.colSecondaryContainer
+                            handleColor: Appearance.colors.colPrimaryContainer
                             value: (root.player && root.player.length > 0) ? (root.player.position / root.player.length) : 0
                             onMoved: if (root.player)
                                 root.player.position = value * root.player.length
@@ -616,8 +612,8 @@ Item {
                         sourceComponent: StyledProgressBar {
                             wavy: root.player ? root.playing : false
                             animateWave: root.playing && root.visible
-                            highlightColor: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
-                            trackColor: Qt.rgba(1, 1, 1, 0.2)
+                            highlightColor: Appearance.colors.colPrimaryContainer
+                            trackColor: Appearance.colors.colSecondaryContainer
                             value: (root.player && root.player.length > 0) ? (root.player.position / root.player.length) : 0
                         }
                     }
@@ -625,34 +621,35 @@ Item {
 
                 RippleButton {
                     id: nextBtn
-                    implicitWidth: 24
-                    implicitHeight: 24
-                    buttonRadius: 12
-                    colBackground: "transparent"
-                    colBackgroundHover: Qt.rgba(1, 1, 1, 0.1)
-                    colRipple: root.useDynamicColors ? root.blendedColors.colPrimaryContainer : Appearance.colors.colPrimaryContainer
+                    // 24px of glyph in a 32px target, which is the pointer minimum
+                    // (DESIGN.md 3.4).
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1, 1)
+                    colBackgroundHover: Appearance.colors.colLayer1Hover
+                    colRipple: Appearance.colors.colPrimaryContainer
+
+                    // Disabled is the control at 0.4, not a dimmed glyph over a
+                    // button that still hovers, ripples and fires (DESIGN.md 3.1).
+                    enabled: root.player?.canGoNext ?? false
+                    opacity: enabled ? 1 : 0.4
+
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
 
                     onClicked: {
                         if (root.player)
                             root.player.next();
                     }
 
-                    contentItem: Item {
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "skip_next"
-                            iconSize: Appearance.font.pixelSize.normal
-                            fill: 1
-                            color: {
-                                if (!root.player || !root.player.canGoNext) {
-                                    return Appearance.colors.colOnSurfaceVariant;
-                                }
-                                return Appearance.colors.colOnSurface;
-                            }
-                            opacity: root.player && root.player.canGoNext ? 1.0 : 0.4
-                        }
+                    contentItem: MaterialSymbol {
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "skip_next"
+                        iconSize: Appearance.font.pixelSize.normal
+                        fill: 1
+                        color: Appearance.colors.colOnSurface
                     }
                 }
             }

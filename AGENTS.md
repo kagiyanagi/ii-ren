@@ -157,6 +157,18 @@ you touched; they are the only automated gate.
   pinned on both reals, and the licence for a one-line change to a token every widget reads
   is computed rather than remembered — the solved colour over its own base is the same pixel
   at either alpha, for every step of the layer chain
+- `python3 tools/check-media-controls.py` — the media popup shows every player it has, and
+  it closes visibly. `MediaControls` merges two entries that are at "the same place in a
+  track of the same length", and that test was written unsigned: `p1.position - p2.position
+  <= 2` is true whenever p1 is *behind* p2 at all, so any player earlier in its track than
+  another was merged into it and vanished. Three live players collapsed to one card, which
+  looks exactly like the filter working. It also holds the setting (the switch in Settings >
+  Services never reached this surface, while the empty state told the user to go and use
+  it), the exit (`Loader.active` on the open request destroys the surface before the close
+  plays), and the mask — the column now rests at `arrowPopupScale`, so a `Region` over it
+  would freeze the input region at half size. `tools/audit/mock-mpris.py` is how the
+  surface is reached at all: none of its states exist without music, and the
+  more-than-one-player layout needs two buses
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -16,7 +16,12 @@ Scope {
     id: root
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property var realPlayers: MprisController.players
-    readonly property var meaningfulPlayers: filterDuplicatePlayers(realPlayers)
+    // `realPlayers` is already filtered by MprisController.isRealPlayer, which knows
+    // the specific buses that duplicate each other. This second pass is the generic
+    // one, and it is the setting's to switch off -- it ran unconditionally, so the
+    // switch in Settings > Services did nothing here and the placeholder below told
+    // the user to go and use it.
+    readonly property var meaningfulPlayers: Config.options.media.filterDuplicatePlayers ? filterDuplicatePlayers(realPlayers) : realPlayers
     readonly property real osdWidth: Appearance.sizes.osdWidth
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
@@ -32,10 +37,16 @@ Scope {
             let p1 = players[i];
             let group = [i];
 
-            // Find duplicates by trackTitle prefix
+            // Same title, or the same place in a track of the same length. The
+            // second test was written unsigned -- `p1.position - p2.position <= 2`
+            // is true whenever p1 is *behind* p2 at all, by any amount, so any
+            // player earlier in its track than another was merged into it and
+            // vanished from the stack. Three live players collapsed to one.
             for (let j = i + 1; j < players.length; ++j) {
                 let p2 = players[j];
-                if (p1.trackTitle && p2.trackTitle && (p1.trackTitle.includes(p2.trackTitle) || p2.trackTitle.includes(p1.trackTitle)) || (p1.position - p2.position <= 2 && p1.length - p2.length <= 2)) {
+                let sameTitle = p1.trackTitle && p2.trackTitle && (p1.trackTitle.includes(p2.trackTitle) || p2.trackTitle.includes(p1.trackTitle));
+                let samePlace = Math.abs(p1.position - p2.position) <= 2 && Math.abs(p1.length - p2.length) <= 2;
+                if (sameTitle || samePlace) {
                     group.push(j);
                 }
             }
@@ -71,7 +82,30 @@ Scope {
 
     Loader {
         id: mediaControlsLoader
-        active: GlobalStates.mediaControlsOpen && (!GlobalStates.dockMediaPresent || GlobalStates.barMediaPresent)
+
+        // The request. `active` is deliberately not bound to it: the surface would
+        // then be destroyed on the frame the flag flips and the close animation
+        // would play to nobody -- the popup just vanishes, with no other symptom.
+        readonly property bool wantOpen: GlobalStates.mediaControlsOpen && (!GlobalStates.dockMediaPresent || GlobalStates.barMediaPresent)
+
+        // The mapping, set explicitly rather than bound, so the order in which a
+        // binding and a change handler run cannot decide whether the exit is seen.
+        property bool alive: false
+        active: alive
+
+        onWantOpenChanged: {
+            if (wantOpen) {
+                if (item)
+                    item.startOpen();
+                else
+                    alive = true; // Component.onCompleted runs the open
+            } else if (item) {
+                item.startClose();
+            } else {
+                alive = false;
+            }
+        }
+
         onActiveChanged: {
             if (!mediaControlsLoader.active && root.realPlayers.length === 0) {
                 GlobalStates.mediaControlsOpen = false;
@@ -136,12 +170,33 @@ Scope {
                 }
             }
 
-            mask: Region {
-                item: playerColumnLayout
+            // Launcher3 ArrowPopup.setPivotForOpenCloseAnimation(): the stack grows
+            // out of the bar edge it is placed against, from the same four booleans
+            // the margins above already read.
+            readonly property int pivot: {
+                if (Config.options.bar.vertical)
+                    return Config.options.bar.bottom ? Item.Right : Item.Left;
+                return Config.options.bar.bottom ? Item.Bottom : Item.Top;
             }
+
+            function startOpen(): void {
+                motion.open();
+            }
+
+            function startClose(): void {
+                motion.close();
+            }
+
+            // No `mask:` here. The column is `anchors.fill: parent` inside a window
+            // sized to that column, so a Region over it was the whole window and did
+            // nothing -- but Region bakes the masked item's transform and refreshes
+            // only on a geometry change, so the open animation below would have
+            // frozen the input region at arrowPopupScale and left half the card
+            // clicking through to the window behind (tools/check-mask-regions.py).
 
             Component.onCompleted: {
                 GlobalFocusGrab.addDismissable(panelWindow);
+                motion.open();
             }
             Component.onDestruction: {
                 GlobalFocusGrab.removeDismissable(panelWindow);
@@ -153,10 +208,27 @@ Scope {
                 }
             }
 
+            // ArrowPopup.animateOpen() / animateClose(), from the one composite the
+            // whole shell shares (DESIGN.md 9). The column owns the transformOrigin,
+            // because that is the per-surface half of the recipe.
+            ArrowPopupMotion {
+                id: motion
+                target: playerColumnLayout
+                onClosed: mediaControlsLoader.alive = false
+            }
+
             ColumnLayout {
                 id: playerColumnLayout
                 anchors.fill: parent
                 spacing: -Appearance.sizes.elevationMargin // Shadow overlap okay
+
+                transformOrigin: panelWindow.pivot
+
+                // Resting state, so a popup that survives a close animates from a
+                // known one next time rather than from whatever the last close left
+                // behind (DESIGN.md 2.7).
+                opacity: 0
+                scale: Appearance.animationCurves.arrowPopupScale
 
                 Repeater {
                     model: ScriptModel {
@@ -168,6 +240,8 @@ Scope {
                         visualizerPoints: root.visualizerPoints
                         implicitWidth: root.widgetWidth
                         radius: root.popupRounding
+                        // Only worth a control when there is something to pick.
+                        canPickPlayer: root.meaningfulPlayers.length > 1
                     }
                 }
 
@@ -195,23 +269,22 @@ Scope {
                         anchors.centerIn: parent
                         color: Appearance.colors.colLayer0
                         radius: root.popupRounding
-                        property real padding: 20
-                        implicitWidth: placeholderLayout.implicitWidth + padding * 2
-                        implicitHeight: placeholderLayout.implicitHeight + padding * 2
+                        // PagePlaceholder anchors itself to its parent and has no
+                        // implicit size of its own, so the card is what carries the
+                        // geometry -- a player card's width, and the shell's own
+                        // placeholder height. Sizing the card from the placeholder
+                        // instead is a binding loop that resolves to nothing.
+                        implicitWidth: root.widgetWidth - Appearance.sizes.elevationMargin * 2
+                        implicitHeight: Appearance.sizes.pagePlaceholderHeight
 
-                        ColumnLayout {
-                            id: placeholderLayout
-                            anchors.centerIn: parent
-
-                            StyledText {
-                                text: Translation.tr("No active player")
-                                font.pixelSize: Appearance.font.pixelSize.large
-                            }
-                            StyledText {
-                                color: Appearance.colors.colSubtext
-                                text: Translation.tr("Make sure your player has MPRIS support\nor try turning off duplicate player filtering")
-                                font.pixelSize: Appearance.font.pixelSize.small
-                            }
+                        // The shell's one empty state (DESIGN.md 9), rather than a
+                        // second hand-rolled pair of labels.
+                        PagePlaceholder {
+                            id: placeholder
+                            icon: "music_off"
+                            title: Translation.tr("No active player")
+                            description: Translation.tr("Make sure your player has MPRIS support\nor try turning off duplicate player filtering")
+                            descriptionHorizontalAlignment: Text.AlignHCenter
                         }
                     }
                 }
