@@ -60,10 +60,10 @@ MouseArea {
         if (event.key === Qt.Key_Escape) { // Esc to clear
             root.context.currentText = "";
         }
-        if (event.key === Qt.Key_CapsLock) {
-            // Hyprland has no event for this and flips the lock on the key
-            // down, so the only moment worth asking at is right here.
-            HyprlandXkb.refreshLockKeys();
+        if (event.key === Qt.Key_CapsLock && !event.isAutoRepeat) {
+            // The press is the toggle. Asking the compositor here instead
+            // races it -- see HyprlandXkb.noteCapsLockPressed.
+            HyprlandXkb.noteCapsLockPressed();
         }
         forceFieldFocus();
     }

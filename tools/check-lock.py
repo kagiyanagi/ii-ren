@@ -39,11 +39,17 @@ not even in this repo's QML.
   wrong password sends no message at all, which is why the whole conversation can
   be surfaced without it becoming noise.
 
-- **The Caps Lock state is asked for, because nothing announces it.** Hyprland
+- **The Caps Lock state is tracked, not polled at the worst moment.** Hyprland
   reports the lock keys in `hyprctl devices` and emits no socket2 event when they
-  change -- verified by watching the socket across a toggle. The only refresh that
-  matters is the one on the Caps Lock key itself, which Qt does deliver
-  (`Qt.Key_CapsLock`, and Hyprland flips the state on the key *down*).
+  change -- verified by watching the socket across a toggle -- so the key event is
+  all there is to go on. But the compositor hands the key to the client *before*
+  it updates what it reports: measured on 2026-09-21, a query fired from the key
+  event came back stale 11ms after one press and fresh 22ms after another. Stale
+  then sticks, because nothing else asks, and the first shipped version of this
+  did exactly that: the hint appeared when Caps Lock went on and would not go
+  away when it went off. The press is the toggle, so the press flips the state,
+  and the authoritative read is left to surface creation, which races nothing.
+  Auto-repeat must be skipped -- xkb toggles a lock on the real press only.
 
 - **The parked workspace maps back.** Locking parks each monitor on
   `INT32_MAX - ws` so no window sits behind a transparent lock surface. A shell
@@ -190,12 +196,24 @@ assert "property bool capsLock" in xkb and "function refreshLockKeys" in xkb, \
 assert xkb.count('command: ["hyprctl", "-j", "devices"]') == 1, (
     "one devices fetch, not two: the layouts and the lock keys come out of the "
     "same call")
-assert "Qt.Key_CapsLock" in surface and "refreshLockKeys" in surface, (
+assert "function noteCapsLockPressed" in xkb, \
+    "the press has to be trackable without asking the compositor"
+assert "Qt.Key_CapsLock" in surface, (
     "nothing announces a Caps Lock change -- Hyprland has no event for it -- so "
-    "the key press is the refresh, and without it the hint never appears")
+    "the key press is all there is, and without it the hint never appears")
+
+caps_branch = surface.split("Qt.Key_CapsLock")[1].split("}")[0]
+assert "noteCapsLockPressed" in caps_branch, (
+    "flip the tracked state on the key; a query here reads what the compositor "
+    "reported *before* the press about half the time, and a stale answer sticks "
+    "-- that is the bug where the hint would not go away when Caps Lock did")
+assert "refreshLockKeys" not in caps_branch, \
+    "same thing said the other way round: no compositor query from the key event"
+assert "isAutoRepeat" in surface.split("Qt.Key_CapsLock")[0][-120:] + caps_branch, \
+    "a held Caps Lock repeats and xkb toggles the lock once, so skip repeats"
 assert surface.split("Component.onCompleted:")[1].split("}")[0].count("refreshLockKeys") == 1, (
-    "Caps Lock can already be on when the screen locks, so the surface asks "
-    "once on the way up too")
+    "Caps Lock can already be on when the screen locks, and a surface opening "
+    "is the one moment a query has nothing to race")
 
 # ---------------------------------------------------------------------------
 # The parked workspace maps back, including on a re-lock.

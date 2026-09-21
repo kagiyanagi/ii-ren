@@ -20,13 +20,30 @@ Singleton {
     // Caps Lock, for the lock screen's "that is why your password is wrong"
     // hint. Hyprland reports the lock keys per keyboard in `hyprctl devices`
     // and emits nothing at all when they change -- socket2 has no event for it
-    // -- so this is asked for rather than watched. It flips on the key *down*,
-    // which is when the only caller refreshes it.
+    // -- so it is asked for rather than watched.
     property bool capsLock: false
 
-    // The same `hyprctl -j devices` the layouts come from, asked again.
+    // The same `hyprctl -j devices` the layouts come from, asked again. Only
+    // safe at a moment that cannot race the compositor -- see below.
     function refreshLockKeys(): void {
         fetchDevicesProc.running = true;
+    }
+
+    /**
+     * Track a Caps Lock key that was just pressed. Callers must skip auto-repeat:
+     * xkb toggles a lock on the real press only.
+     *
+     * Deliberately not a re-read, and this is the whole reason the state is
+     * kept rather than fetched. Hyprland hands the key to the client *before*
+     * it updates what `hyprctl devices` reports, so a query fired from the key
+     * event is a coin flip: measured on 2026-09-21, it came back stale 11ms
+     * after one press and fresh 22ms after another. Stale then sticks, because
+     * nothing else asks -- which is exactly what "the message will not go away
+     * when I turn Caps Lock off" was. The press is the toggle, so flip it, and
+     * leave the authoritative read to a moment with nothing to race.
+     */
+    function noteCapsLockPressed(): void {
+        root.capsLock = !root.capsLock;
     }
 
     // For the service

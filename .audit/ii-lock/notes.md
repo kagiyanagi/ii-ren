@@ -98,16 +98,28 @@ below was found — a defect of this surface that never appears in its own direc
 Both indicators are one status chip above the centre island, and both facts had to be
 established by experiment rather than assumed. Numbers from this machine, 2026-09-21:
 
-**Caps Lock.** `hyprctl devices -j` carries `capsLock` per keyboard and it is accurate.
-Hyprland emits **nothing** on socket2 when it changes — watched across a toggle, the
-socket stayed silent — so there is no event to subscribe to and polling it would be a
-subprocess on a timer for a boolean. It is asked for instead: once when the surface is
-created (caps can already be on) and on the Caps Lock key itself. Two things make that
-work, both verified: Qt does deliver the key (`16777252` = `Qt.Key_CapsLock`, press *and*
-release) and it reaches `LockSurface`'s root `Keys` handler *while the password field has
-focus*, which is the case that matters; and Hyprland flips the state on the key **down**,
-so one refresh on press is enough. It shares the `hyprctl -j devices` call
-`HyprlandXkb` already made for layouts rather than adding a second one.
+**Caps Lock.** `hyprctl devices -j` carries `capsLock` **per keyboard** — a ydotool
+toggle shows up on `ydotoold-virtual-device` and on nothing else — and Hyprland emits
+nothing on socket2 when it changes, watched across a toggle. So the key event is all
+there is to go on. Qt does deliver it (`16777252` = `Qt.Key_CapsLock`, press and release)
+and it does reach `LockSurface`'s root `Keys` handler while the password field has focus,
+which is the case that matters.
+
+**The first version queried the compositor from that key event, and was wrong half the
+time.** Hyprland hands the key to the client *before* it updates what `hyprctl devices`
+reports: instrumented, the answer came back stale 11ms after one press and fresh 22ms
+after another. Stale then sticks, because nothing else asks — which is what "the message
+does not go away when I turn Caps Lock off" was, and the reason it looked like an
+on/off asymmetry when it was a coin flip. A press *is* the toggle, so
+`HyprlandXkb.noteCapsLockPressed()` flips the tracked state and the query is kept for
+surface creation, where there is nothing to race. Auto-repeat is skipped: xkb toggles a
+lock on the real press only. The authoritative read still shares the
+`hyprctl -j devices` call `HyprlandXkb` already made for layouts.
+
+Two things ruled out along the way, so nobody re-derives them: a `Process` declared
+`running: true` *does* restart when something later assigns `running = true`, and
+`StdioCollector.text` is reset per run rather than accumulated (both measured with a
+`date`-spawning probe). The bug was never the plumbing.
 
 **The lockout.** Run against an isolated tally dir so the real account is untouched:
 
