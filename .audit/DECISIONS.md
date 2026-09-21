@@ -77,6 +77,16 @@ From the rows that retimed something and could not drive the shell:
 - The **dock icon hover**, same 300ms `emphasizedDecel` but now `alwaysRunToEnd: false`
   via `Appearance.animation.iconHover`. A pointer flicked along the strip should
   reverse mid-flight rather than finish each icon's growth (`ii-dock`).
+- The **notification stack's exit**, which did not play at all: the layer surface unmapped
+  on the frame the list emptied, so the last card of every burst — usually the only card —
+  cut rather than slid. A 130ms grace keeps the window mapped for `StyledListView`'s
+  `remove`; what to watch is whether 130ms reads as a slide or as a stutter now that it is
+  visible for the first time (`ii-notificationPopup`).
+- The **notification stack's sidebar dodge**, `elementMoveEnter` → `elementMove`, i.e. the
+  slide became interruptible. Unreachable under the shipped config — opening the dashboard
+  times every popup out first — so set `sidebar.position` to `inverted`, raise a
+  notification, and open and close the policies sidebar before the slide lands
+  (`ii-notificationPopup`).
 
 ## Still nobody's call but yours
 

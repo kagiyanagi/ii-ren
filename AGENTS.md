@@ -169,6 +169,16 @@ you touched; they are the only automated gate.
   would freeze the input region at half size. `tools/audit/mock-mpris.py` is how the
   surface is reached at all: none of its states exist without music, and the
   more-than-one-player layout needs two buses
+- `python3 tools/check-notification-popup.py` — the notification stack finishes leaving.
+  `visible` bound to the popup list unmaps the layer surface on the frame the model empties,
+  so `StyledListView`'s `remove` transition plays to nobody — and because one notification at
+  a time is the ordinary case, that was the exit of *every* notification, with no symptom
+  (the card is supposed to disappear) and nothing a still frame can show. It pins the latch
+  as a latch rather than `hasPopups || timer.running`, which is the same undefined ordering
+  between a binding and a handler on one change signal, and it compares the grace against the
+  shared list's remove duration so retiming that fails here. It also holds the contract three
+  other corner surfaces read: `notificationPopupHeight` must be 0 when the corner is empty,
+  because all three take any positive number as a stack to drop below
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
