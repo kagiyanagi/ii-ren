@@ -90,6 +90,13 @@ you touched; they are the only automated gate.
   about that for as long as the surface existed; and every `DropShelf` mutator has to
   refuse while a drag is out, because freeing mime data the compositor is reading is a
   segfault rather than a glitch
+- `python3 tools/check-mask-regions.py` — no `PanelWindow` masks an item that carries a
+  transform. `mask: Region { item: x }` computes the input region from that item's rect
+  *with its transform applied* and refreshes it only when the item's **geometry** changes,
+  so an item resting at a scale bakes that scale into the region and never updates it. It
+  has no symptom: the surface paints at full size and the clicks go to the window behind.
+  The drop shelf shipped that way and could only be dismissed by restarting the shell.
+  Two pre-existing instances are in `KNOWN` with what each one measured
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

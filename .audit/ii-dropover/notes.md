@@ -4,6 +4,35 @@ Ran lane 1, not 2. 339 lines across three files; dispatching a brief this small
 costs more than building it.
 
 ## What the diff will not show
+**Shipped broken, and every gate passed.** The first version masked the card:
+`mask: Region { item: shelfCard }`, unchanged from before the row. But the card now
+rests at `arrowPopupScale` (0.5), and a `Region` computes the input region from the
+masked item's rect *with its transform applied*, refreshing it when that item's
+**geometry** changes and never when its `scale` does. So the region was baked at 0.5
+at startup and stayed there: a half-size rectangle in the middle of the shelf, with
+the close, both actions and the whole drop target outside it, clicking through to the
+window behind. Restarting the shell was the only way to get rid of it.
+
+Measured, not reasoned: a 3x3 grid of synthetic clicks over the card landed 1/9, and
+the one that landed was dead centre. The pre-change file under the same grid landed
+9/9. After the fix, 9/9.
+
+The fix is structural and is now a gate — `tools/check-mask-regions.py`. Mask a plain
+`Item` that owns the geometry (`shelfFrame`) and put the `scale`/`opacity`/
+`transformOrigin` on a `Rectangle` filling it. The input region is then the card's
+full box for the whole animation, which is 400ms of accepting clicks a few pixels
+outside the drawn edge, and that is the right trade.
+
+**The lesson for the process, not just this row.** `check-design.py`, qmllint,
+`smoke.sh`, `check-dropshelf.py`, the design-check pass and a screenshot all went green
+on a surface that could not be clicked at all. **Nothing in the audit tests input.** A
+still frame proves a surface renders; it says nothing about whether the compositor is
+sending it pointer events. Any row that touches a `mask`, a layer surface's geometry or
+a transform on something masked has to drive a click at it — `ydotool` with the 2x
+correction, and a **held** press (`click 0x40`, sleep, `click 0x80`): an instant
+press-and-release in one batch is dropped by a `RippleButton` about a third of the time
+and reads exactly like a dead button.
+
 
 **The panel is deliberately not behind a `Loader`.** `DesktopMenu` holds its
 `PanelWindow` in one and gates `active` on a `closing` flag so the exit can
@@ -91,6 +120,12 @@ capture looks like from here.
   a path. It is the feature the name "dropover" implies and the shelf does not
   have; it is a feature, not a defect, so it did not ride in on an audit row.
 - **`maxItems: 30`** silently drops the 31st file with no feedback.
+- **`ClipboardToast`'s masked card**, which is the same shape at `scale: 0.8` and is
+  in `check-mask-regions.py`'s `KNOWN`. It could not be triggered from `wl-copy` in
+  this session, so whether its geometry settles late enough to re-bake the region at 1
+  is **unmeasured**. `Cheatsheet`'s was measured and is clean — its content loads
+  lazily, so the sheet resizes after the reveal and the region re-bakes at full size,
+  which is luck rather than design and is why it is still listed.
 - **`DesktopMenu`'s hand-assembled `ArrowPopup` motion.** Its row landed four
   commits before `ii-dock` extracted `ArrowPopupMotion`, so decision 14's count
   is now two of four collapsed with `DesktopMenu` still transcribing it. This
