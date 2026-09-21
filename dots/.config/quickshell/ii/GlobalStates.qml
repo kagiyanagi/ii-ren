@@ -105,8 +105,12 @@ Singleton {
     property var desktopMenuWidgetId: null
 
     // Drop shelf, positioned at the point the files were dropped. -1 means the
-    // shelf was opened without one and should centre itself.
+    // shelf was opened without one and should centre itself. The coordinates are
+    // screen-local and belong to dropShelfScreen: pinning the panel to the
+    // focused monitor instead moved the shelf out from under the cursor the
+    // moment the next window was clicked, which is exactly when it is in use.
     property bool dropShelfOpen: false
+    property var dropShelfScreen: null
     property real dropShelfX: -1
     property real dropShelfY: -1
 

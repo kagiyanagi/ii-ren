@@ -81,6 +81,15 @@ you touched; they are the only automated gate.
   linear now — neither end of that travel is on screen — and this evaluates the curve to
   prove it, because the animation runs for the full duration either way and no still frame
   of a wipe shows the difference
+- `python3 tools/check-dropshelf.py` — the drop shelf opens where the files landed and
+  closes visibly. The pivot is the same corner-nearest-the-point arithmetic the desktop
+  menu got wrong down a band of every screen edge, so it is swept the same way; the rest
+  is structural, because none of it has a symptom you can see. `visible:` bound to
+  `dropShelfOpen` alone deletes the exit animation and the shelf still disappears;
+  `dropShelfX`/`Y` are meaningless without `dropShelfScreen` and two producers disagreed
+  about that for as long as the surface existed; and every `DropShelf` mutator has to
+  refuse while a drag is out, because freeing mime data the compositor is reading is a
+  segfault rather than a glitch
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

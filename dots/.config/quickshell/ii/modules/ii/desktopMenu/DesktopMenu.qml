@@ -564,6 +564,7 @@ Scope {
                             menuWindow.dismiss();
                             // Reuse the click point so the shelf lands where the
                             // menu was, not back at the last drop.
+                            GlobalStates.dropShelfScreen = GlobalStates.desktopMenuScreen;
                             GlobalStates.dropShelfX = GlobalStates.desktopMenuX;
                             GlobalStates.dropShelfY = GlobalStates.desktopMenuY;
                             GlobalStates.dropShelfOpen = true;

@@ -45,8 +45,11 @@ Singleton {
             root.hide();
     }
 
-    function show(urls, x, y): void {
+    // x and y are local to `screen`, which is why the screen comes with them: the
+    // shelf is its own layer surface and has to be told which output to open on.
+    function show(urls, screen, x, y): void {
         root.addItems(urls);
+        GlobalStates.dropShelfScreen = screen;
         GlobalStates.dropShelfX = x;
         GlobalStates.dropShelfY = y;
         GlobalStates.dropShelfOpen = true;

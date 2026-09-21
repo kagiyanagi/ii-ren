@@ -374,10 +374,12 @@ Variants {
                     Wallpapers.apply(wallpaperDrop.pendingPath);
                     drop.acceptProposedAction();
                 } else if (wallpaperDrop.pendingShelfCount > 0) {
-                    // Global coordinates: the shelf is its own layer surface, so
-                    // the drop point has to leave this window's space.
-                    const globalPos = wallpaperDrop.mapToGlobal(drop.x, drop.y);
-                    DropShelf.show(drop.urls, globalPos.x, globalPos.y);
+                    // This window covers exactly one output and so does the
+                    // shelf's, so the drop point carries across unchanged once
+                    // the screen goes with it. mapToGlobal() was the other
+                    // producer of these two globals disagreeing with
+                    // DesktopMenu, which passes screen-local coordinates.
+                    DropShelf.show(drop.urls, bgRoot.screen, drop.x, drop.y);
                     drop.acceptProposedAction();
                 }
                 wallpaperDrop.pendingPath = "";
