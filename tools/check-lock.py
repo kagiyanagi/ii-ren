@@ -29,6 +29,22 @@ not even in this repo's QML.
   hold, and the hold's length is the exit's own token. Same shape as the
   cheatsheet's intent-vs-mapping split, for the same reason.
 
+- **The lockout warning is not filtered out.** After `deny` wrong passwords
+  pam_faillock refuses the next ones before pam_unix ever sees them, and says so
+  through the PAM conversation -- measured here on 2026-09-21, with an isolated
+  tally dir: `"The account is locked due to 2 failed logins."` then
+  `"(2 minutes left to unlock)"`, both with **`messageIsError == false`**. It is
+  `pam_info`, not `pam_error`. So a capture that only keeps errors keeps nothing,
+  and the screen goes back to shaking at a password PAM never checked. A plain
+  wrong password sends no message at all, which is why the whole conversation can
+  be surfaced without it becoming noise.
+
+- **The Caps Lock state is asked for, because nothing announces it.** Hyprland
+  reports the lock keys in `hyprctl devices` and emits no socket2 event when they
+  change -- verified by watching the socket across a toggle. The only refresh that
+  matters is the one on the Caps Lock key itself, which Qt does deliver
+  (`Qt.Key_CapsLock`, and Hyprland flips the state on the key *down*).
+
 - **The parked workspace maps back.** Locking parks each monitor on
   `INT32_MAX - ws` so no window sits behind a transparent lock surface. A shell
   that restarts under a lock re-runs that on a monitor that is *already* parked,
@@ -131,6 +147,57 @@ assert "elementMoveEnter" in island and "elementMoveExit" in island, (
     "spatial in, fast effects out")
 
 # ---------------------------------------------------------------------------
+# The reason the password cannot work reaches the screen.
+
+context = src(SHELL / "modules/common/panels/lock/LockContext.qml")
+message = context.split("onPamMessage:")[1].split("\n        }")[0]
+assert "authMessage" in message, (
+    "PAM's messages have to be kept: faillock's lockout notice is the only "
+    "warning the user gets that the next attempts are refused unread")
+assert "messageIsError" not in message, (
+    "do not filter the capture on messageIsError -- pam_faillock sends the "
+    "lockout through pam_info, so an error-only filter keeps nothing at all")
+assert "responseRequired" in message and "respond" in message, \
+    "the password prompt itself is a message, and still has to be answered"
+
+assert 'root.authMessage = "";' in context.split("function tryUnlock")[1].split("}")[0], \
+    "the message must be cleared when the next attempt starts, or it outlives "\
+    "the lockout it describes"
+assert 'lockContext.authMessage = "";' in screen, (
+    "a fresh lock must clear the last one's PAM message, or the screen opens "
+    "showing a lockout that has already expired")
+assert 'authMessage = ""' not in src(SHELL / "modules/common/panels/lock/LockContext.qml").split("function reset()")[1].split("}")[0], (
+    "not in reset(): the ten-second idle timer calls that, and the reason the "
+    "screen will not open should outlast looking away from it")
+
+status = surface.split("Rectangle {\n        id: statusChip")[1].split("\n    // Main toolbar")[0]
+assert "colErrorContainer" in status and "authMessage" in surface, \
+    "the PAM message needs the error container; a lockout is not a hint"
+assert "lineCount > 1" in status and "rounding.large" in status, (
+    "a pill radius on a chip that has wrapped is an arc that eats the first "
+    "and last lines (DESIGN.md 5.6) -- faillock's two sentences wrap")
+assert "transformOrigin: Item.Bottom" in status, \
+    "the chip is about the island under it, so it grows out of it (2.6)"
+assert "elementMoveEnter" in status and "elementMoveExit" in status, \
+    "enter and exit are different specs (2.5)"
+
+# ---------------------------------------------------------------------------
+# Caps Lock is asked for at the only moment it can have changed.
+
+xkb = src(SHELL / "services/HyprlandXkb.qml")
+assert "property bool capsLock" in xkb and "function refreshLockKeys" in xkb, \
+    "HyprlandXkb owns the lock-key state; the lock screen only asks for it"
+assert xkb.count('command: ["hyprctl", "-j", "devices"]') == 1, (
+    "one devices fetch, not two: the layouts and the lock keys come out of the "
+    "same call")
+assert "Qt.Key_CapsLock" in surface and "refreshLockKeys" in surface, (
+    "nothing announces a Caps Lock change -- Hyprland has no event for it -- so "
+    "the key press is the refresh, and without it the hint never appears")
+assert surface.split("Component.onCompleted:")[1].split("}")[0].count("refreshLockKeys") == 1, (
+    "Caps Lock can already be on when the screen locks, so the surface asks "
+    "once on the way up too")
+
+# ---------------------------------------------------------------------------
 # The parked workspace maps back, including on a re-lock.
 #
 # Lifted from Lock.qml rather than restated: a desktop that locks once exercises
@@ -167,4 +234,5 @@ for ws in list(range(1, 32)) + [100, 1000, 999999]:
         f"not {park(ws)} -- every window is on {ws}")
 
 print("ok: session takeback wired on both sides, flag written on both edges, "
-      "unlock holds the lock for its exit, parked workspaces map back")
+      "unlock holds the lock for its exit, PAM's lockout reaches the screen "
+      "unfiltered, Caps Lock is asked for on the key, parked workspaces map back")

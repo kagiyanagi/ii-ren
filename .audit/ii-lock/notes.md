@@ -80,7 +80,7 @@ tools/audit/preview-lock.sh busy.png 20 'previewContext.unlockInProgress = true'
 tools/audit/preview-lock.sh armed.png 20 'previewContext.targetAction = 1'   # Poweroff
 ```
 
-`shot-before.png` / `shot-after.png` come from it. It is also how the `SysTray` error
+`shot-before.png` / `shot-after.png` come from it, and so do `shot-capslock.png`, `shot-lockedout.png` and `shot-unlocking.png` — the three states that otherwise need a real lockout, a real caps key and a real PAM round trip to see. The caps one is real: the key was sent with `ydotool` at the focused preview while the field had focus, which is the path that had to be proven. It is also how the `SysTray` error
 below was found — a defect of this surface that never appears in its own directory.
 
 ## Found by the preview, fixed outside this directory
@@ -92,6 +92,53 @@ below was found — a defect of this surface that never appears in its own direc
   `typeof` test `NetworkSpeed.qml` already uses.
 - `Config.options.lock.centerClock` was read by no file in the repo (anti-pattern 16) and
   is deleted, from `Config.qml` and from the shipped `config.json`.
+
+## Caps Lock and the lockout, as measured
+
+Both indicators are one status chip above the centre island, and both facts had to be
+established by experiment rather than assumed. Numbers from this machine, 2026-09-21:
+
+**Caps Lock.** `hyprctl devices -j` carries `capsLock` per keyboard and it is accurate.
+Hyprland emits **nothing** on socket2 when it changes — watched across a toggle, the
+socket stayed silent — so there is no event to subscribe to and polling it would be a
+subprocess on a timer for a boolean. It is asked for instead: once when the surface is
+created (caps can already be on) and on the Caps Lock key itself. Two things make that
+work, both verified: Qt does deliver the key (`16777252` = `Qt.Key_CapsLock`, press *and*
+release) and it reaches `LockSurface`'s root `Keys` handler *while the password field has
+focus*, which is the case that matters; and Hyprland flips the state on the key **down**,
+so one refresh on press is enough. It shares the `hyprctl -j devices` call
+`HyprlandXkb` already made for layouts rather than adding a second one.
+
+**The lockout.** Run against an isolated tally dir so the real account is untouched:
+
+```sh
+mkdir -p /tmp/faillock-probe ~/.config/quickshell/ii/.pamprobe
+cat > ~/.config/quickshell/ii/.pamprobe/faillocktest.conf <<'EOF'
+auth required      pam_faillock.so preauth  deny=2 unlock_time=120 dir=/tmp/faillock-probe
+auth required      pam_deny.so
+auth [default=die] pam_faillock.so authfail deny=2 unlock_time=120 dir=/tmp/faillock-probe
+EOF
+# then a throwaway qs -p with PamContext { configDirectory: ".pamprobe"; config: "faillocktest.conf" }
+# started three times, logging every onPamMessage
+```
+
+What came back, and what the design turns on:
+
+| attempt | messages |
+|---|---|
+| 1, 2 | none at all — a plain wrong password says nothing |
+| 3 | `"The account is locked due to 2 failed logins."` then `"(2 minutes left to unlock)"` |
+
+Both arrive with **`messageIsError == false`** — pam_faillock uses `pam_info`, so a
+capture filtered on errors would keep nothing and the screen would go on shaking at a
+password PAM never checked. Both arrive with `responseRequired == false`, which is what
+separates them from the password prompt. They are two messages, hence the accumulation.
+And because nothing is said for an ordinary failure, the whole conversation can be shown
+without it turning into noise. `check-lock.py` pins all three of those.
+
+This machine has `unlock_time = 10` in `/etc/security/faillock.conf`, i.e. ten seconds,
+with `deny` left at the default 3. Elsewhere it is ten *minutes*, which is what the
+message will say.
 
 ## Motion to watch in the cohesion pass
 
@@ -110,8 +157,10 @@ below was found — a defect of this surface that never appears in its own direc
   them when the user retypes, and a model that no longer matches the field. The enter (the
   M3E shape pop-in) is tokenised; the exit is instant by design, which is the one place
   this surface does not follow rule 4.
-- **No caps-lock indicator.** There is no source for it: Hyprland emits no event, and
-  `hyprctl devices` would have to be polled. Qt only sees the key press, which is not the
-  state.
+- **No countdown of our own.** `faillock --user $USER` does work unprivileged here and
+  would let the chip appear before the first attempt, with a live timer — but it means
+  parsing a table plus `deny`/`unlock_time` out of `/etc/security/faillock.conf`, for a
+  fact PAM states in its own words one keystroke later. PAM's messages are the source;
+  there is no second one.
 - The split-island layout was left alone. It is the shell's dialect of the Android 16
   bottom row and the redesign budget went on the failure modes instead.

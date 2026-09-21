@@ -44,7 +44,11 @@ MouseArea {
     }
 
     // Init
-    Component.onCompleted: forceFieldFocus()
+    Component.onCompleted: {
+        forceFieldFocus();
+        // Caps Lock can already be on when the screen locks.
+        HyprlandXkb.refreshLockKeys();
+    }
 
     // Key presses
     property bool ctrlHeld: false
@@ -55,7 +59,12 @@ MouseArea {
         }
         if (event.key === Qt.Key_Escape) { // Esc to clear
             root.context.currentText = "";
-        } 
+        }
+        if (event.key === Qt.Key_CapsLock) {
+            // Hyprland has no event for this and flips the lock on the key
+            // down, so the only moment worth asking at is right here.
+            HyprlandXkb.refreshLockKeys();
+        }
         forceFieldFocus();
     }
     Keys.onReleased: event => {
@@ -320,6 +329,136 @@ MouseArea {
                             : Appearance.colors.colOnSecondaryContainer
                     }
                 }
+            }
+        }
+    }
+
+    /*
+     * Why the password cannot work, when there is a reason for it.
+     *
+     * PAM has first claim. After three wrong passwords pam_faillock refuses the
+     * next ones before pam_unix ever sees them, for `unlock_time` seconds, and
+     * it says so -- but into a conversation nothing was reading, so the screen
+     * shook and said "Incorrect password" about a password it had not checked.
+     * Caps Lock second: the ordinary reason, and the one a shake never explains
+     * either.
+     */
+    readonly property string statusText: {
+        if (root.context.authMessage.length > 0)
+            return root.context.authMessage;
+        if (HyprlandXkb.capsLock)
+            return Translation.tr("Caps Lock is on");
+        return "";
+    }
+    readonly property bool statusFromPam: root.context.authMessage.length > 0
+
+    Rectangle {
+        id: statusChip
+        readonly property bool shown: root.statusText.length > 0
+        // As wide as the row it belongs to, and never past the 8dp the screen
+        // edge gets (5.3) on a display too narrow to hold that row.
+        readonly property real maxWidth: Math.min(rightIsland.x + rightIsland.width - leftIsland.x, root.width - 16)
+
+        anchors {
+            horizontalCenter: mainIsland.horizontalCenter
+            bottom: mainIsland.top
+            bottomMargin: 10
+        }
+        implicitWidth: statusRow.implicitWidth + 24
+        implicitHeight: statusRow.implicitHeight + 12
+
+        // A pill while it is one line, and a card once it wraps: `full` on a
+        // box three lines tall is an arc that eats the first and last of them
+        // (5.6), which is exactly what faillock's two sentences did.
+        radius: statusLabel.lineCount > 1 ? Appearance.rounding.large : Appearance.rounding.full
+
+        // The error container for anything PAM says, whatever severity it
+        // claims: faillock sends the lockout as info, and a lockout is not
+        // information, it is the reason nothing the user types will work.
+        color: root.statusFromPam ? Appearance.colors.colErrorContainer : Appearance.colors.colSurfaceContainer
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // It is about the island below it, so it grows out of it (2.6). Enter
+        // decelerating and spatial with the fade on the effects spec, exit
+        // faster on the exit spec -- the same pair the islands use.
+        transformOrigin: Item.Bottom
+        opacity: 0
+        scale: 0.9
+        visible: opacity > 0
+
+        onShownChanged: {
+            chipEnter.stop();
+            chipExit.stop();
+            if (statusChip.shown)
+                chipEnter.start();
+            else
+                chipExit.start();
+        }
+
+        ParallelAnimation {
+            id: chipEnter
+            NumberAnimation {
+                target: statusChip
+                property: "scale"
+                to: 1
+                duration: Appearance.animation.elementMoveEnter.duration
+                easing.type: Appearance.animation.elementMoveEnter.type
+                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+            }
+            NumberAnimation {
+                target: statusChip
+                property: "opacity"
+                to: 1
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Appearance.animation.elementMoveFast.type
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+            }
+        }
+        ParallelAnimation {
+            id: chipExit
+            NumberAnimation {
+                target: statusChip
+                property: "scale"
+                to: 0.9
+                duration: Appearance.animation.elementMoveExit.duration
+                easing.type: Appearance.animation.elementMoveExit.type
+                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+            }
+            NumberAnimation {
+                target: statusChip
+                property: "opacity"
+                to: 0
+                duration: Appearance.animation.elementMoveExit.duration
+                easing.type: Appearance.animation.elementMoveExit.type
+                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+            }
+        }
+
+        RowLayout {
+            id: statusRow
+            anchors.centerIn: parent
+            spacing: 8
+
+            MaterialSymbol {
+                id: statusIcon
+                Layout.alignment: Qt.AlignVCenter
+                fill: 1
+                text: root.statusFromPam ? "error" : "keyboard_capslock"
+                iconSize: Appearance.font.pixelSize.huge
+                color: root.statusFromPam ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
+            }
+            StyledText {
+                id: statusLabel
+                // Wrapped rather than elided: faillock's two sentences are
+                // longer than the field, and half of "(9 minutes left to
+                // unlock)" is worse than a second line.
+                Layout.maximumWidth: statusChip.maxWidth - 24 - statusIcon.implicitWidth - statusRow.spacing
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                text: root.statusText
+                color: root.statusFromPam ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
             }
         }
     }

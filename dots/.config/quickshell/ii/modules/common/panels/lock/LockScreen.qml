@@ -78,8 +78,10 @@ Scope {
                     }
                     lockContext.reset();
                     // Every lock starts with a fresh attempt budget, so a
-                    // reader given up on last time is listening again.
+                    // reader given up on last time is listening again, and
+                    // without the last lock's PAM message still on the screen.
                     lockContext.resetFingerprint();
+                    lockContext.authMessage = "";
                 }
             }
         }

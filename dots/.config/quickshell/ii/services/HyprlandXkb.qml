@@ -17,6 +17,18 @@ Singleton {
     property var cachedLayoutCodes: ({})
     property string currentLayoutName: ""
     property string currentLayoutCode: ""
+    // Caps Lock, for the lock screen's "that is why your password is wrong"
+    // hint. Hyprland reports the lock keys per keyboard in `hyprctl devices`
+    // and emits nothing at all when they change -- socket2 has no event for it
+    // -- so this is asked for rather than watched. It flips on the key *down*,
+    // which is when the only caller refreshes it.
+    property bool capsLock: false
+
+    // The same `hyprctl -j devices` the layouts come from, asked again.
+    function refreshLockKeys(): void {
+        fetchDevicesProc.running = true;
+    }
+
     // For the service
     property var baseLayoutFilePath: "/usr/share/X11/xkb/rules/base.lst"
     property bool needsLayoutRefresh: false
@@ -73,9 +85,10 @@ Singleton {
         }
     }
 
-    // Find out available layouts and current active layout. Should only be necessary on init
+    // Available layouts, the active one, and the lock keys. On init for the
+    // layouts, and again whenever someone asks for the lock keys.
     Process {
-        id: fetchLayoutsProc
+        id: fetchDevicesProc
         running: true
         command: ["hyprctl", "-j", "devices"]
 
@@ -90,8 +103,14 @@ Singleton {
                     return;
                 }
 
-                const hyprlandKeyboard = (parsedOutput["keyboards"] ?? [])
-                    .find(kb => kb.main === true);
+                const keyboards = parsedOutput["keyboards"] ?? [];
+                // Any keyboard, not just the main one: the lock is per device,
+                // and a second keyboard with caps on types capitals whatever
+                // the built-in one thinks. Read before the early return below,
+                // which is about layouts and not about this.
+                root.capsLock = keyboards.some(kb => kb.capsLock === true);
+
+                const hyprlandKeyboard = keyboards.find(kb => kb.main === true);
                 if (!hyprlandKeyboard)
                     return;
 
@@ -113,7 +132,7 @@ Singleton {
             if (event.name === "activelayout") {
                 if (root.needsLayoutRefresh) {
                     root.needsLayoutRefresh = false;
-                    fetchLayoutsProc.running = true;
+                    fetchDevicesProc.running = true;
                 }
 
                 // If there's only one layout, the updated layout is always the same

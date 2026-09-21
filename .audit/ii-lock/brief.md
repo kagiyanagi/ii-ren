@@ -37,6 +37,21 @@ the corners. The split-island arrangement is this shell's own dialect of that an
 - Keyboard: every keypress anywhere goes to the field; Escape clears it. Nothing here
   closes, so Escape has no other job.
 
+**Told, not guessed.** Two things stop a correct password from working, and the surface
+said nothing about either — it shook and printed "Incorrect password" in both cases.
+
+- *Caps Lock.* Hyprland reports it in `hyprctl devices` and announces it nowhere, so the
+  surface asks: once on the way up, and on the Caps Lock key itself, which is the only
+  other moment the answer can change while anyone is looking.
+- *The account being locked out.* After `deny` wrong passwords `pam_faillock` refuses the
+  next ones before `pam_unix` ever sees them, and says so through the PAM conversation as
+  **info, not error**. Nothing was reading it.
+
+Both land in one status chip above the centre island, PAM first, because a lockout
+outranks a hint: error container for PAM, neutral for Caps Lock, a pill while it is one
+line and a card once it wraps. It grows out of the island it is about and leaves on the
+exit spec, like everything else here.
+
 **Edge states.**
 - *Fingerprint absent or not enrolled* — the indicator's `Loader` is inactive and the
   island shrinks to field + confirm. Unchanged.
@@ -45,6 +60,9 @@ the corners. The split-island arrangement is this shell's own dialect of that an
   `restart_alt`, but the field still says "Enter password", which is the one place the
   surface lies about what Enter will do. The placeholder names the action instead.
 - *Wrong password* — placeholder becomes "Incorrect password", field shakes, text clears.
+- *Locked out* — the chip carries PAM's own two sentences, including its countdown. It
+  survives the ten-second idle reset, because the reason the screen will not open should
+  outlast looking away from it, and goes when the next attempt starts.
 - *The shell died while the screen was locked* — the compositor keeps the session locked
   and shows its own crash screen, forever, with no way back short of a TTY. This is the
   state the row exists for. The shell records that the session is locked, and a shell

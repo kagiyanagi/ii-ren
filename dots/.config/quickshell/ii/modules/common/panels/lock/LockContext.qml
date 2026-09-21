@@ -23,6 +23,15 @@ Scope {
     property var targetAction: LockContext.ActionEnum.Unlock
     property bool alsoInhibitIdle: false
 
+    // What PAM said about the last attempt, minus the password prompt itself.
+    // After three wrong passwords pam_faillock refuses the next ones before
+    // pam_unix ever sees them, and says so -- "The account is locked due to 3
+    // failed logins." and "(9 minutes left to unlock)", two messages, as info
+    // rather than as an error. Nothing read them, so the screen shook and said
+    // "Incorrect password" about a password it had not checked. Accumulated,
+    // because faillock speaks twice and both halves matter.
+    property string authMessage: ""
+
     // ── Fingerprint ───────────────────────────────────────────────────────
     // Enrolled prints come from the Fingerprint service rather than a second
     // fprintd-list of our own, so the lock screen and the settings page can
@@ -77,6 +86,11 @@ Scope {
     }
 
     function tryUnlock(alsoInhibitIdle = false) {
+        // Deliberately not cleared in reset(): the ten-second idle timer calls
+        // that, and a user who looks away from "the account is locked" should
+        // not come back to a blank screen and no reason. It goes when the next
+        // attempt starts, or when the screen locks again.
+        root.authMessage = "";
         root.alsoInhibitIdle = alsoInhibitIdle;
         root.unlockInProgress = true;
         pam.start();
@@ -142,11 +156,17 @@ Scope {
     PamContext {
         id: pam
 
-        // pam_unix will ask for a response for the password prompt
+        // pam_unix will ask for a response for the password prompt. Everything
+        // else PAM has to say is a reason the password cannot work, and is the
+        // only warning the user gets of one.
         onPamMessage: {
             if (this.responseRequired) {
                 this.respond(root.currentText);
+                return;
             }
+            if (this.message.length === 0)
+                return;
+            root.authMessage = root.authMessage.length > 0 ? `${root.authMessage} ${this.message}` : this.message;
         }
 
         // pam_unix won't send any important messages so all we need is the completion status.
