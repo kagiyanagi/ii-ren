@@ -20,6 +20,45 @@ import Quickshell.Wayland
 Scope {
     id: root
 
+    // Every row in the card, in both modes. Written once because ten copies of
+    // the same twelve properties is ten places for one of them to drift.
+    //
+    // Launcher3 popup rows: bg_popup_item 216x52dp, system_shortcut_icon_size
+    // 20dp, margin_start 16dp, deep_shortcut_drawable_padding 16dp between the
+    // two, each row its own surface with popup_margin 2dp between. The big
+    // radius belongs to the ends of the stack, so the first and last row of
+    // each mode's group sets it and the rest keep the small one.
+    component MenuRow: DockMenuButton {
+        id: menuRow
+
+        Layout.fillWidth: true
+        implicitHeight: 52
+        symbolSize: 20
+        sidePadding: 16
+        contentSpacing: 16
+        fontSize: Appearance.font.pixelSize.normal
+        buttonRadius: Appearance.rounding.unsharpenmore
+
+        // The rows sit on their own surface, not on the card, so the state
+        // layers mix against that one: hover 0.08, pressed 0.10 (DESIGN 6).
+        colBackground: Appearance.colors.colSurfaceContainerHigh
+        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
+        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+
+        // The card grabs the keyboard outright, and `ipc call desktopMenu
+        // toggle` opens it with no cursor anywhere near it, so the keyboard has
+        // to be able to work it. RippleButton fires its actions from its own
+        // MouseArea, so the keys take the same path (DESIGN 3.7), exactly as
+        // SysTrayMenuEntry does. Anything not handled here falls through to the
+        // column, which dismisses.
+        focusPolicy: Qt.StrongFocus
+        Keys.onUpPressed: menuRow.nextItemInFocusChain(false)?.forceActiveFocus(Qt.TabFocusReason)
+        Keys.onDownPressed: menuRow.nextItemInFocusChain(true)?.forceActiveFocus(Qt.TabFocusReason)
+        Keys.onReturnPressed: menuRow.triggered()
+        Keys.onEnterPressed: menuRow.triggered()
+        Keys.onSpacePressed: menuRow.triggered()
+    }
+
     IpcHandler {
         target: "desktopMenu"
 
@@ -108,21 +147,25 @@ Scope {
                 id: menuCard
 
                 readonly property real gutter: 8
-                readonly property bool leftAligned: x >= GlobalStates.desktopMenuX
-                readonly property bool topAligned: y >= GlobalStates.desktopMenuY
+                // Which half of the placed card the cursor fell in, which is the
+                // same question as which corner is nearest to it. Comparing the
+                // card's edge against the cursor instead -- `x >= cursorX` --
+                // agrees everywhere until the edge clamp bites, and then is
+                // wrong for the next half a card width: the card shifts one
+                // pixel, the cursor is one pixel inside the left edge, and the
+                // menu grows out of the far corner instead. That is a 160px band
+                // down the right edge of every screen, and another down the
+                // bottom. check-desktop-menu.py sweeps both.
+                readonly property bool leftAligned: GlobalStates.desktopMenuX <= x + width / 2
+                readonly property bool topAligned: GlobalStates.desktopMenuY <= y + height / 2
 
                 // Opens with its top-left at the cursor, like every other context
                 // menu, and slides back inside the screen near an edge.
                 x: Math.max(gutter, Math.min(GlobalStates.desktopMenuX, menuWindow.width - width - gutter))
                 y: Math.max(gutter, Math.min(GlobalStates.desktopMenuY, menuWindow.height - height - gutter))
 
-                // Launcher3 stacks its rows with popup_margin 2dp between them and
-                // the big radius only at the ends of the stack; bg_popup_item is
-                // 216dp x 52dp, so keep roughly that proportion. Unlike the
-                // launcher, the gaps show a card rather than the wallpaper.
-                readonly property real innerRadius: Appearance.rounding.unsharpenmore
                 // Ends of the stack, inset inside the card, so smaller than the
-                // card's own corner.
+                // card's own corner. The rows' own small radius is MenuRow's.
                 readonly property real outerRadius: Appearance.rounding.normal
                 readonly property real padding: 6
 
@@ -132,19 +175,19 @@ Scope {
                 color: Appearance.m3colors.m3surfaceContainer
 
                 opacity: 0
-                scale: 0.5
+                scale: Appearance.animationCurves.arrowPopupScale
 
                 // Launcher3 ArrowPopup.setPivotForOpenCloseAnimation(): the popup
                 // grows out of the corner nearest the touch point, so follow the
                 // cursor rather than the corner the edge clamp left it on.
                 transformOrigin: leftAligned ? (topAligned ? Item.TopLeft : Item.BottomLeft) : (topAligned ? Item.TopRight : Item.BottomRight)
 
-                // ArrowPopup.animateOpen(), AOSP main: scale 0.5 -> 1.02 over
-                // OPEN_DURATION_U 200ms on EMPHASIZED_DECELERATE, then settles
-                // 1.02 -> 1 over OPEN_OVERSHOOT_DURATION_U 200ms on
-                // PathInterpolator(0.3, 0, 0.33, 1). The card and its children
-                // each fade in linearly over OPEN_FADE_DURATION_U 83ms, so the
-                // content lands while the card is still growing.
+                // ArrowPopup.animateOpen(), assembled from the transcribed
+                // composite (DESIGN.md 9): the scale overshoots and settles on
+                // its own curve while the alpha rides underneath, so the content
+                // lands while the card is still growing. Same shape, from the
+                // same tokens, as StyledPopup and SysTrayMenu -- typing the
+                // numbers again beside them is how the four drift apart.
                 ParallelAnimation {
                     id: openAnim
                     running: true
@@ -153,9 +196,9 @@ Scope {
                         NumberAnimation {
                             target: menuCard
                             property: "scale"
-                            from: 0.5
-                            to: 1.02
-                            duration: 200
+                            from: Appearance.animationCurves.arrowPopupScale
+                            to: Appearance.animationCurves.arrowPopupOvershoot
+                            duration: Appearance.animationCurves.arrowPopupScaleDuration
                             easing.type: Easing.Bezier
                             easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
                         }
@@ -163,9 +206,9 @@ Scope {
                             target: menuCard
                             property: "scale"
                             to: 1
-                            duration: 200
+                            duration: Appearance.animationCurves.arrowPopupScaleDuration
                             easing.type: Easing.Bezier
-                            easing.bezierCurve: [0.3, 0, 0.33, 1, 1, 1]
+                            easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
                         }
                     }
                     NumberAnimation {
@@ -173,49 +216,48 @@ Scope {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: 83
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
                     }
                     NumberAnimation {
                         target: menuColumn
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: 83
+                        duration: Appearance.animationCurves.arrowPopupFadeDuration
                     }
                 }
 
-                // ArrowPopup.animateClose() shape -- half size on
-                // EMPHASIZED_ACCELERATE with the fades held back -- but quicker
-                // than AOSP's CLOSE_DURATION_U 233ms / CLOSE_FADE_START_DELAY_U
-                // 150ms, which drags on a desktop where the menu is dismissed
-                // constantly.
+                // ArrowPopup.animateClose(): accelerating, with the fades held
+                // back, and shorter than the open so leaving does not feel like
+                // entering played backwards (DESIGN.md 2.5). The hold plus the
+                // fade is the close duration exactly.
                 ParallelAnimation {
                     id: closeAnim
 
                     NumberAnimation {
                         target: menuCard
                         property: "scale"
-                        to: 0.5
-                        duration: 190
+                        to: Appearance.animationCurves.arrowPopupScale
+                        duration: Appearance.animationCurves.arrowPopupCloseDuration
                         easing.type: Easing.Bezier
                         easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
                     }
                     SequentialAnimation {
                         PauseAnimation {
-                            duration: 60
+                            duration: Appearance.animationCurves.arrowPopupFadeHold
                         }
                         ParallelAnimation {
                             NumberAnimation {
                                 target: menuCard
                                 property: "opacity"
                                 to: 0
-                                duration: 83
+                                duration: Appearance.animationCurves.arrowPopupFadeDuration
                             }
                             NumberAnimation {
                                 target: menuColumn
                                 property: "opacity"
                                 to: 0
-                                duration: 83
+                                duration: Appearance.animationCurves.arrowPopupFadeDuration
                             }
                         }
                     }
@@ -261,11 +303,16 @@ Scope {
                     spacing: 2
 
                     focus: true
-                    // Any key closes it, not just Escape: the keyboard belongs to
-                    // whatever was focused, so the first keystroke is the signal the
-                    // menu is done.
+                    // Up and Down step into the row chain -- from the column,
+                    // forward lands on the first row and backward wraps to the
+                    // last, which is what a menu does. Any other key is the
+                    // signal the menu is done: the keyboard belongs to whatever
+                    // was focused before this took it.
                     Keys.onPressed: event => {
-                        menuWindow.dismiss();
+                        if (event.key === Qt.Key_Down || event.key === Qt.Key_Up)
+                            menuColumn.nextItemInFocusChain(event.key === Qt.Key_Down)?.forceActiveFocus(Qt.TabFocusReason);
+                        else
+                            menuWindow.dismiss();
                         event.accepted = true;
                     }
 
@@ -275,7 +322,11 @@ Scope {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 132
                         Layout.bottomMargin: 6
-                        visible: wallpaperStrip.count > 0 && GlobalStates.desktopMenuWidgetId === null
+                        // One entry means the only wallpaper on offer is the one
+                        // already applied, so the strip is 132dp of card that can
+                        // only re-select what is selected. It earns its space from
+                        // two up.
+                        visible: wallpaperStrip.count > 1 && GlobalStates.desktopMenuWidgetId === null
 
                         // The viewport cuts the tiles at each end square, so round
                         // the cut itself the same as the tiles.
@@ -373,6 +424,11 @@ Scope {
                                     // is all upscale.
                                     thumbnailSizeName: "x-large"
                                     sourceSize: Qt.size(0, height * 2)
+                                    // An effect inside a delegate, which rule 8
+                                    // forbids, and kept anyway: it is in
+                                    // check-effect-budget.py's KNOWN set and every
+                                    // way out costs more per tile than the one
+                                    // framebuffer it removes. See notes.md.
                                     layer.enabled: true
                                     layer.effect: OpacityMask {
                                         maskSource: Rectangle {
@@ -466,22 +522,10 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    // -- Desktop mode ------------------------------------------
+
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
-                        // Launcher3 popup rows: bg_popup_item_height 52dp,
-                        // system_shortcut_icon_size 20dp, margin_start 16dp,
-                        // deep_shortcut_drawable_padding 16dp between the two,
-                        // each row its own surface with popup_margin 2dp between.
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         topLeftRadius: menuCard.outerRadius
                         topRightRadius: topLeftRadius
                         symbolName: "wallpaper"
@@ -492,22 +536,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
-                        // Launcher3 popup rows: bg_popup_item_height 52dp,
-                        // system_shortcut_icon_size 20dp, margin_start 16dp,
-                        // deep_shortcut_drawable_padding 16dp between the two,
-                        // each row its own surface with popup_margin 2dp between.
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "shuffle"
                         labelText: Translation.tr("Random wallpaper")
                         onTriggered: {
@@ -516,22 +546,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
-                        // Launcher3 popup rows: bg_popup_item_height 52dp,
-                        // system_shortcut_icon_size 20dp, margin_start 16dp,
-                        // deep_shortcut_drawable_padding 16dp between the two,
-                        // each row its own surface with popup_margin 2dp between.
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "folder_open"
                         labelText: Translation.tr("Open wallpaper file...")
                         onTriggered: {
@@ -540,26 +556,10 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
-                        // Launcher3 popup rows: bg_popup_item_height 52dp,
-                        // system_shortcut_icon_size 20dp, margin_start 16dp,
-                        // deep_shortcut_drawable_padding 16dp between the two,
-                        // each row its own surface with popup_margin 2dp between.
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "stacks"
-                        labelText: DropShelf.items.length > 0
-                            ? Translation.tr("Drop shelf (%1)").arg(DropShelf.items.length)
-                            : Translation.tr("Drop shelf")
+                        labelText: DropShelf.items.length > 0 ? Translation.tr("Drop shelf (%1)").arg(DropShelf.items.length) : Translation.tr("Drop shelf")
                         onTriggered: {
                             menuWindow.dismiss();
                             // Reuse the click point so the shelf lands where the
@@ -570,22 +570,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
-                        // Launcher3 popup rows: bg_popup_item_height 52dp,
-                        // system_shortcut_icon_size 20dp, margin_start 16dp,
-                        // deep_shortcut_drawable_padding 16dp between the two,
-                        // each row its own surface with popup_margin 2dp between.
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         bottomLeftRadius: menuCard.outerRadius
                         bottomRightRadius: bottomLeftRadius
                         symbolName: "settings"
@@ -595,18 +581,11 @@ Scope {
                             Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
                         }
                     }
-                    DockMenuButton {
-                        Layout.fillWidth: true
+
+                    // -- Widget mode -------------------------------------------
+
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId !== null
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         topLeftRadius: menuCard.outerRadius
                         topRightRadius: topLeftRadius
                         symbolName: "flip_to_front"
@@ -623,18 +602,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId !== null
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "flip_to_back"
                         labelText: Translation.tr("Move to lower layer")
                         onTriggered: {
@@ -652,9 +621,8 @@ Scope {
                     // Which side of the wallpaper's subject this widget sits
                     // on. Only worth offering once there is a subject to sit
                     // behind, so it hides itself the rest of the time.
-                    DockMenuButton {
+                    MenuRow {
                         id: depthButton
-                        Layout.fillWidth: true
 
                         readonly property bool above: {
                             const widgets = Config.options.background.activeWidgets || [];
@@ -662,27 +630,14 @@ Scope {
                             return entry?.aboveSubject ?? false;
                         }
 
-                        visible: GlobalStates.desktopMenuWidgetId !== null
-                            && Config.options.background.depth.desktop.enable
-                            && WallpaperSubject.hasSubject
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
+                        visible: GlobalStates.desktopMenuWidgetId !== null && Config.options.background.depth.desktop.enable && WallpaperSubject.hasSubject
                         // Depth of field, which is what the effect is: the
                         // widget either sits in the sharp foreground or falls
                         // in behind it. Both glyphs are old enough to be in
                         // every Material Symbols build in the wild, which the
                         // newer format_image_front/back pair is not.
                         symbolName: depthButton.above ? "center_focus_weak" : "center_focus_strong"
-                        labelText: depthButton.above
-                            ? Translation.tr("Move behind subject")
-                            : Translation.tr("Move in front of subject")
+                        labelText: depthButton.above ? Translation.tr("Move behind subject") : Translation.tr("Move in front of subject")
                         onTriggered: {
                             menuWindow.dismiss();
                             let cloned = JSON.parse(JSON.stringify(Config.options.background.activeWidgets || []));
@@ -694,18 +649,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId !== null
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         symbolName: "settings"
                         labelText: Translation.tr("Config")
                         onTriggered: {
@@ -728,18 +673,8 @@ Scope {
                         }
                     }
 
-                    DockMenuButton {
-                        Layout.fillWidth: true
+                    MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId !== null
-                        implicitHeight: 52
-                        symbolSize: 20
-                        sidePadding: 16
-                        contentSpacing: 16
-                        fontSize: Appearance.font.pixelSize.normal
-                        buttonRadius: menuCard.innerRadius
-                        colBackground: Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.08)
-                        colRipple: ColorUtils.mix(Appearance.m3colors.m3onSurface, Appearance.colors.colSurfaceContainerHigh, 0.1)
                         bottomLeftRadius: menuCard.outerRadius
                         bottomRightRadius: bottomLeftRadius
                         symbolName: "delete"
@@ -751,7 +686,6 @@ Scope {
                             Config.options.background.activeWidgets = cloned;
                         }
                     }
-
                 }
             }
         }

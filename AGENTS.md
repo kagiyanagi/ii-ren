@@ -60,6 +60,13 @@ you touched; they are the only automated gate.
   removal must go through a temp file and take one exact match. It also mirrors the lua
   escaping and the Qt-key-to-Hyprland-name table, both of which fail silently (a
   mis-escaped command writes a line that parses and never fires)
+- `python3 tools/check-desktop-menu.py` — the desktop menu still grows out of the corner
+  nearest the cursor, and its wallpaper strip still earns the 132dp it takes. The pivot is
+  arithmetic over a card that gets shifted back inside the screen, and asking the shift
+  which side it landed on instead of asking where the cursor is was wrong down a 160px band
+  of every screen — one pixel wide at the flip, then wrong for half a card. It also pins the
+  rows to the single `MenuRow` they were collapsed into, and the motion to the `arrowPopup*`
+  tokens
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -67,6 +67,9 @@ From the rows that retimed something and could not drive the shell:
   (`cw-notifications`).
 - **Swipe-to-dismiss** on the clipboard toast — `dismissFraction` and `escapeVelocity` are
   the two knobs, and synthetic drags cannot judge them (`ii-clipboardToast`).
+- The **desktop menu's close**, 190/60 → `arrowPopupCloseDuration` 233 / `arrowPopupFadeHold`
+  150 — AOSP's own numbers, but on a menu that is dismissed constantly, and the comment
+  they replaced argued that is exactly where AOSP drags (`ii-desktopMenu`).
 
 ## Still nobody's call but yours
 
