@@ -7,6 +7,7 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
 
@@ -27,6 +28,16 @@ Scope {
         target: GlobalStates
         property: "fastPairPopupHeight"
         value: root.visible ? card.height + card.gutter : 0
+    }
+
+    // Opens the card with no candidate, so the layout can be seen without
+    // waiting for a pair of earbuds to leave their case.
+    IpcHandler {
+        target: "fastPair"
+
+        function toggle(): void {
+            FastPair.popupShown = !FastPair.popupShown;
+        }
     }
 
     PanelWindow {
@@ -87,7 +98,7 @@ Scope {
 
             // Same outer spacing as the sidebars, notifications and bar popups.
             readonly property real gutter: Appearance.sizes.hyprlandGapsOut
-            readonly property real padding: 24
+            readonly property real padding: 16
             property bool optionsOpen: false
 
             readonly property bool shown: FastPair.popupShown
@@ -115,18 +126,34 @@ Scope {
                 { label: Translation.tr("6h"), ms: 21600000 }
             ]
 
-            width: 344
+            // Enter decelerating, exit accelerating at half the duration (DESIGN
+            // 2.5). Assigned from inside the binding that writes x, the shape
+            // BarComponent uses: a Behavior bakes its spec at the instant of the
+            // write, so a spec read from a binding of its own is a frame late
+            // and the exit runs on the enter's curve.
+            property AnimSpec slideSpec: Appearance.animation.elementMoveEnter
+
+            width: Appearance.sizes.fastPairPopupWidth
             height: content.implicitHeight + card.padding * 2
             y: fastPairPopup.atTop ? card.gutter + root.notificationInset : root.height - card.height - card.gutter
             // Slides out past the screen edge, so there is nothing to clip.
-            x: FastPair.popupShown ? (fastPairPopup.atRight ? root.width - card.width - card.gutter - root.sidebarInset : card.gutter + root.sidebarInset) : (fastPairPopup.atRight ? root.width + card.gutter : -card.width - card.gutter)
+            x: {
+                card.slideSpec = FastPair.popupShown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                if (FastPair.popupShown)
+                    return fastPairPopup.atRight ? root.width - card.width - card.gutter - root.sidebarInset : card.gutter + root.sidebarInset;
+                return fastPairPopup.atRight ? root.width + card.gutter : -card.width - card.gutter;
+            }
 
             Behavior on x {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                NumberAnimation {
+                    duration: card.slideSpec.duration
+                    easing.type: card.slideSpec.type
+                    easing.bezierCurve: card.slideSpec.bezierCurve
+                }
             }
 
             Behavior on y {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
             StyledRectangularShadow {
@@ -141,8 +168,44 @@ Scope {
             }
 
             component Chip: DialogButton {
-                padding: 10
+                padding: 8
                 implicitHeight: 32
+            }
+
+            // DESIGN 9 icon button: square, full radius, size the button not
+            // the padding.
+            component IconButton: DialogButton {
+                id: iconButton
+                property alias symbol: iconSymbol.text
+                property alias iconRotation: iconSymbol.rotation
+                implicitWidth: 40
+                implicitHeight: 40
+                padding: 0
+
+                contentItem: MaterialSymbol {
+                    id: iconSymbol
+                    anchors.centerIn: parent
+                    iconSize: Appearance.font.pixelSize.huge
+                    color: iconButton.colEnabled
+
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+                    }
+                }
+            }
+
+            IconButton {
+                anchors {
+                    top: parent.top
+                    right: parent.right
+                    margins: card.padding
+                }
+                symbol: "close"
+                onClicked: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
+
+                StyledToolTip {
+                    text: Translation.tr("Close")
+                }
             }
 
             ColumnLayout {
@@ -154,10 +217,39 @@ Scope {
                     leftMargin: card.padding
                     rightMargin: card.padding
                 }
-                spacing: 6
+                spacing: 4
+
+                MaterialShapeWrappedMaterialSymbol {
+                    Layout.alignment: Qt.AlignHCenter
+                    shape: MaterialShape.Shape.Cookie12Sided
+                    iconSize: 48
+                    padding: 24
+                    text: Icons.getBluetoothDeviceMaterialSymbol(FastPair.candidate?.icon ?? "")
+                }
+
+                // The strip is always reserved so the card does not jump when a
+                // connect starts; the bar itself only sweeps while busy.
+                Item {
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 8
+                    implicitWidth: progress.implicitWidth
+                    implicitHeight: progress.implicitHeight
+
+                    StyledIndeterminateProgressBar {
+                        id: progress
+                        anchors.fill: parent
+                        visible: FastPair.busy || progress.opacity > 0
+                        opacity: FastPair.busy ? 1 : 0
+
+                        Behavior on opacity {
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        }
+                    }
+                }
 
                 StyledText {
                     Layout.fillWidth: true
+                    Layout.topMargin: 8
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: Appearance.font.pixelSize.larger
                     color: Appearance.colors.colOnLayer0
@@ -168,22 +260,16 @@ Scope {
 
                 StyledText {
                     Layout.fillWidth: true
-                    Layout.bottomMargin: 10
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                     font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colSubtext
+                    color: FastPair.failed || FastPair.agentUnavailable ? Appearance.colors.colError : Appearance.colors.colSubtext
                     textFormat: Text.PlainText
                     text: card.statusText
-                }
 
-                MaterialShapeWrappedMaterialSymbol {
-                    Layout.alignment: Qt.AlignHCenter
-                    Layout.bottomMargin: 12
-                    shape: MaterialShape.Shape.Cookie12Sided
-                    iconSize: 72
-                    padding: 32
-                    text: Icons.getBluetoothDeviceMaterialSymbol(FastPair.candidate?.icon ?? "")
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
                 }
 
                 // Revealer clips and animates the reveal rather than snapping the
@@ -202,6 +288,7 @@ Scope {
                         spacing: 4
 
                         StyledText {
+                            Layout.topMargin: 12
                             text: Translation.tr("Snooze this device")
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.colors.colSubtext
@@ -225,21 +312,20 @@ Scope {
 
                         Chip {
                             Layout.fillWidth: true
-                            Layout.topMargin: 2
+                            Layout.topMargin: 4
                             colText: Appearance.colors.colError
                             buttonText: Translation.tr("Never show this device")
                             onClicked: FastPair.ignoreCandidate()
                         }
 
                         StyledText {
-                            Layout.topMargin: 6
+                            Layout.topMargin: 8
                             text: Translation.tr("Mute all pairing popups")
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.colors.colSubtext
                         }
 
                         RowLayout {
-                            Layout.bottomMargin: 10
                             Layout.fillWidth: true
                             spacing: 4
 
@@ -259,30 +345,13 @@ Scope {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.topMargin: 12
                     spacing: 8
 
-                    DialogButton {
-                        Layout.fillWidth: true
-                        buttonText: Translation.tr("Close")
-                        onClicked: FastPair.dismiss(FastPair.options.snoozeSeconds * 1000)
-                    }
-
-                    DialogButton {
-                        implicitWidth: 36
-                        padding: 6
+                    IconButton {
+                        symbol: "expand_more"
+                        iconRotation: card.optionsOpen ? 180 : 0
                         onClicked: card.optionsOpen = !card.optionsOpen
-
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "expand_more"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: Appearance.colors.colPrimary
-                            rotation: card.optionsOpen ? 180 : 0
-
-                            Behavior on rotation {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
-                        }
 
                         StyledToolTip {
                             text: Translation.tr("More options")
@@ -291,13 +360,22 @@ Scope {
 
                     DialogButton {
                         Layout.fillWidth: true
-                        enabled: !FastPair.busy
+                        implicitHeight: 40
+                        enabled: !FastPair.busy && !FastPair.agentUnavailable
+                        // Disabled is the whole control at 0.4 (DESIGN 6), not a
+                        // filled primary with outline-coloured text.
+                        opacity: enabled ? 1 : 0.4
                         colBackground: Appearance.colors.colPrimary
                         colBackgroundHover: Appearance.colors.colPrimaryHover
                         colRipple: Appearance.colors.colPrimaryActive
                         colEnabled: Appearance.colors.colOnPrimary
+                        colDisabled: Appearance.colors.colOnPrimary
                         buttonText: Translation.tr("Connect")
                         onClicked: FastPair.connectCandidate()
+
+                        Behavior on opacity {
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        }
                     }
                 }
             }

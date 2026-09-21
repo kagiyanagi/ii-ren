@@ -397,6 +397,7 @@ Singleton {
         property real pagePlaceholderHeight: 250
         property real fabShadowRadius: 5
         property real fabHoveredShadowRadius: 7
+        property real fastPairPopupWidth: 344
         property real hyprlandGapsOut: 5
         property real mediaControlsWidth: 440
         property real mediaControlsHeight: 160
