@@ -17,6 +17,8 @@ StyledFlickable {
     property color selectionColor: Appearance.colors.colSecondaryContainer
 
     property int charSize: 20
+    // The shape inside the cell, so the two cannot drift apart.
+    property int charShapeSize: 18
 
     contentWidth: dotsRow.implicitWidth
     contentX: (Math.max(contentWidth - width, 0))
@@ -102,13 +104,26 @@ StyledFlickable {
                     Component.onCompleted: {
                         appearAnim.start();
                     }
+                    /*
+                     * A char landing: size and scale are spatial and small, so
+                     * they ride the fast spatial spec and may overshoot; the
+                     * fade and the accent settling out of colPrimary are effects
+                     * and may not. Three of these four were assembled from parts
+                     * of different specs -- an exit duration on a fade in, an
+                     * effects duration under a spatial curve, and a grow with no
+                     * duration at all, which is Qt's 250 and not a token.
+                     *
+                     * A char *leaving* is deliberately instant: backspace has to
+                     * read as immediate, and the row it leaves behind reflows
+                     * under the caret's own animation.
+                     */
                     ParallelAnimation {
                         id: appearAnim
                         NumberAnimation {
                             target: materialShape
                             properties: "opacity"
                             to: 1
-                            duration: Appearance.animation.elementMoveExit.duration
+                            duration: Appearance.animation.elementMoveFast.duration
                             easing.type: Appearance.animation.elementMoveFast.type
                             easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                         }
@@ -116,23 +131,24 @@ StyledFlickable {
                             target: materialShape
                             properties: "scale"
                             to: 1
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                            duration: Appearance.animation.elementMoveSmall.duration
+                            easing.type: Appearance.animation.elementMoveSmall.type
+                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
                         }
                         NumberAnimation {
                             target: materialShape
                             properties: "implicitSize"
-                            to: 18
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
+                            to: root.charShapeSize
+                            duration: Appearance.animation.elementMoveSmall.duration
+                            easing.type: Appearance.animation.elementMoveSmall.type
+                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
                         }
                         ColorAnimation {
                             target: materialShape
                             properties: "color"
                             from: Appearance.colors.colPrimary
                             to: charItem.selected ? root.selectedTextColor : Appearance.colors.colOnLayer1
-                            duration: Appearance.animation.elementMoveEnter.duration
+                            duration: Appearance.animation.elementMoveFast.duration
                             easing.type: Appearance.animation.elementMoveFast.type
                             easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
                         }

@@ -105,6 +105,15 @@ you touched; they are the only automated gate.
   asking for no height of its own. Put a `Layout.minimumHeight` back on it and the void
   returns with nothing to show for it. It also pins the enter's opacity off the 500ms
   spatial curve it used to share with the scale, and the exit onto `elementMoveExit`
+- `python3 tools/check-lock.py` — the lock screen survives the shell dying. A session
+  lock outlives the process holding it, so `pkill qs` with the screen locked leaves
+  Hyprland showing its own crash screen with no way back but a TTY. The recovery is one
+  mechanism split across two languages — Hyprland's `misc:allow_session_lock_restore`,
+  a persisted "the session is locked" flag written on *both* edges, and a re-lock at
+  startup gated on the instance signature — and any one of the three alone does nothing.
+  It also sweeps the parked-workspace arithmetic, which only a second lock reaches.
+  `tools/audit/preview-lock.sh out.png [timeout] [setup-js]` is how the surface is looked
+  at at all: nothing can screenshot a locked session, and only the password ends one
 - `python3 tools/check-keypress-display.py` — the keystroke overlay still shows the key
   that was just *pressed*. Both of its defects were invisible in a screenshot: a
   horizontal `ListView` shows its head, so an overflowing row kept four stale chips and

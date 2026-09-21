@@ -1651,7 +1651,6 @@ Singleton {
                     property real radius: 100
                     property real extraZoom: 1.1
                 }
-                property bool centerClock: true
                 property bool showLockedText: true
                 property JsonObject security: JsonObject {
                     property bool unlockKeyring: true

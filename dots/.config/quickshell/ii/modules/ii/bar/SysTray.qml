@@ -24,7 +24,11 @@ Item {
 
     function updateVisibility() {
         const hasAnyItems = pinnedItems.length > 0 || unpinnedItems.length > 0;
-        rootItem.toggleVisible(hasAnyItems);
+        // `rootItem` is BarComponent's id, and the lock screen uses this tray
+        // outside one -- so every tray change while locked threw here and took
+        // the overflow close below with it. NetworkSpeed guards the same access.
+        if (typeof rootItem !== "undefined")
+            rootItem.toggleVisible(hasAnyItems);
 
         if (unpinnedItems.length === 0) {
             root.closeOverflowMenu();

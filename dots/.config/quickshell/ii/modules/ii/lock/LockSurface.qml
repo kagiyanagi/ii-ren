@@ -15,8 +15,6 @@ import Quickshell.Services.SystemTray
 MouseArea {
     id: root
     required property LockContext context
-    property bool active: false
-    property bool showInputField: active || context.currentText.length > 0
     readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
 
     // Force focus on entry
@@ -28,6 +26,13 @@ MouseArea {
         function onShouldReFocus() {
             forceFieldFocus();
         }
+        function onUnlockInProgressChanged() {
+            // The field is disabled while PAM answers, and a disabled item loses
+            // keyboard focus with nothing to give it back: a wrong password used
+            // to eat every keystroke after it until the pointer moved.
+            if (!root.context.unlockInProgress)
+                forceFieldFocus();
+        }
     }
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton
@@ -38,26 +43,8 @@ MouseArea {
         forceFieldFocus();
     }
 
-    // Toolbar appearing animation
-    property real toolbarScale: 0.9
-    property real toolbarOpacity: 0
-    Behavior on toolbarScale {
-        NumberAnimation {
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animationCurves.expressiveFastSpatial
-        }
-    }
-    Behavior on toolbarOpacity {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-    }
-
     // Init
-    Component.onCompleted: {
-        forceFieldFocus();
-        toolbarScale = 1;
-        toolbarOpacity = 1;
-    }
+    Component.onCompleted: forceFieldFocus()
 
     // Key presses
     property bool ctrlHeld: false
@@ -338,19 +325,14 @@ MouseArea {
     }
 
     // Main toolbar: password box
-    Toolbar {
+    LockIsland {
         id: mainIsland
+        staggerIndex: 0
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
             bottomMargin: 20
         }
-        Behavior on anchors.bottomMargin {
-            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-        }
-
-        scale: root.toolbarScale
-        opacity: root.toolbarOpacity
 
         // Fingerprint
         Loader {
@@ -457,8 +439,18 @@ MouseArea {
 
         ToolbarTextField {
             id: passwordBox
-            Layout.rightMargin: -Layout.leftMargin
-            placeholderText: GlobalStates.screenUnlockFailed ? Translation.tr("Incorrect password") : Translation.tr("Enter password")
+            // The confirm icon already says power off; this still said "Enter
+            // password", which made it the one part of the surface that lied
+            // about what the key was about to do.
+            placeholderText: {
+                if (GlobalStates.screenUnlockFailed)
+                    return Translation.tr("Incorrect password");
+                if (root.context.targetAction === LockContext.ActionEnum.Poweroff)
+                    return Translation.tr("Password to power off");
+                if (root.context.targetAction === LockContext.ActionEnum.Reboot)
+                    return Translation.tr("Password to restart");
+                return Translation.tr("Enter password");
+            }
 
             // Style
             clip: true
@@ -531,41 +523,73 @@ MouseArea {
             id: confirmButton
             implicitWidth: height
             toggled: true
-            enabled: !root.context.unlockInProgress
             colBackgroundToggled: Appearance.colors.colPrimary
 
-            onClicked: root.context.tryUnlock()
+            // Busy is not disabled. `enabled: false` was here to stop a second
+            // Enter landing while PAM answers the first, and it paid for that
+            // with the 0.4 disabled treatment (3.1) over the only saturated
+            // thing on the surface -- exactly when it has something to say. The
+            // guard does that job and the fill stays up.
+            onClicked: {
+                if (root.context.unlockInProgress)
+                    return;
+                root.context.tryUnlock();
+            }
 
-            contentItem: MaterialSymbol {
-                anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                iconSize: 24
-                text: {
-                    if (root.context.targetAction === LockContext.ActionEnum.Unlock) {
-                        return root.ctrlHeld ? "local_cafe" : "arrow_right_alt";
-                    } else if (root.context.targetAction === LockContext.ActionEnum.Poweroff) {
-                        return "power_settings_new";
-                    } else if (root.context.targetAction === LockContext.ActionEnum.Reboot) {
-                        return "restart_alt";
+            contentItem: Item {
+                MaterialSymbol {
+                    id: confirmIcon
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    iconSize: 24
+                    text: {
+                        if (root.context.targetAction === LockContext.ActionEnum.Unlock) {
+                            return root.ctrlHeld ? "local_cafe" : "arrow_right_alt";
+                        } else if (root.context.targetAction === LockContext.ActionEnum.Poweroff) {
+                            return "power_settings_new";
+                        } else if (root.context.targetAction === LockContext.ActionEnum.Reboot) {
+                            return "restart_alt";
+                        }
+                    }
+                    color: Appearance.colors.colOnPrimary
+
+                    opacity: root.context.unlockInProgress ? 0 : 1
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                     }
                 }
-                color: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+
+                // pam_unix sits on a wrong password for a couple of seconds, and
+                // until it answered the surface gave back nothing at all. The
+                // M3E indicator rather than CircularProgress: that one is the
+                // shared tranche's single `layer.enabled`, and this surface has
+                // already spent its one effect on the field's mask. The Loader
+                // is inactive whenever PAM is not working, so it costs nothing
+                // the rest of the time.
+                Loader {
+                    anchors.centerIn: parent
+                    active: root.context.unlockInProgress
+                    sourceComponent: MaterialLoadingIndicator {
+                        implicitSize: confirmIcon.iconSize
+                        color: "transparent"
+                        shapeColor: Appearance.colors.colOnPrimary
+                    }
+                }
             }
         }
     }
 
     // Left toolbar
-    Toolbar {
+    LockIsland {
         id: leftIsland
+        staggerIndex: 1
         anchors {
             right: mainIsland.left
             top: mainIsland.top
             bottom: mainIsland.bottom
             rightMargin: 10
         }
-        scale: root.toolbarScale
-        opacity: root.toolbarOpacity
 
         // Username
         IconAndTextPair {
@@ -575,32 +599,23 @@ MouseArea {
         }
 
         // Keyboard layout (Xkb)
-        Loader {
+        Row {
             Layout.rightMargin: 8
             Layout.fillHeight: true
+            spacing: 8
 
-            active: true
-            visible: active
-
-            sourceComponent: Row {
-                spacing: 8
-
-                MaterialSymbol {
-                    id: keyboardIcon
-                    anchors.verticalCenter: parent.verticalCenter
-                    fill: 1
-                    text: "keyboard_alt"
-                    iconSize: Appearance.font.pixelSize.huge
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-                Loader {
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: StyledText {
-                        text: HyprlandXkb.currentLayoutCode
-                        color: Appearance.colors.colOnSurfaceVariant
-                        animateChange: true
-                    }
-                }
+            MaterialSymbol {
+                anchors.verticalCenter: parent.verticalCenter
+                fill: 1
+                text: "keyboard_alt"
+                iconSize: Appearance.font.pixelSize.huge
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: HyprlandXkb.currentLayoutCode
+                color: Appearance.colors.colOnSurfaceVariant
+                animateChange: true
             }
         }
 
@@ -615,17 +630,15 @@ MouseArea {
     }
 
     // Right toolbar
-    Toolbar {
+    LockIsland {
         id: rightIsland
+        staggerIndex: 1
         anchors {
             left: mainIsland.right
             top: mainIsland.top
             bottom: mainIsland.bottom
             leftMargin: 10
         }
-
-        scale: root.toolbarScale
-        opacity: root.toolbarOpacity
 
         IconAndTextPair {
             visible: Battery.available
@@ -650,6 +663,76 @@ MouseArea {
             id: rebootButton
             text: "restart_alt"
             targetAction: LockContext.ActionEnum.Reboot
+        }
+    }
+
+    /*
+     * One island of the bottom row. All three move the same way and only differ
+     * in when they start, so the recipe lives here rather than three times:
+     *
+     * - They are anchored to the bottom edge, so they grow out of it (2.6), not
+     *   out of their own middle.
+     * - Enter is spatial and decelerating and may overshoot; the fade under it
+     *   is the effects spec and may not. The centre goes first and the flanks a
+     *   stagger step later (2.8) -- the eye lands where the password goes.
+     * - Exit is scale only, faster and without the stagger, because the user has
+     *   already decided (2.5). The fade out belongs to the whole surface and is
+     *   done once, by the Loader in LockScreen.qml, which is also what holds the
+     *   compositor's session lock open long enough for this to be seen.
+     */
+    component LockIsland: Toolbar {
+        id: island
+        required property int staggerIndex
+
+        transformOrigin: Item.Bottom
+        scale: 0.9
+        opacity: 0
+
+        SequentialAnimation {
+            id: islandEnter
+            running: true
+
+            PauseAnimation {
+                duration: island.staggerIndex * Appearance.animation.staggerStep
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: island
+                    property: "scale"
+                    to: 1
+                    duration: Appearance.animation.elementMoveEnter.duration
+                    easing.type: Appearance.animation.elementMoveEnter.type
+                    easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                }
+                NumberAnimation {
+                    target: island
+                    property: "opacity"
+                    to: 1
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Appearance.animation.elementMoveFast.type
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: islandExit
+            target: island
+            property: "scale"
+            to: 0.9
+            duration: Appearance.animation.elementMoveExit.duration
+            easing.type: Appearance.animation.elementMoveExit.type
+            easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+        }
+
+        Connections {
+            target: GlobalStates
+            function onScreenLockExitingChanged() {
+                if (!GlobalStates.screenLockExiting)
+                    return;
+                islandEnter.stop();
+                islandExit.start();
+            }
         }
     }
 

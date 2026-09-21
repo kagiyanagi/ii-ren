@@ -104,6 +104,15 @@ Singleton {
                 property string layout: "dwindle"
             }
 
+            property JsonObject lock: JsonObject {
+                // Whether the session is locked *right now*, not whether it
+                // should be. A session lock outlives the process holding it, so
+                // a shell that restarts under its own lock has to take it back,
+                // and nothing in Hyprland's IPC will tell it that it must.
+                // LockScreen.qml has the whole story.
+                property bool locked: false
+            }
+
             property JsonObject idle: JsonObject {
                 property bool inhibit: false
                 property string sessionId: ""

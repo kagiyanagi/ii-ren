@@ -74,6 +74,11 @@ Singleton {
     property bool regionSelectorOpen: false
     property bool searchOpen: false
     property bool screenLocked: false
+    // True only while the lock surface plays its exit, during which the
+    // compositor is still holding the session lock. `screenLocked` cannot carry
+    // this: it is what destroys the surface, so flipping it is the end of the
+    // animation rather than the start. LockScreen.qml owns both.
+    property bool screenLockExiting: false
     property bool screenLockContainsCharacters: false
     property bool screenUnlockFailed: false
     property bool screenTranslatorOpen: false

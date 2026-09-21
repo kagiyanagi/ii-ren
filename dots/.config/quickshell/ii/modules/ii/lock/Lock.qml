@@ -14,6 +14,11 @@ LockScreen {
     // Monitor name -> workspace id to restore on unlock (set when locking)
     property var savedWorkspaces: ({})
 
+    // Locking parks each monitor on the mirror of its workspace, so the windows
+    // are not sitting behind a transparent lock surface. INT32_MAX is Hyprland's
+    // last valid id, and the mirror of a mirror is the original.
+    readonly property int lockWorkspaceBase: 2147483647
+
     Timer {
         id: restoreTimer
         interval: 150
@@ -52,8 +57,16 @@ LockScreen {
                         return;
                     }
                     var ws = (mData?.activeWorkspace?.id ?? 1)
+                    if (ws > root.lockWorkspaceBase / 2) {
+                        // Already parked: this is the shell restarting under a
+                        // lock it did not place, so the map it saved is gone.
+                        // Saving the parked id as the one to come back to would
+                        // strand every window on the workspace it is hiding.
+                        next[mon] = root.lockWorkspaceBase - ws
+                        continue
+                    }
                     next[mon] = ws
-                    batch += `hyprctl dispatch 'hl.dsp.focus({monitor="${mon}"})'; hyprctl dispatch 'hl.dsp.focus({workspace=${2147483647 - ws}})';`
+                    batch += `hyprctl dispatch 'hl.dsp.focus({monitor="${mon}"})'; hyprctl dispatch 'hl.dsp.focus({workspace=${root.lockWorkspaceBase - ws}})';`
                 }
                 root.savedWorkspaces = next
                 Quickshell.execDetached(["bash", "-c", batch])
