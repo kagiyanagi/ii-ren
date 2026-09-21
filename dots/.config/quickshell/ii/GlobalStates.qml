@@ -42,6 +42,11 @@ Singleton {
     }
     property bool workspaceRestoreInProgress: false
     property bool cheatsheetOpen: false
+    // The keybind editor lives here rather than inside the Keybinds tab: the tab
+    // is a clipped SwipeView page, so a scrim mounted in it stops at the page
+    // bounds and leaves the sheet's 20px of card padding undimmed down both
+    // sides. Hosted at the card instead, it covers the whole sheet.
+    property bool cheatsheetKeybindEditorOpen: false
     property bool notesOpen: false
     property bool requestVolumeDialog: false
 

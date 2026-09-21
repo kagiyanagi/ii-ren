@@ -53,6 +53,13 @@ you touched; they are the only automated gate.
   number silently changing under a regenerate, which no screenshot shows: it pins the
   anomalous configurations, chlorine's electron gain enthalpy, the period-2 radii trend and
   the g/L-vs-g/cm³ split, and refuses a hand-edited palette hex
+- `python3 tools/check-keybind-editor.py` — the cheatsheet's keybind editor cannot damage
+  `custom/keybinds.lua`. It exists because it already did: the first version rewrote the
+  whole file from a cached copy and lost three of the user's binds, so the gate is
+  structural — adding a bind must **append** and the service must never call `setText`,
+  removal must go through a temp file and take one exact match. It also mirrors the lua
+  escaping and the Qt-key-to-Hyprland-name table, both of which fail silently (a
+  mis-escaped command writes a line that parses and never fires)
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

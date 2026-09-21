@@ -89,20 +89,6 @@ Column {
       Config.options.cheatsheet.useMouseSymbol ? mouseSymbolMap : {},
     )
 
-    function modMaskToStringList(modMask: int): list<string> {
-        var list = [];
-        // Funny mathematical order but we wanna have this natural user-facing order
-        if (modMask & (1 << 2)) { list.push("Ctrl"); }
-        if (modMask & (1 << 6)) { list.push("Super"); }
-        if (modMask & (1 << 0)) { list.push("Shift"); }
-        if (modMask & (1 << 3)) { list.push("Alt"); }
-        if (modMask & (1 << 1)) { list.push("Caps"); }
-        if (modMask & (1 << 4)) { list.push("Mod2"); }
-        if (modMask & (1 << 5)) { list.push("Mod3"); }
-        if (modMask & (1 << 7)) { list.push("Mod5"); }
-        return list;
-    }
-
     spacing: titleSpacing
 
     StyledText {
@@ -127,6 +113,14 @@ Column {
         id: bindLine
         required property var keyData
         property string categoryName: ""
+        // Only a bind this shell wrote into custom/keybinds.lua can be removed
+        // from here. Everything else belongs to the shipped config, and offering
+        // a delete that silently does nothing is worse than not offering it.
+        readonly property int userIndex: UserKeybinds.indexOfBind(keyData.modmask, keyData.key)
+
+        HoverHandler {
+            id: rowHover
+        }
 
         Row {
             spacing: 16
@@ -140,7 +134,7 @@ Column {
                 spacing: 4
                 Repeater {
                     model: {
-                        const modList = root.modMaskToStringList(bindLine.keyData.modmask).map(mod => root.keySubstitutions[mod] || mod)
+                        const modList = UserKeybinds.modNames(bindLine.keyData.modmask).map(mod => root.keySubstitutions[mod] || mod)
                         if (modList.length == 0) return []
                         if (Config.options.cheatsheet.splitButtons) return modList;
                         return [modList.join(" ")]
@@ -173,6 +167,39 @@ Column {
                 anchors.verticalCenter: parent.verticalCenter
                 implicitWidth: commentText.implicitWidth + root.columnSpacing
                 implicitHeight: commentText.implicitHeight
+                RippleButton {
+                    id: removeButton
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    implicitWidth: 24
+                    implicitHeight: 24
+                    visible: bindLine.userIndex !== -1
+                    // Present but invisible until the row is under the pointer:
+                    // a delete on every custom row at rest would be the loudest
+                    // thing in a list whose whole job is to be read.
+                    opacity: rowHover.hovered ? 1 : 0
+                    Behavior on opacity {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+                    buttonRadius: Appearance.rounding.full
+                    onClicked: UserKeybinds.remove(bindLine.userIndex)
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.colors.colOnLayer0
+                        text: "delete"
+                    }
+
+                    StyledToolTip {
+                        // `removeButton`, not `parent`: a tooltip's parent is
+                        // typed as a bare Item, so the lookup only resolved by
+                        // luck.
+                        extraVisibleCondition: removeButton.hovered
+                        text: Translation.tr("Remove this custom keybind")
+                    }
+                }
+
                 StyledText {
                     id: commentText
                     anchors.verticalCenter: parent.verticalCenter

@@ -1,3 +1,4 @@
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -203,6 +204,38 @@ Scope { // Scope
                     }
                 }
 
+                // Mounted on the card, not inside the Keybinds tab, so its scrim
+                // reaches the sheet's own padding. A WindowDialog measures its
+                // own content, so one left mounted sits at full height before it
+                // has ever been shown -- hence the load-on-demand, which is also
+                // what hands it keyboard focus for the key capture.
+                Loader {
+                    id: keybindEditorLoader
+                    anchors.fill: parent
+                    z: 1
+                    active: GlobalStates.cheatsheetKeybindEditorOpen
+                    sourceComponent: KeybindEditor {
+                        // The sheet's corner, not a dialog's own, so the scrim
+                        // does not square off inside a rounded card.
+                        radius: cheatsheetBackground.radius
+                    }
+                    onActiveChanged: if (active) {
+                        item.show = true;
+                        item.forceActiveFocus();
+                    }
+                    Connections {
+                        target: keybindEditorLoader.item
+                        function onDismiss() {
+                            keybindEditorLoader.item.show = false;
+                            GlobalStates.cheatsheetKeybindEditorOpen = false;
+                        }
+                        function onVisibleChanged() {
+                            if (!keybindEditorLoader.item.visible && !GlobalStates.cheatsheetKeybindEditorOpen)
+                                keybindEditorLoader.active = false;
+                        }
+                    }
+                }
+
                 ColumnLayout { // Real content
                     id: cheatsheetColumnLayout
                     anchors.centerIn: parent
@@ -230,8 +263,15 @@ Scope { // Scope
                             Persistent.states.cheatsheet.tabIndex = currentIndex;
                         }
 
-                        implicitWidth: Math.max.apply(null, contentChildren.map(child => child.implicitWidth || 0))
-                        implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
+                        // A share of the screen rather than the largest tab's
+                        // implicit size. Two things follow from that: the sheet
+                        // stays one size as you move between tabs instead of
+                        // resizing under the pointer, and -- because the view no
+                        // longer has to measure every page to size itself -- a
+                        // page can wait until it is looked at before it exists.
+                        // Building all three cost ~550ms of the open.
+                        implicitWidth: (cheatsheetRoot.screen?.width ?? 1920) * 0.72
+                        implicitHeight: (cheatsheetRoot.screen?.height ?? 1080) * 0.7
 
                         clip: true
 
@@ -249,9 +289,9 @@ Scope { // Scope
                             when: swipeView.contentItem !== null
                         }
 
-                        CheatsheetTimetable {}
-                        CheatsheetKeybinds {}
-                        CheatsheetPeriodicTable {}
+                        LazyTab { sourceComponent: CheatsheetTimetable {} }
+                        LazyTab { sourceComponent: CheatsheetKeybinds {} }
+                        LazyTab { sourceComponent: CheatsheetPeriodicTable {} }
 
                         Component.onCompleted: {
                             for (const p of root.extensionCheatsheetTabs) {
@@ -291,6 +331,20 @@ Scope { // Scope
                 }
             }
         }
+    }
+
+    // A tab is built the first time it is looked at, and kept afterwards --
+    // unloading on the way out would rebuild it, and throw away its scroll
+    // position and whatever was typed in its search box.
+    component LazyTab: Loader {
+        id: lazyTab
+        readonly property bool current: SwipeView.isCurrentItem
+        property bool everCurrent: false
+
+        active: lazyTab.everCurrent
+        onCurrentChanged: if (lazyTab.current) lazyTab.everCurrent = true
+        // `onCurrentChanged` never fires for the tab that starts selected.
+        Component.onCompleted: if (lazyTab.current) lazyTab.everCurrent = true
     }
 
     IpcHandler {
