@@ -111,6 +111,56 @@ comment text starts. The cost is that a narrow category now pads its key column 
 widest bind on the sheet (`⌘ Shift Alt`), roughly 60px of extra whitespace in the Shell
 column — which reads as a table rather than as a ragged edge, so it was kept.
 
+## The Elements tab, rebuilt as a study tool
+
+Asked for after the audit row landed, by the person who uses it: a class-12 chemistry
+student who pointed out that a periodic table which shows four facts is worse than the
+poster on their wall. The tab is now a reference tool rather than decoration, and it is
+the one part of this surface that is a feature rather than a repair.
+
+**Nothing in it was typed by hand.** `tools/gen-periodic-table.py` builds
+`periodic_table.js` from three public sources and cross-checks the fields that overlap:
+Bowserinator/Periodic-Table-JSON (Wikipedia, CC-BY-SA 3.0) for configurations, shell
+occupancies, the ionisation series, phase, mp/bp, density and the summaries;
+andrejewski/periodic-table (PubChem-derived) for ionic radius, oxidation states, bonding
+and year; and Wikipedia's atomic-radii data page for the radii, because the PubChem
+column is blank for Ce–Yb and every actinide — exactly the stretch someone revising the
+lanthanide contraction is looking at. The generator prints the 72 values the first two
+sources disagree on so they can be eyeballed rather than silently resolved.
+
+**Two unit traps the cross-check caught**, both of which would have shipped as confident
+wrong numbers:
+- Wikipedia quotes a gas density in **g/L** and PubChem in **g/cm³**, so the two look like
+  they disagree by a factor of 1000 on every gas. Taken at face value the tab would have
+  printed oxygen at 1.429 g/cm³ — denser than aluminium. The unit now travels with the
+  value and `check-periodic-table.py` fails if a gas is quoted in g/cm³.
+- Lanthanum ships upstream as `[Xe] 5d16s2`, one space short, which reads as a single
+  term. Normalised in the generator and asserted in the check.
+
+**Families are re-derived, not taken from either source.** Bowserinator files every
+halogen under "diatomic nonmetal"; a table that does not colour group 17 as its own
+family is not much use to someone learning group trends.
+
+**Colour.** See `DECISIONS.md` 28. Ten fixed family hues, four block hues and a 7-step
+sequential ramp, each produced by search and run through the data-viz validator rather
+than picked by eye, each mode stepped for its own surface. Ten hues cannot pass the
+all-pairs gate — no ten can — so the **Block** mode is the 4-colour view that does, every
+tile is directly labelled, and a legend is always on screen.
+
+**What it does now:** family / block / five trend heat maps (atomic radius,
+electronegativity, ionisation enthalpy, electron gain, melting point, density — density on
+a log scale, because linear puts everything but the heavy metals on one step), group and
+period rulers, search by symbol/name/number, and a detail card per element with the shell
+diagram, both configuration forms, all five radii, the successive ionisation enthalpies as
+bars (the jump after a noble-gas core is the point of that chart), oxidation states,
+physical constants in °C and K, discovery and a summary.
+
+**Not verified interactively.** The table, the modes, the legend and the rulers were
+checked on the running shell. The click-to-open detail card, the shell diagram and the
+ionisation chart have only been checked by the gates and by reading — the desktop was in
+use and driving it further was not reasonable. If the detail card misbehaves, that is
+where to look first.
+
 ## Left alone, deliberately
 
 - **Colouring the element tiles by series.** The `type` field is in `periodic_table.js`

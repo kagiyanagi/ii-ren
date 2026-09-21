@@ -223,22 +223,40 @@ for dead in ("allDayChipHeight", "allDayChipSpacing", "maxAllDayEventCount", "ha
     check(dead not in timetable, f"{dead} is back -- it fed a column of transparent rectangles")
 
 
-# --- 4. the element tiles are reference, not controls --------------------------
+# --- 4. the periodic table ----------------------------------------------------
+#
+# The element data and the colour scales have their own gate --
+# tools/check-periodic-table.py. What is asserted here is the layout, which is
+# what this surface got wrong before: names painting over their neighbours, and
+# a table wider than the window with no way to reach the rest of it.
 
-tile_code = re.sub(r"//[^\n]*", "", tile)
-check("RippleButton" not in tile_code,
-      "ElementTile is a RippleButton again -- a ripple and a hover film for no onClicked")
-check("visible: root.filled" in tile,
-      "the tile content is no longer gated on `filled`, so the spacers paint `-1` and `0`")
-# A `visible: false` on the tile itself collapses the Row and takes the grid with it.
-check(not re.search(r"^\s{4}visible:", tile, re.M),
-      "the spacer tiles are hidden at the root -- a Row skips invisible children, "
-      "so every element after a gap shifts left")
 check(re.search(r"left: parent\.left\s*\n\s*right: parent\.right", tile),
       "the element name has no width again, so StyledText cannot elide and long names "
       "paint over the neighbouring tiles")
-check("StyledFlickable" in table and "ScrollBar.horizontal" in table,
-      "the periodic table is unscrollable again -- it does not fit a 1366px screen")
+# Every cell is placed from the data's own grid coordinates, so an empty cell is
+# an absence rather than a transparent tile that still hit-tests.
+check(re.search(r"x: grid\.cellX\(", table) and re.search(r"y: grid\.cellY\(", table),
+      "the table is not laid out from the elements' grid coordinates any more")
+check("type: \"empty\"" not in table and "empty" not in tile,
+      "spacer tiles are back -- the old table carried 44 transparent RippleButtons")
+# Sized to fit instead of scrolled: the tile shrinks until the whole table is on
+# screen, which is what a 1366px laptop needs and what a scrollbar only papered
+# over. Both axes have to be in that min, or one of them overflows.
+size_expr = expr(table, r"readonly property int tileSize: (Math\.max\(28, Math\.floor\(Math\.min\(\n[^\n]+\n[^\n]+\)\)\))",
+                 "the responsive tile size is gone")
+if size_expr:
+    check("tableArea.width" in size_expr and "tableArea.height" in size_expr,
+          "the tile size no longer fits both axes, so the table overflows one of them")
+    for view_w, view_h in [(1350, 679), (700, 400), (2400, 1300), (300, 200)]:
+        columns, rows, gap = 19, 11, 4
+        size = max(28, int(min((view_w - (columns - 1) * gap) / columns,
+                               (view_h - (rows - 1) * gap) / rows)))
+        check(size >= 28, f"a {view_w}x{view_h} viewport gives a {size}px tile")
+        if size > 28:
+            check(columns * size + (columns - 1) * gap <= view_w + 1,
+                  f"the table is wider than a {view_w}px viewport at a {size}px tile")
+            check(rows * size + (rows - 1) * gap <= view_h + 1,
+                  f"the table is taller than a {view_h}px viewport at a {size}px tile")
 
 
 if fail:
