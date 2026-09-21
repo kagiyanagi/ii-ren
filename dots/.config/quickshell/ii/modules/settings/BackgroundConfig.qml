@@ -143,6 +143,24 @@ ContentPage {
             }
 
             ConfigSpinBox {
+                enabled: !page.wallpaperIsVideo
+                opacity: enabled ? 1 : 0.4
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
+                Layout.fillWidth: true
+                icon: "timer"
+                text: Translation.tr("Transition duration (ms)")
+                value: Config.options.background.transitionDuration
+                from: 200
+                to: 6000
+                stepSize: 100
+                onValueChanged: {
+                    Config.options.background.transitionDuration = value;
+                }
+            }
+
+            ConfigSpinBox {
                 visible: Config.options.background.transitionType === "wipe" || Config.options.background.transitionType === "wave"
                 enabled: !page.wallpaperIsVideo
                 opacity: enabled ? 1 : 0.4

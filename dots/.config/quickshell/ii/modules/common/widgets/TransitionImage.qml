@@ -12,7 +12,11 @@ Item {
 
     property string transitionType: Config.options.background.transitionType ?? "radial"
 
-    property int animationDuration: transitionType === "radial" ? 1100 : 1000 // design-ok: full-screen wallpaper crossing, screen-sized per DESIGN.md 2.4 -- no Appearance spec covers this scale
+    // design-ok: full-screen wallpaper crossing, screen-sized per DESIGN.md 2.4 --
+    // no Appearance spec covers this scale, so it is a config knob instead of a
+    // token. Radial keeps the 10% it has always had over the others: its circle
+    // crosses the diagonal while the rest cross an edge.
+    property int animationDuration: Math.round((Config.options.background.transitionDuration ?? 2000) * (transitionType === "radial" ? 1.1 : 1))
     property var fillMode: Image.PreserveAspectCrop
     property bool animated: Config.options.background.animateWallpaperChanges
 

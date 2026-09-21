@@ -1105,6 +1105,12 @@ Singleton {
                 property list<var> activeWidgets: []
                 property bool animateWallpaperChanges: true
                 property string transitionType: "radial"
+                // How long the wipe takes, in ms. A full-screen crossing is well
+                // past the scale any Appearance spec covers, and how slow it
+                // should be is taste, not a token -- so it is a knob, next to the
+                // style and the angle it belongs with. Radial takes 10% longer
+                // because its circle has to cross the diagonal, not an edge.
+                property int transitionDuration: 2000
                 property int wipeAngle: 0
                 property string wallpaperPath: ""
                 property string thumbnailPath: ""

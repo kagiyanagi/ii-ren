@@ -140,6 +140,7 @@
         },
         "thumbnailPath": "",
         "transitionType": "radial",
+        "transitionDuration": 2000,
         "wallpaperPath": "",
         "widgets": {
             "ai_chat": {
