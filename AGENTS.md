@@ -145,6 +145,18 @@ you touched; they are the only automated gate.
   theme with nothing on screen to say why. It shipped that way: QML's `int` is 32-bit and
   the generator typed `bluetooth.fastPair.mutedUntil` — epoch ms — as one. matugen re-runs
   the generator on every colour change, so the greeter broke on a wallpaper switch
+- `python3 tools/check-content-transparency.py` — a surface with nothing beneath it
+  still has a background. `colLayer1..4` and `colSurfaceContainer*` are not colours but
+  overlays: `solveOverlayColor` returns what composites to the target *over the layer
+  below*, at alpha `1 - contentTransparency`. `backgroundTransparency` consults
+  `transparency.enable`; `contentTransparency` did not, so with the shipped config —
+  transparency switched **off** — every content fill in the shell came back at alpha 0.1.
+  Panels hid it; the region selector's toolbar and the lock islands (both `Toolbar`) and the
+  lock's PAM bubble float over a wallpaper and were painted at 10%, leaving the opaque
+  `RectangularShadow` alone on screen: a card-shaped grey blob with no card. The gate is
+  pinned on both reals, and the licence for a one-line change to a token every widget reads
+  is computed rather than remembered — the solved colour over its own base is the same pixel
+  at either alpha, for every step of the layer chain
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
