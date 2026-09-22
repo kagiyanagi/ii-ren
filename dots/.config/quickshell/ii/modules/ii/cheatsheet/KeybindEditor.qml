@@ -96,7 +96,7 @@ WindowDialog {
         Layout.fillWidth: true
         implicitHeight: 64
         buttonRadius: Appearance.rounding.normal
-        colBackground: Appearance.colors.colLayer2
+        colBackground: Appearance.colors.colLayer3
         toggled: root.capturing
         onClicked: root.capturing = !root.capturing
 

@@ -188,6 +188,18 @@ you touched; they are the only automated gate.
   wherever the gesture died, because the snap-back Behavior is gated on `dragging`. It also
   holds the 3.6 numbers, the null-safety that lets a lone card use the widget, and the two
   hand-backs of the shared `dragDistance` every neighbour follows
+- `python3 tools/check-dialog-layers.py` — a dialog's content cards are still a different
+  colour from the dialog. `colLayer1..4` and `colSurfaceContainer*` each name exactly one
+  base and only resolve to their target when painted over it; `WindowDialog` painted its
+  card `m3surfaceContainerHigh` while everything written for it — the Wi-Fi, Bluetooth,
+  volume and selection list cards, `DialogListItem`, `DialogButton`, every `ContentGroup`
+  card in a dialog — paints layer 3 or `colSurfaceContainerHigh`, both solved onto
+  `m3surfaceContainer`. `1 - contentTransparency` = 0.1 was the only thing holding the two
+  apart, so when content fills went opaque every card inside a dialog composited onto its
+  own parent, with its rows still drawn on top: nothing to see in a screenshot, because the
+  card is not missing, it is the wrong colour by exactly zero. The dialog is layer 2 now,
+  which is the base those tokens already declare, so the step is exact at any transparency
+  setting — which is what this evaluates, at both alphas
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

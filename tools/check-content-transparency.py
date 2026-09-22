@@ -29,7 +29,11 @@ The gate is what this pins, in both directions:
   its own base is the same pixel at the old alpha and at the new one, for every
   step of the layer chain. That is the licence for a one-line change to a token
   every widget in the shell reads, and it is palette-dependent, so it is computed
-  rather than asserted from memory.
+  rather than asserted from memory. It is a licence for *correctly based* fills
+  only: a token painted over anything but the base it names composited to
+  something between the two while the alpha was 0.1, and to its bare target once
+  it was 1. Every card inside a dialog was one of those. See
+  `check-dialog-layers.py`.
 
 Ceiling: with transparency *enabled* those same base-less surfaces go back to
 alpha `1 - 0.9`. Nested ones stay exact, because that is what the solve is for.

@@ -39,7 +39,11 @@ Item {
 
     Rectangle { // The dialog
         id: dialog
-        color: Appearance.m3colors.m3surfaceContainerHigh
+        // Layer 2, for the reason WindowDialog spells out: the list card below
+        // is `colSurfaceContainerHigh`, which is solved to composite onto
+        // `m3surfaceContainer`. Paint the dialog in the colour that token
+        // resolves to and the card lands on itself.
+        color: Appearance.colors.colLayer2Base
         radius: Appearance.rounding.verylarge
         anchors.fill: parent
         anchors.margins: root.dialogMargin

@@ -102,7 +102,7 @@ WindowDialog {
                         Layout.fillWidth: true
                         implicitHeight: 64
                         radius: Appearance.rounding.normal
-                        color: Appearance.colors.colLayer2
+                        color: Appearance.colors.colLayer3
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -118,7 +118,7 @@ WindowDialog {
                                 Layout.alignment: Qt.AlignHCenter
                                 font.pixelSize: Appearance.font.pixelSize.larger
                                 font.weight: Font.Bold
-                                color: Appearance.colors.colOnLayer2
+                                color: Appearance.colors.colOnLayer3
                                 text: Network.hotspotToggled ? String(Network.hotspotClientCount) : "--"
                             }
                         }
@@ -128,7 +128,7 @@ WindowDialog {
                         Layout.fillWidth: true
                         implicitHeight: 64
                         radius: Appearance.rounding.normal
-                        color: Appearance.colors.colLayer2
+                        color: Appearance.colors.colLayer3
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -144,7 +144,7 @@ WindowDialog {
                                 Layout.alignment: Qt.AlignHCenter
                                 font.pixelSize: Appearance.font.pixelSize.small
                                 font.weight: Font.Bold
-                                color: Appearance.colors.colOnLayer2
+                                color: Appearance.colors.colOnLayer3
                                 text: Network.hotspotToggled
                                     ? `↓ ${root.formatBytes(Network.hotspotRxBytes)}  ↑ ${root.formatBytes(Network.hotspotTxBytes)}`
                                     : "--"
@@ -209,12 +209,12 @@ WindowDialog {
                             implicitWidth: 44
                             implicitHeight: 44
                             buttonRadius: Appearance.rounding.normal
-                            colBackground: Appearance.colors.colLayer2
+                            colBackground: Appearance.colors.colLayer3
                             onClicked: root.showPassword = !root.showPassword
                             contentItem: MaterialSymbol {
                                 anchors.centerIn: parent
                                 iconSize: Appearance.font.pixelSize.larger
-                                color: Appearance.colors.colOnLayer2
+                                color: Appearance.colors.colOnLayer3
                                 text: root.showPassword ? "visibility_off" : "visibility"
                             }
                         }

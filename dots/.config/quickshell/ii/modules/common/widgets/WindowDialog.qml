@@ -72,7 +72,16 @@ Rectangle {
         id: dialogBackground
         anchors.horizontalCenter: parent.horizontalCenter
         radius: Appearance.rounding.verylarge
-        color: Appearance.m3colors.m3surfaceContainerHigh // Use opaque version of layer3
+        // Layer 2, opaque -- and it has to be layer 2, because everything written
+        // for this dialog paints one step above it: the Wi-Fi, Bluetooth, volume
+        // and selection list cards are `colSurfaceContainerHigh`, whose base is
+        // `m3surfaceContainer`, and `DialogListItem`, `DialogButton` and every
+        // `ContentGroup` card inside a dialog take their fills and state films
+        // from layer 3, off the same base. At layer 3 the card was the colour
+        // those tokens solve *to*, so a content card composited onto its own
+        // parent and vanished; only `1 - contentTransparency` = 0.1 was keeping
+        // it apart, and it stopped being 0.1 when transparency was switched off.
+        color: Appearance.colors.colLayer2Base
 
         property real targetY: root.height / 2 - root.backgroundHeight / 2
         y: root.show ? targetY : (targetY - root.backgroundAnimationMovementDistance)
