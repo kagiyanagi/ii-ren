@@ -211,6 +211,17 @@ you touched; they are the only automated gate.
   card is not missing, it is the wrong colour by exactly zero. The dialog is layer 2 now,
   which is the base those tokens already declare, so the step is exact at any transparency
   setting — which is what this evaluates, at both alphas
+- `python3 tools/check-osk.py` — the on-screen keyboard opens, closes visibly, and can
+  reach its own layouts. `Loader.active` must not read `GlobalStates.oskOpen`, not even as
+  one half of an `||`: that binding and the `Connections` that starts the exit hang off the
+  same change signal in an undefined order, the binding won every time, and the close
+  handler never ran — the layer unmapped 45ms after the request instead of playing a 130ms
+  exit, with no symptom beyond a keyboard that vanishes. It also pins the rise to the
+  bottom anchor *margin* rather than a transform (the window masks the card), and the
+  layout knob, which shipped dead: `osk.layout` defaulted to `"qwerty_full"`, which is not
+  a key in `layouts.js`, so it fell back for everyone and two of the three layouts were
+  unreachable — there is no settings page for the OSK. The cycler is evaluated against
+  that config too, since indexing the unresolved name returns -1
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -1362,7 +1362,7 @@
         "timeout": 1000
     },
     "osk": {
-        "layout": "qwerty_full",
+        "layout": "English (US)",
         "pinnedOnStartup": false
     },
     "overlay": {

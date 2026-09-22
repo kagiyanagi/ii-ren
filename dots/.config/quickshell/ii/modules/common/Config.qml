@@ -1742,7 +1742,7 @@ Singleton {
             }
 
             property JsonObject osk: JsonObject {
-                property string layout: "qwerty_full"
+                property string layout: "English (US)"
                 property bool pinnedOnStartup: false
             }
 
