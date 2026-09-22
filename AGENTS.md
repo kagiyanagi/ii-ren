@@ -237,6 +237,15 @@ you touched; they are the only automated gate.
   a key in `layouts.js`, so it fell back for everyone and two of the three layouts were
   unreachable — there is no settings page for the OSK. The cycler is evaluated against
   that config too, since indexing the unresolved name returns -1
+- `python3 tools/check-tooltip-hover.py` — a tooltip is only on screen while its owner is
+  hovered. `StyledToolTip` reads its parent's hover state and fell back to "a parent that
+  reports none is always hovered", which is true of a `Control` but not of a `MouseArea` —
+  that one says `containsMouse`, so every tooltip parented to one was open from the first
+  frame. The volume mixer stacked five over its app rows in both the sidebar dialog and the
+  overlay widget. It evaluates the real expression lifted out of the widget against each
+  shape of parent, and checks the one thing the fix can break: a `MouseArea` with
+  `hoverEnabled` off never sets `containsMouse`, so its tooltip would be unreachable
+  rather than permanent
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

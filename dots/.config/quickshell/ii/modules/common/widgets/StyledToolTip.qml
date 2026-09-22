@@ -11,7 +11,12 @@ ToolTip {
 
     // parent is briefly null while a tooltip's owner is still being parented,
     // and the unguarded read threw there. Nothing to hover yet means hidden.
-    readonly property bool internalVisibleCondition: (extraVisibleCondition && parent !== null && (parent.hovered === undefined || parent.hovered)) || alternativeVisibleCondition
+    // A MouseArea reports hover as `containsMouse`, not `hovered`, so the old
+    // "no `hovered` property means show it" fallback left every tooltip parented
+    // to one permanently on screen. Ask for `containsMouse` before falling back;
+    // a parent with neither still shows, which is what the callers that gate on
+    // extraVisibleCondition expect.
+    readonly property bool internalVisibleCondition: (extraVisibleCondition && parent !== null && (parent.hovered ?? parent.containsMouse ?? true)) || alternativeVisibleCondition
     verticalPadding: 6
     horizontalPadding: 10
     background: null
