@@ -230,7 +230,29 @@ for m in models:
     )
 
 
-# ── 8. nine icon-only buttons are labelled ───────────────────────────────────
+# ── 8. the assistant's input row pins its own height ─────────────────────────
+#
+# `ToolbarButton` sets `Layout.fillHeight: true`, and a nested layout that holds a
+# child which fills starts filling itself -- which beats `Layout.preferredHeight`.
+# The row took the whole card: transcript 9px tall with its empty-state line against
+# the title bar, and `IconToolbarButton`'s `implicitWidth: height` turned the eye
+# toggle into a 390px circle. One caller in the shell hits this shape; this is it.
+
+assist = (OVERLAY / "assist/AssistContent.qml").read_text()
+row = re.search(r"RowLayout \{(.*?)\n            spacing:", assist, re.S)
+assert row, "AssistContent's input row moved"
+assert "Layout.fillHeight: false" in row.group(1), (
+    "the input row must refuse to fill. It holds ToolbarButtons, which declare "
+    "`Layout.fillHeight: true`, and that propagates to the row and beats its "
+    "`preferredHeight` -- measured at 389px tall against the 38 it asks for."
+)
+assert "Layout.preferredHeight" in row.group(1), (
+    "without a pinned height the row grows with the draft in its ScrollView, which is "
+    "what the ScrollView is there to prevent"
+)
+
+
+# ── 9. nine icon-only buttons are labelled ───────────────────────────────────
 
 assert "StyledToolTip" in taskbar, (
     "the taskbar's widget toggles are icon-only: `point_scan` and `browse_activity` do "

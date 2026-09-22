@@ -70,6 +70,28 @@ Also **the enter used to run once per window lifetime**, not once per open. It w
 never dies — every open after the first had no zoom at all, while the scrim and the taskbar
 still faded. Driven off `overlayOpenChanged` now.
 
+## Found after the commit, from a screenshot the user took
+
+**The assistant's input row took the whole card.** `ToolbarButton` declares
+`Layout.fillHeight: true`, and a nested layout that holds a child which fills starts
+filling itself -- which beats `Layout.preferredHeight`. So `AssistContent`'s 38px input
+row was 389px tall: the transcript above it collapsed to 9px, putting its empty-state
+line up against the title bar, and `IconToolbarButton`'s `implicitWidth: height` turned
+the eye toggle into a 390px circle. `Layout.fillHeight: false` on the row, measured back
+to 38 with the buttons at 35x38 and the field 370 wide.
+
+Pre-existing, from `a5bb8d03e`, and not in the commit above -- but this row should have
+caught it. Two reasons it did not, both worth naming: there were no screenshots (the
+display was asleep), and `pack.py`'s reuse heuristic flagged the `ScrollView` in this
+file, which I checked by asking whether `StyledScrollView` exists (it does not) rather
+than by asking whether the row worked. A stale reuse hint is still a pointer at a line
+worth reading.
+
+A scan of the whole shell for the same shape -- a nested layout with a fixed
+`preferredHeight` holding a `ToolbarButton`/`IconToolbarButton`/`ToolbarTextField` --
+returns exactly this one caller, so the shared widget is left alone and
+`check-overlay.py` holds the single site.
+
 ## Things that were checked and left alone
 
 - **The focus grab never arms on the first open.** `delayedGrabTimer` and the `Connections`

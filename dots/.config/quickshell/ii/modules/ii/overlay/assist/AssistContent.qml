@@ -90,6 +90,13 @@ OverlayBackground {
 
         RowLayout {
             Layout.fillWidth: true
+            // `ToolbarButton` declares `Layout.fillHeight: true`, and a nested layout
+            // holding a child that fills starts filling itself -- which beats
+            // `preferredHeight`, so this row took the whole card. The transcript above it
+            // collapsed to 9px (its empty-state line ended up against the title bar) and
+            // `IconToolbarButton`'s `implicitWidth: height` turned the eye into a 390px
+            // circle. Measured: row 389 high, button 35x389, transcript 9.
+            Layout.fillHeight: false
             Layout.preferredHeight: 38
             spacing: 2
 
