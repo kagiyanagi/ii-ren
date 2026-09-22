@@ -139,13 +139,62 @@ Scope {
         }
     }
 
+    // The surface has to outlive the request or there is nothing left to play the exit
+    // on -- `active` bound straight to `osdVolumeOpen` destroys it on the frame the flag
+    // clears, which is why this OSD has never had an animation of any kind.
+    property bool isClosing: false
+
     Loader {
         id: osdLoader
-        active: GlobalStates.osdVolumeOpen
+        active: GlobalStates.osdVolumeOpen || root.isClosing
 
         sourceComponent: PanelWindow {
             id: osdRoot
             color: "transparent"
+
+            // 0 parked behind the bar, 1 resting. Enter decelerating on the default
+            // spatial spec, exit accelerating on fast effects at half that duration
+            // (DESIGN.md 2.5). The spec is picked inside the binding that writes the
+            // property, because a Behavior cannot read its own direction (2.9).
+            property real openedProgress: 0
+            property AnimSpec openSpec: Appearance.animation.elementMoveEnter
+
+            Behavior on openedProgress {
+                NumberAnimation {
+                    duration: osdRoot.openSpec.duration
+                    easing.type: osdRoot.openSpec.type
+                    easing.bezierCurve: osdRoot.openSpec.bezierCurve
+                }
+            }
+
+            onOpenedProgressChanged: {
+                if (openedProgress === 0)
+                    root.isClosing = false;
+            }
+
+            Connections {
+                target: GlobalStates
+                function onOsdVolumeOpenChanged() {
+                    if (GlobalStates.osdVolumeOpen) {
+                        root.isClosing = false;
+                        osdRoot.openSpec = Appearance.animation.elementMoveEnter;
+                        osdRoot.openedProgress = 1;
+                    } else {
+                        root.isClosing = true;
+                        osdRoot.openSpec = Appearance.animation.elementMoveExit;
+                        osdRoot.openedProgress = 0;
+                    }
+                }
+            }
+
+            onVisibleChanged: {
+                // From Component.onCompleted most of the slide plays before the first
+                // frame is on screen.
+                if (visible && GlobalStates.osdVolumeOpen) {
+                    osdRoot.openSpec = Appearance.animation.elementMoveEnter;
+                    osdRoot.openedProgress = 1;
+                }
+            }
 
             Connections {
                 target: root
@@ -171,75 +220,98 @@ Scope {
                 bottom: Appearance.sizes.barHeight
             }
 
-            implicitWidth: columnLayout.implicitWidth
-            implicitHeight: columnLayout.implicitHeight
-            visible: Quickshell.screens.length > 0 && osdLoader.active
+            implicitWidth: osdValuesWrapper.implicitWidth
+            implicitHeight: osdValuesWrapper.implicitHeight
+            visible: Quickshell.screens.length > 0
 
-            ColumnLayout {
-                id: columnLayout
+            // Grows out of the bar it sits under, by the anchor margin rather than a
+            // transform -- `mask` recomputes its region from this item's *geometry*,
+            // and a transform on a masked item freezes the input region (see
+            // tools/check-mask-regions.py).
+            Item {
+                id: osdValuesWrapper
                 anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: Config.options.bar.bottom ? undefined : parent.top
+                anchors.bottom: Config.options.bar.bottom ? parent.bottom : undefined
+                anchors.topMargin: Config.options.bar.bottom ? 0 : -height * (1 - osdRoot.openedProgress)
+                anchors.bottomMargin: Config.options.bar.bottom ? -height * (1 - osdRoot.openedProgress) : 0
+                implicitHeight: contentColumnLayout.implicitHeight
+                implicitWidth: contentColumnLayout.implicitWidth
+                // Spatial progress may overshoot; opacity must not.
+                opacity: Math.min(1, osdRoot.openedProgress)
+                clip: true
 
-                Item {
-                    id: osdValuesWrapper
-                    implicitHeight: contentColumnLayout.implicitHeight
-                    implicitWidth: contentColumnLayout.implicitWidth
-                    clip: true
+                // The OSD is an acknowledgement, not a control: reaching for it with the
+                // pointer dismisses it rather than making it interactive.
+                HoverHandler {
+                    onHoveredChanged: if (hovered) GlobalStates.osdVolumeOpen = false
+                }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onEntered: GlobalStates.osdVolumeOpen = false
+                Column {
+                    id: contentColumnLayout
+                    anchors {
+                        top: parent.top
+                        left: parent.left
+                        right: parent.right
+                    }
+                    spacing: 0
+
+                    Loader {
+                        id: osdIndicatorLoader
+                        source: root.indicators.find(i => i.id === root.currentIndicator)?.sourceUrl
                     }
 
-                    Column {
-                        id: contentColumnLayout
-                        anchors {
-                            top: parent.top
-                            left: parent.left
-                            right: parent.right
+                    Item {
+                        id: protectionMessageWrapper
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        implicitHeight: protectionMessageBackground.implicitHeight
+                        implicitWidth: protectionMessageBackground.implicitWidth
+
+                        // Without `visible`, an empty message still reserved its card's
+                        // height in the column and pushed the indicator up the screen.
+                        property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+                        opacity: {
+                            const shown = root.protectionMessage !== "";
+                            protectionMessageWrapper.fadeSpec = shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                            return shown ? 1 : 0;
                         }
-                        spacing: 0
+                        visible: opacity > 0
 
-                        Loader {
-                            id: osdIndicatorLoader
-                            source: root.indicators.find(i => i.id === root.currentIndicator)?.sourceUrl
-                        }
-
-                        Item {
-                            id: protectionMessageWrapper
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            implicitHeight: protectionMessageBackground.implicitHeight
-                            implicitWidth: protectionMessageBackground.implicitWidth
-                            opacity: root.protectionMessage !== "" ? 1 : 0
-
-                            StyledRectangularShadow {
-                                target: protectionMessageBackground
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: protectionMessageWrapper.fadeSpec.duration
+                                easing.type: protectionMessageWrapper.fadeSpec.type
+                                easing.bezierCurve: protectionMessageWrapper.fadeSpec.bezierCurve
                             }
-                            Rectangle {
-                                id: protectionMessageBackground
-                                anchors.centerIn: parent
-                                color: Appearance.m3colors.m3error
-                                property real padding: 10
-                                implicitHeight: protectionMessageRowLayout.implicitHeight + padding * 2
-                                implicitWidth: protectionMessageRowLayout.implicitWidth + padding * 2
-                                radius: Appearance.rounding.normal
+                        }
 
-                                RowLayout {
-                                    id: protectionMessageRowLayout
-                                    anchors.centerIn: parent
-                                    MaterialSymbol {
-                                        id: protectionMessageIcon
-                                        text: "dangerous"
-                                        iconSize: Appearance.font.pixelSize.hugeass
-                                        color: Appearance.m3colors.m3onError
-                                    }
-                                    StyledText {
-                                        id: protectionMessageTextWidget
-                                        horizontalAlignment: Text.AlignHCenter
-                                        color: Appearance.m3colors.m3onError
-                                        wrapMode: Text.Wrap
-                                        text: root.protectionMessage
-                                    }
+                        StyledRectangularShadow {
+                            target: protectionMessageBackground
+                        }
+                        Rectangle {
+                            id: protectionMessageBackground
+                            anchors.centerIn: parent
+                            color: Appearance.m3colors.m3error
+                            property real padding: 10
+                            implicitHeight: protectionMessageRowLayout.implicitHeight + padding * 2
+                            implicitWidth: protectionMessageRowLayout.implicitWidth + padding * 2
+                            radius: Appearance.rounding.normal
+
+                            RowLayout {
+                                id: protectionMessageRowLayout
+                                anchors.centerIn: parent
+                                MaterialSymbol {
+                                    id: protectionMessageIcon
+                                    text: "dangerous"
+                                    iconSize: Appearance.font.pixelSize.hugeass
+                                    color: Appearance.m3colors.m3onError
+                                }
+                                StyledText {
+                                    id: protectionMessageTextWidget
+                                    horizontalAlignment: Text.AlignHCenter
+                                    color: Appearance.m3colors.m3onError
+                                    wrapMode: Text.Wrap
+                                    text: root.protectionMessage
                                 }
                             }
                         }

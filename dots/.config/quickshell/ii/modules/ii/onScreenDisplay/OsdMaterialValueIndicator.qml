@@ -72,26 +72,20 @@ Item {
                     shape: root.circledShapes ? MaterialShape.Shape.Circle : root.shape
                     text: root.icon
 
+                    // Rotation is spatial and may overshoot; elementMoveSmall is the
+                    // fast-spatial spec at the same 350ms this was hand-written to.
                     Behavior on rotation {
-                        NumberAnimation {
-                            duration: 350
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.5
-                        }
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                     }
 
-                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSecondaryContainer
+                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
                     colSymbol: root.value > root.maxLimit ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSecondaryContainer
 
                     Behavior on color {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                     Behavior on colSymbol {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                 }
             }
@@ -108,7 +102,7 @@ Item {
                 MaterialSymbol {
                     id: symbol
                     anchors.centerIn: parent
-                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimary
+                    color: root.value > root.maxLimit ? Appearance.colors.colError : Appearance.colors.colPrimary
                     iconSize: Appearance.font.pixelSize.huge + 2
                     text: root.icon
                 }
@@ -127,7 +121,9 @@ Item {
             }
 
             Item {
-                implicitWidth: 25
+                // Wide enough for "100" -- 25 was not, and the overflow painted over
+                // the slider to its left.
+                implicitWidth: 36
                 implicitHeight: 30
                 Layout.alignment: Qt.AlignVCenter
                 Layout.leftMargin: 0
@@ -139,7 +135,7 @@ Item {
                 StyledText {
                     id: value
                     anchors.centerIn: parent
-                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimary
+                    color: root.value > root.maxLimit ? Appearance.colors.colError : Appearance.colors.colPrimary
                     text: Math.round(root.value * 100)
 
                     font {
@@ -175,26 +171,20 @@ Item {
                         letterSpacing: 0.2
                     }
 
+                    // Rotation is spatial and may overshoot; elementMoveSmall is the
+                    // fast-spatial spec at the same 350ms this was hand-written to.
                     Behavior on rotation {
-                        NumberAnimation {
-                            duration: 350
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.5
-                        }
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                     }
 
-                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSecondaryContainer
+                    color: root.value > root.maxLimit ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
                     colSymbol: root.value > root.maxLimit ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSecondaryContainer
 
                     Behavior on color {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                     Behavior on colSymbol {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                 }
             }
@@ -221,8 +211,8 @@ Item {
         id: quickSlider
         property string materialSymbol
 
-        highlightColor: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimary
-        handleColor: root.value > root.maxLimit ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimary
+        highlightColor: root.value > root.maxLimit ? Appearance.colors.colError : Appearance.colors.colPrimary
+        handleColor: root.value > root.maxLimit ? Appearance.colors.colError : Appearance.colors.colPrimary
 
         configuration: StyledSlider.Configuration.M
         stopIndicatorValues: []

@@ -16,9 +16,9 @@ Item {
     property alias from: valueProgressBar.from
     property alias to: valueProgressBar.to
 
-    property real valueIndicatorVerticalPadding: 9
-    property real valueIndicatorLeftPadding: 15
-    property real valueIndicatorRightPadding: 15 // An icon is circle ish, a column isn't, hence the extra padding
+    property real valueIndicatorVerticalPadding: 8
+    property real valueIndicatorLeftPadding: 16
+    property real valueIndicatorRightPadding: 16 // An icon is circle ish, a column isn't, hence the extra padding
 
     implicitWidth: Appearance.sizes.osdWidth + 2 * Appearance.sizes.elevationMargin
     implicitHeight: valueIndicator.implicitHeight + 2 * Appearance.sizes.elevationMargin
@@ -40,9 +40,8 @@ Item {
 
         RowLayout { // Icon on the left, stuff on the right
             id: valueRow
-            Layout.margins: 10
             anchors.fill: parent
-            spacing: 15
+            spacing: 16
 
             Item {
                 implicitWidth: 30
@@ -60,33 +59,27 @@ Item {
                     shape: root.shape
                     text: root.icon
 
+                    // Rotation is spatial and may overshoot; elementMoveSmall is the
+                    // fast-spatial spec at the same 350ms this was hand-written to.
                     Behavior on rotation {
-                        NumberAnimation {
-                            duration: 350
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.5
-                        }
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                     }
 
                     color: root.value > root.maxLimit ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
-                    colSymbol: root.value > root.maxLimit ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colOnSecondaryContainer
+                    colSymbol: root.value > root.maxLimit ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSecondaryContainer
 
                     Behavior on color {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                     Behavior on colSymbol {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                 }
             }
             ColumnLayout { // Stuff
                 Layout.alignment: Qt.AlignVCenter
                 Layout.rightMargin: valueIndicatorRightPadding
-                spacing: 5
+                spacing: 4
 
                 RowLayout { // Name fill left, value on the right end
                     Layout.leftMargin: valueProgressBar.height / 2 // Align text with progressbar radius curve's left end
@@ -103,9 +96,15 @@ Item {
 
                     StyledText {
                         color: Appearance.colors.colOnLayer0
-                        font.pixelSize: Appearance.font.pixelSize.small
+                        // Tabular figures: the number changes every frame of a drag and
+                        // proportional digits shift the label beside it as it does.
+                        font {
+                            family: Appearance.font.family.numbers
+                            pixelSize: Appearance.font.pixelSize.small
+                            features: { "tnum": 1 }
+                        }
                         Layout.fillWidth: false
-                        Layout.preferredWidth: 30
+                        Layout.preferredWidth: 36
                         horizontalAlignment: Text.AlignRight
                         text: Math.round(root.value * 100)
                         wrapMode: Text.NoWrap

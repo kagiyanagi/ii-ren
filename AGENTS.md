@@ -188,6 +188,17 @@ you touched; they are the only automated gate.
   wherever the gesture died, because the snap-back Behavior is gated on `dragging`. It also
   holds the 3.6 numbers, the null-safety that lets a lone card use the widget, and the two
   hand-backs of the shared `dragDistance` every neighbour follows
+- `python3 tools/check-osd.py` — the OSD's expanded card fits its own buttons, and still
+  leaves. The card grows by `extrasExpandedWidth`, a number derived from how many
+  *sliders* the indicator has, while each toggle row used to ask for `200 + 4 + 48` on
+  its own authority — so the labels the expansion exists to reveal elided to `D…` and
+  `Mut…`. Whether that overflowed depended on the number of Pipewire playback nodes, so
+  it sweeps the arithmetic rather than trusting one desktop, and it evaluates the
+  connected group's radii at both `osd.position` values because `layoutDirection` flips
+  with the anchor and a screenshot proves one side. It also holds the minimalist pill's
+  exit: `Loader.active` bound to the open request destroys the surface on the frame the
+  flag clears, which is why that OSD — the one the shipped config runs — had no motion
+  of any kind
 - `python3 tools/check-dialog-layers.py` — a dialog's content cards are still a different
   colour from the dialog. `colLayer1..4` and `colSurfaceContainer*` each name exactly one
   base and only resolve to their target when painted over it; `WindowDialog` painted its

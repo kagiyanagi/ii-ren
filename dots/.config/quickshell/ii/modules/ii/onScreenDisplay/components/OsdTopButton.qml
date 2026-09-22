@@ -6,6 +6,11 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 
+/**
+ * The top button for the indicators that have no toggle row of their own --
+ * player volume and keyboard brightness. Volume and the display indicators carry
+ * their own connected button groups and never reach this.
+ */
 RippleButton {
     id: button
 
@@ -13,21 +18,15 @@ RippleButton {
     property real expandedProgress: 0.0
     property real buttonHeight: 56
 
-    property bool _muted: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.muted : false
+    readonly property bool isKeyboard: currentIndicator === "keyboardBrightness"
+    readonly property bool muted: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.muted : false
 
     rippleEnabled: true
 
-    toggled: {
-        if (currentIndicator === "brightness" || currentIndicator === "gamma")
-            return Appearance.m3colors.darkmode;
-        if (currentIndicator === "keyboardBrightness")
-            return GlobalStates.oskOpen;
-        return _muted;
-    }
+    toggled: isKeyboard ? GlobalStates.oskOpen : muted
 
     buttonRadius: buttonHeight / 2
 
-    // Color tokens standardized per Task C.1
     colBackground: Appearance.colors.colSecondaryContainer
     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
     colBackgroundToggled: Appearance.colors.colPrimary
@@ -35,24 +34,12 @@ RippleButton {
     colRipple: Appearance.colors.colSecondaryContainerActive
     colRippleToggled: Appearance.colors.colPrimaryActive
 
-    readonly property string currentIcon: {
-        if (currentIndicator === "brightness" || currentIndicator === "gamma") {
-            return Appearance.m3colors.darkmode ? "dark_mode" : "light_mode";
-        }
-        if (currentIndicator === "keyboardBrightness") {
-            return "keyboard";
-        }
-        return _muted ? "volume_off" : "volume_up";
-    }
+    readonly property string currentIcon: isKeyboard ? "keyboard" : (muted ? "volume_off" : "volume_up")
 
     readonly property string currentText: {
-        if (currentIndicator === "brightness" || currentIndicator === "gamma") {
-            return Appearance.m3colors.darkmode ? Translation.tr("Light mode") : Translation.tr("Dark mode");
-        }
-        if (currentIndicator === "keyboardBrightness") {
+        if (isKeyboard)
             return GlobalStates.oskOpen ? Translation.tr("Close keyboard") : Translation.tr("Open keyboard");
-        }
-        return _muted ? Translation.tr("Unmute output") : Translation.tr("Mute output");
+        return muted ? Translation.tr("Unmute output") : Translation.tr("Mute output");
     }
 
     readonly property color iconColor: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
@@ -67,7 +54,8 @@ RippleButton {
             id: buttonIcon
             text: button.currentIcon
             color: button.iconColor
-            iconSize: Appearance.font.pixelSize.normal
+            iconSize: Appearance.font.pixelSize.larger
+            fill: button.toggled ? 1 : 0
             Layout.alignment: Qt.AlignVCenter | (button.expandedProgress > 0.01 ? Qt.AlignLeft : Qt.AlignHCenter)
         }
 
@@ -81,22 +69,16 @@ RippleButton {
             visible: button.expandedProgress > 0.5
             opacity: (button.expandedProgress - 0.5) * 2
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.alignment: Qt.AlignVCenter
         }
     }
 
     onClicked: {
-        if (currentIndicator === "brightness" || currentIndicator === "gamma") {
-            if (Appearance.m3colors.darkmode) {
-                DarkModeService.disableDarkMode();
-            } else {
-                DarkModeService.enableDarkMode();
-            }
-        } else if (currentIndicator === "keyboardBrightness") {
+        if (isKeyboard)
             GlobalStates.oskOpen = !GlobalStates.oskOpen;
-        } else {
+        else
             Audio.toggleMute();
-        }
     }
 
     StyledToolTip {

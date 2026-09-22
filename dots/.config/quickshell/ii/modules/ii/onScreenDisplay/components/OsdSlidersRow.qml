@@ -4,7 +4,6 @@ import qs.modules.ii.topLayer.osd
 import qs.services
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 
 RowLayout {
@@ -13,12 +12,13 @@ RowLayout {
     property string currentIndicator: "volume"
     property real expandedProgress: 0.0
     property real sliderTrackWidth: 38
-    property real sliderFillHeight: 180
     property real displayValue: 0.0
     property real maxLimit: 1.0
     property string currentIcon: "volume_up"
     property var rootOsd
     property var osdRoot
+
+    readonly property real sliderWidth: osdRoot ? osdRoot.osdButtonHeight : 56
 
     property real osdRowSpacing: 8
     property real osdGroupSpacing: 28
@@ -35,13 +35,13 @@ RowLayout {
         || (nightlightSlider.activeFocus && nightlightSlider.pressed)
         || (keyboardBacklightSlider.activeFocus && keyboardBacklightSlider.pressed)
 
-    // (1) Main Slider - Fixo à direita, nunca sofre fade.
+    // (1) Main slider -- pinned at the screen edge, never faded.
     // RightToLeft layout already places this as the rightmost item; no alignment
     // threshold (avoid the > 0.01 snap that previously jogged the slider).
     StyledVerticalSlider {
         id: mainVolumeSlider
         Layout.fillHeight: true
-        Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+        Layout.preferredWidth: root.sliderWidth
         configuration: sliderTrackWidth
 
         // AOSP draws the handle as a prominent 52x4dp bar; only the value text is dropped.
@@ -82,7 +82,11 @@ RowLayout {
         }
     }
 
-    // (2) Extras Sliders Container - Cresce à esquerda e aplica OpacityMask
+    // (2) The extras the card grows to make room for. `clip` alone does the reveal:
+    // this used to carry a layer + OpacityMask + a Canvas gradient, gated on the
+    // indicator being neither volume nor a display one -- and `extrasExpandedWidth`
+    // returns 0 for exactly those two, so the mask only ever ran over a zero-width
+    // item. Three offscreen passes for a fade that has never been on screen.
     Item {
         id: extrasSliders
         Layout.fillHeight: true
@@ -90,30 +94,7 @@ RowLayout {
         visible: expandedProgress > 0.001
         clip: true
 
-        layer.enabled: root.currentIndicator !== "volume" && !root.isDisplayIndicator
-        layer.effect: OpacityMask {
-            maskSource: extrasFadeMask
-        }
-
-        Canvas {
-            id: extrasFadeMask
-            anchors.fill: parent
-            visible: false
-            onPaint: {
-                var ctx = getContext("2d");
-                ctx.reset();
-                var grad = ctx.createLinearGradient(0, 0, width, 0);
-                grad.addColorStop(0.0, Qt.rgba(1, 1, 1, 0.0));
-                grad.addColorStop(0.15, Qt.rgba(1, 1, 1, 1.0));
-                grad.addColorStop(1.0, Qt.rgba(1, 1, 1, 1.0));
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, 0, width, height);
-            }
-            onWidthChanged: requestPaint()
-            onHeightChanged: requestPaint()
-        }
-
-        // RowLayout para os Sliders adicionais (RightToLeft)
+        // Extra sliders, laid out from the main slider outwards.
         RowLayout {
             id: extrasLayout
             anchors.right: parent.right
@@ -133,7 +114,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: notificationSoundSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
 
                     from: 0
@@ -151,7 +132,7 @@ RowLayout {
                     }
                 }
 
-                // Separador de Grupo (Playback Apps)
+                // Group gap: playback apps
                 Item {
                     Layout.preferredWidth: osdGroupSpacing - 2 * osdRowSpacing
                     visible: programPlaybackRepeater.count > 0
@@ -165,12 +146,12 @@ RowLayout {
                     delegate: OsdProgramSlider {
                         required property var modelData
                         Layout.fillHeight: true
-                        Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                        Layout.preferredWidth: root.sliderWidth
                         node: modelData
                     }
                 }
 
-                // Separador de Grupo (Microfone)
+                // Group gap: microphone
                 Item {
                     Layout.preferredWidth: osdGroupSpacing - 2 * osdRowSpacing
                 }
@@ -179,7 +160,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: micSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
 
                     from: 0
@@ -214,7 +195,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: brightnessSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
                     visible: root.currentIndicator === "gamma"
 
@@ -243,7 +224,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: gammaSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
                     visible: root.currentIndicator === "brightness"
 
@@ -262,7 +243,7 @@ RowLayout {
                     }
                 }
 
-                // Separador de Grupo (Nightlight)
+                // Group gap: nightlight
                 Item {
                     Layout.preferredWidth: osdGroupSpacing - 2 * osdRowSpacing
                 }
@@ -271,7 +252,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: nightlightSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
 
                     from: 1000
@@ -294,7 +275,7 @@ RowLayout {
                     }
                 }
 
-                // Separador de Grupo (Keyboard Backlight)
+                // Group gap: keyboard backlight
                 Item {
                     Layout.preferredWidth: osdGroupSpacing - 2 * osdRowSpacing
                     visible: KeyboardBacklight.available
@@ -304,7 +285,7 @@ RowLayout {
                 StyledVerticalSlider {
                     id: keyboardBacklightSlider
                     Layout.fillHeight: true
-                    Layout.preferredWidth: osdRoot ? osdRoot.osdButtonHeight : 56
+                    Layout.preferredWidth: root.sliderWidth
                     configuration: sliderTrackWidth
                     visible: KeyboardBacklight.available
 

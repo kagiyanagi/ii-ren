@@ -2,7 +2,6 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.ii.topLayer.osd
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -40,29 +39,6 @@ Scope {
 
     property string currentIndicator: "volume"
     readonly property bool isDisplayIndicator: currentIndicator === "brightness" || currentIndicator === "gamma"
-    property var indicators: [
-        {
-            id: "volume",
-            sourceUrl: "indicators/VolumeIndicator.qml"
-        },
-        {
-            id: "brightness",
-            sourceUrl: "indicators/BrightnessIndicator.qml"
-        },
-        {
-            id: "playerVolume",
-            sourceUrl: "indicators/PlayerVolumeIndicator.qml"
-        },
-        {
-            id: "gamma",
-            sourceUrl: "indicators/GammaIndicator.qml"
-        },
-        {
-            id: "keyboardBrightness",
-            sourceUrl: "indicators/KeyboardBrightnessIndicator.qml"
-        }
-    ]
-
     property bool isClosing: false
 
     readonly property real currentValue: {
@@ -169,24 +145,6 @@ Scope {
                 return;
             GlobalStates.osdVolumeOpen = false;
             root.protectionMessage = "";
-        }
-    }
-
-    Timer {
-        id: stateResetTimer
-        interval: 150
-        repeat: true
-        running: true
-        onTriggered: {
-            // If the OSD Loader has a live item but the shell-level flags say it
-            // should be fully closed, force-reset the expansion state. This catches
-            // edge cases where the Loader keeps the PanelWindow alive across
-            // rapid brightness-scroll re-triggers and the normal close-path
-            // signals never fire.
-            if (osdLoader.item && !GlobalStates.osdVolumeOpen && !root.isClosing) {
-                osdLoader.item.isExpanded = false;
-                osdLoader.item.expandedProgress = 0.0;
-            }
         }
     }
 
@@ -306,7 +264,6 @@ Scope {
             readonly property real osdCollapseButtonHeight: osdButtonHeight
             readonly property real osdSquaredButtonSize: 40
             readonly property real osdSliderTrackWidth: 40
-            readonly property real osdSliderFillHeight: osdBaseHeight - 2 * osdMargin - 2 * osdButtonHeight - 3 * osdItemSpacing - osdCollapseButtonHeight
 
             readonly property real osdContractedWidth: 2 * osdMargin + osdButtonHeight
             readonly property real extrasExpandedWidth: {
@@ -328,66 +285,117 @@ Scope {
             readonly property real osdExpandedWidth: osdContractedWidth + extrasExpandedWidth
             readonly property real osdExtrasMaxWidth: extrasExpandedWidth
 
+            // One member of an M3 Expressive connected button group: an icon, a tooltip,
+            // and radii that read its neighbours. AOSP's volume dialog has no labels in
+            // it, and the labelled version of this button could not fit one -- the card
+            // is `osdContractedWidth + extrasExpandedWidth` wide and the label cells
+            // asked for more than that, so every one of them elided to two characters.
             component OsdMorphToggle: RippleButton {
                 id: morphToggle
 
-                property bool isFirstInGroup: false
-                property bool isLastInGroup: false
-                property var _leftNeighbor: null
-                property var _rightNeighbor: null
-                property real baseWidth: 200
+                property string symbol
+                property string tooltipText
+                // The button that stays on screen when the OSD is collapsed is a group
+                // of one: it is the dialog's whole face, so it is a pill on both ends.
+                property bool standalone: false
 
-                // Check press state of neighbors
-                readonly property bool prevIsPressed: _leftNeighbor ? (_leftNeighbor.isPressed || _leftNeighbor.down) : false
-                readonly property bool nextIsPressed: _rightNeighbor ? (_rightNeighbor.isPressed || _rightNeighbor.down) : false
+                // Neighbours come from the row's own child list, so a button added or
+                // removed does not need three other buttons edited to agree with it.
+                readonly property var group: morphToggle.parent
+                readonly property int indexInGroup: group?.children.indexOf(morphToggle) ?? -1
+                readonly property var prevSibling: (indexInGroup > 0) ? group.children[indexInGroup - 1] : null
+                readonly property var nextSibling: (indexInGroup >= 0 && group && indexInGroup < group.children.length - 1) ? group.children[indexInGroup + 1] : null
+                readonly property bool isFirstInGroup: standalone || indexInGroup === 0
+                readonly property bool isLastInGroup: standalone || (group ? indexInGroup === group.children.length - 1 : true)
 
-                // Width animation logic (matching GroupButton / sidebar dashboard behavior)
-                // When pressed: expand width. When neighbor pressed: shrink width.
+                // Press feedback is the group's, not this button's: the pressed member
+                // grows and its neighbours yield, so the run keeps its total width.
+                readonly property bool prevIsPressed: prevSibling?.down ?? false
+                readonly property bool nextIsPressed: nextSibling?.down ?? false
                 Layout.preferredWidth: {
-                    if (isPressed || down) {
-                        return baseWidth + 16;
-                    } else if (prevIsPressed || nextIsPressed) {
-                        return Math.max(40, baseWidth - 16);
-                    }
-                    return baseWidth;
+                    if (morphToggle.down)
+                        return osdRoot.osdButtonHeight + osdRoot.osdItemSpacing * 2;
+                    if (morphToggle.prevIsPressed || morphToggle.nextIsPressed)
+                        return osdRoot.osdButtonHeight - osdRoot.osdItemSpacing;
+                    return osdRoot.osdButtonHeight;
                 }
+                Layout.preferredHeight: osdRoot.osdButtonHeight
+                Layout.fillWidth: false
 
                 Behavior on Layout.preferredWidth {
                     animation: Appearance.animation.clickBounce.numberAnimation.createObject(this)
                 }
 
-                // Radius logic (ii standard):
-                // Full radius value = height / 2 (or full rounding token)
-                readonly property real rFull: Appearance?.rounding?.scale === 0 ? 0 : height / 2
-                readonly property real rSmall: Appearance?.rounding?.small ?? 8
+                // A group end, and any member that is on, is a pill; the seams between
+                // two off members are `rounding.small` (DESIGN.md 4.3 -- selection is a
+                // legitimate shape morph, and this is the button-group signature).
+                readonly property real rFull: Appearance.rounding.scale === 0 ? 0 : height / 2
+                readonly property real rSmall: Appearance.rounding.small
+                readonly property bool prevIsChecked: prevSibling?.toggled ?? false
+                readonly property bool nextIsChecked: nextSibling?.toggled ?? false
 
-                // Check toggled state of neighbors
-                // Note: In RightToLeft layout, _leftNeighbor is physically to the RIGHT, and _rightNeighbor is physically to the LEFT.
-                readonly property bool isSelfToggled: morphToggle.toggledState === true || morphToggle.toggled === true || morphToggle.activated === true
-                readonly property bool prevIsToggled: _leftNeighbor ? (_leftNeighbor.isSelfToggled || _leftNeighbor.toggledState === true || _leftNeighbor.toggled === true || _leftNeighbor.activated === true) : false
-                readonly property bool nextIsToggled: _rightNeighbor ? (_rightNeighbor.isSelfToggled || _rightNeighbor.toggledState === true || _rightNeighbor.toggled === true || _rightNeighbor.activated === true) : false
-
-                // Physical Left side radius:
-                readonly property real leftRadiusCalc: osdRoot.isLeftPosition
-                    ? ((isFirstInGroup || isSelfToggled || prevIsToggled) ? rFull : rSmall)
-                    : ((isLastInGroup || isSelfToggled || nextIsToggled) ? rFull : rSmall)
-
-                // Physical Right side radius:
-                readonly property real rightRadiusCalc: osdRoot.isLeftPosition
-                    ? ((isLastInGroup || isSelfToggled || nextIsToggled) ? rFull : rSmall)
-                    : ((isFirstInGroup || isSelfToggled || prevIsToggled) ? rFull : rSmall)
+                // `prev` is physically left only in a LeftToRight row; the OSD flips the
+                // row direction with the screen edge it is anchored to.
+                readonly property real leadingRadius: (isFirstInGroup || toggled || prevIsChecked) ? rFull : rSmall
+                readonly property real trailingRadius: (isLastInGroup || toggled || nextIsChecked) ? rFull : rSmall
+                readonly property real leftRadiusCalc: osdRoot.isLeftPosition ? leadingRadius : trailingRadius
+                readonly property real rightRadiusCalc: osdRoot.isLeftPosition ? trailingRadius : leadingRadius
 
                 topLeftRadius: leftRadiusCalc
                 bottomLeftRadius: leftRadiusCalc
                 topRightRadius: rightRadiusCalc
                 bottomRightRadius: rightRadiusCalc
 
-                Behavior on topLeftRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
-                Behavior on bottomLeftRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
-                Behavior on topRightRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
-                Behavior on bottomRightRadius { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
+                Behavior on topLeftRadius { animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this) }
+                Behavior on bottomLeftRadius { animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this) }
+                Behavior on topRightRadius { animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this) }
+                Behavior on bottomRightRadius { animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this) }
 
+                colBackground: Appearance.colors.colSecondaryContainer
+                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                colBackgroundToggled: Appearance.colors.colPrimary
+                colBackgroundToggledHover: Appearance.colors.colPrimaryHover
+                colRipple: Appearance.colors.colSecondaryContainerActive
+                colRippleToggled: Appearance.colors.colPrimaryActive
+
+                contentItem: MaterialSymbol {
+                    text: morphToggle.symbol
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: morphToggle.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    // Selection reads on the icon's fill axis, not on colour alone.
+                    fill: morphToggle.toggled ? 1 : 0
+                }
+
+                StyledToolTip {
+                    text: morphToggle.tooltipText
+                    extraVisibleCondition: morphToggle.hovered
+                }
+            }
+
+            // The container the extras pack into, sized to what the card actually grows
+            // by. Every row used to guess this separately and the top rows guessed wrong.
+            component OsdExtrasRow: Item {
+                default property alias content: extrasLayout.data
+
+                Layout.fillHeight: true
                 Layout.fillWidth: true
+                Layout.preferredWidth: osdRoot.osdExtrasMaxWidth * osdRoot.expandedProgress
+                visible: osdRoot.expandedProgress > 0.001
+                clip: true
+
+                // Anchored to the inner edge and sized by its content, the way the
+                // slider row's extras are. Filling the parent instead hands the run
+                // whatever the card has spare and spreads the buttons across it.
+                RowLayout {
+                    id: extrasLayout
+                    anchors.left: osdRoot.isLeftPosition ? parent.left : undefined
+                    anchors.right: osdRoot.isLeftPosition ? undefined : parent.right
+                    height: parent.height
+                    spacing: osdRoot.osdItemSpacing
+                    layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
+                }
             }
 
             Connections {
@@ -564,13 +572,34 @@ Scope {
                     id: protectionMessageWrapper
                     anchors.left: osdRoot.isLeftPosition ? osdGroupWrapper.right : undefined
                     anchors.right: !osdRoot.isLeftPosition ? osdGroupWrapper.left : undefined
-                    anchors.leftMargin: osdRoot.isLeftPosition ? 12 : undefined
-                    anchors.rightMargin: !osdRoot.isLeftPosition ? -12 : undefined
+                    // A floating surface sits 10 from the thing it hangs off, on either
+                    // side (DESIGN.md 5.3). The right-hand case used to be -12, which
+                    // put the card *under* the dialog it was warning about.
+                    anchors.leftMargin: osdRoot.isLeftPosition ? 10 : undefined
+                    anchors.rightMargin: !osdRoot.isLeftPosition ? 10 : undefined
                     anchors.verticalCenter: osdGroupWrapper.verticalCenter
                     implicitHeight: protectionMessageBackground.implicitHeight
                     implicitWidth: protectionMessageBackground.implicitWidth
-                    opacity: root.protectionMessage !== "" ? 1 : 0
+
+                    // Enter on default effects, leave accelerating at half that. The
+                    // spec is assigned from inside the binding that drives the
+                    // animation, because a Behavior cannot read its own direction
+                    // (DESIGN.md 2.9).
+                    property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+                    opacity: {
+                        const shown = root.protectionMessage !== "";
+                        protectionMessageWrapper.fadeSpec = shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                        return shown ? 1 : 0;
+                    }
                     visible: opacity > 0
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: protectionMessageWrapper.fadeSpec.duration
+                            easing.type: protectionMessageWrapper.fadeSpec.type
+                            easing.bezierCurve: protectionMessageWrapper.fadeSpec.bezierCurve
+                        }
+                    }
 
                     HoverHandler {
                         id: protectionHoverHandler
@@ -628,14 +657,13 @@ Scope {
                         onHoveredChanged: osdRoot._updateOsdHover(hovered)
                     }
 
-                    // (C.2) Drop Shadow
-                    StyledDropShadow {
+                    // Elevation 3 -- a popup (DESIGN.md 6.2). The container is a plain
+                    // rounded rectangle, which is the cached rectangular shadow's case;
+                    // the drop shadow it used to carry rendered the whole 418px surface
+                    // offscreen every frame for the same picture.
+                    StyledRectangularShadow {
                         id: osdShadow
                         target: osdContainer
-                        radius: 24
-                        samples: 49
-                        color: Appearance.colors.colShadow
-                        transparentBorder: true
                     }
 
                     Rectangle {
@@ -665,384 +693,116 @@ Scope {
                             anchors.margins: osdMargin
                             spacing: osdItemSpacing
 
-                            // (1) Volume Top Row Layout (headphones, disable system sounds, mute sound)
+                            // (1) Top row: the indicator's primary toggle, pinned to the
+                            // screen edge so it is the face of the collapsed dialog, plus
+                            // the extras that grow out from behind it.
                             RowLayout {
                                 id: volumeTopRow
                                 visible: root.currentIndicator === "volume"
-                                spacing: 4 * osdRoot.expandedProgress
+                                spacing: osdRowSpacing * osdRoot.expandedProgress
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: osdButtonHeight
                                 Layout.fillHeight: false
                                 layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
 
-                                RippleButton {
-                                    id: muteSoundBtn
-                                    Layout.preferredHeight: osdButtonHeight
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: osdButtonHeight + (200 - osdButtonHeight) * osdRoot.expandedProgress
-                                    buttonRadius: osdButtonHeight / 2
-
-                                    property bool toggledState: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.muted : false
-                                    colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                    colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                    colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                    readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                    contentItem: RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: osdRoot.expandedProgress > 0.01 ? 16 : 0
-                                        anchors.rightMargin: osdRoot.expandedProgress > 0.01 ? 16 : 0
-                                        spacing: (muteSoundBtnText.visible ? 8 : 0) * osdRoot.expandedProgress
-
-                                        Item { Layout.fillWidth: true }
-                                        MaterialSymbol {
-                                             text: muteSoundBtn.toggledState ? "notifications_off" : "notifications_active"
-                                             iconSize: 20
-                                             color: muteSoundBtn.contentColor
-                                             Layout.alignment: Qt.AlignVCenter | (osdRoot.expandedProgress > 0.01 ? Qt.AlignLeft : Qt.AlignHCenter)
-                                             fill: muteSoundBtn.toggledState ? 1.0 : 0.0
-                                         }
-
-                                        StyledText {
-                                            id: muteSoundBtnText
-                                            text: muteSoundBtn.toggledState ? Translation.tr("Unmute sound") : Translation.tr("Mute sound")
-                                            font.pixelSize: Appearance.font.pixelSize.small
-                                            color: muteSoundBtn.contentColor
-                                            visible: osdRoot.expandedProgress > 0.5
-                                            opacity: (osdRoot.expandedProgress - 0.5) * 2
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.NoWrap
-                                            Layout.fillWidth: true
-                                            Layout.alignment: Qt.AlignVCenter
-                                        }
-                                         Item { Layout.fillWidth: true }
+                                OsdMorphToggle {
+                                    standalone: true
+                                    toggled: (Audio.sink && Audio.sink.audio) ? Audio.sink.audio.muted : false
+                                    symbol: toggled ? "notifications_off" : "notifications_active"
+                                    tooltipText: toggled ? Translation.tr("Unmute sound") : Translation.tr("Mute sound")
+                                    onClicked: {
+                                        if (Audio.sink && Audio.sink.audio)
+                                            Audio.sink.audio.muted = !Audio.sink.audio.muted;
+                                        root.triggerOsd();
                                     }
-
-                                     onClicked: {
-                                         if (Audio.sink && Audio.sink.audio) {
-                                             Audio.sink.audio.muted = !Audio.sink.audio.muted;
-                                         }
-                                         root.triggerOsd();
-                                     }
-
-                                     StyledToolTip {
-                                         id: muteSoundBtnToolTip
-                                         text: muteSoundBtn.toggledState ? Translation.tr("Unmute sound") : Translation.tr("Mute sound")
-                                         extraVisibleCondition: !muteSoundBtnText.visible || muteSoundBtnText.truncated
-                                     }
                                 }
 
-                                Item {
-                                    id: expandingTogglesContainerTop
-                                    Layout.fillHeight: true
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: (200 + 4 + osdButtonHeight) * osdRoot.expandedProgress
-                                    visible: osdRoot.expandedProgress > 0.001
-                                    clip: true
+                                OsdExtrasRow {
+                                    OsdMorphToggle {
+                                        toggled: !Config.options.sounds.enable
+                                        symbol: Config.options.sounds.enable ? "volume_up" : "volume_off"
+                                        tooltipText: Config.options.sounds.enable ? Translation.tr("Disable system sounds") : Translation.tr("Enable system sounds")
+                                        onClicked: {
+                                            Config.options.sounds.enable = !Config.options.sounds.enable;
+                                            root.triggerOsd();
+                                        }
+                                    }
 
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        spacing: 4
-                                        layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
-
-                                        OsdMorphToggle {
-                                            id: disableSystemSoundsBtn
-                                            isFirstInGroup: true
-                                            isLastInGroup: false
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: !Config.options.sounds.enable
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: disableSystemSoundsBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                MaterialSymbol {
-                                                    text: Config.options.sounds.enable ? "volume_up" : "volume_off"
-                                                    iconSize: 20
-                                                    color: disableSystemSoundsBtn.contentColor
-                                                    Layout.alignment: Qt.AlignVCenter
-                                                    fill: disableSystemSoundsBtn.toggledState ? 1.0 : 0.0
-                                                }
-                                                  StyledText {
-                                                      id: disableSystemSoundsBtnText
-                                                      text: Config.options.sounds.enable ? Translation.tr("Disable system sounds") : Translation.tr("Enable system sounds")
-                                                      font.pixelSize: Appearance.font.pixelSize.small
-                                                      color: disableSystemSoundsBtn.contentColor
-                                                      elide: Text.ElideRight
-                                                      wrapMode: Text.NoWrap
-                                                      Layout.fillWidth: true
-                                                      Layout.alignment: Qt.AlignVCenter
-                                                      visible: parent.width > 60
-                                                  }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                Config.options.sounds.enable = !Config.options.sounds.enable;
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: disableSystemSoundsBtnToolTip
-                                                text: Config.options.sounds.enable ? Translation.tr("Disable system sounds") : Translation.tr("Enable system sounds")
-                                                extraVisibleCondition: !disableSystemSoundsBtnText.visible || disableSystemSoundsBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _rightNeighbor = outputDevicesBtn;
-                                            }
+                                    OsdMorphToggle {
+                                        id: outputDevicesBtn
+                                        toggled: deviceOutputPopup.opened
+                                        symbol: "headphones"
+                                        tooltipText: Translation.tr("Output devices")
+                                        onClicked: {
+                                            deviceOutputPopup._clickActive = !deviceOutputPopup._clickActive;
+                                            root.triggerOsd();
                                         }
 
-                                        OsdMorphToggle {
-                                            id: outputDevicesBtn
-                                            isFirstInGroup: false
-                                            isLastInGroup: true
-                                            Layout.preferredHeight: osdButtonHeight
-                                            Layout.fillWidth: false
-                                            Layout.preferredWidth: osdButtonHeight
-                                            baseWidth: osdButtonHeight
-
-                                            property bool activated: deviceOutputPopup.opened
-                                            colBackground: activated ? Appearance.colors.colTertiary : Appearance.colors.colTertiaryContainer
-                                            colBackgroundHover: activated ? Appearance.colors.colTertiaryHover : Appearance.colors.colTertiaryContainerHover
-                                            colRipple: activated ? Appearance.colors.colTertiaryActive : Appearance.colors.colTertiaryContainerActive
-
-                                            contentItem: MaterialSymbol {
-                                                text: "headphones"
-                                                iconSize: 20
-                                                color: outputDevicesBtn.activated ? Appearance.colors.colOnTertiary : Appearance.colors.colOnTertiaryContainer
-                                                horizontalAlignment: Text.AlignHCenter
-                                                verticalAlignment: Text.AlignVCenter
-                                                fill: outputDevicesBtn.activated ? 1.0 : 0.0
-                                            }
-
-                                            onClicked: {
-                                                deviceOutputPopup._clickActive = !deviceOutputPopup._clickActive;
-                                                root.triggerOsd();
-                                            }
-
-                                            OsdDeviceOutputPopup {
-                                                 id: deviceOutputPopup
-                                                 hoverTarget: outputDevicesBtn
-                                                 keyboardFocus: WlrKeyboardFocus.Click
-                                                 forceClick: true
-                                                 customPosition: true
-                                                 anchorRight: true
-                                                 anchorTop: true
-                                                 customMarginRight: osdContainer.width + 6
-                                                 customMarginTop: (osdRoot && osdContainer) ? (osdRoot.height - osdContainer.height) / 2 - 10 : 0
-                                                 contentHeight: osdContainer.height - 20
-                                             }
-
-                                            StyledToolTip {
-                                                text: Translation.tr("Output devices")
-                                            }
-
-                                            Component.onCompleted: {
-                                                _leftNeighbor = disableSystemSoundsBtn;
-                                            }
+                                        OsdDeviceOutputPopup {
+                                            id: deviceOutputPopup
+                                            hoverTarget: outputDevicesBtn
+                                            keyboardFocus: WlrKeyboardFocus.Click
+                                            forceClick: true
+                                            customPosition: true
+                                            anchorRight: true
+                                            anchorTop: true
+                                            // A popup sits 10 from the thing it anchors to (DESIGN.md 5.3).
+                                            customMarginRight: osdContainer.width + 10
+                                            customMarginTop: (osdRoot && osdContainer) ? (osdRoot.height - osdContainer.height) / 2 - 10 : 0
+                                            contentHeight: osdContainer.height - 20
                                         }
                                     }
                                 }
                             }
 
-                            // (1c) Brightness Top Row Layout (dark mode, nightlight, auto nightlight)
                             RowLayout {
                                 id: brightnessTopRow
                                 visible: root.isDisplayIndicator
-                                spacing: 4 * osdRoot.expandedProgress
+                                spacing: osdRowSpacing * osdRoot.expandedProgress
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: osdButtonHeight
                                 Layout.fillHeight: false
                                 layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
 
-                                RippleButton {
-                                    id: darkModeBtn
-                                    Layout.preferredHeight: osdButtonHeight
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: osdButtonHeight + (200 - osdButtonHeight) * osdRoot.expandedProgress
-                                    buttonRadius: toggledState ? Appearance.rounding.normal : osdButtonHeight / 2
-
-                                    property bool toggledState: Appearance.m3colors.darkmode
-                                    colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                    colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                    colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                    readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                    contentItem: RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: osdRoot.expandedProgress > 0.01 ? 16 : 0
-                                        anchors.rightMargin: osdRoot.expandedProgress > 0.01 ? 16 : 0
-                                        spacing: (darkModeBtnText.visible ? 8 : 0) * osdRoot.expandedProgress
-
-                                        Item { Layout.fillWidth: true }
-                                        MaterialSymbol {
-                                             text: darkModeBtn.toggledState ? "dark_mode" : "light_mode"
-                                             iconSize: 20
-                                             color: darkModeBtn.contentColor
-                                             Layout.alignment: Qt.AlignVCenter | (osdRoot.expandedProgress > 0.01 ? Qt.AlignLeft : Qt.AlignHCenter)
-                                             fill: darkModeBtn.toggledState ? 1.0 : 0.0
-                                         }
-
-                                        StyledText {
-                                            id: darkModeBtnText
-                                            text: darkModeBtn.toggledState ? Translation.tr("Dark mode") : Translation.tr("Light mode")
-                                            font.pixelSize: Appearance.font.pixelSize.small
-                                            color: darkModeBtn.contentColor
-                                            visible: osdRoot.expandedProgress > 0.5
-                                            opacity: (osdRoot.expandedProgress - 0.5) * 2
-                                            elide: Text.ElideRight
-                                            wrapMode: Text.NoWrap
-                                            Layout.fillWidth: true
-                                            Layout.alignment: Qt.AlignVCenter
-                                        }
-                                        Item { Layout.fillWidth: true }
-                                    }
-
+                                OsdMorphToggle {
+                                    standalone: true
+                                    toggled: Appearance.m3colors.darkmode
+                                    symbol: toggled ? "dark_mode" : "light_mode"
+                                    tooltipText: toggled ? Translation.tr("Dark mode") : Translation.tr("Light mode")
                                     onClicked: {
-                                        if (Appearance.m3colors.darkmode) {
+                                        if (Appearance.m3colors.darkmode)
                                             DarkModeService.disableDarkMode();
-                                        } else {
+                                        else
                                             DarkModeService.enableDarkMode();
-                                        }
                                         root.triggerOsd();
-                                    }
-
-                                    StyledToolTip {
-                                        id: darkModeBtnToolTip
-                                        text: darkModeBtn.toggledState ? Translation.tr("Dark mode") : Translation.tr("Light mode")
-                                        extraVisibleCondition: !darkModeBtnText.visible || darkModeBtnText.truncated
                                     }
                                 }
 
-                                Item {
-                                    id: expandingTogglesContainerTopBrightness
-                                    Layout.fillHeight: true
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: (200 + 4 + osdButtonHeight) * osdRoot.expandedProgress
-                                    visible: osdRoot.expandedProgress > 0.001
-                                    clip: true
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        spacing: 4
-                                        layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
-
-                                        OsdMorphToggle {
-                                            id: nightlightBtn
-                                            isFirstInGroup: true
-                                            isLastInGroup: false
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: Hyprsunset.temperatureActive
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: nightlightBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                MaterialSymbol {
-                                                    text: "wb_twilight"
-                                                    iconSize: 20
-                                                    color: nightlightBtn.contentColor
-                                                    Layout.alignment: Qt.AlignVCenter
-                                                    fill: nightlightBtn.toggledState ? 1.0 : 0.0
-                                                }
-                                                  StyledText {
-                                                      id: nightlightBtnText
-                                                      text: nightlightBtn.toggledState ? Translation.tr("Disable nightlight") : Translation.tr("Enable nightlight")
-                                                      font.pixelSize: Appearance.font.pixelSize.small
-                                                      color: nightlightBtn.contentColor
-                                                      elide: Text.ElideRight
-                                                      wrapMode: Text.NoWrap
-                                                      Layout.fillWidth: true
-                                                      Layout.alignment: Qt.AlignVCenter
-                                                      visible: parent.width > 60
-                                                  }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                Hyprsunset.toggleTemperature();
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: nightlightBtnToolTip
-                                                text: nightlightBtn.toggledState ? Translation.tr("Disable nightlight") : Translation.tr("Enable nightlight")
-                                                extraVisibleCondition: !nightlightBtnText.visible || nightlightBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _rightNeighbor = autoNightlightBtn;
-                                            }
+                                OsdExtrasRow {
+                                    OsdMorphToggle {
+                                        toggled: Hyprsunset.temperatureActive
+                                        symbol: "wb_twilight"
+                                        tooltipText: toggled ? Translation.tr("Disable nightlight") : Translation.tr("Enable nightlight")
+                                        onClicked: {
+                                            Hyprsunset.toggleTemperature();
+                                            root.triggerOsd();
                                         }
+                                    }
 
-                                         OsdMorphToggle {
-                                              id: autoNightlightBtn
-                                              isFirstInGroup: false
-                                              isLastInGroup: true
-                                              Layout.preferredHeight: osdButtonHeight
-                                              Layout.fillWidth: false
-                                              Layout.preferredWidth: osdButtonHeight
-                                              baseWidth: osdButtonHeight
-
-                                             property bool toggledState: Config.options.light.night.automatic
-                                             colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                             colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                             colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                             readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                             contentItem: MaterialSymbol {
-                                                 text: "schedule"
-                                                 iconSize: 20
-                                                 color: autoNightlightBtn.contentColor
-                                                 horizontalAlignment: Text.AlignHCenter
-                                                 verticalAlignment: Text.AlignVCenter
-                                                 fill: autoNightlightBtn.toggledState ? 1.0 : 0.0
-                                             }
-
-                                             onClicked: {
-                                                 Config.options.light.night.automatic = !Config.options.light.night.automatic;
-                                                 root.triggerOsd();
-                                             }
-
-                                             StyledToolTip {
-                                                 text: autoNightlightBtn.toggledState ? Translation.tr("Auto nightlight on") : Translation.tr("Auto nightlight off")
-                                             }
-
-                                             Component.onCompleted: {
-                                                 _leftNeighbor = nightlightBtn;
-                                             }
-                                         }
+                                    OsdMorphToggle {
+                                        toggled: Config.options.light.night.automatic
+                                        symbol: "schedule"
+                                        tooltipText: toggled ? Translation.tr("Auto nightlight on") : Translation.tr("Auto nightlight off")
+                                        onClicked: {
+                                            Config.options.light.night.automatic = !Config.options.light.night.automatic;
+                                            root.triggerOsd();
+                                        }
                                     }
                                 }
                             }
 
-                            // (1b) Original Top button (for keyboard/audio indicators)
+                            // The indicators with no extras of their own keep the single
+                            // labelled button they have always had.
                             OsdTopButton {
                                 id: topButton
                                 visible: root.currentIndicator !== "volume" && !root.isDisplayIndicator
@@ -1057,34 +817,7 @@ Scope {
                                 onClicked: root.triggerOsd()
                             }
 
-                            // (2) Section title "Output" (no longer used in redesigned volume mode)
-                            OsdSectionLabel {
-                                text: Translation.tr("Output")
-                                visible: false
-                                Layout.preferredHeight: 18 * osdRoot.expandedProgress
-                                opacity: osdRoot.expandedProgress
-                            }
-
-                            // (3) Device output selector button (no longer used here in redesigned volume mode)
-                            OsdDeviceOutputButton {
-                                id: deviceOutputButton
-                                visible: false
-                                buttonHeight: osdButtonHeight
-                                rootOsd: root
-
-                                Layout.preferredHeight: osdButtonHeight * osdRoot.expandedProgress
-                                opacity: osdRoot.expandedProgress
-                            }
-
-                            // (4) Section title "Sliders" or "Display"
-                            OsdSectionLabel {
-                                text: root.currentIndicator === "volume" ? Translation.tr("Sliders") : Translation.tr("Display")
-                                visible: false
-                                Layout.preferredHeight: 18 * osdRoot.expandedProgress
-                                opacity: osdRoot.expandedProgress
-                            }
-
-                            // (5) Sliders Row - always visible
+                            // (2) Sliders -- the reason the dialog is on screen.
                             OsdSlidersRow {
                                 id: slidersRow
                                 Layout.fillWidth: true
@@ -1101,30 +834,26 @@ Scope {
                                 osdGroupSpacing: osdGroupSpacing
                             }
 
-                            // (6) Section title "Audio Options" or "Backlight & Nightlight"
-                            OsdSectionLabel {
-                                text: root.currentIndicator === "volume" ? Translation.tr("Audio Options") : Translation.tr("Backlight & Nightlight")
-                                visible: false
-                                Layout.preferredHeight: 18 * osdRoot.expandedProgress
-                                opacity: osdRoot.expandedProgress
-                            }
-
-                            // (6b) Music recognition / nightlight, AOSP's squared button slot
+                            // (3) AOSP's squared button slot under the track. Music
+                            // recognition, and only that -- its other branch drew a
+                            // second nightlight toggle directly under the one in the
+                            // top row whenever the gamma indicator was showing.
                             RippleButton {
                                 id: musicCircle
-                                visible: root.currentIndicator === "volume" || root.currentIndicator === "gamma"
-                                Layout.alignment: Qt.AlignHCenter
+                                visible: root.currentIndicator === "volume"
+                                // Centred under the main slider, which is the column
+                                // this button belongs to. Centring it in the *card*
+                                // left it drifting into the middle as the card grew.
+                                Layout.alignment: osdRoot.isLeftPosition ? Qt.AlignLeft : Qt.AlignRight
+                                Layout.leftMargin: osdRoot.isLeftPosition ? (osdButtonHeight - osdSquaredButtonSize) / 2 : 0
+                                Layout.rightMargin: osdRoot.isLeftPosition ? 0 : (osdButtonHeight - osdSquaredButtonSize) / 2
                                 Layout.topMargin: osdItemSpacing
                                 Layout.preferredWidth: osdSquaredButtonSize
                                 Layout.preferredHeight: visible ? osdSquaredButtonSize : 0
                                 buttonRadius: Appearance.rounding.small
                                 rippleEnabled: true
 
-                                toggled: {
-                                    if (root.currentIndicator === "brightness" || root.currentIndicator === "gamma")
-                                        return Hyprsunset.temperatureActive;
-                                    return SongRec.running;
-                                }
+                                toggled: SongRec.running
                                 colBackground: Appearance.colors.colSecondaryContainer
                                 colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                                 colBackgroundToggled: Appearance.colors.colPrimary
@@ -1132,53 +861,38 @@ Scope {
                                 colRipple: Appearance.colors.colSecondaryContainerActive
                                 colRippleToggled: Appearance.colors.colPrimaryActive
 
-                                readonly property color contentColor: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
                                 contentItem: MaterialSymbol {
-                                    id: musicIcon
-                                    text: {
-                                        if (root.currentIndicator === "brightness" || root.currentIndicator === "gamma")
-                                            return "wb_twilight";
-                                        return "music_note";
-                                    }
-                                    color: musicCircle.contentColor
-                                    iconSize: 24
+                                    text: "music_note"
+                                    color: musicCircle.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                                    iconSize: Appearance.font.pixelSize.huge
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
+                                    fill: musicCircle.toggled ? 1 : 0
                                 }
 
                                 onClicked: {
-                                    if (root.currentIndicator === "brightness" || root.currentIndicator === "gamma") {
-                                        Hyprsunset.toggleTemperature();
-                                    } else {
-                                        SongRec.toggleRunning();
-                                    }
+                                    SongRec.toggleRunning();
                                     root.triggerOsd();
                                 }
 
                                 StyledToolTip {
-                                    text: {
-                                        if (root.currentIndicator === "brightness" || root.currentIndicator === "gamma") {
-                                            return Hyprsunset.temperatureActive ? Translation.tr("Disable nightlight") : Translation.tr("Enable nightlight");
-                                        }
-                                        return SongRec.running ? Translation.tr("Stop music recognition") : Translation.tr("Start music recognition");
-                                    }
+                                    text: SongRec.running ? Translation.tr("Stop music recognition") : Translation.tr("Start music recognition")
                                     extraVisibleCondition: musicCircle.hovered
                                 }
                             }
 
-                            // (7) Volume Bottom Row Layout (Mute Mic, Easy Effects, Stereo/Mono, Collapse)
+                            // (4) Bottom row: the expand/collapse control in AOSP's
+                            // settings slot, and this indicator's remaining toggles.
                             RowLayout {
                                 id: volumeBottomRow
                                 visible: root.currentIndicator === "volume"
-                                spacing: 4 * osdRoot.expandedProgress
+                                spacing: osdRowSpacing * osdRoot.expandedProgress
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: osdButtonHeight
                                 Layout.fillHeight: false
                                 layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
 
                                 OsdCollapseButton {
-                                    id: volumeCollapseButton
                                     isExpanded: osdRoot.isExpanded
                                     hasExpandableIndicator: osdGroupWrapper.hasExpandableIndicator
                                     buttonHeight: osdButtonHeight
@@ -1196,206 +910,39 @@ Scope {
                                     }
                                 }
 
-                                Item {
-                                    id: expandingTogglesContainer
-                                    Layout.fillHeight: true
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: osdRoot.osdExtrasMaxWidth * osdRoot.expandedProgress
-                                    visible: osdRoot.expandedProgress > 0.001
-                                    clip: true
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        spacing: 4
-                                        layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
-
-                                        OsdMorphToggle {
-                                            id: stereoMonoBtn
-                                            isFirstInGroup: true
-                                            isLastInGroup: false
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: Config.options.sounds.monoAudio
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: stereoMonoBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                MaterialSymbol {
-                                                     text: Config.options.sounds.monoAudio ? "hearing_disabled" : "surround_sound"
-                                                     iconSize: 20
-                                                     color: stereoMonoBtn.contentColor
-                                                     fill: stereoMonoBtn.toggledState ? 1.0 : 0.0
-                                                 }
-                                                   StyledText {
-                                                       id: stereoMonoBtnText
-                                                       text: Config.options.sounds.monoAudio ? Translation.tr("Mono") : Translation.tr("Stereo")
-                                                       font.pixelSize: Appearance.font.pixelSize.small
-                                                       color: stereoMonoBtn.contentColor
-                                                       elide: Text.ElideRight
-                                                       wrapMode: Text.NoWrap
-                                                       Layout.fillWidth: true
-                                                       visible: parent.width > 60
-                                                   }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                MonoAudioService.toggle();
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: stereoMonoBtnToolTip
-                                                text: Config.options.sounds.monoAudio ? Translation.tr("Mono") : Translation.tr("Stereo")
-                                                extraVisibleCondition: !stereoMonoBtnText.visible || stereoMonoBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _rightNeighbor = easyEffectsBtn;
-                                            }
+                                OsdExtrasRow {
+                                    OsdMorphToggle {
+                                        toggled: EasyEffects.active
+                                        symbol: "graphic_eq"
+                                        tooltipText: toggled ? Translation.tr("EasyEffects On") : Translation.tr("EasyEffects Off")
+                                        onClicked: {
+                                            EasyEffects.toggle();
+                                            root.triggerOsd();
                                         }
+                                    }
 
-                                        OsdMorphToggle {
-                                            id: easyEffectsBtn
-                                            isFirstInGroup: false
-                                            isLastInGroup: false
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: EasyEffects.active
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: easyEffectsBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                 MaterialSymbol {
-                                                     text: "graphic_eq"
-                                                     iconSize: 20
-                                                     color: easyEffectsBtn.contentColor
-                                                     fill: easyEffectsBtn.toggledState ? 1.0 : 0.0
-                                                 }
-                                                    StyledText {
-                                                        id: easyEffectsBtnText
-                                                        text: EasyEffects.active ? Translation.tr("EasyEffects On") : Translation.tr("EasyEffects Off")
-                                                        font.pixelSize: Appearance.font.pixelSize.small
-                                                        color: easyEffectsBtn.contentColor
-                                                        elide: Text.ElideRight
-                                                        wrapMode: Text.NoWrap
-                                                        Layout.fillWidth: true
-                                                        visible: parent.width > 60
-                                                    }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                EasyEffects.toggle();
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: easyEffectsBtnToolTip
-                                                text: EasyEffects.active ? Translation.tr("EasyEffects On") : Translation.tr("EasyEffects Off")
-                                                extraVisibleCondition: !easyEffectsBtnText.visible || easyEffectsBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _leftNeighbor = stereoMonoBtn;
-                                                _rightNeighbor = muteMicBtn;
-                                            }
-                                        }
-
-                                        OsdMorphToggle {
-                                            id: muteMicBtn
-                                            isFirstInGroup: false
-                                            isLastInGroup: true
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: (Audio.source && Audio.source.audio && Audio.source.audio.muted) ? true : false
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: muteMicBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                MaterialSymbol {
-                                                     text: (Audio.source && Audio.source.audio && Audio.source.audio.muted) ? "mic_off" : "mic"
-                                                     iconSize: 20
-                                                     color: muteMicBtn.contentColor
-                                                     fill: muteMicBtn.toggledState ? 1.0 : 0.0
-                                                 }
-                                                    StyledText {
-                                                        id: muteMicBtnText
-                                                        text: (Audio.source && Audio.source.audio && Audio.source.audio.muted) ? Translation.tr("Unmute Mic") : Translation.tr("Mute Mic")
-                                                        font.pixelSize: Appearance.font.pixelSize.small
-                                                        color: muteMicBtn.contentColor
-                                                        elide: Text.ElideRight
-                                                        wrapMode: Text.NoWrap
-                                                        Layout.fillWidth: true
-                                                        visible: parent.width > 60
-                                                    }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                Audio.toggleMicMute();
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: muteMicBtnToolTip
-                                                text: (Audio.source && Audio.source.audio && Audio.source.audio.muted) ? Translation.tr("Unmute Mic") : Translation.tr("Mute Mic")
-                                                extraVisibleCondition: !muteMicBtnText.visible || muteMicBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _leftNeighbor = easyEffectsBtn;
-                                            }
+                                    OsdMorphToggle {
+                                        toggled: (Audio.source && Audio.source.audio) ? Audio.source.audio.muted : false
+                                        symbol: toggled ? "mic_off" : "mic"
+                                        tooltipText: toggled ? Translation.tr("Unmute Mic") : Translation.tr("Mute Mic")
+                                        onClicked: {
+                                            Audio.toggleMicMute();
+                                            root.triggerOsd();
                                         }
                                     }
                                 }
                             }
 
-                            // (7c) Brightness Bottom Row Layout (keyboard backlight, gamma reset, collapse)
                             RowLayout {
                                 id: brightnessBottomRow
                                 visible: root.isDisplayIndicator
-                                spacing: 4 * osdRoot.expandedProgress
+                                spacing: osdRowSpacing * osdRoot.expandedProgress
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: osdButtonHeight
                                 Layout.fillHeight: false
                                 layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
 
                                 OsdCollapseButton {
-                                    id: brightnessCollapseButton
                                     isExpanded: osdRoot.isExpanded
                                     hasExpandableIndicator: osdGroupWrapper.hasExpandableIndicator
                                     buttonHeight: osdButtonHeight
@@ -1413,157 +960,31 @@ Scope {
                                     }
                                 }
 
-                                Item {
-                                    id: expandingTogglesContainerBottomBrightness
-                                    Layout.fillHeight: true
-                                    Layout.fillWidth: true
-                                    Layout.preferredWidth: osdRoot.osdExtrasMaxWidth * osdRoot.expandedProgress
-                                    visible: osdRoot.expandedProgress > 0.001
-                                    clip: true
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        spacing: 4
-                                        layoutDirection: osdRoot.isLeftPosition ? Qt.LeftToRight : Qt.RightToLeft
-
-                                        OsdMorphToggle {
-                                            id: keyboardBacklightBtn
-                                            isFirstInGroup: true
-                                            isLastInGroup: false
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            baseWidth: 200
-
-                                            property bool toggledState: KeyboardBacklight.currentValue > 0
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: keyboardBacklightBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                MaterialSymbol {
-                                                     text: "keyboard"
-                                                     iconSize: 20
-                                                     color: keyboardBacklightBtn.contentColor
-                                                     fill: keyboardBacklightBtn.toggledState ? 1.0 : 0.0
-                                                 }
-                                                   StyledText {
-                                                       id: keyboardBacklightBtnText
-                                                       text: KeyboardBacklight.currentValue > 0 ? Translation.tr("Kbd Backlight On") : Translation.tr("Kbd Backlight Off")
-                                                       font.pixelSize: Appearance.font.pixelSize.small
-                                                       color: keyboardBacklightBtn.contentColor
-                                                       elide: Text.ElideRight
-                                                       wrapMode: Text.NoWrap
-                                                       Layout.fillWidth: true
-                                                       visible: parent.width > 60
-                                                   }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                if (KeyboardBacklight.available && KeyboardBacklight.ready) {
-                                                    KeyboardBacklight.setValue(KeyboardBacklight.currentValue > 0 ? 0 : KeyboardBacklight.maxValue);
-                                                }
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: keyboardBacklightBtnToolTip
-                                                text: KeyboardBacklight.currentValue > 0 ? Translation.tr("Kbd Backlight On") : Translation.tr("Kbd Backlight Off")
-                                                extraVisibleCondition: !keyboardBacklightBtnText.visible || keyboardBacklightBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _rightNeighbor = gammaResetBtn;
-                                            }
+                                OsdExtrasRow {
+                                    OsdMorphToggle {
+                                        visible: KeyboardBacklight.available
+                                        toggled: KeyboardBacklight.currentValue > 0
+                                        symbol: "keyboard"
+                                        tooltipText: toggled ? Translation.tr("Kbd Backlight On") : Translation.tr("Kbd Backlight Off")
+                                        onClicked: {
+                                            if (KeyboardBacklight.available && KeyboardBacklight.ready)
+                                                KeyboardBacklight.setValue(KeyboardBacklight.currentValue > 0 ? 0 : KeyboardBacklight.maxValue);
+                                            root.triggerOsd();
                                         }
+                                    }
 
-                                        OsdMorphToggle {
-                                            id: gammaResetBtn
-                                            isFirstInGroup: false
-                                            isLastInGroup: true
-                                            Layout.fillHeight: true
-                                            Layout.fillWidth: true
-                                            Layout.minimumWidth: osdButtonHeight
-                                            baseWidth: 200
-
-                                            property bool toggledState: Hyprsunset.gamma !== 100
-                                            colBackground: toggledState ? Appearance.colors.colPrimary : Appearance.colors.colSecondaryContainer
-                                            colBackgroundHover: toggledState ? Appearance.colors.colPrimaryHover : Appearance.colors.colSecondaryContainerHover
-                                            colRipple: toggledState ? Appearance.colors.colPrimaryActive : Appearance.colors.colSecondaryContainerActive
-
-                                            readonly property color contentColor: toggledState ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-
-                                            contentItem: RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 12
-                                                anchors.rightMargin: 12
-                                                spacing: gammaResetBtnText.visible ? 8 : 0
-
-                                                Item { Layout.fillWidth: true }
-                                                 MaterialSymbol {
-                                                     text: "wb_sunny"
-                                                     iconSize: 20
-                                                     color: gammaResetBtn.contentColor
-                                                     fill: gammaResetBtn.toggledState ? 1.0 : 0.0
-                                                 }
-                                                   StyledText {
-                                                       id: gammaResetBtnText
-                                                       text: Hyprsunset.gamma !== 100 ? Translation.tr("Low Gamma") : Translation.tr("Normal Gamma")
-                                                       font.pixelSize: Appearance.font.pixelSize.small
-                                                       color: gammaResetBtn.contentColor
-                                                       elide: Text.ElideRight
-                                                       wrapMode: Text.NoWrap
-                                                       Layout.fillWidth: true
-                                                       visible: parent.width > 60
-                                                   }
-                                                Item { Layout.fillWidth: true }
-                                            }
-
-                                            onClicked: {
-                                                if (Hyprsunset.gamma === 100) {
-                                                    Hyprsunset.setGamma(Hyprsunset.gammaLowerLimit);
-                                                } else {
-                                                    Hyprsunset.setGamma(100);
-                                                }
-                                                root.triggerOsd();
-                                            }
-
-                                            StyledToolTip {
-                                                id: gammaResetBtnToolTip
-                                                text: Hyprsunset.gamma !== 100 ? Translation.tr("Low Gamma") : Translation.tr("Normal Gamma")
-                                                extraVisibleCondition: !gammaResetBtnText.visible || gammaResetBtnText.truncated
-                                            }
-
-                                            Component.onCompleted: {
-                                                _leftNeighbor = keyboardBacklightBtn;
-                                            }
+                                    OsdMorphToggle {
+                                        toggled: Hyprsunset.gamma !== 100
+                                        symbol: "wb_sunny"
+                                        tooltipText: toggled ? Translation.tr("Low Gamma") : Translation.tr("Normal Gamma")
+                                        onClicked: {
+                                            Hyprsunset.setGamma(Hyprsunset.gamma === 100 ? Hyprsunset.gammaLowerLimit : 100);
+                                            root.triggerOsd();
                                         }
                                     }
                                 }
                             }
 
-                            // (7b) Original Toggles Row (for brightness/gamma/keyboard indicators)
-                            OsdToggleRow {
-                                id: toggleRow
-                                Layout.fillWidth: true
-                                currentIndicator: root.currentIndicator
-                                buttonHeight: osdButtonHeight
-                                rootOsd: root
-
-                                Layout.preferredHeight: (root.currentIndicator === "volume" ? (2 * osdButtonHeight + 8) : osdButtonHeight) * osdRoot.expandedProgress
-                                opacity: osdRoot.expandedProgress
-                                visible: root.currentIndicator !== "volume" && root.currentIndicator !== "brightness" && (root.currentIndicator === "volume" || root.currentIndicator === "brightness") && osdRoot.expandedProgress > 0.01
-                            }
-
-                            // (8) Original Collapse button at the bottom right
                             OsdCollapseButton {
                                 id: collapseButton
                                 isExpanded: osdRoot.isExpanded
@@ -1577,10 +998,10 @@ Scope {
                                 Layout.preferredHeight: osdCollapseButtonHeight
                                 Layout.preferredWidth: osdCollapseButtonHeight + (parent.width - osdCollapseButtonHeight) * osdRoot.expandedProgress
                                 visible: root.currentIndicator !== "volume" && !root.isDisplayIndicator
-                                    onClicked: {
-                                        osdRoot.isExpanded = !osdRoot.isExpanded;
-                                        root.triggerOsd();
-                                    }
+                                onClicked: {
+                                    osdRoot.isExpanded = !osdRoot.isExpanded;
+                                    root.triggerOsd();
+                                }
                             }
                         }
                     }
@@ -1605,16 +1026,19 @@ Scope {
             GlobalStates.osdVolumeOpen = !GlobalStates.osdVolumeOpen;
         }
 
+        // Open first, then expand: the Loader has no item while the OSD is closed, and
+        // `triggerOsd` zeroes the expansion on the way in, so setting the flag before
+        // the call made `expand` a no-op from the state it is most often called in.
         function expand() {
+            root.triggerOsd();
             if (osdLoader.item)
                 osdLoader.item.isExpanded = true;
-            root.triggerOsd();
         }
 
         function collapse() {
+            root.triggerOsd();
             if (osdLoader.item)
                 osdLoader.item.isExpanded = false;
-            root.triggerOsd();
         }
     }
     GlobalShortcut {
