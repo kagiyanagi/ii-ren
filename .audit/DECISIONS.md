@@ -87,6 +87,15 @@ From the rows that retimed something and could not drive the shell:
   times every popup out first — so set `sidebar.position` to `inverted`, raise a
   notification, and open and close the policies sidebar before the slide lands
   (`ii-notificationPopup`).
+- The **widget overlay's exit**, which did not exist: the window unmapped ~30ms after the
+  request, so the scrim, the taskbar and every card cut. 130ms `elementMoveExit` now, and
+  the card chrome — background, outline, title bar — leaves on it instead of snapping while
+  its neighbours faded. What to watch is the *pinned* case, the only one where any of this
+  was ever visible: pin a widget, dismiss, and check that the pinned card does not move
+  while everything around it goes (`ii-overlay`).
+- The **overlay's enter, now on every open rather than once per window**. It was
+  `Component.onCompleted`, so with anything pinned the window never died and the zoom never
+  played again. Opening it twice in a row is the test (`ii-overlay`).
 
 ## Still nobody's call but yours
 

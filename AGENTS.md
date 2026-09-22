@@ -96,7 +96,11 @@ you touched; they are the only automated gate.
   so an item resting at a scale bakes that scale into the region and never updates it. It
   has no symptom: the surface paints at full size and the clicks go to the window behind.
   The drop shelf shipped that way and could only be dismissed by restarting the shell.
-  Two pre-existing instances are in `KNOWN` with what each one measured
+  Two pre-existing instances are in `KNOWN` with what each one measured. It reads the
+  `item:` expression rather than a bare identifier, and follows the masked item's type
+  to its own file: the overlay masked `overlayOpen ? overlayContent : null`, and both
+  the ternary and the fact that a resting scale would live in `OverlayContent.qml` put
+  the whole surface outside the scan while it was wrong
 - `python3 tools/check-immersive-media.py` — the fullscreen player's card is still sized
   by its album art, and the surface still enters and leaves on two specs. The card was
   `min(540, width * 0.36)` and the art inside it is square, so 180px of it was void while
@@ -211,6 +215,17 @@ you touched; they are the only automated gate.
   card is not missing, it is the wrong colour by exactly zero. The dialog is layer 2 now,
   which is the base those tokens already declare, so the step is exact at any transparency
   setting — which is what this evaluates, at both alphas
+- `python3 tools/check-overlay.py` — the widget overlay leaves when it is dismissed and
+  lets go of what it pinned. `hasPinnedWidgets` was a list that live widgets pushed
+  themselves onto, and those widgets live *inside* the window that list decides to open: a
+  pin never survived a shell restart, and one closed from its own X left a full-screen
+  `WlrLayer.Overlay` surface mapped for the session with a destroyed `Item` still in its
+  input mask. `property bool open: <the open list>` is what made that unrecoverable — QML
+  coerces any object to `true`, an empty list included. It also holds the exit
+  (`Loader.active` on the open request again), the two progress values, since a scale that
+  overshoots and an opacity that must not cannot share one, and the effect ceiling
+  `check-effect-budget.py` cannot reach: every overlay widget is a `Repeater` delegate, but
+  through `OverlayWidgetDelegateChooser`, two files from the `Repeater`
 - `python3 tools/check-osk.py` — the on-screen keyboard opens, closes visibly, and can
   reach its own layouts. `Loader.active` must not read `GlobalStates.oskOpen`, not even as
   one half of an `||`: that binding and the `Connections` that starts the exit hang off the

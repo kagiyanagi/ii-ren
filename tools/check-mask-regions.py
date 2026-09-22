@@ -55,13 +55,41 @@ KNOWN = {
 
 
 def masked_items(src):
-    """Every `mask: Region { item: <id> }` in a file, as (line, id)."""
+    """Every `mask: Region { item: ... }` in a file, as (line, id).
+
+    The right-hand side is not always a bare id. `ii-overlay` masks
+    `GlobalStates.overlayOpen ? overlayContent : null`, and a pattern anchored on
+    `<id>$` matched none of it -- the whole surface was invisible to this gate
+    while the item it named rested at a scale. So: take every identifier in the
+    expression that is also declared as an `id:` in this file.
+    """
+    ids = set(re.findall(r"^\s*id:\s*([A-Za-z_]\w*)\s*$", src, re.M))
     out = []
     for m in re.finditer(r"mask:\s*Region\s*\{(.*?)\n\s*\}", src, re.S):
-        item = re.search(r"\bitem:\s*([A-Za-z_]\w*)\s*$", m.group(1), re.M)
-        if item and item.group(1) != "null":
-            out.append((src[: m.start()].count("\n") + 1, item.group(1)))
+        rhs = re.search(r"\bitem:\s*(.+)$", m.group(1), re.M)
+        if not rhs:
+            continue
+        line = src[: m.start()].count("\n") + 1
+        for name in re.findall(r"[A-Za-z_]\w*", rhs.group(1)):
+            if name in ids and name != "null":
+                out.append((line, name))
     return out
+
+
+def component_root_transforms(type_name):
+    """Transforms on the root object of `<type_name>.qml`, if it is one of ours.
+
+    The masked item is usually a component instance, and a resting scale on that
+    component's own root is as invisible to the region as one written inline --
+    and lives in a file this scan would otherwise never open. Only the root's own
+    properties are at one indent level, so a nested object cannot match.
+    """
+    hits = list(SHELL.rglob(f"{type_name}.qml"))
+    if len(hits) != 1:
+        return []
+    src = hits[0].read_text()
+    return [p.rstrip(":") for p in TRANSFORMS
+            if re.search(rf"^    {re.escape(p)}", src, re.M)]
 
 
 def declares_transform(src, item_id):
@@ -90,6 +118,13 @@ def declares_transform(src, item_id):
     return found
 
 
+def instantiated_type(src, item_id):
+    """The type name on the line that opens the object declaring `id: <item_id>`."""
+    m = re.search(rf"([A-Za-z_]\w*)\s*\{{[^{{}}]*?\n\s*id:\s*{re.escape(item_id)}\s*$",
+                  src, re.M)
+    return m.group(1) if m else ""
+
+
 def main():
     hits = []
     for path in sorted(SHELL.rglob("*.qml")):
@@ -99,6 +134,8 @@ def main():
         src = path.read_text()
         for line, item in masked_items(src):
             props = declares_transform(src, item)
+            props += [p for p in component_root_transforms(instantiated_type(src, item))
+                      if p not in props]
             if not props:
                 continue
             if KNOWN.get(rel) == item:

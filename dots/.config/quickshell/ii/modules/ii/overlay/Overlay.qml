@@ -19,7 +19,13 @@ Scope {
     
     Loader {
         id: overlayLoader
-        active: GlobalStates.overlayOpen || OverlayContext.hasPinnedWidgets
+        // Mapping, never intent. `active` must not read `GlobalStates.overlayOpen`, not
+        // even as one half of an `||`: that binding and the animation that starts the
+        // exit hang off the same change signal in an undefined order, the binding wins,
+        // and the surface is gone before anything can play (`ii-onScreenKeyboard`,
+        // `ii-mediaControls`, `ii-osd`). `OverlayContext.rendered` is cleared by the exit
+        // reaching 0 and by nothing else.
+        active: OverlayContext.rendered || OverlayContext.hasPinnedWidgets
         sourceComponent: PanelWindow {
             id: overlayWindow
             exclusionMode: ExclusionMode.Ignore
@@ -30,6 +36,11 @@ Scope {
             visible: true
             color: "transparent"
 
+            // `overlayContent` carries no transform of its own -- the zoom lives on a
+            // child of it. A Region computes its input region from the item's rect *with
+            // the transform applied* and refreshes it only on a geometry change, so an
+            // item that rests at a scale bakes that scale in for good, with nothing on
+            // screen to show for it (`tools/check-mask-regions.py`).
             mask: Region {
                 item: GlobalStates.overlayOpen ? overlayContent : null
                 regions: OverlayContext.clickableWidgets.map((widget) => regionComponent.createObject(this, {

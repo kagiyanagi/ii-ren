@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Qt5Compat.GraphicalEffects
 import qs
 import qs.services
 import qs.modules.common
@@ -31,7 +30,7 @@ AbstractOverlayWidget {
     required property var modelData
     readonly property string identifier: modelData.identifier
     readonly property string materialSymbol: modelData.materialSymbol ?? "widgets"
-    property string title: modelData.title ?? identifier.replace(/([A-Z])/g, " $1").replace(/^./, function(str){ return str.toUpperCase(); })
+    property string title: modelData.title ?? OverlayContext.titleFor(identifier)
     property var configEntry: null // Optional — set by extension widget loader for alternative persistence
     property var persistentStateEntry: configEntry ?? Persistent.states.overlay[identifier]
     property real radius: Appearance.rounding.windowRounding
@@ -86,26 +85,27 @@ AbstractOverlayWidget {
         maximumX: root.parent?.width - root.width
         maximumY: root.parent?.height - root.height
     }
-    opacity: (GlobalStates.overlayOpen || !clickthrough) ? 1.0 : Config.options.overlay.clickthroughOpacity
+    // What the card rests at once the overlay is gone. Only a pinned card has a resting
+    // state at all; everything else leaves with the surface.
+    property real restingOpacity: root.clickthrough ? Config.options.overlay.clickthroughOpacity : 1
+    opacity: root.pinned
+        ? root.restingOpacity + (1 - root.restingOpacity) * OverlayContext.shownProgress
+        : OverlayContext.shownProgress
+    visible: opacity > 0
 
     // Guarded states & registration funcs
-    property bool open: Persistent.states.overlay.open
-    property bool actuallyPinned: pinned && open
-    property bool actuallyClickable: !clickthrough && actuallyPinned && open
-    onActuallyPinnedChanged: reportPinnedState();
+    property bool actuallyClickable: !clickthrough && pinned
     onActuallyClickableChanged: reportClickableState();
-    function reportPinnedState() {
-        OverlayContext.pin(identifier, actuallyPinned);
-    }
     function reportClickableState() {
         OverlayContext.registerClickableWidget(contentItem, actuallyClickable);
     }
 
-    // Self-registeration with OverlayContext
-    Component.onCompleted: {
-        reportPinnedState();
-        reportClickableState();
-    }
+    // Self-registeration with OverlayContext. The mask needs the live Item, so the
+    // unregister has to be unconditional: a card closed from its own X is destroyed by
+    // the Repeater, and a destroyed Item left in `clickableWidgets` is a Region over
+    // nothing that also keeps the whole surface mapped.
+    Component.onCompleted: reportClickableState();
+    Component.onDestruction: OverlayContext.registerClickableWidget(contentItem, false);
 
     Connections {
         target: OverlayContext
@@ -191,7 +191,6 @@ AbstractOverlayWidget {
         root.savePosition(targetX, targetY)
     }
 
-    visible: GlobalStates.overlayOpen || actuallyPinned
     implicitWidth: contentColumn.implicitWidth + resizeMargin * 2
     implicitHeight: contentColumn.implicitHeight + resizeMargin * 2
 
@@ -201,19 +200,13 @@ AbstractOverlayWidget {
             fill: parent
             margins: root.resizeMargin
         }
-        color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, (root.fancyBorders && GlobalStates.overlayOpen) ? 0 : 1)
+        // Background, outline and title bar all leave on the surface's own spec rather
+        // than on three Behaviors of their own -- they used to snap while the scrim and
+        // the taskbar faded, which is the only exit a pinned card ever gets to show.
+        color: ColorUtils.transparentize(Appearance.colors.colLayer1Base, root.fancyBorders ? 1 - OverlayContext.shownProgress : 1)
         radius: root.radius
-        border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, GlobalStates.overlayOpen ? 0 : 1)
+        border.color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 1 - OverlayContext.shownProgress)
         border.width: 1
-
-        layer.enabled: GlobalStates.overlayOpen
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: border.width
-                height: border.height
-                radius: root.radius
-            }
-        }
 
         ColumnLayout {
             id: contentColumn
@@ -224,14 +217,18 @@ AbstractOverlayWidget {
             // Title bar
             Rectangle {
                 id: titleBar
-                opacity: GlobalStates.overlayOpen ? 1 : 0
+                opacity: OverlayContext.shownProgress
                 Layout.fillWidth: true
                 implicitWidth: titleBarRow.implicitWidth + root.padding * 2
                 implicitHeight: titleBarRow.implicitHeight + root.padding * 2
                 color: root.fancyBorders ? "transparent" : Appearance.colors.colLayer1Base
-                // border.color: Appearance.colors.colOutlineVariant
-                // border.width: 1
-                
+                // The only child that reaches the card's edge, so rounding its own two
+                // top corners is the whole of what the card's `layer.enabled` +
+                // `OpacityMask` was buying -- and that pass stood once per open widget,
+                // inside a Repeater delegate, where the effect budget forbids any (8).
+                topLeftRadius: root.radius
+                topRightRadius: root.radius
+
                 RowLayout {
                     id: titleBarRow
                     anchors {

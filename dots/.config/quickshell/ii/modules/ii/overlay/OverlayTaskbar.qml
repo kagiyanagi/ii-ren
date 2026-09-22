@@ -14,7 +14,9 @@ Rectangle {
 
     property real padding: 8
 
-    opacity: GlobalStates.overlayOpen ? 1 : 0
+    // One spec for the whole surface. No Behavior of its own: there is nothing here
+    // that should leave on a different curve from the scrim it sits on.
+    opacity: OverlayContext.shownProgress
     implicitWidth: contentRow.implicitWidth + (padding * 2)
     implicitHeight: contentRow.implicitHeight + (padding * 2)
     color: Appearance.m3colors.m3surfaceContainer
@@ -22,17 +24,15 @@ Rectangle {
     border.color: Appearance.colors.colOutlineVariant
     border.width: 1
 
-    Behavior on opacity {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-    }
-
     RowLayout {
         id: contentRow
         anchors {
             fill: parent
             margins: root.padding
         }
-        spacing: 6
+        // Whitespace on the 4dp grid where two 1px dividers used to be (11). The clock
+        // and the battery are the second section; the widget toggles are the first.
+        spacing: 12
 
         Row {
             spacing: 4
@@ -44,6 +44,7 @@ Rectangle {
                     required property var modelData
                     identifier: modelData.identifier
                     materialSymbol: modelData.materialSymbol
+                    title: modelData.title ?? OverlayContext.titleFor(modelData.identifier)
                 }
             }
             Repeater {
@@ -54,47 +55,32 @@ Rectangle {
                     required property var modelData
                     identifier: modelData.identifier
                     materialSymbol: modelData.materialSymbol
+                    title: modelData.title ?? OverlayContext.titleFor(modelData.identifier)
                 }
             }
         }
 
-        Separator {}
         TimeWidget {}
-        Separator {
-            visible: Battery.available
-        }
         BatteryWidget {
             visible: Battery.available
         }
     }
 
-    component Separator: Rectangle {
-        implicitWidth: 1
-        color: Appearance.colors.colOutlineVariant
-        Layout.fillHeight: true
-        Layout.topMargin: 10
-        Layout.bottomMargin: 10
-    }
-
     component TimeWidget: StyledText {
         Layout.alignment: Qt.AlignVCenter
-        Layout.leftMargin: 8
-        Layout.rightMargin: 6
 
         text: DateTime.time
         color: Appearance.colors.colOnSurface
         font {
             family: Appearance.font.family.numbers
             variableAxes: Appearance.font.variableAxes.numbers
-            pixelSize: 22
+            pixelSize: Appearance.font.pixelSize.huge
         }
     }
-    
+
     component BatteryWidget: Row {
         id: batteryWidget
         Layout.alignment: Qt.AlignVCenter
-        Layout.leftMargin: 6
-        Layout.rightMargin: 6
         spacing: 2
         property color colText: Battery.isLowAndNotCharging ? Appearance.colors.colError : Appearance.colors.colOnSurface
 
@@ -116,7 +102,7 @@ Rectangle {
             font {
                 family: Appearance.font.family.numbers
                 variableAxes: Appearance.font.variableAxes.numbers
-                pixelSize: 18
+                pixelSize: Appearance.font.pixelSize.larger
             }
         }
     }
@@ -125,6 +111,7 @@ Rectangle {
         id: widgetButton
         required property string identifier
         required property string materialSymbol
+        required property string title
 
         Layout.alignment: Qt.AlignVCenter
 
@@ -156,6 +143,13 @@ Rectangle {
                 text: widgetButton.materialSymbol
                 color: widgetButton.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurfaceVariant
             }
+        }
+
+        // Nine icons and no labels anywhere: `point_scan` and `browse_activity` are not
+        // readable as a crosshair and a resource monitor. Same tooltip the card's own
+        // title-bar buttons already carry.
+        StyledToolTip {
+            text: widgetButton.title
         }
     }
 }
