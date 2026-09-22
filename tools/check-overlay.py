@@ -230,42 +230,46 @@ for m in models:
     )
 
 
-# ── 8. the assistant's input row pins its own height ─────────────────────────
+# ── 8. the assistant's composer grows instead of hiding the draft ────────────
 #
 # `ToolbarButton` sets `Layout.fillHeight: true`, and a nested layout that holds a
 # child which fills starts filling itself -- which beats `Layout.preferredHeight`.
 # The row took the whole card: transcript 9px tall with its empty-state line against
 # the title bar, and `IconToolbarButton`'s `implicitWidth: height` turned the eye
-# toggle into a 390px circle. One caller in the shell hits this shape; this is it.
+# toggle into a 390px circle. One caller in the shell hits that shape; this is it.
+#
+# The composer then has to grow, or a wrapped field in a one-line viewport scrolls
+# the draft out of sight as it is typed and the caret sits in what looks like an
+# empty box. Two things that shape has to get right, both measured:
+#   - the height comes off `contentHeight`, never `implicitHeight`: a `TextArea`
+#     inside a `ScrollView` is stretched to the viewport, so its implicit height
+#     hands the viewport back and never grows;
+#   - it lives on a plain `Item` wrapper rather than the row's own
+#     `Layout.preferredHeight`, so the buttons can opt out of filling (a non-filling
+#     child caps a RowLayout at its own height) and sit on the bottom edge.
 
 assist = (OVERLAY / "assist/AssistContent.qml").read_text()
-row = re.search(r"RowLayout \{(.*?)\n            spacing:", assist, re.S)
-assert row, "AssistContent's input row moved"
-assert "Layout.fillHeight: false" in row.group(1), (
-    "the input row must refuse to fill. It holds ToolbarButtons, which declare "
-    "`Layout.fillHeight: true`, and that propagates to the row and beats its "
-    "`preferredHeight` -- measured at 389px tall against the 38 it asks for."
+
+composer = re.search(r"Item \{\n            id: composer(.*?)\n            \}\n", assist, re.S)
+assert composer, "AssistContent's composer wrapper moved"
+composer = composer.group(1)
+assert "contentHeight" in composer and "implicitHeight: Math.min" in composer, (
+    "the composer's height must be `Math.min(cap, contentHeight + padding)`. Bound to "
+    "the field's `implicitHeight` it never grows -- a TextArea in a ScrollView is "
+    "stretched to the viewport and reports it straight back."
 )
-assert "Layout.preferredHeight" in row.group(1), (
-    "the row needs a pinned height. It cannot be grown from the draft either: a "
-    "QQuickLayout reads this hint once and ignores every later change, measured across "
-    "a binding, a plain property, a deferred assignment and lineCount."
-)
-assert re.search(r"oneLine\.height \* 3", row.group(1)), (
-    "three lines, measured off the field's own font with TextMetrics. One line of "
-    "viewport on a wrapped field scrolls the draft out of sight as it is typed -- the "
-    "caret ends up in what looks like an empty box while the whole thing still sends."
-)
-# both buttons opt out of filling, or the row is capped at 35 and they stretch to ovals
-buttons = re.findall(r"IconToolbarButton \{(.*?)\n            \}", assist, re.S)
+assert "root.height * 2 / 5" in composer,     "the growth needs a cap, or a long draft eats the transcript"
+
+buttons = re.findall(r"IconToolbarButton \{(.*?)\n                \}", assist, re.S)
 assert len(buttons) == 2, f"expected the eye and the send button, found {len(buttons)}"
 for b in buttons:
     assert "Layout.fillHeight: false" in b and "Layout.alignment: Qt.AlignBottom" in b, (
         "a composer button must opt out of ToolbarButton's fill and sit on the bottom "
-        "edge. Left filling it stretches to the row height, and `IconToolbarButton` is "
+        "edge. Left filling it stretches to the grown row, and `IconToolbarButton` is "
         "`implicitWidth: height`, so it stops being square."
     )
-field = re.search(r"StyledTextArea \{(.*?)\n                    Keys\.", assist, re.S)
+
+field = re.search(r"StyledTextArea \{(.*?)\n                        Keys\.", assist, re.S)
 assert field, "AssistContent's input field moved"
 field = re.sub(r"//[^\n]*", "", field.group(1))  # the comment below names anchors.fill
 assert "anchors.fill" not in field and "availableWidth" in field, (

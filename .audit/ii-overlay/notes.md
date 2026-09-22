@@ -94,17 +94,29 @@ still sent on Enter, which is what made it read as a display bug rather than a l
 Three traps had to be measured out of this one row, and the order matters because each
 hides the next:
 
-1. **The row's height hint is read once.** A `QQuickLayout` honours a *constant*
-   `Layout.preferredHeight` on a nested layout and ignores every later change to it.
-   Measured across four ways of feeding it the draft's height -- a binding on
-   `field.implicitHeight`, one on `contentHeight`, one on `lineCount`, and an imperative
-   assignment deferred with `Qt.callLater` -- the row stayed 35 while the value it was
-   bound to read 168. So the composer cannot grow with the draft; three lines is a
-   constant.
-2. **A child that opts out of filling caps the row at its own height.** Giving the
-   buttons `Layout.fillHeight: false` alone pinned the row to 35 no matter what it asked
-   for. They need `Layout.alignment: Qt.AlignBottom` as well, which is also where a
-   composer button belongs -- and is what keeps them square, since `IconToolbarButton` is
+1. **`implicitHeight` on a `TextArea` inside a `ScrollView` is not the content
+   height.** The ScrollView stretches its content item to the viewport, so the field's
+   implicit height hands the viewport straight back and a composer bound to it can never
+   grow. `contentHeight + topPadding + bottomPadding` is the real measurement, and the
+   growth lives on a plain `Item` wrapper around the row rather than on the row's own
+   `Layout.preferredHeight`.
+
+   **A wrong turn worth recording, because it shipped for one commit.** Every probe up
+   to that point was a `qs -p` config with bare `Item`s under `ShellRoot` and **no
+   window**. Nothing in a windowless scene ever polishes, so a layout runs exactly once
+   at component completion: constants applied, every later change ignored. That produced
+   a very convincing false result -- `Layout.preferredHeight` honoured at 168 when it was
+   a literal and stuck at 35 when it was a binding, reproduced four ways (bindings on
+   `implicitHeight`, `contentHeight` and `lineCount`, plus a `Qt.callLater` assignment) --
+   and it was written up as "a QQuickLayout reads this hint once", which is not true. The
+   composer shipped as a fixed three-line box on the strength of it, which is what the
+   next screenshot showed: mostly empty, text top-aligned, buttons bottom-aligned.
+
+   **Any probe that measures layout has to put the items in a `FloatingWindow`.** The
+   same probe in a window grew 35 -> 168 -> 35 immediately.
+2. **The buttons must opt out of `ToolbarButton`'s fill and align to the bottom.**
+   `Layout.fillHeight: false` with `Layout.alignment: Qt.AlignBottom` -- which is where a
+   composer button belongs, and is what keeps them square, since `IconToolbarButton` is
    `implicitWidth: height` and a filling one stretched to a 35x73 oval.
 3. **`anchors.fill: parent` on a `TextArea` inside a `ScrollView`** sizes the field by
    the thing that is supposed to be measuring it. Measured at 20px wide when empty and
@@ -112,9 +124,13 @@ hides the next:
    height. `width: inputScroll.availableWidth` instead: 407 in a 460 card, 327 in a 380
    one, `lineCount` 1 -> 16 -> 20 as it should be.
 
-The height is `oneLine.height * 3 + padding`, off a `TextMetrics` on the field's own
-font: `StyledTextArea` sets `pixelSize.small` and deriving a line height from that token
-lands a pixel off what it renders.
+Measured on the real component in a window, at the card's persisted 460x420: the
+transcript goes 363 -> 344 -> 230 -> 363 as the draft goes one line, two lines, sixteen
+and back, with the composer at 35, 54, the 168 cap, and 35. Buttons 35x35 throughout,
+field 407 wide throughout.
+
+Not animated: the height changes only when a line wraps, which is the frame the caret
+moves on, and a spring there leaves the text behind the cursor.
 
 **The sidebar's Hermes composer has trap 3 too** -- `Hermes.qml:900`, a `StyledTextArea`
 with `anchors.fill: parent` in a `ScrollView` whose `Layout.preferredHeight` reads that
