@@ -87,6 +87,40 @@ file, which I checked by asking whether `StyledScrollView` exists (it does not) 
 than by asking whether the row worked. A stale reuse hint is still a pointer at a line
 worth reading.
 
+**And the composer only ever showed one line.** Same row, second report. With
+`wrapMode: Wrap` in a one-line viewport the draft scrolls out of sight as you type, so
+the caret sits in what looks like an empty box -- the text is all still there and all
+still sent on Enter, which is what made it read as a display bug rather than a loss.
+Three traps had to be measured out of this one row, and the order matters because each
+hides the next:
+
+1. **The row's height hint is read once.** A `QQuickLayout` honours a *constant*
+   `Layout.preferredHeight` on a nested layout and ignores every later change to it.
+   Measured across four ways of feeding it the draft's height -- a binding on
+   `field.implicitHeight`, one on `contentHeight`, one on `lineCount`, and an imperative
+   assignment deferred with `Qt.callLater` -- the row stayed 35 while the value it was
+   bound to read 168. So the composer cannot grow with the draft; three lines is a
+   constant.
+2. **A child that opts out of filling caps the row at its own height.** Giving the
+   buttons `Layout.fillHeight: false` alone pinned the row to 35 no matter what it asked
+   for. They need `Layout.alignment: Qt.AlignBottom` as well, which is also where a
+   composer button belongs -- and is what keeps them square, since `IconToolbarButton` is
+   `implicitWidth: height` and a filling one stretched to a 35x73 oval.
+3. **`anchors.fill: parent` on a `TextArea` inside a `ScrollView`** sizes the field by
+   the thing that is supposed to be measuring it. Measured at 20px wide when empty and
+   **680px inside a 460px card** when full, so the wrap points were wrong as well as the
+   height. `width: inputScroll.availableWidth` instead: 407 in a 460 card, 327 in a 380
+   one, `lineCount` 1 -> 16 -> 20 as it should be.
+
+The height is `oneLine.height * 3 + padding`, off a `TextMetrics` on the field's own
+font: `StyledTextArea` sets `pixelSize.small` and deriving a line height from that token
+lands a pixel off what it renders.
+
+**The sidebar's Hermes composer has trap 3 too** -- `Hermes.qml:900`, a `StyledTextArea`
+with `anchors.fill: parent` in a `ScrollView` whose `Layout.preferredHeight` reads that
+same field's `height`. It is a wide panel so nobody has noticed, and it is a different
+queue row (`ii-sidebarPolicies`); it goes there rather than here.
+
 A scan of the whole shell for the same shape -- a nested layout with a fixed
 `preferredHeight` holding a `ToolbarButton`/`IconToolbarButton`/`ToolbarTextField` --
 returns exactly this one caller, so the shared widget is left alone and

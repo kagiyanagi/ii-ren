@@ -88,20 +88,40 @@ OverlayBackground {
             }
         }
 
+        // One line of the field's own font. `StyledTextArea` picks its own pixelSize, and
+        // deriving a line height from that token lands a pixel off what it renders.
+        TextMetrics {
+            id: oneLine
+            font: inputField.font
+            text: "Ag"
+        }
+
         RowLayout {
             Layout.fillWidth: true
-            // `ToolbarButton` declares `Layout.fillHeight: true`, and a nested layout
-            // holding a child that fills starts filling itself -- which beats
-            // `preferredHeight`, so this row took the whole card. The transcript above it
-            // collapsed to 9px (its empty-state line ended up against the title bar) and
-            // `IconToolbarButton`'s `implicitWidth: height` turned the eye into a 390px
-            // circle. Measured: row 389 high, button 35x389, transcript 9.
+            // Three lines tall, scrolling past that. A one-line viewport on a wrapped
+            // field scrolls the draft out of sight as you type, so the caret sits in what
+            // looks like an empty box while the whole thing is still there and still gets
+            // sent on Enter.
+            //
+            // Both the height and the two buttons are spelled out because this row has
+            // three separate traps in it, all measured:
+            //  - `ToolbarButton` declares `Layout.fillHeight: true`, and a nested layout
+            //    holding a child that fills starts filling itself, which beats
+            //    `preferredHeight` -- that took this row to 389px, collapsed the
+            //    transcript to 9 and made the eye a 390px circle;
+            //  - a child that opts out of filling caps the row at its own height, so the
+            //    buttons align to the bottom edge instead, which is also where a composer
+            //    button belongs and what keeps them square (`implicitWidth: height`);
+            //  - a QQuickLayout reads this hint once and ignores later changes, so it
+            //    cannot be grown from the draft's own height. Three lines is the constant.
             Layout.fillHeight: false
-            Layout.preferredHeight: 38
+            Layout.preferredHeight: oneLine.height * 3 + inputField.topPadding + inputField.bottomPadding
             spacing: 2
 
             IconToolbarButton {
                 visible: root.canLook
+                Layout.fillHeight: false
+                Layout.alignment: Qt.AlignBottom
                 text: root.seeScreen ? "visibility" : "visibility_off"
                 toggled: root.seeScreen
                 onClicked: root.seeScreen = !root.seeScreen
@@ -111,6 +131,7 @@ OverlayBackground {
             }
 
             ScrollView {
+                id: inputScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -118,7 +139,10 @@ OverlayBackground {
 
                 StyledTextArea {
                     id: inputField
-                    anchors.fill: parent
+                    // Width, not `anchors.fill`: anchored to the viewport the field is
+                    // sized by the thing it is supposed to be measuring, and its width ran
+                    // to 680px inside a 460px card -- so the wrap points were wrong too.
+                    width: inputScroll.availableWidth
                     wrapMode: TextArea.Wrap
                     padding: 8
                     background: null
@@ -143,6 +167,8 @@ OverlayBackground {
             }
 
             IconToolbarButton {
+                Layout.fillHeight: false
+                Layout.alignment: Qt.AlignBottom
                 text: root.responding ? "stop" : "arrow_upward"
                 onClicked: {
                     if (root.responding) {

@@ -247,8 +247,31 @@ assert "Layout.fillHeight: false" in row.group(1), (
     "`preferredHeight` -- measured at 389px tall against the 38 it asks for."
 )
 assert "Layout.preferredHeight" in row.group(1), (
-    "without a pinned height the row grows with the draft in its ScrollView, which is "
-    "what the ScrollView is there to prevent"
+    "the row needs a pinned height. It cannot be grown from the draft either: a "
+    "QQuickLayout reads this hint once and ignores every later change, measured across "
+    "a binding, a plain property, a deferred assignment and lineCount."
+)
+assert re.search(r"oneLine\.height \* 3", row.group(1)), (
+    "three lines, measured off the field's own font with TextMetrics. One line of "
+    "viewport on a wrapped field scrolls the draft out of sight as it is typed -- the "
+    "caret ends up in what looks like an empty box while the whole thing still sends."
+)
+# both buttons opt out of filling, or the row is capped at 35 and they stretch to ovals
+buttons = re.findall(r"IconToolbarButton \{(.*?)\n            \}", assist, re.S)
+assert len(buttons) == 2, f"expected the eye and the send button, found {len(buttons)}"
+for b in buttons:
+    assert "Layout.fillHeight: false" in b and "Layout.alignment: Qt.AlignBottom" in b, (
+        "a composer button must opt out of ToolbarButton's fill and sit on the bottom "
+        "edge. Left filling it stretches to the row height, and `IconToolbarButton` is "
+        "`implicitWidth: height`, so it stops being square."
+    )
+field = re.search(r"StyledTextArea \{(.*?)\n                    Keys\.", assist, re.S)
+assert field, "AssistContent's input field moved"
+field = re.sub(r"//[^\n]*", "", field.group(1))  # the comment below names anchors.fill
+assert "anchors.fill" not in field and "availableWidth" in field, (
+    "the field is sized by `width: inputScroll.availableWidth`. Anchored to the viewport "
+    "it is sized by the thing measuring it -- measured running to 680px inside a 460px "
+    "card, so the wrap points were wrong as well as the height."
 )
 
 
