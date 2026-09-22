@@ -37,8 +37,14 @@ RippleButton {
     })
     toggled: isShift ? Ydotool.shiftMode : false
 
-    enabled: shape != "empty"
-    colBackground: shape == "empty" ? ColorUtils.transparentize(Appearance.colors.colLayer1) : Appearance.colors.colLayer1
+    // `keytype` says what a slot is, `shape` only says how wide. A spacer holds the
+    // row's stagger -- the Caps slot every layout leaves open, because double-tapping
+    // Shift locks caps -- so it has to be sizeable, which keying this on the shape made
+    // impossible: two 1u holes stood in for one 1.9u key and pushed the home row 23px
+    // right of where a physical board puts it.
+    readonly property bool isSpacer: root.type === "spacer"
+    enabled: !root.isSpacer
+    colBackground: root.isSpacer ? ColorUtils.transparentize(Appearance.colors.colLayer1) : Appearance.colors.colLayer1
     buttonRadius: Appearance.rounding.small
     // Rounded, because a RowLayout hands a fractional width straight to the glyph
     // rasteriser. `?? 1` rather than `|| baseWidth`: the multiplier is missing for

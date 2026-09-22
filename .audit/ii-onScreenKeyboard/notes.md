@@ -43,6 +43,28 @@
   container that happens to be the group's own size, which is why this has not been
   seen. Worth a look during the shared-widget follow-ups.
 
+## The open Caps slot (follow-up, same day)
+
+The two `empty` spacers in every home row are deliberate -- all three layouts comment
+Caps out with the same note, *"not needed as double-pressing shift does that"*, which is
+the 300ms double-release in `OskKey.qml`. The stagger they left behind was not: two 1u
+holes are 104px where the `caps` width already in the table is 91px, so every home row
+sat **23px** right of the row above when a physical board puts it 7-14px right. Now one
+spacer at `shape: "caps"`, and spacer-ness moved off the shape onto `keytype: "spacer"`
+-- `shape` is a width token and nothing else, which is what made a sizeable spacer
+impossible before. `shape: "empty"` no longer exists.
+
+German had a second hole at the *end* of its home row, where Enter was commented out
+because a DE Enter is tall and spans two rows. Both halves are keycode 28 and both
+`expand`, so restoring it gives two Enters that fill to the same right edge and read as
+the one tall key again -- verified against all three layouts rendered together.
+
+**Not done: the real Caps key.** Keycode 58 through ydotool would toggle the system's
+caps lock, but this shell models shift state itself (`Ydotool.shiftMode`), so the OSK
+would keep rendering lowercase while the user typed uppercase. That is wiring, not a
+data edit. Worth noting that nothing on the surface says double-tap-Shift exists --
+`labelCaps` only appears once caps is already locked.
+
 ## Tried and rejected
 
 - **`asynchronous: true` on the Loader.** A first probe showed the rise starting at

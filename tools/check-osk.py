@@ -27,6 +27,7 @@ Run: python3 tools/check-osk.py
 """
 import json
 import re
+from itertools import takewhile
 import sys
 from pathlib import Path
 
@@ -217,8 +218,42 @@ for s in sorted(shapes):
     assert h >= 32, f"shape {s!r} is {h}px tall; 32px is the pointer-target floor (DESIGN.md 3.4)"
     assert w >= 32, f"shape {s!r} is {w}px wide"
 
-# The widest row plus the rail and the padding has to fit a small laptop panel.
 RAIL, PAD, GAP = 40, 12, 4
+
+# A spacer paints nothing and takes no input because of its `keytype`, never its
+# `shape` -- `shape` is only a width. Keying it on the shape is what forced the open
+# Caps slot to be two 1u holes instead of one 1.9u one.
+assert 'shape: "empty"' not in layouts_js, (
+    'a spacer carries a width token ("caps", "normal", ...) and keytype "spacer"; '
+    '"empty" was a shape that meant both at once and could only ever be 1 unit wide'
+)
+assert 'root.type === "spacer"' in key and '"empty"' not in key, (
+    "OskKey must decide spacer-ness from keytype, not from shape"
+)
+
+# The stagger. A spacer stands in for a key the layout leaves out -- the Caps slot,
+# because double-tapping Shift locks caps -- so it has to be that key's width. Two
+# stacked 1u spacers cannot be any real modifier's width (the narrowest, `control`, is
+# 1.3u) and pushed every home row 23px right of where a physical board puts it. No
+# other gate sees this: both widths are perfectly legal numbers.
+STAGGER_MAX = 16  # Caps 1.9u - Tab 1.6u = 14px at a 48px unit
+for name, l in LAYOUTS.items():
+    for i, row in enumerate(l["rows"]):
+        lead = list(takewhile(lambda k: k.get("keytype") == "spacer", row))
+        assert len(lead) <= 1, (
+            f"{name} row {i} opens with {len(lead)} spacers; one slot, one spacer -- "
+            "stacking them can only ever land on a multiple of the key unit"
+        )
+        if not lead or i == 0:
+            continue
+        here = round(base * W.get(lead[0].get("shape"), 1))
+        above = round(base * W.get(l["rows"][i - 1][0].get("shape"), 1))
+        assert abs(here - above) <= STAGGER_MAX, (
+            f"{name} row {i} opens with a {here}px spacer under a {above}px key; more "
+            f"than {STAGGER_MAX}px apart reads as a missing key, not a stagger"
+        )
+
+# The widest row plus the rail and the padding has to fit a small laptop panel.
 for name, l in LAYOUTS.items():
     assert l["rows"], f"{name} parsed to no rows"
     widest = max(sum(round(base * W.get(k.get("shape"), 1)) for k in r) + GAP * (len(r) - 1)
