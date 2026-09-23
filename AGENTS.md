@@ -286,6 +286,17 @@ you touched; they are the only automated gate.
   click (hidden layers also dropped every window they touched), and the latch that lets the
   window fade out, passive, on a signal not named `closed`: QsWindow already has one, and
   only the reload log says so
+- `python3 tools/check-screen-corners.py` — every monitor gets its own screen corners, and
+  the hot corner opens on arrival and not on a stale one. `CornerPanelWindow` redeclared
+  `screen`, which `PanelWindow` already has, so `screen: modelData` wrote the shadow and
+  every monitor's corners mapped on the focused one. With a single screen that is
+  invisible, so the scan covers every window in the tree. The hot corner shares those
+  windows, and their `visible` read the rounding mode alone, so rounding *No* or *Wrapped*
+  deleted an enabled hot corner. It evaluates both expressions across every mode. The edge
+  trigger fired on every motion event and is a rising edge now. Closing a sidebar with the
+  pointer resting in the corner reopened it, because the grab letting go re-sends the
+  enter. The guard against that is timing, which no screenshot shows, so it is asserted
+  structurally
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
