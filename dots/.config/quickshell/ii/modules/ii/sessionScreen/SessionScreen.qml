@@ -78,6 +78,7 @@ Scope {
         active: root.rendered
 
         sourceComponent: PanelWindow {
+            id: window
             anchors {
                 top: true
                 bottom: true
@@ -90,160 +91,234 @@ Scope {
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-            WindowDialog {
-                id: dialog
+            // Flipped after creation, so the scrim's Behavior is live for the enter.
+            property bool shown: false
+
+            function sync() {
+                window.shown = GlobalStates.sessionOpen;
+                if (window.shown)
+                    motion.open();
+                else
+                    motion.close();
+            }
+
+            Component.onCompleted: window.sync()
+
+            Connections {
+                target: GlobalStates
+                function onSessionOpenChanged() {
+                    window.sync();
+                }
+            }
+
+            // The scrim (DESIGN.md 6.2), and a press anywhere off the card puts the
+            // menu away.
+            Rectangle {
                 anchors.fill: parent
-                // The scrim covers the whole screen, whose corners are square.
-                radius: 0
-                backgroundWidth: root.columns * (root.tileSize + root.tileGap) + dialog.dialogPadding * 2
-                onDismiss: GlobalStates.sessionOpen = false
-                onVisibleChanged: {
-                    if (!visible && !GlobalStates.sessionOpen)
-                        root.rendered = false;
+                color: Appearance.colors.colScrim
+                opacity: window.shown ? 1 : 0
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-                // Flipped after creation, so the enter plays.
-                Component.onCompleted: dialog.show = GlobalStates.sessionOpen
 
-                Connections {
-                    target: GlobalStates
-                    function onSessionOpenChanged() {
-                        dialog.show = GlobalStates.sessionOpen;
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    onPressed: GlobalStates.sessionOpen = false
+                }
+            }
+
+            StyledRectangularShadow {
+                target: card
+                scale: card.scale
+                transformOrigin: card.transformOrigin
+                opacity: card.opacity
+            }
+
+            Rectangle {
+                id: card
+                // A dialog pads 12-16 (DESIGN.md 5.2).
+                readonly property real padding: 16
+
+                anchors.centerIn: parent
+                width: root.columns * (root.tileSize + root.tileGap) + card.padding * 2
+                implicitHeight: content.implicitHeight + card.padding * 2
+                Behavior on implicitHeight {
+                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+                }
+                radius: Appearance.rounding.verylarge
+                // Layer 2, opaque, as WindowDialog paints its card: the labels are
+                // colOnLayer2, and nothing is beneath the card but the scrim.
+                color: Appearance.colors.colLayer2Base
+
+                // It pops out of the middle of the screen on the shell's popup motion,
+                // not WindowDialog's slide. It is opened from a keybind or from a
+                // button nowhere near where it appears, so the centre is the only
+                // honest origin (DESIGN.md 2.6).
+                transformOrigin: Item.Center
+                scale: Appearance.animationCurves.arrowPopupScale
+                opacity: 0
+
+                ArrowPopupMotion {
+                    id: motion
+                    target: card
+                    // The close is what unmaps the window, not the request.
+                    onClosed: {
+                        if (!GlobalStates.sessionOpen)
+                            root.rendered = false;
                     }
                 }
 
-                GridLayout {
-                    id: grid
-                    Layout.alignment: Qt.AlignHCenter
-                    columns: root.columns
-                    columnSpacing: 0
-                    rowSpacing: root.tileGap
+                Keys.onEscapePressed: GlobalStates.sessionOpen = false
 
-                    function move(from, step) {
-                        for (let to = from + step; root.inReach(from, to, step); to += step) {
-                            const tile = tiles.itemAt(to).tile;
-                            if (tile.enabled) {
-                                tile.forceActiveFocus();
-                                return;
-                            }
-                        }
-                    }
-
-                    Repeater {
-                        id: tiles
-                        model: root.actions
-
-                        delegate: ColumnLayout {
-                            id: action
-                            required property var modelData
-                            required property int index
-                            property alias tile: tile
-
-                            // A column is a tile plus the gap either side of it, so the
-                            // label can run as wide as the tiles are far apart.
-                            Layout.preferredWidth: root.tileSize + root.tileGap
-                            Layout.alignment: Qt.AlignTop
-                            spacing: root.labelGap
-
-                            RippleButton {
-                                id: tile
-                                Layout.alignment: Qt.AlignHCenter
-                                implicitWidth: root.tileSize
-                                implicitHeight: root.tileSize
-                                padding: 0
-                                focus: action.index === 0
-                                enabled: SessionWarnings.can(action.modelData.can)
-
-                                // Focus is selection here: the one primary, round tile
-                                // is the one Enter fires (SelectedContainerShapeSquare is
-                                // CornerFull). Hover only tints, and never takes focus --
-                                // the pointer is usually resting where the card opens.
-                                toggled: tile.activeFocus
-                                buttonRadius: tile.toggled ? Math.min(tile.height / 2, Appearance.rounding.full) : Appearance.rounding.large
-                                colBackground: Appearance.colors.colSecondaryContainer
-                                colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                                colRipple: Appearance.colors.colSecondaryContainerActive
-                                colStateLayer: tile.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-                                // A press selects too, so the tile lit while the dialog
-                                // leaves is the one that was chosen. That is also why there
-                                // is no pressed shape: the pressed tile always rests round,
-                                // and squaring a circle on press reads as a glitch (4.3).
-                                downAction: () => tile.forceActiveFocus()
-                                onClicked: root.run(action.modelData)
-
-                                Keys.onPressed: event => {
-                                    switch (event.key) {
-                                    case Qt.Key_Return:
-                                    case Qt.Key_Enter:
-                                        tile.click();
-                                        break;
-                                    case Qt.Key_Left:
-                                        grid.move(action.index, -1);
-                                        break;
-                                    case Qt.Key_Right:
-                                        grid.move(action.index, 1);
-                                        break;
-                                    case Qt.Key_Up:
-                                        grid.move(action.index, -root.columns);
-                                        break;
-                                    case Qt.Key_Down:
-                                        grid.move(action.index, root.columns);
-                                        break;
-                                    default:
-                                        return; // Esc goes on to the dialog
-                                    }
-                                    event.accepted = true;
-                                }
-
-                                contentItem: MaterialSymbol {
-                                    horizontalAlignment: Text.AlignHCenter
-                                    iconSize: root.tileIconSize
-                                    text: action.modelData.icon
-                                    color: tile.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
-                                    Behavior on color {
-                                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                                    }
-                                }
-                            }
-
-                            StyledText {
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 2
-                                font.pixelSize: Appearance.font.pixelSize.smallie
-                                color: Appearance.colors.colOnLayer2
-                                opacity: tile.enabled ? 1 : 0.4
-                                Behavior on opacity {
-                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                                }
-                                text: action.modelData.name
-                            }
-                        }
-                    }
+                // A press on the card is not a press on the scrim.
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 }
 
-                // Killing every window is what both of these are about, so they sit
-                // under the row that does it, in the error tone NoticeBox keeps for
-                // failures -- a "warning" icon alone would make them neutral notices.
-                // Their own column, at ContentGroup's row gap: NoticeBox joins the
-                // siblings it finds into one run, and at the dialog's 16 the joined
-                // seams read as two cards with squared-off corners.
                 ColumnLayout {
-                    visible: SessionWarnings.packageManagerRunning || SessionWarnings.downloadRunning
-                    Layout.fillWidth: true
-                    spacing: 4
-
-                    NoticeBox {
-                        visible: SessionWarnings.packageManagerRunning
-                        error: true
-                        materialIcon: "warning"
-                        text: Translation.tr("Your package manager is running")
+                    id: content
+                    anchors {
+                        fill: parent
+                        margins: card.padding
                     }
-                    NoticeBox {
-                        visible: SessionWarnings.downloadRunning
-                        error: true
-                        materialIcon: "warning"
-                        text: Translation.tr("There might be a download in progress. Check your Downloads folder.")
+                    spacing: 16
+
+                    GridLayout {
+                        id: grid
+                        Layout.alignment: Qt.AlignHCenter
+                        columns: root.columns
+                        columnSpacing: 0
+                        rowSpacing: root.tileGap
+
+                        function move(from, step) {
+                            for (let to = from + step; root.inReach(from, to, step); to += step) {
+                                const tile = tiles.itemAt(to).tile;
+                                if (tile.enabled) {
+                                    tile.forceActiveFocus();
+                                    return;
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            id: tiles
+                            model: root.actions
+
+                            delegate: ColumnLayout {
+                                id: action
+                                required property var modelData
+                                required property int index
+                                property alias tile: tile
+
+                                // A column is a tile plus the gap either side of it, so the
+                                // label can run as wide as the tiles are far apart.
+                                Layout.preferredWidth: root.tileSize + root.tileGap
+                                Layout.alignment: Qt.AlignTop
+                                spacing: root.labelGap
+
+                                RippleButton {
+                                    id: tile
+                                    Layout.alignment: Qt.AlignHCenter
+                                    implicitWidth: root.tileSize
+                                    implicitHeight: root.tileSize
+                                    padding: 0
+                                    focus: action.index === 0
+                                    enabled: SessionWarnings.can(action.modelData.can)
+
+                                    // Focus is selection here: the one primary, round tile
+                                    // is the one Enter fires (SelectedContainerShapeSquare is
+                                    // CornerFull). Hover only tints, and never takes focus --
+                                    // the pointer is usually resting where the card opens.
+                                    toggled: tile.activeFocus
+                                    buttonRadius: tile.toggled ? Math.min(tile.height / 2, Appearance.rounding.full) : Appearance.rounding.large
+                                    colBackground: Appearance.colors.colSecondaryContainer
+                                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                                    colRipple: Appearance.colors.colSecondaryContainerActive
+                                    colStateLayer: tile.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                                    // A press selects too, so the tile lit while the dialog
+                                    // leaves is the one that was chosen. That is also why there
+                                    // is no pressed shape: the pressed tile always rests round,
+                                    // and squaring a circle on press reads as a glitch (4.3).
+                                    downAction: () => tile.forceActiveFocus()
+                                    onClicked: root.run(action.modelData)
+
+                                    Keys.onPressed: event => {
+                                        switch (event.key) {
+                                        case Qt.Key_Return:
+                                        case Qt.Key_Enter:
+                                            tile.click();
+                                            break;
+                                        case Qt.Key_Left:
+                                            grid.move(action.index, -1);
+                                            break;
+                                        case Qt.Key_Right:
+                                            grid.move(action.index, 1);
+                                            break;
+                                        case Qt.Key_Up:
+                                            grid.move(action.index, -root.columns);
+                                            break;
+                                        case Qt.Key_Down:
+                                            grid.move(action.index, root.columns);
+                                            break;
+                                        default:
+                                            return; // Esc goes on to the card
+                                        }
+                                        event.accepted = true;
+                                    }
+
+                                    contentItem: MaterialSymbol {
+                                        horizontalAlignment: Text.AlignHCenter
+                                        iconSize: root.tileIconSize
+                                        text: action.modelData.icon
+                                        color: tile.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondaryContainer
+                                        Behavior on color {
+                                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                        }
+                                    }
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 2
+                                    font.pixelSize: Appearance.font.pixelSize.smallie
+                                    color: Appearance.colors.colOnLayer2
+                                    opacity: tile.enabled ? 1 : 0.4
+                                    Behavior on opacity {
+                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                    }
+                                    text: action.modelData.name
+                                }
+                            }
+                        }
+                    }
+
+                    // Killing every window is what both of these are about, so they sit
+                    // under the row that does it, in the error tone NoticeBox keeps for
+                    // failures -- a "warning" icon alone would make them neutral notices.
+                    // Their own column, at ContentGroup's row gap: NoticeBox joins the
+                    // siblings it finds into one run, and at the dialog's 16 the joined
+                    // seams read as two cards with squared-off corners.
+                    ColumnLayout {
+                        visible: SessionWarnings.packageManagerRunning || SessionWarnings.downloadRunning
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        NoticeBox {
+                            visible: SessionWarnings.packageManagerRunning
+                            error: true
+                            materialIcon: "warning"
+                            text: Translation.tr("Your package manager is running")
+                        }
+                        NoticeBox {
+                            visible: SessionWarnings.downloadRunning
+                            error: true
+                            materialIcon: "warning"
+                            text: Translation.tr("There might be a download in progress. Check your Downloads folder.")
+                        }
                     }
                 }
             }

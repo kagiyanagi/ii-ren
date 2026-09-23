@@ -6,10 +6,12 @@ None of this has a symptom a still frame shows.
 
 * The **exit**. `Loader.active` read `GlobalStates.sessionOpen`, and `rules.lua` gives
   the layer `no_anim`, so the surface mapped and unmapped on the frame the flag changed.
-  It is latched now: set on the open edge, released by `WindowDialog` once its collapse
-  has played. Measured: unmapped ~110-125ms after the close, against the same frame
-  before. `active` must not read the intent even as one half of an `||` -- the binding
-  and the handler race on one change signal (measured in `check-osk.py`).
+  The card pops out of the centre on `ArrowPopupMotion` now and the window is latched:
+  set on the open edge, released when the close animation has *finished*. `active` must
+  not read the intent even as one half of an `||` -- the binding and the handler race on
+  one change signal (measured in `check-osk.py`). The shadow is a sibling of the card and
+  has to follow its scale, or every open and close shows a full-size shadow under a
+  half-size card.
 * **Enter fires the one lit tile.** Hover painted the same `colPrimary` as focus, so a
   pointer resting where the grid opened showed two selected tiles, with two different
   names in the tooltip and the subtitle. Focus is the selection now, hover only tints,
@@ -34,7 +36,6 @@ II = ROOT / "dots/.config/quickshell/ii"
 
 screen = (II / "modules/ii/sessionScreen/SessionScreen.qml").read_text()
 service = (II / "services/SessionWarnings.qml").read_text()
-dialog = (II / "modules/common/widgets/WindowDialog.qml").read_text()
 rules = (ROOT / "dots/.config/hypr/hyprland/rules.lua").read_text()
 
 failures = []
@@ -46,11 +47,11 @@ def check(cond, msg):
 
 
 def block(src, head):
-    """The brace-balanced body that follows the first match of `head`."""
+    """The brace-balanced body opened by the first `{` of the first match of `head`."""
     m = re.search(head, src)
     if not m:
         return None
-    i = src.index("{", m.end() - 1)
+    i = src.index("{", m.start())
     depth = 0
     for j in range(i, len(src)):
         depth += {"{": 1, "}": -1}.get(src[j], 0)
@@ -79,16 +80,41 @@ check(sets.count("true") == 1 and sets.count("false") == 1,
 opened = block(src, r"function onSessionOpenChanged\(\)\s*\{")
 check(opened and "root.rendered = true" in opened and "SessionWarnings.refresh()" in opened,
       "the open edge must latch the window and refresh the warnings and capabilities")
-released = block(src, r"onVisibleChanged:\s*\{")
-check(released and re.search(r"!visible && !GlobalStates\.sessionOpen", released)
-      and "root.rendered = false" in released,
-      "only the dialog's collapse may release the window, and only while the intent is off "
+released = block(src, r"onClosed:\s*\{")
+check(released and re.search(r"if \(!GlobalStates\.sessionOpen\)\s*root\.rendered = false", released),
+      "only the finished close may release the window, and only while the intent is off "
       "(a reopen during the exit must not unmap it)")
-check("WindowDialog {" in src and not re.search(r"^\s*show:", src, re.M),
-      "the surface is a WindowDialog whose `show` is assigned after creation -- bound, "
-      "it is already true when the card is built and the enter never plays")
-check(re.search(r"visible:\s*dialogBackground\.implicitHeight > 0", code(dialog)),
-      "WindowDialog must still hide itself once the card has collapsed -- that is the "
+motion = block(src, r"ArrowPopupMotion\s*\{")
+check(motion and re.search(r"target:\s*card\b", motion),
+      "the card is ArrowPopupMotion's target -- the shell's popup, not a hand-rolled one")
+card = block(src, r"Rectangle\s*\{\s*id:\s*card\b")
+check(card and re.search(r"transformOrigin:\s*Item\.Center\b", card),
+      "the card grows out of the centre: it opens from a keybind or a far-away button, so "
+      "nothing on screen is its origin (DESIGN.md 2.6)")
+check(card and re.search(r"scale:\s*Appearance\.animationCurves\.arrowPopupScale\b", card)
+      and re.search(r"^\s*opacity:\s*0\s*$", card, re.M),
+      "the card rests at arrowPopupScale and opacity 0, so the first open pops rather than "
+      "appearing at full size (ArrowPopupMotion's contract)")
+sync = block(src, r"function sync\(\)\s*\{")
+check(sync and "motion.open()" in sync and "motion.close()" in sync
+      and re.search(r"Component\.onCompleted:\s*window\.sync\(\)", src)
+      and re.search(r"function onSessionOpenChanged\(\)\s*\{\s*window\.sync\(\);", src),
+      "the motion is driven from the intent, once on creation (the enter) and on every change")
+shadow = block(src, r"StyledRectangularShadow\s*\{")
+check(shadow and all(re.search(rf"\b{prop}:\s*card\.{prop}\b", shadow) for prop in ("scale", "transformOrigin", "opacity")),
+      "the shadow must follow the card's scale, origin and opacity -- it is a sibling, and "
+      "otherwise sits full-size under a half-size card")
+scrim = block(src, r"Rectangle\s*\{\s*anchors\.fill:\s*parent\s*color:\s*Appearance\.colors\.colScrim")
+check(scrim and re.search(r"Behavior on opacity\s*\{\s*animation:\s*Appearance\.animation\.elementMoveFast\b", scrim)
+      and "onPressed: GlobalStates.sessionOpen = false" in scrim,
+      "the scrim fades on elementMoveFast (DESIGN.md 6.2) and a press on it closes the menu")
+check(card and re.search(r"MouseArea\s*\{\s*anchors\.fill:\s*parent\s*acceptedButtons:[^}]*\}", card),
+      "the card swallows presses, or one between two tiles reaches the scrim and closes the menu")
+check(card and re.search(r"Keys\.onEscapePressed:\s*GlobalStates\.sessionOpen = false", card),
+      "Esc closes the menu (DESIGN.md 3.7) -- it reaches the card from whichever tile has focus")
+popup = (II / "modules/common/widgets/ArrowPopupMotion.qml").read_text()
+check(re.search(r"onFinished:\s*root\.closed\(\)", code(popup)),
+      "ArrowPopupMotion must still emit `closed` when the close has finished -- that is the "
       "only thing that releases the window")
 check(re.search(r'namespace = "quickshell:session" \}, no_anim = true', rules),
       "rules.lua must keep `no_anim` on quickshell:session: the shell animates this "
@@ -118,7 +144,7 @@ check(run and re.match(r"\s*if \(!GlobalStates\.sessionOpen\)\s*return;", run),
       "run() must refuse once the menu is closing, or a second Enter fires a second action")
 keys = block(src, r"Keys\.onPressed:\s*event\s*=>\s*\{")
 check(keys and re.search(r"default:\s*return;", keys),
-      "the tile's key handler must pass unknown keys on -- Esc belongs to WindowDialog")
+      "the tile's key handler must pass unknown keys on -- Esc belongs to the card")
 
 # ── the arrows ───────────────────────────────────────────────────────────────
 

@@ -37,12 +37,13 @@ window first. So:
 
 1. **No enter or exit.** `Loader.active` read `GlobalStates.sessionOpen`, and
    `rules.lua` gives the layer `no_anim`, so it mapped and unmapped on the frame the flag
-   changed. It is latched now (`rendered`) and released by `WindowDialog` hiding itself
-   once its card has collapsed. Measured over 12 runs: unmapped 102–127ms after the IPC
-   close or the Esc key returned, where before it was the same frame. One outlier, 194ms,
-   came right after a shell restart, while the IPC call itself was taking twice as long.
-   Closing and reopening at once never unmapped the window (0 gaps in 0.8s of polling),
-   and it reopened with Lock lit.
+   changed. It is latched now (`rendered`) and released when `ArrowPopupMotion`'s close
+   has finished. Measured over 6 runs: unmapped 238–250ms after the IPC close or the Esc
+   key returned, against a 233ms close, where before it was the same frame. Reopening
+   80ms into the exit never unmapped the window (0 gaps in 0.8s of polling), and it came
+   back with Lock lit.
+   The first build used `WindowDialog` and unmapped 102–127ms after the close. The user
+   asked for a pop from the centre instead of its slide (below).
 2. **Two selected tiles.** Hover painted the same `colPrimary` as focus. In the
    before-shot, the pointer resting over the firmware tile at open lit it next to the
    focused Lock, with "Reboot to firmware settings" in the tooltip and "Lock" in the
@@ -69,6 +70,16 @@ painting primary.
 
 ## Decided while building
 
+- **A pop from the centre, not a slide.** The first build was a `WindowDialog`, whose
+  enter slides a card 60px down while it grows. After seeing it, the user asked for the
+  menu to come in from the centre, like a popup. It is `ArrowPopupMotion` now, with
+  `transformOrigin: Item.Center`: 0.5 → 1.02 → 1, then a 233ms accelerating shrink.
+  `WindowDialog`'s motion is built into a widget with eight callers, so the menu owns its
+  scrim and card, in `DockFolderPopup`'s shape. The shadow is a sibling bound to the
+  card's scale, origin and opacity; unbound, it sits full-size under a half-size card.
+  Frame sampling with `grim` (~70ms a frame here, too slow for the growth itself) read the
+  Lock tile at 1.00 → 1.02 → 1.00 on the way in, and 0.98 → 0.92 with its centre drifting
+  towards the screen's centre on the way out.
 - **No pressed shape.** M3E gives round icon buttons `CornerLarge` when pressed, but a
   press here focuses the tile first, so the pressed tile always rests round. DESIGN.md 4.3
   does not square a circle on press. The design-check caught this; the brief records it.
@@ -81,11 +92,14 @@ painting primary.
 
 ## For the cohesion pass (60fps)
 
-- **The whole surface now moves**, on `WindowDialog`'s recipe: the scrim fades in on
-  `elementMoveFast`, the card slides 60px down on 200ms `emphasizedDecel`, and it collapses
-  in 100ms on `emphasizedAccel`. The card is fully opaque from the first frame and only
-  its contents fade, so on this card-sized surface the first frame is an empty card. That
-  belongs to `WindowDialog` and every caller of it, not this row.
+- **The whole surface now moves**, on the popup recipe: 0.5 → 1.02 → 1 from the centre
+  over 400ms, alpha in over 83ms, and out in 233ms, while the scrim fades on
+  `elementMoveFast` both ways. ArrowPopup's numbers were written for a menu growing out
+  of a finger, and this card is 512px wide, so watch whether the 0.5 start reads as a pop
+  or a lurch. The cheatsheet's 1400px card needed 0.96. The scrim's 200ms exit also ends
+  about 33ms before the card's.
+- **A reopen during the close** restarts the pop from 0.5, so the card jumps down to half
+  size mid-shrink. `ArrowPopupMotion`'s other four callers share that.
 - **The focus morph:** a tile goes square → round on `elementMoveSmall` (fast spatial,
   overshoots) and tonal → primary on `elementMoveFast`, each time an arrow key moves.
 - **A press lights the pressed tile**, so the chosen tile is the one that is round and

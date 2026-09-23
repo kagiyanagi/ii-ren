@@ -28,16 +28,20 @@ columns (`power_menu_lite_max_columns`), which suits a portrait phone. A landsca
 desktop gets 4 columns, which puts the same eight tiles in two rows.
 
 **Interaction.**
-- `WindowDialog` provides the scrim, the card and both halves of the motion. The scrim
-  fades on `elementMoveFast`. The card comes in on `elementMoveFast`/`emphasizedDecel`
-  and collapses on half of that with `emphasizedAccel`. The body fades out on
-  `elementMoveExit`. That is the shell's dialog recipe (DESIGN.md 9), and polkit
-  already runs full-screen on it. The window latches (`rendered`) on the open edge
-  and is released once the dialog has collapsed. `Loader.active` reads nothing but
-  `rendered`. Until now the surface mapped and unmapped on the same frame as the flag,
-  and `no_anim` in `rules.lua` meant Hyprland did not animate it either.
-- Transform origin: the dialog's own vertical slide. It is centred on screen and opened
-  from a keybind or from the dashboard's button, so there is nothing to grow out of.
+- The card pops out of the centre of the screen on `ArrowPopupMotion`, the shell's popup
+  motion. Scale runs 0.5 → 1.02 on `emphasizedDecel`, then settles to 1, with alpha in
+  over 83ms. The close shrinks it to 0.5 on `emphasizedAccel` in 233ms, alpha held until
+  the last 83ms. The scrim fades on `elementMoveFast` (DESIGN.md 6.2), and the shadow
+  follows the card's scale. The window latches (`rendered`) on the open edge and is
+  released when the close has finished. `Loader.active` reads nothing but `rendered`.
+  Until now the surface mapped and unmapped on the same frame as the flag, and `no_anim`
+  in `rules.lua` meant Hyprland did not animate it either. (Revised after the first
+  build: that used `WindowDialog`, whose enter is a 60px slide down. A pop from the centre
+  reads better for a menu, and `WindowDialog`'s slide is built into a widget eight callers
+  share, so the menu owns its scrim and card, in `DockFolderPopup`'s shape.)
+- Transform origin: `Item.Center`. The menu opens from a keybind or from the dashboard's
+  button, neither of them near where it appears, so the middle of the screen is the
+  only honest origin (DESIGN.md 2.6).
 - Tile at rest: `colSecondaryContainer` at `rounding.large`. Hover:
   `colSecondaryContainerHover`. Focus: `toggled`, so `colPrimary` and round. The shape
   animates on RippleButton's own `elementMoveSmall`, and colour on `elementMoveFast`.
@@ -61,20 +65,20 @@ desktop gets 4 columns, which puts the same eight tiles in two rows.
   is disabled and the keyboard skips it. `challenge` stays enabled, because polkit will
   ask. With no answer yet, or a failed query, the tile stays enabled. On this machine
   `CanHibernate` is `na`. The old Hibernate tile closed the menu and did nothing.
-- *Warning:* a line under the grid, and the card grows to fit it, since `WindowDialog`
-  follows its content while shown. With both warnings, there are two lines.
+- *Warning:* a line under the grid, and the card grows to fit it, out from its centre
+  on `elementResize`. With both warnings, there are two lines.
 - *Loading:* both probes answer within milliseconds of opening. Until then every tile
   is enabled and there is no warning.
 - *Screen locks while open:* the menu closes. Unchanged.
-- *Reopened during the exit:* the dialog reverses, and the window never unmaps.
+- *Reopened during the exit:* the pop starts again, and the window never unmaps.
 - *Several monitors:* the menu opens on the focused output and fills it. It used to take
   its height from whichever monitor had focus at the time, not from the one it was on.
 - *Long translations:* a label wraps to two lines and elides after that.
   `Neustart zu Firmware-Einstellungen` and `Redémarrer dans les paramètres du firmware`
   are the long ones. Every existing string is kept, so all 14 translations still apply.
 
-**Cost.** One cached shadow from `WindowDialog`, plus each tile's own RippleButton mask.
-That makes 8, the same number there were before. No new effects. Opening the menu runs
+**Cost.** One cached shadow, which scales with the card, plus each tile's own RippleButton
+mask. That makes 8, the same number there were before. No new effects. Opening the menu runs
 one more short process (the logind query), next to the two warning probes.
 
 **Delete.** `SessionActionButton.qml` (folded into the one delegate), the eight
@@ -85,9 +89,8 @@ tooltip, `focusedScreen`, and `keyboardDown`. Also the
 tile's second radius `Behavior`, which ran on the effects spec on top of RippleButton's
 spatial one.
 
-**Out of scope.** `WindowDialog`'s own motion. Its enter slides a card that is already
-opaque, which is a question for the cohesion pass, across all of its callers.
-`waffle-sessionScreen`, its own row, which can read the new capabilities later.
+**Out of scope.** `WindowDialog`, whose slide the menu no longer uses; its motion is its
+eight callers' business. `waffle-sessionScreen`, its own row, which can read the new capabilities later.
 `Session.qml`'s actions: `closeAllWindows` sends SIGTERM to every window before power
 off, and nothing asks first. The layer rules: `no_anim` stays, because the shell
 animates this surface itself.

@@ -299,9 +299,11 @@ you touched; they are the only automated gate.
   structurally
 - `python3 tools/check-session-screen.py` — the power menu leaves visibly, fires only the
   tile that is lit, and does not offer what this machine cannot do. `Loader.active` read
-  the open flag and the layer is `no_anim`, so it mapped and unmapped on the same frame;
-  it is latched now and released by `WindowDialog`'s collapse, and the release must stay
-  guarded on the intent or a reopen mid-exit unmaps it. Hover used to paint the focus
+  the open flag and the layer is `no_anim`, so it mapped and unmapped on the same frame.
+  It pops out of the centre on `ArrowPopupMotion` now, latched, and released when the
+  close has finished. The release must stay guarded on the intent, or a reopen mid-exit
+  unmaps it. The shadow must follow the card's scale, or it sits full-size under a
+  half-size card on every open and close. Hover used to paint the focus
   colour, so a pointer resting where the grid opened showed two selected tiles while
   Enter fired only one of them: focus is the selection now, and nothing may let hover take
   it. The arrow keys are evaluated from the real expression over every combination of
