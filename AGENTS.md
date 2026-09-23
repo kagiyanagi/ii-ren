@@ -276,6 +276,16 @@ you touched; they are the only automated gate.
   tally is shared with the lock screen. It also pins `WindowDialog` to its content while shown
   — its default height read the card it sizes and was then snapshotted, so any row that
   appeared after opening was laid out past the card
+- `python3 tools/check-region-selector.py` — the region selector takes what was selected and
+  nothing else, and leaves visibly. `snip()` refused an empty region and then carried on,
+  because there was no `return`, and a function keeps running after the `Loader` destroys
+  its window. magick reads a zero size as "to the corner", so a right-click on bare
+  desktop opened the annotator on that crop and Search uploaded it. It lifts the clamp and
+  the guard out of the QML and sweeps them. It also pins click versus drag to Qt's drag
+  threshold (a one-pixel wobble was a 1x1 crop), the rule that only drawn targets catch a
+  click (hidden layers also dropped every window they touched), and the latch that lets the
+  window fade out, passive, on a signal not named `closed`: QsWindow already has one, and
+  only the reload log says so
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

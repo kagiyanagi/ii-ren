@@ -18,12 +18,12 @@ Item {
         color: root.overlayColor
     }
 
+    // No layer: CurveRenderer antialiases in its own shader, so one here was a
+    // screen-sized offscreen framebuffer buying nothing.
     Shape {
         id: shape
         z: 2
         anchors.fill: parent
-        layer.enabled: true
-        layer.smooth: true
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {

@@ -158,3 +158,11 @@ claims from these rows were driven rather than reasoned about.
   `visible:` already was. A control that is invisible still evaluates its bindings; that is
   worth remembering for any page that stacks typed controls this way.
 
+
+## From auditing `ii-regionSelector`, 2026-09-23
+
+| where | issue | owner |
+|---|---|---|
+| `modules/common/widgets/Toolbar.qml` | The `colSurfaceContainer` pill barely separates from a scrim-dimmed backdrop, and its shadow is invisible on one. Reading the region selector's after-shot, agy vision could not find the pill's edge and called the paired FAB "flush with the tabs" (8px apart). Every caller that floats over a scrim or a wallpaper shares it: the region selector, the screen translator, the lock islands. A rule-9 call, since the fix is the widget's own container role. | a `cw-navigation` revisit |
+| `modules/common/widgets/DashedBorder.qml` | A `Canvas`: every `width`/`height` change clears, strokes and re-uploads a texture the size of the item. Harmless on a static border, expensive when it is resized per pointer move. The region selector's live selection outline was that case and is a `Rectangle` border now. `ScreenTranslatorPanel` and `WRectangularSelection` still use it for a live selection. | `ii-screenTranslator`, `waffle-screenSnip` |
+| `modules/ii/screenTranslator/ScreenTranslatorPanel.qml:136-142` | Copies the region selector's old toolbar placement: `bottomMargin: -height`, pushed to `8` from a `Connections` on `visible`. So it sits on the frozen dock, and its enter is imperative. `RegionSelection.qml` has the replacement: bound to `visible`, 8 above Hyprland's `reserved` bottom band. | `ii-screenTranslator` |

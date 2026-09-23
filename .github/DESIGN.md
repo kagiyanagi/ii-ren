@@ -374,7 +374,8 @@ would fight the ripple's.
   neighbours follow at 0.3 and 0.1 of the drag.
 - Swipe-to-dismiss on a floating card: `SwipeToDismiss` — AOSP `SwipeHelper`,
   0.6 of the card's width or a 500dp/s fling, leaves at the speed it was thrown.
-  The clipboard toast and the Fast Pair card are the callers.
+  The clipboard toast, the Fast Pair card and the screenshot preview are the
+  callers.
 - Scroll overscroll: **none. Do not build one.** A drag past the end is Qt's own
   `DragOverBounds` rubber-band and a wheel turn at a bound does nothing at all.
   The Android stretch was built here — a `Scale` on `contentItem` fed by

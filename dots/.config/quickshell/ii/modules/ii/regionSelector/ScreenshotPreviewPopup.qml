@@ -19,6 +19,14 @@ Scope {
     property string path: ""
     property bool shown: false
 
+    // A card thrown away last time comes back whole.
+    onShownChanged: {
+        if (!previewPopup.shown)
+            return;
+        swipe.reset();
+        body.opacity = 1;
+    }
+
     // Which corner the card lives in, straight from the setting.
     readonly property string corner: Config.options.screenSnip.previewCorner
     readonly property bool atRight: previewPopup.corner.endsWith("right")
@@ -120,19 +128,36 @@ Scope {
             y: previewPopup.atBottom
                 ? root.height - card.height - card.gutter - root.fastPairInset - root.clipboardInset
                 : card.gutter + root.notificationInset + root.fastPairInset + root.clipboardInset
-            // Slides out past the nearest screen edge, so there is nothing to clip.
-            x: previewPopup.shown
-                ? (previewPopup.atRight
-                    ? root.width - card.width - card.gutter - root.sidebarInset
-                    : card.gutter + root.sidebarInset)
-                : (previewPopup.atRight ? root.width + card.gutter : -card.width - Appearance.sizes.elevationMargin)
 
-            Behavior on x {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+            // Enter decelerating, exit accelerating at a fraction of it (DESIGN.md
+            // 2.5) - it ran both ways on the enter. Assigned inside the binding
+            // that writes x, as the Fast Pair card beside it does: a Behavior
+            // bakes its spec at the instant of the write, so a spec bound on its
+            // own is a frame late and the exit runs on the enter's curve (2.9).
+            property AnimSpec slideSpec: Appearance.animation.elementMoveEnter
+
+            // Slides out past the nearest screen edge, so there is nothing to clip.
+            x: {
+                card.slideSpec = previewPopup.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                if (previewPopup.shown)
+                    return previewPopup.atRight
+                        ? root.width - card.width - card.gutter - root.sidebarInset
+                        : card.gutter + root.sidebarInset;
+                return previewPopup.atRight ? root.width + card.gutter : -card.width - Appearance.sizes.elevationMargin;
             }
 
+            Behavior on x {
+                NumberAnimation {
+                    duration: card.slideSpec.duration
+                    easing.type: card.slideSpec.type
+                    easing.bezierCurve: card.slideSpec.bezierCurve
+                }
+            }
+
+            // Making room for the cards stacked with it is a reposition the next
+            // one can overtake: interruptible, like the notification stack's.
             Behavior on y {
-                animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
 
             // Hovering holds the card open - the same courtesy a notification
@@ -151,113 +176,132 @@ Scope {
                 onTriggered: previewPopup.discard()
             }
 
-            ColumnLayout {
-                id: content
-                width: parent.width
-                spacing: 8
+            // The window masks `card`, so `card` owns the geometry and nothing
+            // else: a mask bakes a transform on the item it follows
+            // (check-mask-regions.py). The swipe moves and fades this body.
+            Item {
+                id: body
+                anchors.fill: parent
 
-                Item {
-                    Layout.preferredWidth: card.width
-                    Layout.preferredHeight: thumbFrame.height
+                transform: Translate {
+                    x: swipe.offset
+                }
 
-                    StyledRectangularShadow {
-                        target: thumbFrame
-                    }
+                // The same as letting it time out: the shot is on the clipboard
+                // already, and the crop on disk was only kept for this card.
+                SwipeToDismiss {
+                    id: swipe
+                    onDismissed: previewPopup.discard()
+                }
 
-                    Rectangle {
-                        id: thumbFrame
-                        width: card.width
-                        // Follows the crop's shape, but a very tall or very wide
-                        // snip is not allowed to run away with the card.
-                        height: Math.round(thumb.height) + card.framePadding * 2
-                        radius: Appearance.rounding.large
-                        color: Appearance.colors.colLayer0
+                ColumnLayout {
+                    id: content
+                    width: parent.width
+                    spacing: 8
 
-                        Image {
-                            id: thumb
-                            x: card.framePadding
-                            y: card.framePadding
-                            width: card.thumbWidth
-                            height: (implicitWidth > 0 && implicitHeight > 0)
-                                ? Math.max(80, Math.min(200, card.thumbWidth * implicitHeight / implicitWidth))
-                                : 135
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            // A screenshot is only ever shown once; caching one
-                            // full-size decode per snip is pure waste.
-                            cache: false
-                            source: previewPopup.path === "" ? "" : `file://${previewPopup.path}`
+                    Item {
+                        Layout.preferredWidth: card.width
+                        Layout.preferredHeight: thumbFrame.height
 
-                            // Square corners inside a rounded frame read as a
-                            // mistake as soon as the shot is light. Stepping the
-                            // radius in by the padding keeps the two concentric.
-                            layer.enabled: true
-                            layer.effect: OpacityMask {
-                                maskSource: Rectangle {
-                                    width: thumb.width
-                                    height: thumb.height
-                                    radius: Appearance.rounding.large - card.framePadding
+                        StyledRectangularShadow {
+                            target: thumbFrame
+                        }
+
+                        Rectangle {
+                            id: thumbFrame
+                            width: card.width
+                            // Follows the crop's shape, but a very tall or very wide
+                            // snip is not allowed to run away with the card.
+                            height: Math.round(thumb.height) + card.framePadding * 2
+                            radius: Appearance.rounding.large
+                            color: Appearance.colors.colLayer0
+
+                            Image {
+                                id: thumb
+                                x: card.framePadding
+                                y: card.framePadding
+                                width: card.thumbWidth
+                                height: (implicitWidth > 0 && implicitHeight > 0)
+                                    ? Math.max(80, Math.min(200, card.thumbWidth * implicitHeight / implicitWidth))
+                                    : 135
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                // A screenshot is only ever shown once; caching one
+                                // full-size decode per snip is pure waste.
+                                cache: false
+                                source: previewPopup.path === "" ? "" : `file://${previewPopup.path}`
+
+                                // Square corners inside a rounded frame read as a
+                                // mistake as soon as the shot is light. Stepping the
+                                // radius in by the padding keeps the two concentric.
+                                layer.enabled: true
+                                layer.effect: OpacityMask {
+                                    maskSource: Rectangle {
+                                        width: thumb.width
+                                        height: thumb.height
+                                        radius: Appearance.rounding.large - card.framePadding
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Item {
-                    Layout.preferredWidth: pill.width
-                    Layout.preferredHeight: pill.height
-                    Layout.bottomMargin: Appearance.sizes.elevationMargin
+                    Item {
+                        Layout.preferredWidth: pill.width
+                        Layout.preferredHeight: pill.height
+                        Layout.bottomMargin: Appearance.sizes.elevationMargin
 
-                    StyledRectangularShadow {
-                        target: pill
-                    }
+                        StyledRectangularShadow {
+                            target: pill
+                        }
 
-                    Rectangle {
-                        id: pill
-                        width: pillRow.implicitWidth + 12
-                        height: 52
-                        radius: Appearance.rounding.full
-                        color: Appearance.colors.colLayer0
+                        Rectangle {
+                            id: pill
+                            width: pillRow.implicitWidth + 12
+                            height: 52
+                            radius: Appearance.rounding.full
+                            color: Appearance.colors.colLayer0
 
-                        RowLayout {
-                            id: pillRow
-                            anchors.centerIn: parent
-                            spacing: 4
+                            RowLayout {
+                                id: pillRow
+                                anchors.centerIn: parent
+                                spacing: 4
 
-                            RippleButtonWithIcon {
-                                implicitHeight: 40
-                                horizontalPadding: 16
-                                buttonRadius: Appearance.rounding.full
-                                colBackground: Appearance.colors.colSecondaryContainer
-                                materialIcon: "save"
-                                mainText: Translation.tr("Save")
-                                onClicked: previewPopup.save()
-                            }
-
-                            component IconButton: RippleButton {
-                                implicitWidth: 40
-                                implicitHeight: 40
-                                buttonRadius: Appearance.rounding.full
-                                colBackground: Appearance.colors.colLayer1
-                            }
-
-                            IconButton {
-                                onClicked: previewPopup.edit()
-                                contentItem: MaterialSymbol {
-                                    horizontalAlignment: Text.AlignHCenter
-                                    text: "edit"
-                                    iconSize: Appearance.font.pixelSize.larger
-                                    color: Appearance.colors.colOnLayer1
+                                RippleButtonWithIcon {
+                                    implicitHeight: 40
+                                    horizontalPadding: 16
+                                    buttonRadius: Appearance.rounding.full
+                                    colBackground: Appearance.colors.colSecondaryContainer
+                                    materialIcon: "save"
+                                    mainText: Translation.tr("Save")
+                                    onClicked: previewPopup.save()
                                 }
-                            }
 
-                            IconButton {
-                                onClicked: previewPopup.discard()
-                                contentItem: MaterialSymbol {
-                                    horizontalAlignment: Text.AlignHCenter
-                                    text: "delete"
-                                    iconSize: Appearance.font.pixelSize.larger
-                                    color: Appearance.colors.colError
+                                component IconButton: RippleButton {
+                                    implicitWidth: 40
+                                    implicitHeight: 40
+                                    buttonRadius: Appearance.rounding.full
+                                    colBackground: Appearance.colors.colLayer1
+                                }
+
+                                IconButton {
+                                    onClicked: previewPopup.edit()
+                                    contentItem: MaterialSymbol {
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "edit"
+                                        iconSize: Appearance.font.pixelSize.larger
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                }
+
+                                IconButton {
+                                    onClicked: previewPopup.discard()
+                                    contentItem: MaterialSymbol {
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "delete"
+                                        iconSize: Appearance.font.pixelSize.larger
+                                        color: Appearance.colors.colError
+                                    }
                                 }
                             }
                         }

@@ -96,6 +96,15 @@ From the rows that retimed something and could not drive the shell:
 - The **overlay's enter, now on every open rather than once per window**. It was
   `Component.onCompleted`, so with anything pinned the window never died and the zoom never
   played again. Opening it twice in a row is the test (`ii-overlay`).
+- The **region selector's fade in and out**, which did not exist: the window appeared
+  undimmed and was destroyed on the frame it was dismissed. Whole window in on
+  `elementMoveFast`, out on `elementMoveExit`. The out follows every screenshot, so it is
+  the most frequent motion in the surface. Watch whether 130ms over the frozen frame reads
+  as a release or as a lag before the preview card slides in (`ii-regionSelector`).
+- The **screenshot preview card's exit and swipe**. The exit ran on the enter spec; it is
+  `elementMoveExit` now, and the card swipes away like the clipboard toast and the Fast
+  Pair card. It shares their corner, so the three should feel identical thrown
+  (`ii-regionSelector`).
 
 ## Still nobody's call but yours
 

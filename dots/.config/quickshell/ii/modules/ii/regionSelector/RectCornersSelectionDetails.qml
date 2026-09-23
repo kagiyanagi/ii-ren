@@ -14,14 +14,18 @@ Item {
     required property color overlayColor
     property bool showAimLines: Config.options.regionSelector.rect.showAimLines
 
-    property bool breathingBorderOnly: false
+    // A drag under way, or a region being recorded - not a click, whose region
+    // is zero-sized until it lands on a target, and "0 × 0" is noise.
+    property bool showSelection: false
+    // Recording: the scrim, the label and the aim lines go, the border stays.
+    property bool borderOnly: false
 
     // Overlay to darken screen
     // Base dark overlay around region
     Rectangle {
         id: darkenOverlay
         z: 1
-        visible: !root.breathingBorderOnly
+        visible: !root.borderOnly
         anchors {
             left: parent.left
             top: parent.top
@@ -35,48 +39,41 @@ Item {
         border.width: Math.max(root.width, root.height)
     }
 
-    DashedBorder {
+    // Solid, as SystemUI's CropView frames a crop, and the same 2px as a
+    // target at rest. Drawn just outside the region, so a recording of it
+    // never includes it. A Rectangle, not DashedBorder: that is a Canvas,
+    // which clears, strokes and re-uploads a texture the size of the
+    // selection on every pointer move of a drag.
+    Rectangle {
         id: selectionBorder
         z: 9
-        anchors {
-            left: parent.left
-            top: parent.top
-            leftMargin: Math.round(root.regionX) - borderWidth
-            topMargin: Math.round(root.regionY) - borderWidth
-        }
-        width: Math.round(root.regionWidth) + borderWidth * 2
-        height: Math.round(root.regionHeight) + borderWidth * 2
-
-        color: root.color
-        dashLength: 8
-        gapLength: 4
-        borderWidth: 1
-
-        // Breathing
-        opacity: 0.9
-        SequentialAnimation on opacity {
-            running: root.breathingBorderOnly
-            loops: Animation.Infinite
-            NumberAnimation { from: 0.9; to: 0.3; duration: 1200; easing.type: Easing.InOutQuad }
-            NumberAnimation { from: 0.3; to: 0.9; duration: 1200; easing.type: Easing.InOutQuad }
-        }
+        visible: root.showSelection
+        x: Math.round(root.regionX) - border.width
+        y: Math.round(root.regionY) - border.width
+        width: Math.round(root.regionWidth) + border.width * 2
+        height: Math.round(root.regionHeight) + border.width * 2
+        color: "transparent"
+        border.color: root.color
+        border.width: 2
     }
 
     StyledText {
         z: 2
-        visible: !root.breathingBorderOnly
-        anchors {
-            top: selectionBorder.bottom
-            right: selectionBorder.right
-            margins: 8
-        }
+        visible: root.showSelection && !root.borderOnly
+        readonly property real gap: 8
+        readonly property real below: selectionBorder.y + selectionBorder.height + gap
+        // Under the region's bottom-right corner, above it when the region
+        // reaches the bottom of the screen, and never off either side.
+        x: Math.max(gap, selectionBorder.x + selectionBorder.width - width - gap)
+        y: below + height + gap <= root.height ? below : Math.max(gap, selectionBorder.y - height - gap)
         color: root.color
-        text: `${Math.round(root.regionWidth)} x ${Math.round(root.regionHeight)}`
+        font.family: Appearance.font.family.numbers
+        text: `${Math.round(root.regionWidth)} × ${Math.round(root.regionHeight)}`
     }
 
     // Coord lines
     Rectangle { // Vertical
-        visible: root.showAimLines && !root.breathingBorderOnly
+        visible: root.showAimLines && !root.borderOnly
         opacity: 0.2
         z: 2
         x: root.mouseX
@@ -88,7 +85,7 @@ Item {
         color: root.color
     }
     Rectangle { // Horizontal
-        visible: root.showAimLines && !root.breathingBorderOnly
+        visible: root.showAimLines && !root.borderOnly
         opacity: 0.2
         z: 2
         y: root.mouseY

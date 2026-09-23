@@ -6,42 +6,43 @@ import QtQuick
 Item {
     id: root
     property var action
-    property var selectionMode
 
     readonly property var actionInfo: {
         switch (root.action) {
         case RegionSelection.SnipAction.Copy:
         case RegionSelection.SnipAction.Edit:
-            return { symbol: "content_cut", description: Translation.tr("Copy region (LMB) or annotate (RMB)"), duration: 1000 };
+            return { symbol: "content_cut", description: Translation.tr("Copy region (LMB) or annotate (RMB)") };
         case RegionSelection.SnipAction.Search:
-            return { symbol: "image_search", description: Translation.tr("Use Google Lens (LMB) or ask AI (RMB)"), duration: 1500 };
+            return { symbol: "image_search", description: Translation.tr("Use Google Lens (LMB) or ask AI (RMB)") };
         case RegionSelection.SnipAction.CharRecognition:
-            return { symbol: "document_scanner", description: Translation.tr("Recognize text"), duration: 1000 };
+            return { symbol: "document_scanner", description: Translation.tr("Recognize text") };
         case RegionSelection.SnipAction.QrScan:
-            return { symbol: "qr_code_scanner", description: Translation.tr("Scan QR code"), duration: 1000 };
+            return { symbol: "qr_code_scanner", description: Translation.tr("Scan QR code") };
         case RegionSelection.SnipAction.Record:
         case RegionSelection.SnipAction.RecordWithSound:
-            return { symbol: "videocam", description: Translation.tr("Record region"), duration: 1000 };
+            return { symbol: "videocam", description: Translation.tr("Record region") };
         default:
-            return { symbol: "", description: "", duration: 1000 };
+            return { symbol: "", description: "" };
         }
     }
-    property int duration: root.actionInfo.duration
     property string description: root.actionInfo.description
     property string materialSymbol: root.actionInfo.symbol
 
+    // Shown until the first press, or for as long as a Toast.LENGTH_SHORT
+    // (NotificationManagerService SHORT_DELAY): long enough to read one line.
     property bool showDescription: true
     function hideDescription() {
         root.showDescription = false
     }
     Timer {
         id: descTimeout
-        interval: root.duration
+        interval: 2000
         running: true
         onTriggered: {
             root.hideDescription()
         }
     }
+    // Another region keybind pressed while this one is open switches the action.
     onActionChanged: {
         root.showDescription = true
         descTimeout.restart()
@@ -55,21 +56,22 @@ Item {
         id: content
         anchors.centerIn: parent
 
-        property real padding: 8
-        implicitHeight: 38
-        implicitWidth: root.showDescription ? contentRow.implicitWidth + padding * 2 : implicitHeight
+        // An icon button's height around the standard icon, and a chip's
+        // asymmetry once it carries text: 8 before the icon, 16 after the label.
+        readonly property real leadingPadding: 8
+        readonly property real trailingPadding: 16
+        implicitHeight: 40
+        implicitWidth: root.showDescription ? contentRow.implicitWidth + leadingPadding + trailingPadding : implicitHeight
         clip: true
 
-        topLeftRadius: 6
-        bottomLeftRadius: implicitHeight - topLeftRadius
-        bottomRightRadius: bottomLeftRadius
-        topRightRadius: bottomLeftRadius
+        // Pointed at the cursor it hangs from, round everywhere else.
+        topLeftRadius: Appearance.rounding.unsharpenmore
+        bottomLeftRadius: Appearance.rounding.full
+        bottomRightRadius: Appearance.rounding.full
+        topRightRadius: Appearance.rounding.full
 
         color: Appearance.colors.colPrimary
 
-        Behavior on topLeftRadius {
-            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-        }
         Behavior on implicitWidth {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
@@ -79,13 +81,13 @@ Item {
             anchors {
                 verticalCenter: parent.verticalCenter
                 left: parent.left
-                leftMargin: content.padding
+                leftMargin: content.leadingPadding
             }
-            spacing: 12
+            spacing: 8
 
             MaterialSymbol {
                 anchors.verticalCenter: parent.verticalCenter
-                iconSize: 22
+                iconSize: 24
                 color: Appearance.colors.colOnPrimary
                 animateChange: true
                 text: root.materialSymbol
@@ -98,8 +100,6 @@ Item {
                 sourceComponent: StyledText {
                     color: Appearance.colors.colOnPrimary
                     text: root.description
-                    anchors.right: parent.right
-                    anchors.rightMargin: 6
                 }
             }
         }

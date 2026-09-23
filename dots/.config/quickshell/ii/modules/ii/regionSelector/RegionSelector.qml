@@ -19,18 +19,34 @@ Scope {
 
     Variants {
         model: Quickshell.screens
-        
+
         delegate: Loader {
             id: regionSelectorLoader
             required property var modelData
 
             readonly property HyprlandMonitor monitor: Hyprland.monitorFor(regionSelectorLoader.modelData)
             property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
+            readonly property bool wanted: GlobalStates.regionSelectorOpen && (!Config.options.regionSelector.showOnlyOnFocusedMonitor || monitorIsFocused)
 
-            active: GlobalStates.regionSelectorOpen && (!Config.options.regionSelector.showOnlyOnFocusedMonitor || monitorIsFocused)
+            // Intent and mapping are kept apart: `active` destroys the window, so
+            // bound to the request it would take the fade out with it (DESIGN.md
+            // 2.5). The selection clears `rendered` itself once it has faded.
+            property bool rendered: false
+            onWantedChanged: {
+                if (!regionSelectorLoader.wanted)
+                    return;
+                // Always a new selection, never the old one reopened: `retrigger`
+                // closes and reopens in one turn to stop a recording, and it is the
+                // new instance's own `pidof` check that does the stopping.
+                regionSelectorLoader.rendered = false;
+                regionSelectorLoader.rendered = true;
+            }
+            active: regionSelectorLoader.rendered
 
             sourceComponent: RegionSelection {
                 screen: regionSelectorLoader.modelData
+                open: regionSelectorLoader.wanted
+                onFadedOut: regionSelectorLoader.rendered = false
                 onDismiss: root.dismiss()
                 onPreviewSnip: (command, previewPath) => root.runPreviewSnip(command, previewPath)
                 action: root.action
@@ -40,8 +56,8 @@ Scope {
     }
 
     // Android-style preview of the shot that was just copied. The RegionSelection
-    // window is destroyed the moment the region is picked, so the crop runs here
-    // instead - this Scope lives for the whole session.
+    // window is destroyed once it has faded out, so the crop runs here instead -
+    // this Scope lives for the whole session.
     property string previewPath: ""
     property bool previewShown: false
 
