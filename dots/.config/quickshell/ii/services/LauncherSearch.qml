@@ -172,10 +172,17 @@ Singleton {
             mathProc.command = baseCommand.concat(expression);
             mathProc.running = true;
         }
-        stdout: SplitParser {
-            onRead: data => {
-                root.mathResult = data;
-            }
+        // Read on exit, not as it streams: qalc prints an answer for every
+        // string -- `fire` is 0, `firefox` is 0 B, `code` is code() -- and says
+        // whether it understood one only in its exit code. Taking the text
+        // regardless put a Math result row under every ordinary app search, and
+        // because it lands ~250ms behind the rows, rewriting it rebuilt the
+        // whole model again just after the list had settled.
+        stdout: StdioCollector {
+            id: mathOut
+        }
+        onExited: exitCode => {
+            root.mathResult = exitCode === 0 ? mathOut.text.trim() : "";
         }
     }
 
@@ -389,8 +396,10 @@ Singleton {
         const startsWithMathPrefix = root.query.startsWith(Config.options.search.prefix.math);
         const startsWithShellCommandPrefix = root.query.startsWith(Config.options.search.prefix.shellCommand);
         const startsWithWebSearchPrefix = root.query.startsWith(Config.options.search.prefix.webSearch);
+        const hasMathResult = root.mathResult.length > 0;
         if (startsWithNumber || startsWithMathPrefix) {
-            result.push(mathResultObject);
+            if (hasMathResult)
+                result.push(mathResultObject);
         } else if (startsWithShellCommandPrefix) {
             result.push(commandResultObject);
         } else if (startsWithWebSearchPrefix) {
@@ -413,7 +422,7 @@ Singleton {
         if (Config.options.search.prefix.showDefaultActionsWithoutPrefix) {
             if (!startsWithShellCommandPrefix)
                 result.push(commandResultObject);
-            if (!startsWithNumber && !startsWithMathPrefix)
+            if (!startsWithNumber && !startsWithMathPrefix && hasMathResult)
                 result.push(mathResultObject);
             if (!startsWithWebSearchPrefix)
                 result.push(webSearchResultObject);

@@ -264,13 +264,14 @@ RippleButton {
             text: root.itemClickActionName
         }
 
-        // The actions sit flush with the top of the row, which is already inset
-        // by the button's own vertical padding. This used to pay for a top margin
-        // with a negative bottom one (11), under a comment that said nobody knew
-        // why it was needed -- it was there to cancel the height the top margin
-        // added.
+        // Centred on the row, with the name and the verb it sits beside. It used
+        // to pay for a top margin with a negative bottom one (11), under a
+        // comment that said nobody knew why it was needed -- it was there to
+        // cancel the height the top margin added, and the pair left the buttons
+        // half the row's padding below centre. Pinning them to the top instead
+        // moved them the same distance the other way.
         RowLayout {
-            Layout.alignment: Qt.AlignTop
+            Layout.alignment: Qt.AlignVCenter
             spacing: 4
             Repeater {
                 model: (root.entry.actions ?? []).slice(0, 4)

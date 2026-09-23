@@ -257,7 +257,15 @@ you touched; they are the only automated gate.
   also holds the per-window effect ceiling `check-effect-budget.py` cannot reach — every
   overview window is its own file, the dock's blind spot — and the arithmetic that let the
   launcher's `OpacityMask` go: its mask was `width x width`, square over a card that is
-  always taller, and every result row clears the card's corner arc by 5.4px anyway
+  always taller, and every result row clears the card's corner arc by 5.4px anyway. Last, it
+  pins the results list to one rebuild per query. Assigning a JS array to `model:` destroys
+  every delegate and builds them again — `QQmlDelegateModel::setModel` emits a remove of the
+  old count and an insert of the new one — and the rows come back saying the same thing in
+  the same places, so only the motion hung off those two signals shows it. Typing `fire` cost
+  seven rebuilds where four were real: a 200ms debounce re-handing over content it had
+  already sliced, and `qalc`, which answers every string (`fire` is 0, `firefox` is 0 B) and
+  says it did not understand only in its exit code, so a junk Math result row landed a
+  quarter second late under every app search and rewrote the model after the list had settled
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -15,8 +15,6 @@ Item { // Wrapper
     id: root
 
     readonly property string xdgConfigHome: Directories.config
-    readonly property int typingDebounceInterval: 200
-    readonly property int typingResultLimit: 15 // Should be enough to cover the whole view
 
     readonly property bool sharpMode: Config.options.appearance.sharpMode
     property string searchingText: LauncherSearch.query
@@ -156,6 +154,15 @@ Item { // Wrapper
                 clip: true
                 topMargin: 12
                 bottomMargin: 12
+                // Assigning a model destroys every delegate and builds them
+                // again -- QQmlDelegateModel::setModel emits a remove of the old
+                // count and an insert of the new one -- so with the shared list's
+                // enter and exit transitions on, a query that changed one row's
+                // text slid every row out and scaled every row back in. The set
+                // is replaced, not added to; the card's own height animation is
+                // the motion this surface has (2.1). Same reason as the
+                // bluetooth, wifi and mixer lists.
+                animateAppearance: false
                 KeyNavigation.up: searchBar
 
                 onFocusChanged: {
@@ -171,20 +178,21 @@ Item { // Wrapper
                     }
                 }
 
-                Timer {
-                    id: debounceTimer
-                    interval: root.typingDebounceInterval
-                    onTriggered: {
-                        root.currentResults = LauncherSearch.results ?? [];
-                    }
-                }
-
+                // Assigned here rather than bound to `LauncherSearch.results`
+                // so the model is current before the index is put back: the
+                // binding and this handler hang off one change signal in an
+                // undefined order.
+                //
+                // The whole list, not a slice of it. This used to hand over the
+                // first 15 and then assign the full set again 200ms later, which
+                // bought nothing -- a ListView instantiates what fits its
+                // viewport, 11 rows here, whether `count` is 15 or 57 -- and cost
+                // two more rebuilds of every delegate per query.
                 Connections {
                     target: LauncherSearch
                     function onResultsChanged() {
-                        root.currentResults = LauncherSearch.results.slice(0, root.typingResultLimit);
+                        root.currentResults = LauncherSearch.results;
                         root.focusFirstItem();
-                        debounceTimer.restart();
                     }
                 }
 

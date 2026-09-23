@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Assert the overview leaves visibly, costs what it says, and that deleting the
-launcher's mask was licensed.
+"""Assert the overview leaves visibly, costs what it says, that deleting the
+launcher's mask was licensed, and that the results list is built once per query.
 
-Three concerns, none of which a still frame of the surface shows.
+Four concerns, none of which a still frame of the surface shows.
 
 **The exit.** `Overview.qml` maps and unmaps its own layer surface from
 `scaleAnimated`, the animated zoom -- not from `GlobalStates.overviewOpen`. Bind
@@ -33,6 +33,18 @@ delegate pixel reaches the corner arc. That is arithmetic over four numbers in t
 files, and if any of them shrinks the delegates start clipping with no gate and no
 mask. It is evaluated here, at both the collapsed radius (which Qt clamps) and the
 expanded one.
+
+**The rebuilds.** The launcher's `model:` is a plain JS array, so assigning it
+destroys every delegate and builds them all again -- QQmlDelegateModel::setModel
+emits a remove of the old count and an insert of the new one. The rows come back
+saying the same thing in the same places, so nothing about a rebuild is visible;
+the motion the shared list hangs off those two signals is, and so is the highlight,
+which the new current row fades in from nothing. Typing `fire` used to cost seven,
+of which three landed after the list had settled: a 200ms debounce handing over the
+full set it had already sliced, and `qalc`, which answers every string (`fire` is 0,
+`firefox` is 0 B) and reports that it did not understand only in its exit code. The
+three causes and the alignment of the row's action buttons -- off centre by the
+button's own vertical padding, first one way and then the other -- are pinned here.
 
 Run: python3 tools/check-overview.py
 """
@@ -233,7 +245,83 @@ assert "hoverEnabled: true" in block(widget, "MouseArea {\n                     
     "the workspace MouseArea stopped tracking hover -- `containsMouse` is then always false " \
     "and the hover film can never appear"
 
+# --- the results list rebuilds once per query, not four times ----------------
+#
+# `model:` here is a plain JS array, and QQmlDelegateModel::setModel emits a remove
+# of the old count followed by an insert of the new one -- so *assigning* it
+# destroys every delegate and builds them all again. A still frame shows none of
+# that: the rows come back with the same text in the same places. What shows is the
+# motion the shared list hangs off those two signals, and the highlight, which the
+# new current row has to fade in from nothing because it is created before the
+# index is put back. Measured on the shipped launcher, typing `fire` cost seven
+# rebuilds where four were real -- one per keystroke -- and the three spare ones
+# landed *after* the list had settled, each dipping the green off the current row
+# to (45,50,37) for about 240ms. Their three causes are pinned here.
+
+launcher = (ROOT / "services/LauncherSearch.qml").read_text()
+
+# qalc answers every string -- `fire` is 0, `firefox` is 0 B, `code` is code() --
+# and says whether it understood one only in its exit code. Reading stdout as it
+# streams takes the answer regardless, which puts a Math result row under every
+# ordinary app search and, because qalc lands a quarter second behind the rows,
+# rewrites the model once more just after the list has settled.
+math_proc = block(launcher, "Process {\n        id: mathProc")
+assert "SplitParser" not in math_proc, \
+    "mathProc reads qalc as it streams again -- stdout alone cannot say whether qalc " \
+    "understood the query, so every app search grows a junk Math result row and the " \
+    "whole list rebuilds a second time when it arrives"
+exited = block(math_proc, "onExited:")
+assert "exitCode === 0" in exited and "mathResult" in exited, \
+    "mathProc no longer gates the math result on qalc's exit code -- `qalc -t firefox` " \
+    "exits 1 and prints `0 B`, and that is what the surface would show"
+
+pushes = list(re.finditer(r"result\.push\(mathResultObject\)", launcher))
+assert len(pushes) == 2, \
+    f"the math row is pushed from {len(pushes)} places, not 2 -- this check is stale"
+for m in pushes:
+    assert "hasMathResult" in launcher[m.start() - 200:m.start()], \
+        "a math row is pushed without checking there is a result -- an empty row under " \
+        "every search, which then rewrites itself and rebuilds the model"
+
+# The list is handed its model once per results change. The second assignment was a
+# 200ms debounce handing over the full set after a 15-item slice, which bought
+# nothing -- a ListView instantiates what fits its viewport, about 11 rows here,
+# whether `count` is 15 or 57.
+assigns = re.findall(r"root\.currentResults =", search_widget)
+assert len(assigns) == 1, \
+    f"`currentResults` is assigned {len(assigns)}x per results change -- every assignment " \
+    "destroys and rebuilds every delegate, and a second one carrying content the first " \
+    "already carried is a flash with nothing behind it"
+
+results_list = block(search_widget, "StyledListView { // App results")
+assert "animateAppearance: false" in results_list, \
+    "the launcher results list animates its rows in and out again -- its model is " \
+    "replaced wholesale rather than added to, so that slid every row off to the right " \
+    "and scaled every row back in from zero on each keystroke"
+
+
+# --- the action buttons sit on the row --------------------------------------
+
+# The row layout fills a button that is two vertical paddings taller than the
+# layout's own content, so a child that does not centre is pinned that far off the
+# name and the verb beside it. This started as a top margin paid for with a
+# negative bottom one (11) -- which put the buttons below centre -- and pinning
+# them to the top instead moved them the same distance the other way.
+actions = block(search_item, "RowLayout {\n            Layout.alignment:")
+assert "(root.entry.actions ?? [])" in actions, \
+    "the action row is not where this check thinks it is -- stale"
+pad = int(one(search_item, r"property int buttonVerticalPadding: (\d+)", "the row's vertical padding"))
+align = one(actions, r"Layout\.alignment: (Qt\.\w+)", "the action row's alignment")
+assert align == "Qt.AlignVCenter", \
+    f"the search result's action buttons are aligned {align}, which puts them {pad}px off " \
+    "the centre of a row whose name and verb are centred on it"
+assert "Margin: -" not in actions, \
+    "a negative margin is back on the action row (11) -- it cancels height rather than " \
+    "moving anything, and leaves the buttons off centre by what it cancelled"
+
+
 print(f"ok: overview exits on {exit_spec} ({exit_ms}ms) after entering on {enter_spec} "
       f"({enter_ms}ms), 1 effect per window delegate, launcher rows clear the "
-      f"{r_collapsed:.0f}/{r_expanded}px corner by {inside_corner(inset, list_gap, r_collapsed):.1f}px")
+      f"{r_collapsed:.0f}/{r_expanded}px corner by {inside_corner(inset, list_gap, r_collapsed):.1f}px, "
+      f"results rebuild once per query")
 sys.exit(0)
