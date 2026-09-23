@@ -266,6 +266,16 @@ you touched; they are the only automated gate.
   already sliced, and `qalc`, which answers every string (`fire` is 0, `firefox` is 0 B) and
   says it did not understand only in its exit code, so a junk Math result row landed a
   quarter second late under every app search and rewrote the model after the list had settled
+- `python3 tools/check-polkit.py` — the polkit dialog leaves visibly and says why a password
+  did not work. The `AuthFlow` is deleted on the frame it completes, so the window's `Loader`,
+  bound to `PolkitService.active`, unmapped on that frame and no success or cancel ever
+  animated; it is a latch now, released by the content once `WindowDialog` has collapsed, and
+  what the dialog says is copied out of the flow so the exit does not play on an empty message.
+  polkit reports a wrong password only as a signal and restarts the session, so the field just
+  cleared: the status line takes the lock screen's order, PAM first because pam_faillock's
+  tally is shared with the lock screen. It also pins `WindowDialog` to its content while shown
+  — its default height read the card it sizes and was then snapshotted, so any row that
+  appeared after opening was laid out past the card
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

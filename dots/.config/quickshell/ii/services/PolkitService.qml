@@ -10,7 +10,11 @@ Singleton {
     property alias agent: polkitAgent
     property alias active: polkitAgent.isActive
     property alias flow: polkitAgent.flow
-    property bool interactionAvailable: false
+    // Whether PAM is asking for something right now. It was kept by hand, set when
+    // a request began and again after a failure, both of which come before the
+    // session has asked for anything, so the field was live while PAM was still
+    // starting up or waiting on a fingerprint.
+    readonly property bool interactionAvailable: root.flow?.isResponseRequired ?? false
     property string cleanMessage: {
         if (!root.flow) return "";
         return root.flow.message.endsWith(".")
@@ -24,26 +28,17 @@ Singleton {
         return cleanedInputPrompt || (usePasswordChars ? Translation.tr("Password") : Translation.tr("Input"))
     }
 
+    // The flow is deleted the moment it completes, so either of these can land a
+    // frame after there is nothing left to answer.
     function cancel() {
-        root.flow.cancelAuthenticationRequest()
+        root.flow?.cancelAuthenticationRequest()
     }
 
     function submit(string) {
-        root.flow.submit(string)
-        root.interactionAvailable = false
-    }
-
-    Connections {
-        target: root.flow
-        function onAuthenticationFailed() {
-            root.interactionAvailable = true;
-        }
+        root.flow?.submit(string)
     }
 
     PolkitAgent {
         id: polkitAgent
-        onAuthenticationRequestStarted: {
-            root.interactionAvailable = true;
-        }
     }
 }

@@ -735,9 +735,7 @@ ContentPage {
     // never been opened keeps its content height -- visible, with its dismiss
     // MouseArea covering the whole page and swallowing every click. Every other
     // caller in this repo avoids that by living behind a Loader and being torn
-    // down on close, which also dodges the reopen trap: backgroundHeight tracks
-    // the very height onShowChanged overwrites, so a reused dialog reopens at
-    // zero. Reparented onto `page` (not left in ContentPage's own scrolling
+    // down on close. Reparented onto `page` (not left in ContentPage's own scrolling
     // column) so it overlays the whole viewport rather than becoming another
     // section row.
     Loader {

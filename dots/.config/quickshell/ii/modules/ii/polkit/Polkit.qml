@@ -9,7 +9,10 @@ import Quickshell.Wayland
 
 FullscreenPolkitWindow {
     id: root
+    holdForExit: true
     contentComponent: Component {
-        PolkitContent {}
+        PolkitContent {
+            onClosed: root.release()
+        }
     }
 }

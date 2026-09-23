@@ -10,7 +10,13 @@ Rectangle {
 
     property bool show: false
     default property alias contentData: contentColumn.data
-    property real backgroundHeight: dialogBackground.implicitHeight
+    // The card's height while shown. The dialogs built around a list set a fixed
+    // one; the default follows the content, live. It used to read the card's own
+    // height, which onShowChanged then overwrote with a snapshot, so a row that
+    // appeared after the dialog opened -- KeybindEditor's conflict warning,
+    // polkit's status line -- was laid out past the card's bottom edge, and a
+    // dialog reopened without a Loader came back at zero.
+    property real backgroundHeight: contentColumn.implicitHeight + root.dialogPadding * 2
     property real backgroundWidth: 350
     property real backgroundAnimationMovementDistance: 60
     // A dialog pads 12-16 (DESIGN.md 5.2). It used to reuse the container radius
@@ -43,7 +49,7 @@ Rectangle {
         // the same reason as fadeSpec above.
         dialogBackgroundHeightAnimation.duration = show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveFast.duration / 2
         dialogBackgroundHeightAnimation.easing.bezierCurve = (show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel)
-        dialogBackground.implicitHeight = show ? backgroundHeight : 0
+        dialogBackground.implicitHeight = show ? Qt.binding(() => root.backgroundHeight) : 0
     }
 
     radius: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
