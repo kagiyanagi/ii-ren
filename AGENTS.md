@@ -297,6 +297,18 @@ you touched; they are the only automated gate.
   pointer resting in the corner reopened it, because the grab letting go re-sends the
   enter. The guard against that is timing, which no screenshot shows, so it is asserted
   structurally
+- `python3 tools/check-session-screen.py` — the power menu leaves visibly, fires only the
+  tile that is lit, and does not offer what this machine cannot do. `Loader.active` read
+  the open flag and the layer is `no_anim`, so it mapped and unmapped on the same frame;
+  it is latched now and released by `WindowDialog`'s collapse, and the release must stay
+  guarded on the intent or a reopen mid-exit unmaps it. Hover used to paint the focus
+  colour, so a pointer resting where the grid opened showed two selected tiles while
+  Enter fired only one of them: focus is the selection now, and nothing may let hover take
+  it. The arrow keys are evaluated from the real expression over every combination of
+  disabled tiles, because Right from the end of the top row landing on Logout is one
+  keypress from closing every window. Last, it runs the logind parse against real `busctl`
+  output: `CanHibernate` is `na` on the machine this was written on, and the Hibernate
+  tile closed the menu and did nothing
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
