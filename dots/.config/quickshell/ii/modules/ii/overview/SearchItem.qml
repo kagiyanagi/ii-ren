@@ -37,9 +37,9 @@ RippleButton {
     property bool blurImage: entry?.blurImage ?? false
     
     visible: root.entryShown
-    property int horizontalMargin: 10
-    property int buttonHorizontalPadding: 10
-    property int buttonVerticalPadding: 6
+    property int horizontalMargin: 12
+    property int buttonHorizontalPadding: 12
+    property int buttonVerticalPadding: 8
     property bool keyboardDown: false
     readonly property bool selected: (root.hovered || root.focus)
 
@@ -130,7 +130,7 @@ RippleButton {
 
     RowLayout {
         id: rowLayout
-        spacing: iconLoader.sourceComponent === null ? 0 : 10
+        spacing: iconLoader.sourceComponent === null ? 0 : 12
         anchors.fill: parent
         anchors.leftMargin: root.horizontalMargin + root.buttonHorizontalPadding
         anchors.rightMargin: root.horizontalMargin + root.buttonHorizontalPadding
@@ -264,10 +264,13 @@ RippleButton {
             text: root.itemClickActionName
         }
 
+        // The actions sit flush with the top of the row, which is already inset
+        // by the button's own vertical padding. This used to pay for a top margin
+        // with a negative bottom one (11), under a comment that said nobody knew
+        // why it was needed -- it was there to cancel the height the top margin
+        // added.
         RowLayout {
             Layout.alignment: Qt.AlignTop
-            Layout.topMargin: root.buttonVerticalPadding
-            Layout.bottomMargin: -root.buttonVerticalPadding // Why is this necessary? Good question.
             spacing: 4
             Repeater {
                 model: (root.entry.actions ?? []).slice(0, 4)

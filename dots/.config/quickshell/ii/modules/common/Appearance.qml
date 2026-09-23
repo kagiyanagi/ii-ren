@@ -411,6 +411,7 @@ Singleton {
         property real osdWidth: 200
         property real searchWidthCollapsed: 210
         property real searchWidth: 360
+        property real searchResultsMaxHeight: 600
         property real sidebarWidth: 460
         property real sidebarWidthExpanded: 570 // when all 4 policies are enabled
         property real sidebarWidthExtended: 750

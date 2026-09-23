@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Qt.labs.synchronizer
-import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -108,7 +107,11 @@ Item { // Wrapper
         clip: true
         implicitWidth: gridLayout.implicitWidth
         implicitHeight: gridLayout.implicitHeight
-        radius: Config.options.appearance.sharpMode ? 0 : searchBar.height / 2 + searchBar.verticalPadding
+        // Reads as a pill while collapsed -- 30 is past half of the 56 the bar
+        // and its padding come to, so Qt clamps it -- and as an M3E extra-large
+        // sheet once the results push it open. `Appearance.rounding.*` is already
+        // 0 in sharp mode, through its own multiplier, so there is no ternary.
+        radius: Appearance.rounding.verylarge
         color: Appearance.colors.colBackgroundSurfaceContainer
 
         Behavior on implicitHeight {
@@ -117,26 +120,24 @@ Item { // Wrapper
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
 
+        // No layer/OpacityMask here. The mask this used to carry was
+        // `width x width` -- square, stretched over a card that is always taller
+        // than it is wide, so the curvature it drew was not the curvature it was
+        // masking to -- and it was masking nothing: every SearchItem is inset
+        // `horizontalMargin` from the card edge and the list sits on 4dp-grid
+        // margins, so no delegate pixel reaches the corner radius. Two
+        // framebuffers for a correction that was both wrong and unnecessary
+        // (DESIGN.md 8). `clip` above and on the list does the rest.
         GridLayout {
             id: gridLayout
             anchors.horizontalCenter: parent.horizontalCenter
             columns: 1
 
-            // clip: true
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: searchWidgetContent.width
-                    height: searchWidgetContent.width
-                    radius: searchWidgetContent.radius
-                }
-            }
-
             SearchBar {
                 id: searchBar
                 property real verticalPadding: 4
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
+                Layout.leftMargin: 12
                 Layout.rightMargin: 4
                 Layout.topMargin: verticalPadding
                 Layout.bottomMargin: verticalPadding
@@ -145,26 +146,17 @@ Item { // Wrapper
                 }
             }
 
-            Rectangle {
-                // Separator
-                visible: root.showResults
-                Layout.fillWidth: true
-                height: 1
-                color: Appearance.colors.colOutlineVariant
-                Layout.row: 1
-            }
-
-            ListView { // App results
+            // Field and results are separated by whitespace on the 4dp grid --
+            // 4 below the bar plus the list's own 12 -- not by a rule (11).
+            StyledListView { // App results
                 id: appResults
-                visible: root.showResults
+                visible: root.showResults && count > 0
                 Layout.fillWidth: true
-                implicitHeight: Math.min(600, appResults.contentHeight + topMargin + bottomMargin)
+                implicitHeight: Math.min(Appearance.sizes.searchResultsMaxHeight, appResults.contentHeight + topMargin + bottomMargin)
                 clip: true
-                topMargin: 10
-                bottomMargin: 10
-                spacing: 2
+                topMargin: 12
+                bottomMargin: 12
                 KeyNavigation.up: searchBar
-                highlightMoveDuration: 100
 
                 onFocusChanged: {
                     if (focus)
@@ -218,6 +210,22 @@ Item { // Wrapper
                             root.focusSearchInput();
                         }
                     }
+                }
+            }
+
+            // Unreachable in the shipped config -- `showDefaultActionsWithoutPrefix`
+            // synthesises Command / Math result / Web search for any string -- but a
+            // prefix search empties the list, and this used to leave a field with a
+            // void under it.
+            Loader {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Appearance.sizes.pagePlaceholderHeight
+                active: root.showResults && appResults.count === 0
+                visible: active
+                sourceComponent: PagePlaceholder {
+                    icon: "search_off"
+                    title: Translation.tr("No results")
+                    description: Translation.tr("Nothing matched that search")
                 }
             }
         }

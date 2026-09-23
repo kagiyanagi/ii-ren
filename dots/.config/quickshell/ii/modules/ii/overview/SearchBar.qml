@@ -10,7 +10,7 @@ import qs.modules.common.functions
 
 RowLayout {
     id: root
-    spacing: 6
+    spacing: 4
     property bool animateWidth: false
     property alias searchInput: searchInput
     property string searchingText
@@ -62,14 +62,12 @@ RowLayout {
         placeholderText: Translation.tr("Search, calculate or run")
         implicitWidth: root.searchingText == "" ? Appearance.sizes.searchWidthCollapsed : Appearance.sizes.searchWidth
 
+        // A width change is a resize, so it runs on the spec named for one
+        // rather than on a hand-written 300ms wearing `elementMove`'s curve.
         Behavior on implicitWidth {
             id: searchWidthBehavior
             enabled: root.animateWidth
-            NumberAnimation {
-                duration: 300
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
-            }
+            animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
         }
 
         onTextChanged: LauncherSearch.query = text
@@ -111,13 +109,16 @@ RowLayout {
         text: "image_search"
         StyledToolTip {
             text: Translation.tr("Google Lens")
-            y: parent.height + 3
+            y: parent.height + 4
         }
     }
 
+    // Long enough for the overview to finish leaving and unmap: the region
+    // selector grabs the screen, so a capture started earlier catches the
+    // overview on its way out.
     Timer {
         id: lensDelayTimer
-        interval: 201
+        interval: Appearance.animation.elementMoveExit.duration
         onTriggered: {
             Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "region", "search"]);
         }
@@ -134,7 +135,7 @@ RowLayout {
 
         StyledToolTip {
             text: Translation.tr("Recognize music")
-            y: parent.height + 3
+            y: parent.height + 4
         }
 
         colText: toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant

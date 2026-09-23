@@ -59,8 +59,25 @@ Scope {
                 property real defaultRatio: isZoomInStyle ? zoomLevels.in.default : zoomLevels.out.default
                 property real zoomedRatio: isZoomInStyle ? zoomLevels.in.zoomed : zoomLevels.out.zoomed
 
-                property bool isResettingZoom: false 
-                property real scaleAnimated: showOpeningAnimation ? GlobalStates.overviewOpen ? zoomedRatio : defaultRatio : 1
+                property bool isResettingZoom: false
+
+                // The zoom is a scale, so it is spatial: entering decelerating on
+                // the default spatial spec, leaving accelerating on the fast
+                // effects one (DESIGN.md 2.1, 2.5). It used to run both directions
+                // on `elementMoveFast` -- 200ms on the effects curve -- while the
+                // desktop plane behind it zooms on `elementMoveEnter`, so the two
+                // halves of one gesture travelled over durations 2.5x apart.
+                //
+                // Assigned from inside the binding that drives the scale, not from
+                // a binding of its own: a Behavior bakes its spec when the write
+                // happens, and a sibling binding on `overviewOpen` is not
+                // necessarily current yet. See PagePlaceholder and DESIGN.md 2.9.
+                property AnimSpec zoomSpec: Appearance.animation.elementMoveEnter
+                property real scaleAnimated: {
+                    if (!showOpeningAnimation) return 1;
+                    root.zoomSpec = GlobalStates.overviewOpen ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                    return GlobalStates.overviewOpen ? zoomedRatio : defaultRatio;
+                }
 
                 property real effectiveScale: showOpeningAnimation ? zoomedRatio - scaleAnimated + 1 : 1 
 
@@ -71,15 +88,29 @@ Scope {
                     }
                 }
 
+                // Derived from the animated scale, never from `GlobalStates.overviewOpen`:
+                // the window has to stay mapped through the close or the exit plays
+                // to nobody, and a surface that simply disappears has no other
+                // symptom. Five other rows in this audit found the same defect in
+                // `Loader.active` form.
                 visible: {
-                    if (isResettingZoom) return false // not showing when we are resetting 
+                    if (isResettingZoom) return false // not showing when we are resetting
                     if (!showOpeningAnimation) return GlobalStates.overviewOpen // no anim
-                    
+
                     return isZoomInStyle ? scaleAnimated > defaultRatio : scaleAnimated < defaultRatio
                 }
 
                 Behavior on scaleAnimated {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+                    NumberAnimation {
+                        // Interruptible, unlike the enter spec's own default: this
+                        // Behavior drives `visible`, so a close that had to wait out
+                        // a 500ms enter would leave the surface mapped and holding
+                        // keyboard focus for that long.
+                        alwaysRunToEnd: false
+                        duration: root.zoomSpec.duration
+                        easing.type: root.zoomSpec.type
+                        easing.bezierCurve: root.zoomSpec.bezierCurve
+                    }
                 }
 
                 anchors {
@@ -189,12 +220,6 @@ Scope {
                         implicitHeight: searchWidget.implicitHeight
                         implicitWidth: searchWidget.implicitWidth
                         z: 999
-
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Escape) {
-                                GlobalStates.overviewOpen = false;
-                            }
-                        }
 
                         anchors {
                             horizontalCenter: parent.horizontalCenter

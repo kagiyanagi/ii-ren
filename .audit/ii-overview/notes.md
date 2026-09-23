@@ -1,0 +1,101 @@
+# ii-overview — notes
+
+Lane 1, one session. Brief written in the same session (no cluster brief exists for the
+loose `ii-*` rows). Gate: `tools/check-overview.py`, new.
+
+## What the 60fps pass has to watch
+
+This row retimed the surface's whole open/close, and no still frame shows any of it.
+
+- **The zoom, `Overview.qml`.** `scaleAnimated` ran both directions on `elementMoveFast`
+  (200ms, *effects* curve). It is now `elementMoveEnter` (500ms, default spatial) in and
+  `elementMoveExit` (130ms, fast effects) out. The thing to look for is whether the
+  overview and the desktop plane behind it now travel together — that register is the
+  whole point, and it is the finding `ii-background-root` left here because it could not
+  drive the overview. Also watch a fast `Super`-`Super`: the Behavior is explicitly
+  `alwaysRunToEnd: false`, because it drives `visible` and a close held off for a 500ms
+  enter leaves the layer mapped and holding the keyboard.
+- **The focus ring, `OverviewWidget.qml`.** Its x/y/width/height moved from
+  `elementMoveFast` to `elementMoveSmall` (350ms fast spatial) — position and size are
+  spatial (2.1). Its four radii now animate too; see below.
+- **The search field's width**, `SearchBar.qml`: a hand-written `duration: 300` wearing
+  `elementMove`'s curve became `elementResize` (350ms). It fires on the first keystroke.
+
+## Found while here
+
+**The focus ring's four `Behavior on *Radius` were for a feature nobody finished.** They
+were animating `radius: Appearance.rounding.normal` — a constant — so they were dead. The
+reason they existed is that the ring is meant to take the corner shape of the tile it
+outlines (23 at the grid's outer corners, 8 everywhere else), and that half was never
+written, so the ring drew a uniform 17 that matched no tile. Written now, and the
+Behaviors kept rather than deleted.
+
+**The ring was also 4px wider than its tile**, left-aligned, so it overhung into the gap
+on the right only. Nothing justified the `+ 4`; removed.
+
+**The launcher's `OpacityMask` was masking nothing, and masking it wrong.** Its mask rect
+was `width × width` — square, stretched over a card that is always taller than it is wide.
+And no delegate ever reaches the card's corner arc: measured, the result rows clear it by
+5.4px at the collapsed radius (28, which is what Qt clamps `rounding.verylarge` to at the
+56px collapsed height) and more when expanded. Deleted outright, −2 framebuffers, no visual
+change. `check-overview.py` evaluates that arithmetic, because if the row inset or the list
+margins shrink the delegates start clipping with neither a gate nor a mask.
+
+**Deleting the separator also removed a real Qt warning.** The 1px rule was a `Rectangle`
+with `height: 1` inside a `GridLayout`, which qmllint reports as *"Detected height on an
+item that is managed by a layout. This is undefined behavior"* — the class
+`check-scaffold-containers.py` exists for. Law 11 and Qt agreed.
+
+## Not done, and why
+
+**`OverviewWindow`'s `layer.enabled` + `OpacityMask` stays.** One offscreen pass per open
+window, inside a `Repeater`, which 8 forbids. `check-effect-budget.py` has never seen it —
+that gate reads a `Repeater`/`delegate:` block *inside one file* and every overview window
+is its own file, the dock's blind spot exactly. It stays because the rounding is the
+thumbnail's whole silhouette, the four radii are computed per window from its distance to
+each tile edge, and **`ClippingRectangle` is not cheaper**: its own source is a
+`layer.enabled` mask Rectangle plus a `ShaderEffectSource` plus a `ShaderEffect` — the same
+two framebuffers — and its documentation says it costs more than a `Rectangle`. So the
+ceiling is stated instead, at one per delegate file, the way `check-dock.py` states the
+dock's.
+
+**`ScreencopyView { live: true }` on every window is not the cost it looks like.** Read
+quickshell's `view.cpp`: the capture is requested from `updatePaintNode`, so an item that
+is not painted does not re-capture. A closed overview and a grid hidden behind search
+results both cost nothing. Checked before "fixing" it.
+
+**`ScrollingOverviewWidget.qml` took only the shared fixes.** The shipped Hyprland layout
+is not `scrolling`, so nothing in this session could see it render.
+
+**The layout was left alone.** The grid geometry and every `Config.options.overview.*` knob
+that feeds it are the user's. The assembly hangs from the top of the screen with a void
+below on purpose: that void is where the results list expands into.
+
+## Two dead ends, so the next session does not repeat them
+
+**`sed -i` does not reach a running quickshell.** It replaces the inode, which breaks the
+file watch, so a live edit appears to do nothing. Restart (`tools/audit/smoke.sh`) after
+any scripted edit you want to see.
+
+**`ydotool mousemove -a` does not land where you ask on this machine** — tried at three
+positions, with `accel_profile flat` and `sensitivity 0`, and it went to 1918,901 every
+time. `hyprctl dispatch 'hl.dsp.cursor.move({ x = …, y = … })'` positions the pointer
+exactly.
+
+**But a warp alone does not produce a hover.** `cursor.move` puts the pointer inside the
+surface and a click there lands, but no `wl_pointer.motion` reaches the client, so Qt's
+`containsMouse` never updates and every hover state reads as absent. The tile measured
+identical to its neighbour and the state layer looked broken; it was not. Warp to a few
+pixels off the target, then `ydotool mousemove -x 5 -y 5` to generate a real motion event.
+Measured after that: hovered tile (40,42,35) against (26,28,22), which is the 0.08 token
+over `colSurfaceContainerLow` to within a unit, and identical to forcing `hover: true`.
+
+## How to open it
+
+`qs -c ii ipc call search open` / `close`, or `Super`. `toggle`, `workspacesToggle`,
+`clipboardToggle` and `toggleReleaseInterrupt` are on the same `search` IPC target.
+
+The empty-results state is **unreachable in the shipped config** —
+`search.prefix.showDefaultActionsWithoutPrefix` synthesises Command / Math result / Web
+search for any string, including behind a prefix. To look at it, flip the placeholder's
+`active:` to `root.showResults` and restart; it was verified that way and reverted.

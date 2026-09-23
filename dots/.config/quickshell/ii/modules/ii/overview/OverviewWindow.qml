@@ -71,6 +71,14 @@ Item { // Window
     height: !windowData.floating && hyprscrollingEnabled ? scrollHeight : targetWindowHeight
     opacity: windowData.monitor == widgetMonitorId ? 1 : 0.4
 
+    // The one effect this delegate is allowed. It is inside a Repeater, which
+    // DESIGN.md 8 forbids, and `check-effect-budget.py` has never seen it --
+    // that gate reads a Repeater or `delegate:` block inside one file, and every
+    // overview window is its own file (the dock's blind spot, same shape). It
+    // stays because the rounding is the thumbnail's whole silhouette and the four
+    // radii are computed per window from its distance to each tile edge;
+    // ClippingRectangle is the same two framebuffers rather than fewer, by its
+    // own documentation. `tools/check-overview.py` pins the ceiling at one.
     layer.enabled: true
     layer.effect: OpacityMask {
         maskSource: Rectangle {
@@ -110,9 +118,12 @@ Item { // Window
         z: 0
         active: root.hyprscrollingEnabled
         anchors.fill: parent
-        sourceComponent: Rectangle { 
+        sourceComponent: Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(0.1,0.1,0.1,1.0)
+            // The raw m3 colour, not a solved overlay: this sits under a
+            // screencopy on no layer at all, so a `colSurfaceContainer*` would
+            // come back at `1 - contentTransparency`.
+            color: Appearance.m3colors.m3surfaceContainerLowest
         }
     }
     
@@ -151,15 +162,7 @@ Item { // Window
                     centerIn: root.centerIcons ? parent : undefined
                     margins: baseSize * root.iconGapRatio
                 }
-                property var iconSize: {
-                    // console.log("-=-=-", root.toplevel.title, "-=-=-")
-                    // console.log("Target window size:", targetWindowWidth, targetWindowHeight)
-                    // console.log("Icon ratio:", root.compactMode ? root.iconToWindowRatioCompact : root.iconToWindowRatio)
-                    // console.log("Scale:", root.monitorData.scale)
-                    // console.log("Final:", Math.min(targetWindowWidth, targetWindowHeight) * (root.compactMode ? root.iconToWindowRatioCompact : root.iconToWindowRatio) / root.monitorData.scale)
-                    return baseSize * (root.compactMode ? root.iconToWindowRatioCompact : root.iconToWindowRatio);
-                }
-                // mipmap: true
+                property var iconSize: baseSize * (root.compactMode ? root.iconToWindowRatioCompact : root.iconToWindowRatio)
                 Layout.alignment: Qt.AlignHCenter
                 source: root.iconPath
                 width: iconSize

@@ -48,12 +48,11 @@ Item {
     property real smallWorkspaceRadius: Appearance.rounding.verysmall
 
 
-    property real workspaceNumberMargin: 80
     property real workspaceNumberSize: 250 * monitor.scale
     property int workspaceZ: 0
     property int windowZ: 1
     property int windowDraggingZ: 99999
-    property real workspaceSpacing: 10
+    property real workspaceSpacing: 12
 
     property int dragDropType: -1 // 0: workspace, 1: window
     
@@ -107,7 +106,7 @@ Item {
     }
     Rectangle { // Background
         id: overviewBackground
-        property real padding: 10
+        property real padding: 12
         anchors.fill: parent
         anchors.margins: Appearance.sizes.elevationMargin
 
@@ -138,13 +137,12 @@ Item {
                             property int colIndex: index
                             property int workspaceValue: root.workspaceGroup * root.workspacesShown + getWsInCell(row.index, colIndex)
                             property color defaultWorkspaceColor: Appearance.colors.colSurfaceContainerLow
-                            property color hoveredWorkspaceColor: ColorUtils.mix(defaultWorkspaceColor, Appearance.colors.colLayer1Hover, 0.1)
                             property color hoveredBorderColor: Appearance.colors.colLayer2Hover
                             property bool hoveredWhileDragging: false
 
                             implicitWidth: root.workspaceImplicitWidth
                             implicitHeight: root.workspaceImplicitHeight
-                            color: hoveredWhileDragging ? hoveredWorkspaceColor : defaultWorkspaceColor
+                            color: defaultWorkspaceColor
                             property bool workspaceAtLeft: colIndex === 0
                             property bool workspaceAtRight: colIndex === Config.options.overview.columns - 1
                             property bool workspaceAtTop: row.index === 0
@@ -169,9 +167,28 @@ Item {
                                 verticalAlignment: Text.AlignVCenter
                             }
 
+                            // All four states from one place (6). The tile used
+                            // to have only a drag film, hand-mixed at 0.1 of
+                            // `colLayer1Hover`, and nothing at all for the hover
+                            // and press of the click that takes you there. Under
+                            // the window thumbnails, so it tints the slot rather
+                            // than washing over the captures.
+                            StateOverlay {
+                                anchors.fill: parent
+                                topLeftRadius: workspace.topLeftRadius
+                                topRightRadius: workspace.topRightRadius
+                                bottomLeftRadius: workspace.bottomLeftRadius
+                                bottomRightRadius: workspace.bottomRightRadius
+                                contentColor: Appearance.colors.colOnLayer1
+                                hover: workspaceArea.containsMouse
+                                press: workspaceArea.pressed
+                                drag: workspace.hoveredWhileDragging
+                            }
+
                             MouseArea {
                                 id: workspaceArea
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton
                                 onPressed: {
                                     if (root.draggingTargetWorkspace === -1) {
@@ -456,36 +473,52 @@ Item {
 
                 x: (root.workspaceImplicitWidth + workspaceSpacing) * colIndex
                 y: (root.workspaceImplicitHeight + workspaceSpacing) * rowIndex
-                width: root.workspaceImplicitWidth + 4
+                width: root.workspaceImplicitWidth
                 height: root.workspaceImplicitHeight
 
-                radius: Appearance.rounding.normal
+                // The same corner shape as the tile it is outlining, rather than a
+                // uniform `rounding.normal` that matched none of them. The four
+                // `Behavior on *Radius` below were already here and animated
+                // nothing, because this half was never written.
+                property bool atLeft: colIndex === 0
+                property bool atRight: colIndex === Config.options.overview.columns - 1
+                property bool atTop: rowIndex === 0
+                property bool atBottom: rowIndex === Config.options.overview.rows - 1
+                topLeftRadius: (atLeft && atTop) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
+                topRightRadius: (atRight && atTop) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
+                bottomLeftRadius: (atLeft && atBottom) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
+                bottomRightRadius: (atRight && atBottom) ? root.largeWorkspaceRadius : root.smallWorkspaceRadius
+
                 color: "transparent"
                 border.width: 2
                 border.color: root.activeBorderColor
+
+                // Position, size and shape are all spatial (2.1); this ring used to
+                // slide between workspaces on `elementMoveFast`, which is the
+                // effects spec.
                 Behavior on x {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on y {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on width {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on height {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on topLeftRadius {
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on topRightRadius {
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on bottomLeftRadius {
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
                 Behavior on bottomRightRadius {
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                 }
             }
         }

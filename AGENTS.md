@@ -246,6 +246,18 @@ you touched; they are the only automated gate.
   shape of parent, and checks the one thing the fix can break: a `MouseArea` with
   `hoverEnabled` off never sets `containsMouse`, so its tooltip would be unreachable
   rather than permanent
+- `python3 tools/check-overview.py` — the overview leaves visibly, costs what it says, and
+  the launcher's deleted mask was licensed. `visible` is derived from the animated zoom, so
+  binding it to `GlobalStates.overviewOpen` unmaps the layer on the frame the flag clears
+  and the close plays to nobody — the surface still disappears, which is what it is supposed
+  to do, so there is no symptom. The zoom itself ran both directions on `elementMoveFast`
+  (200ms, *effects* curve) while the desktop plane behind it zooms on `elementMoveEnter`:
+  two halves of one gesture 2.5x apart, and a scale is spatial. It evaluates the real
+  durations out of `Appearance.qml` and checks the desktop still shares the enter spec. It
+  also holds the per-window effect ceiling `check-effect-budget.py` cannot reach — every
+  overview window is its own file, the dock's blind spot — and the arithmetic that let the
+  launcher's `OpacityMask` go: its mask was `width x width`, square over a card that is
+  always taller, and every result row clears the card's corner arc by 5.4px anyway
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
