@@ -202,9 +202,33 @@ Singleton {
                 root.unread++;
             }
             root.notify(newNotifObject);
+            if (Config.options.notifications.history.enable) root.recordHistory(newNotifObject);
             // console.log(notifToString(newNotifObject));
             notifFileView.setText(stringifyList(root.list));
         }
+    }
+
+    // ponytail: whole file rewritten per notification, capped so that stays cheap;
+    // move to JSONL appends if the cap ever needs to grow by orders of magnitude.
+    readonly property int historyLimit: 1000
+    function recordHistory(notif) {
+        let history = [];
+        try { history = JSON.parse(historyFileView.text() || "[]"); } catch (e) {}
+        const entry = notifToJSON(notif);
+        delete entry.actions; // dead once the sender is gone, same as the reload path
+        history.push(entry);
+        historyFileView.setText(JSON.stringify(history.slice(-root.historyLimit)));
+    }
+
+    // Settings clears the history by writing this file, so re-read it rather
+    // than keeping a copy that would write the cleared entries back.
+    FileView {
+        id: historyFileView
+        path: Directories.notificationHistoryPath
+        blockLoading: true
+        printErrors: false // absent until the first entry
+        watchChanges: true
+        onFileChanged: reload()
     }
 
     function markAllRead() {

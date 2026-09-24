@@ -1671,6 +1671,12 @@ Singleton {
                 property bool phoneOnDesktop: false
                 // Android-like notification cooldown: suppress rapid notifications from the same app
                 property bool cooldown: true
+                // Android-like notification history: every incoming notification
+                // is also written to Directories.notificationHistoryPath and can
+                // be browsed from Settings > Interface > Notifications.
+                property JsonObject history: JsonObject {
+                    property bool enable: false
+                }
                 property JsonObject monitor: JsonObject {
                     property bool enable: false
                     property string name: "" // Name of the monitor to show notifications on, like "eDP-1". Find out with 'hyprctl monitors' command

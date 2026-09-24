@@ -45,6 +45,7 @@ Singleton {
     property string shellConfigName: "config.json"
     property string shellConfigPath: `${Directories.shellConfig}/${Directories.shellConfigName}`
 	property string todoPath: FileUtils.trimFileProtocol(`${Directories.state}/user/todo.md`)
+	property string notificationHistoryPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notification_history.json`)
 	property string notesPath: FileUtils.trimFileProtocol(`${Directories.state}/user/notes.json`)
 	// finger slot -> custom name. Its own file rather than a config key:
 	// the config schema has no shape for a map with arbitrary keys.
