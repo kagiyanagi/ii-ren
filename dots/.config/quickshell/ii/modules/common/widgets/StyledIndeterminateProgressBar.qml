@@ -57,15 +57,23 @@ ProgressBar {
         PauseAnimation { duration: root.cycleMs - sweep.startMs - sweep.spanMs }
     }
 
-    // A segment of the track, between its two endpoints, either order.
+    // A segment of the track, tail to head. AOSP `drawLinearIndicator` strokes it
+    // with round caps and clamps both ends half a stroke inside the track, so a
+    // segment entering or leaving is a dot at the edge. Sized as a bare
+    // `(head - tail) * width`, it was nothing there instead: the track sat empty
+    // for ~124ms at every loop seam, which reads as the sweep cutting out.
     component Segment: Rectangle {
         property real head: 0
         property real tail: 0
+        readonly property real cap: height / 2
+        readonly property real start: Math.max(cap, Math.min(parent.width - cap, tail * parent.width))
+        readonly property real end: Math.max(cap, Math.min(parent.width - cap, head * parent.width))
 
+        visible: head > tail
         y: 0
         height: parent.height
-        x: Math.min(head, tail) * parent.width
-        width: Math.abs(head - tail) * parent.width
+        x: start - cap
+        width: end - start + height
         radius: Appearance.rounding.full
         color: root.highlightColor
     }

@@ -89,6 +89,28 @@ for prop, start, span in WINDOWS:
           f"{prop} must sweep for {span}ms from {start}ms (AOSP ProgressIndicator.kt)")
     check(start + span <= CYCLE,
           f"{prop}'s window runs past the {CYCLE}ms cycle -- it would stall at the edge")
+# A segment is a round-capped stroke clamped inside the track (AOSP
+# drawLinearIndicator), never a bare `(head - tail) * width`: with every endpoint
+# on emphasizedAccel, the loop seam has both lines at zero length for ~124ms, and
+# only the caps keep a dot on screen through it. Swept per ms to prove it.
+check("visible: head > tail" in bar and "width: end - start + height" in bar,
+      "a Segment must draw its round caps -- without them the track empties at the loop seam")
+
+
+def accel(x, p1=(0.3, 0), p2=(0.8, 0.15)):
+    lo, hi = 0.0, 1.0
+    for _ in range(50):
+        t = (lo + hi) / 2
+        bx = 3 * (1 - t) ** 2 * t * p1[0] + 3 * (1 - t) * t * t * p2[0] + t ** 3
+        lo, hi = (t, hi) if bx < x else (lo, t)
+    t = (lo + hi) / 2
+    return 3 * (1 - t) ** 2 * t * p1[1] + 3 * (1 - t) * t * t * p2[1] + t ** 3
+
+
+pos = lambda ms, s, d: accel(min(max((ms - s) / d, 0), 1))
+empty = [ms for ms in range(1, CYCLE) if not any(
+    pos(ms, *WINDOWS[i][1:]) > pos(ms, *WINDOWS[i + 1][1:]) for i in (0, 2))]
+check(not empty, f"no segment is drawn at {len(empty)} ms of the cycle, from {empty[:1]}")
 check("Material.accent" not in bar,
       "Material.accent does nothing under QT_QUICK_CONTROLS_STYLE=Basic -- paint the track")
 check("Appearance.animationCurves.emphasizedAccel" in bar,
