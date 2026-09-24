@@ -37,7 +37,7 @@ LOG="$(mktemp /tmp/ii-probe-pages-XXXXXX.log)"
 # cw-config-rows removed, so the extension settings overlay rendered nothing --
 # and no gate in this repo would have said so, because nothing instantiates
 # these three.
-EXTRA=(WidgetExtensionsContent.qml WidgetCommunityContent.qml ExtensionWidgetSettingsRenderer.qml)
+EXTRA=(WidgetExtensionsContent.qml ExtensionWidgetSettingsRenderer.qml)
 
 mapfile -t PAGES < <({ grep -lE '^ContentPage \{' "$PAGES_DIR"/*.qml
                        grep -lE '^\s*signal goBack\b' "$PAGES_DIR"/*.qml

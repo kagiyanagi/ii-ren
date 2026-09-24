@@ -28,15 +28,8 @@ Singleton {
     property bool loading: false
     property string lastError: ""
 
-    // Community discover results: list of { name, fullName, description, stars,
-    //   author, avatarUrl, repoUrl, cloneUrl, updatedAt }
-    property var communityWidgets: []
-    property bool discoverLoading: false
-    property string discoverError: ""
-
     // Emitted when any installed/config/enable state changes — consumers re-read.
     signal extensionsChanged
-    signal discoverFinished
 
     // ── Internal state ───────────────────────────────────────────────────────
 
@@ -233,16 +226,6 @@ Singleton {
     // Returns true if extId is installed (for Background placeholder logic).
     function isWidgetInstalled(extId) {
         return root.installedWidgets[extId] !== undefined;
-    }
-
-    // Fetch community widgets from GitHub by topic ii-desktop-widget.
-    function discoverWidgets() {
-        if (root.discoverLoading)
-            return;
-        root.discoverLoading = true;
-        root.discoverError = "";
-        discoverProc.running = false;
-        discoverProc.running = true;
     }
 
     // Load a widget QML component dynamically.
@@ -486,48 +469,6 @@ Singleton {
             console.error("[WidgetExtensionManager] widget.json missing for", extId, error);
             root.lastError = "widget.json not found in " + installedPath;
             root.loading = false;
-        }
-    }
-
-    // Discover process — runs widget_extensions.py discover
-    Process {
-        id: discoverProc
-
-        command: ["python3", Directories.scriptPath + "/widget_extensions.py", "discover", "30"]
-
-        stdout: SplitParser {
-            onRead: data => {
-                let s = data.trim();
-                if (!s)
-                    return;
-                try {
-                    let result = JSON.parse(s);
-                    if (result.status === "ok") {
-                        root.communityWidgets = result.results || [];
-                    } else {
-                        root.discoverError = result.error || "Discover failed";
-                    }
-                } catch (e) {
-                    root.discoverError = "Parse error: " + e.message;
-                }
-                root.discoverLoading = false;
-                root.discoverFinished();
-            }
-        }
-        stderr: SplitParser {
-            onRead: data => {
-                if (data.trim())
-                    console.warn("[WidgetExtensionManager] discover:", data);
-            }
-        }
-        onRunningChanged: {
-            if (!running && root.discoverLoading) {
-                // Process ended without stdout (e.g. crash)
-                root.discoverLoading = false;
-                if (root.discoverError === "")
-                    root.discoverError = "Discover process exited unexpectedly";
-                root.discoverFinished();
-            }
         }
     }
 

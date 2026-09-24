@@ -130,7 +130,6 @@ Item {
     // to the small Desktop Widgets controls and avoids starting network work.
     property bool colorSchemeActive: false
     property bool extensionsExpanded: false
-    property bool communityExpanded: false
 
     property var _previewQueue: []
     property bool _previewStaggerActive: false
@@ -416,23 +415,6 @@ Item {
                 function onExtensionConfigRequested(extId) {
                     widgetsConfigRoot.extensionConfigExtId = extId;
                 }
-            }
-        }
-
-        // ── 4. Browse Community Widgets ──────────────────────────────────────
-        ContentSection {
-            title: Translation.tr("Browse Community Widgets")
-            icon: "travel_explore"
-            collapsible: true
-            expanded: widgetsConfigRoot.communityExpanded
-            onExpandedChanged: widgetsConfigRoot.communityExpanded = expanded
-
-            Loader {
-                Layout.fillWidth: true
-                Layout.preferredHeight: item ? item.implicitHeight : 0
-                active: widgetsConfigRoot.communityExpanded
-                asynchronous: true
-                source: Qt.resolvedUrl("widgets/WidgetCommunityContent.qml")
             }
         }
     }
