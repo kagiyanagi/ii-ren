@@ -17,6 +17,8 @@ Rectangle {
     readonly property string displayedText: isInput ? inputLoader.item.text : 
         root.text.length > 0 ? outputLoader.item.text : ""
     default property alias actionButtons: actions.groupData
+    // Sits beside the language button, e.g. what the output fixes when it is not translating.
+    property Component statusComponent: null
     Layout.fillWidth: true
     implicitHeight: Math.max(150, inputColumn.implicitHeight)
     color: Appearance.colors.colLayer2
@@ -69,6 +71,7 @@ Rectangle {
             spacing: 8
 
             LanguageSelectorButton {
+                id: languageButton
                 displayText: root.language
                 hintText: root.languageHint
                 onClicked: root.languageClicked()
@@ -81,6 +84,12 @@ Rectangle {
                     color: Appearance.colors.colOnLayer1
                     font.pixelSize: Appearance.font.pixelSize.smaller
                 }
+            }
+            Loader {
+                Layout.preferredHeight: languageButton.height
+                active: root.statusComponent !== null
+                visible: active
+                sourceComponent: root.statusComponent
             }
             Item { Layout.fillWidth: true }
             ButtonGroup {

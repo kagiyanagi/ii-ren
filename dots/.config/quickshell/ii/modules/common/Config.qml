@@ -1859,6 +1859,8 @@ Singleton {
                 property JsonObject translator: JsonObject {
                     property bool enable: false
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.
+                    // What a same-language "translation" fixes, via LanguageTool: grammar, spelling, punctuation, style.
+                    property list<string> fixes: ["grammar", "spelling", "punctuation", "style"]
                 }
                 property JsonObject ai: JsonObject {
                     property bool textFadeIn: false

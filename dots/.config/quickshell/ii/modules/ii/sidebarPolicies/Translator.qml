@@ -27,6 +27,47 @@ Item {
     property string targetLanguage: Config.options.language.translator.targetLanguage
     property string sourceLanguage: Config.options.language.translator.sourceLanguage
 
+    // Same language on both sides: the output is the input with LanguageTool's fixes applied.
+    readonly property bool refining: {
+        const target = root.languageAliases[root.targetLanguage];
+        if (!target) return false;
+        if (root.sourceLanguage === root.targetLanguage) return true;
+        return root.sourceLanguage === "auto" && target.slice(target.indexOf(" ") + 1) === root.detectedLanguage;
+    }
+    onRefiningChanged: translateTimer.restart()
+    // LanguageTool codes, fetched once; `trans` codes are resolved against them.
+    property list<string> ltLanguages: []
+    // The text a check ran on, with its matches, so the offsets never meet other text.
+    property var refineResult: ({ text: "", matches: [] })
+    property string refineError: ""
+    readonly property string refinedText: root.refineError || root.applyFixes(root.refineResult.text, root.refineResult.matches, Config.options.sidebar.translator.fixes)
+
+    function ltCode(code: string): string {
+        const L = root.ltLanguages;
+        // Bare "en"/"de" skip spell checking, so prefer a regional variant.
+        const picks = code.includes("-") ? [code] : [`${code}-${code.toUpperCase()}`, L.find(x => x.startsWith(code + "-")), code];
+        return picks.find(x => L.includes(x)) ?? "";
+    }
+
+    function fixKind(category: string): string {
+        if (category === "TYPOS") return "spelling";
+        if (["PUNCTUATION", "TYPOGRAPHY"].includes(category)) return "punctuation";
+        if (["STYLE", "REDUNDANCY", "PLAIN_ENGLISH", "REPETITIONS_STYLE", "COLLOQUIALISMS"].includes(category)) return "style";
+        return "grammar";
+    }
+
+    function applyFixes(text: string, matches: var, fixes: var): string {
+        let out = text;
+        let end = Infinity;
+        // Back to front, so each splice leaves the earlier offsets valid.
+        for (const m of [...matches].sort((a, b) => b.offset - a.offset)) {
+            if (m.offset + m.length > end || !m.replacements.length || !fixes.includes(root.fixKind(m.rule.category.id))) continue;
+            out = out.slice(0, m.offset) + m.replacements[0].value + out.slice(m.offset + m.length);
+            end = m.offset;
+        }
+        return out;
+    }
+
     property bool showLanguageSelector: false
     property bool languageSelectorTarget: false // true for target language, false for source language
 
@@ -50,12 +91,23 @@ Item {
                 // Restarted rather than started: a keystroke during a run has to
                 // replace it, and the buffer belongs to the run that is ending.
                 translateProc.running = false;
-                translateProc.buffer = "";
-                translateProc.running = true;
+                refineProc.running = false;
+                if (root.refining) {
+                    const code = root.ltCode(root.languageAliases[root.targetLanguage].split(" ")[0]);
+                    root.refineError = code ? "" : Translation.tr("LanguageTool can't check %1").arg(root.targetLanguage);
+                    refineProc.language = code;
+                    refineProc.text = root.inputField.text;
+                    refineProc.running = code.length > 0;
+                } else {
+                    translateProc.buffer = "";
+                    translateProc.running = true;
+                }
                 detectProc.running = false;
                 detectProc.running = root.sourceLanguage === "auto";
             } else {
                 root.translatedText = "";
+                root.refineResult = { text: "", matches: [] };
+                root.refineError = "";
             }
             if (root.sourceLanguage !== "auto" || root.inputField.text.trim().length === 0)
                 root.detectedLanguage = "";
@@ -75,6 +127,38 @@ Item {
             }
         }
         onExited: () => root.translatedText = translateProc.buffer.trim()
+    }
+
+    Process {
+        id: refineProc
+        property string language
+        property string text
+        command: ["curl", "-sS", "--max-time", "10", "https://api.languagetool.org/v2/check",
+            "--data-urlencode", `language=${language}`, "--data-urlencode", `text=${text}`]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.refineResult = { text: refineProc.text, matches: JSON.parse(this.text).matches };
+                    root.refineError = "";
+                } catch (e) {
+                    // Rate limits and outages answer in plain text.
+                    root.refineError = this.text.trim() || Translation.tr("LanguageTool is unreachable");
+                }
+            }
+        }
+    }
+
+    Process {
+        id: ltLanguagesProc
+        command: ["curl", "-sS", "--max-time", "10", "https://api.languagetool.org/v2/languages"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.ltLanguages = JSON.parse(this.text).map(l => l.longCode);
+                } catch (e) {}
+            }
+        }
     }
 
     Process {
@@ -132,8 +216,9 @@ Item {
                     language: root.targetLanguage
                     onLanguageClicked: root.showLanguageSelectorDialog(true)
                     placeholderText: Translation.tr("Translation goes here...")
-                    property bool hasTranslation: (root.translatedText.trim().length > 0)
-                    text: hasTranslation ? root.translatedText : ""
+                    readonly property string result: root.refining ? root.refinedText : root.translatedText
+                    text: result.trim().length > 0 ? result : ""
+                    statusComponent: root.refining ? fixSelector : null
                     GroupButton {
                         id: copyButton
                         baseWidth: height
@@ -217,6 +302,11 @@ Item {
                 }
             }
         }
+    }
+
+    Component {
+        id: fixSelector
+        FixSelectorButton {}
     }
 
     Loader {
