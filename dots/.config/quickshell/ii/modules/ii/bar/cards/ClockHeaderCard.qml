@@ -22,7 +22,7 @@ Rectangle {
     // Internal animation control
     property bool startAnim: false
 
-    // Face, hand, time, suffix, day, date: staggerStep apart and capped
+    // Face, hand, time, suffix, date: staggerStep apart and capped
     // (DESIGN.md 2.8), each with opacity on an effects spec and at most one
     // transform on the enter spec (2.1, 2.5).
     readonly property int enterTravel: 24
@@ -35,8 +35,6 @@ Rectangle {
         timeText.opacity = 0.0;
         timeText.scale = 0.9;
         ampmText.opacity = 0.0;
-        dayText.opacity = 0.0;
-        dayText.translateX = root.enterTravel;
         dateText.opacity = 0.0;
         dateText.translateX = root.enterTravel;
         Qt.callLater(() => {
@@ -44,7 +42,6 @@ Rectangle {
             clockHandAnim.restart();
             timeAnim.restart();
             ampmAnim.restart();
-            dayAnim.restart();
             dateAnim.restart();
         });
     }
@@ -258,62 +255,38 @@ Rectangle {
             }
         }
 
-        // Date row centered underneath
-        RowLayout {
+        // Date row centered underneath. One wrapping label rather than a
+        // RowLayout of two: neither StyledText had a width to elide against
+        // (DESIGN.md 10.17 only reaches constrained callers), so a wide custom
+        // font ran the day+date past the card edge instead of truncating.
+        // Wrapping onto a second centered line keeps both readable instead.
+        StyledText {
+            id: dateText
+            Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
-            spacing: 6
+            property real translateX: root.enterTravel
+            text: Qt.locale().toString(DateTime.clock.date, "dddd dd MMMM")
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            font.pixelSize: Math.min(20, root.width * 0.048)
+            font.family: Appearance.font.family.title
+            font.weight: Font.Normal
+            color: Appearance.colors.colOnPrimaryContainer
+            opacity: 0.0
+            transform: Translate { x: dateText.translateX }
 
-            StyledText {
-                id: dayText
-                property real translateX: root.enterTravel
-                text: Qt.locale().toString(DateTime.clock.date, "dddd")
-                font.pixelSize: Math.min(20, root.width * 0.048)
-                font.family: Appearance.font.family.title
-                font.weight: Font.Normal
-                color: Appearance.colors.colOnPrimaryContainer
-                opacity: 0.0
-                transform: Translate { x: dayText.translateX }
+            ParallelAnimation {
+                id: dateAnim
 
-                ParallelAnimation {
-                    id: dayAnim
-
-                    EnterFade {
-                        target: dayText
-                        delay: Appearance.animation.staggerStep * 4
-                    }
-                    EnterMove {
-                        target: dayText
-                        property: "translateX"
-                        from: root.enterTravel
-                        delay: Appearance.animation.staggerStep * 4
-                    }
+                EnterFade {
+                    target: dateText
+                    delay: Appearance.animation.staggerStep * 4
                 }
-            }
-
-            StyledText {
-                id: dateText
-                property real translateX: root.enterTravel
-                text: Qt.locale().toString(DateTime.clock.date, "dd MMMM")
-                font.pixelSize: Math.min(20, root.width * 0.048)
-                font.family: Appearance.font.family.title
-                font.weight: Font.Normal
-                color: Appearance.colors.colOnPrimaryContainer
-                opacity: 0.0
-                transform: Translate { x: dateText.translateX }
-
-                ParallelAnimation {
-                    id: dateAnim
-
-                    EnterFade {
-                        target: dateText
-                        delay: Appearance.animation.staggerStep * 5
-                    }
-                    EnterMove {
-                        target: dateText
-                        property: "translateX"
-                        from: root.enterTravel
-                        delay: Appearance.animation.staggerStep * 5
-                    }
+                EnterMove {
+                    target: dateText
+                    property: "translateX"
+                    from: root.enterTravel
+                    delay: Appearance.animation.staggerStep * 4
                 }
             }
         }
