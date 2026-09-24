@@ -35,7 +35,7 @@ PanelWindow {
         bottom: true
     }
 
-    enum SnipAction { Copy, Edit, Search, CharRecognition, Record, RecordWithSound, AskAI, QrScan }
+    enum SnipAction { Copy, Edit, Search, CharRecognition, Record, RecordWithSound, QrScan }
     enum SelectionMode { RectCorners, Circle }
     enum Phase { Select, Post }
     property var action: RegionSelection.SnipAction.Copy
@@ -265,14 +265,12 @@ PanelWindow {
         root.regionWidth = w;
         root.regionHeight = h;
 
-        // The right button annotates instead of copying, and asks AI instead of
-        // Lens. A local, not root.action: that is the guide's, which would
-        // reopen its hint during the fade out.
+        // The right button annotates instead of copying. A local, not
+        // root.action: that is the guide's, which would reopen its hint during
+        // the fade out.
         let action = root.action;
         if (action === RegionSelection.SnipAction.Copy || action === RegionSelection.SnipAction.Edit)
             action = root.mouseButton === Qt.RightButton ? RegionSelection.SnipAction.Edit : RegionSelection.SnipAction.Copy;
-        if (action === RegionSelection.SnipAction.Search || action === RegionSelection.SnipAction.AskAI)
-            action = root.mouseButton === Qt.RightButton ? RegionSelection.SnipAction.AskAI : RegionSelection.SnipAction.Search;
 
         const screenshotDir = Config.options.screenSnip.savePath;
         // SnipAction and ScreenshotAction.Action share the same order.
@@ -294,10 +292,6 @@ PanelWindow {
         )
         if (previewPath !== "") root.previewSnip(command, previewPath);
         else Quickshell.execDetached(command);
-        if (action === RegionSelection.SnipAction.AskAI) {
-            Ai.handleClipboardAndAttach();
-            GlobalStates.policiesPanelOpen = true
-        }
         if (root.isRecording) {
             root.phase = RegionSelection.Phase.Post
             root.selectionMode = RegionSelection.SelectionMode.RectCorners

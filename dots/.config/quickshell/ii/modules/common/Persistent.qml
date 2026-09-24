@@ -58,12 +58,6 @@ Singleton {
 
             property string hyprlandInstanceSignature: ""
 
-            property JsonObject ai: JsonObject {
-                property string provider: "google" // AI providers such as google, open router, mistral
-                property string model: "gemini-2.5-flash" // The model of the ai such as 2.5-flash
-                property real temperature: 0.5
-            }
-
             property JsonObject hermes: JsonObject {
                 // Applied to each new session with `--session`, so the sidebar's
                 // model never overwrites what the hermes CLI starts on.

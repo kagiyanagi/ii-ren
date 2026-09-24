@@ -541,21 +541,6 @@ ContentPage {
 
     }
 
-    ContentSection {
-        icon: "more"
-        title: Translation.tr("Extra")
-
-        ConfigSwitch {
-            buttonIcon: "buttons_alt"
-            text: Translation.tr("Show AI provider and model buttons")
-            checked: Config.options.sidebar.ai.showProviderAndModelButtons
-            onCheckedChanged: {
-                Config.options.sidebar.ai.showProviderAndModelButtons = checked;
-            }
-        }
-
-    }
-
 
     ContentSection {
         icon: "content_paste"

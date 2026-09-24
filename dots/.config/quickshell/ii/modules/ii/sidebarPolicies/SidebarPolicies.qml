@@ -144,7 +144,7 @@ Scope { // Scope
             
             readonly property real sidebarWidth: {
                 const p = Config.options.policies;
-                const allFeatures = p.ai !== 0 && p.weeb == 1 && p.wallpapers !== 0 && p.translator !== 0;
+                const allFeatures = p.weeb == 1 && p.wallpapers !== 0 && p.translator !== 0;
 
                 if (root.extend) return Appearance.sizes.sidebarWidthExtended;
                 return allFeatures ? Appearance.sizes.sidebarWidthExpanded : Appearance.sizes.sidebarWidth;

@@ -13,7 +13,7 @@ Item {
         case RegionSelection.SnipAction.Edit:
             return { symbol: "content_cut", description: Translation.tr("Copy region (LMB) or annotate (RMB)") };
         case RegionSelection.SnipAction.Search:
-            return { symbol: "image_search", description: Translation.tr("Use Google Lens (LMB) or ask AI (RMB)") };
+            return { symbol: "image_search", description: Translation.tr("Search with Google Lens") };
         case RegionSelection.SnipAction.CharRecognition:
             return { symbol: "document_scanner", description: Translation.tr("Recognize text") };
         case RegionSelection.SnipAction.QrScan:

@@ -1,34 +1,4 @@
 {
-    "ai": {
-        "models": [
-            {
-                "openrouter": [
-                    {
-                        "modelProvider": "google",
-                        "title": "Gemini 2.5 Flash",
-                        "value": "gemini-2.5-flash"
-                    }
-                ]
-            },
-            {
-                "google": [
-                ]
-            }
-        ],
-        "otherModels": [
-            {
-                "api_format": "mistral",
-                "endpoint": "https://api.mistral.ai/v1/chat/completions",
-                "icon": "mistral-symbolic",
-                "key_id": "mistral",
-                "model": "mistral-medium-2505",
-                "name": "Mistral Medium",
-                "requires_key": true
-            }
-        ],
-        "systemPrompt": "",
-        "tool": "functions"
-    },
     "appearance": {
         "customColorSchemes": [
         ],
@@ -1406,7 +1376,6 @@
     },
     "panelFamily": "ii",
     "policies": {
-        "ai": 0,
         "continuity": 1,
         "translator": 0,
         "wallpapers": 1,
@@ -1477,7 +1446,6 @@
     },
     "sidebar": {
         "ai": {
-            "showProviderAndModelButtons": true,
             "textFadeIn": false
         },
         "booru": {

@@ -5,8 +5,7 @@ import QtQuick.Layouts
 
 /**
  * One reading in the pill above a transcript -- an icon, an optional value and
- * a tooltip saying what it is. Shared by the Hermes and Intelligence pages,
- * which both carry the same strip.
+ * a tooltip saying what it is, in the strip above the Hermes transcript.
  */
 MouseArea {
     id: root

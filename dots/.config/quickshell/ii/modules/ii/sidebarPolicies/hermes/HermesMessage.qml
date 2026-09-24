@@ -13,11 +13,10 @@ import Quickshell
 /**
  * One turn in the Hermes transcript.
  *
- * Content rendering is the AiChat message pipeline unchanged -- the same block
- * splitter and the same text/code/think blocks -- so markdown, LaTeX and code
- * fences behave identically across both agents. What differs is the header
- * (Hermes reports its own model per turn), the tool rows, and the run time a
- * finished reply carries.
+ * Content goes through the block splitter and the text/code/think blocks in
+ * `aiChat/`, so markdown, LaTeX and code fences render there. Around them sit
+ * the header (Hermes reports its own model per turn), the tool rows, and the
+ * run time a finished reply carries.
  */
 Rectangle {
     id: root
@@ -41,7 +40,7 @@ Rectangle {
 
     // splitMarkdownBlocks() returns a fresh array each call, so binding it
     // straight to `content` would rebuild every segment delegate per streamed
-    // token. Re-split on a throttle instead (same fix as AiMessage.qml).
+    // token. Re-split on a throttle instead.
     property list<var> messageBlocks: []
 
     /*

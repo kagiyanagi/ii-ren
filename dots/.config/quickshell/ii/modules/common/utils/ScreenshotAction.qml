@@ -21,7 +21,6 @@ Singleton {
         CharRecognition,
         Record,
         RecordWithSound,
-        AskAI,
         QrScan
     }
 
@@ -115,9 +114,6 @@ Singleton {
                     + `xdg-open "${root.imageSearchEngineBaseUrl}$imageUrl"; `
                     + `rm -f ${searchFile} '${StringUtils.shellSingleQuoteEscape(screenshotPath)}'`]
             }
-            case ScreenshotAction.Action.AskAI:
-                return ["bash", "-c", `${cropToStdout} | wl-copy && ${cleanup}`]
-                break;
             case ScreenshotAction.Action.CharRecognition:
                 return ["bash", "-c", `${cropInPlace} && tesseract '${StringUtils.shellSingleQuoteEscape(screenshotPath)}' stdout -l $(tesseract --list-langs | awk 'NR>1{print $1}' | tr '\\n' '+' | sed 's/\\+$/\\n/') | wl-copy && ${cleanup}`]
                 break;

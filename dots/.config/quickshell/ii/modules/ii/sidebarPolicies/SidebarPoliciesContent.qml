@@ -12,7 +12,6 @@ Item {
     required property var scopeRoot
     property int sidebarPadding: 10
     anchors.fill: parent
-    property bool aiChatEnabled: Config.options.policies.ai !== 0
     property bool translatorEnabled: Config.options.policies.translator !== 0
     property bool animeEnabled: Config.options.policies.weeb !== 0
     property bool animeCloset: Config.options.policies.weeb === 2
@@ -56,7 +55,6 @@ Item {
 
     property var tabButtonList: [
         ...(root.hermesEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Hermes")}] : []),
-        ...(root.aiChatEnabled ? [{"icon": "neurology", "name": Translation.tr("Intelligence")}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
@@ -150,9 +148,8 @@ Item {
 
                 contentChildren: [
                     ...(root.hermesEnabled ? [hermes.createObject()] : []),
-                    ...(root.aiChatEnabled ? [aiChat.createObject()] : []),
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((!root.hermesEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.aiChatEnabled && !root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
+                    ...((!root.hermesEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
                     ...(root.animeEnabled ? [anime.createObject()] : []),
                     ...(root.continuityEnabled ? [continuity.createObject()] : []),
                     ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
@@ -176,10 +173,6 @@ Item {
             active: SwipeView.isCurrentItem
         }
 
-        Component {
-            id: aiChat
-            PageSlot { sourceComponent: AiChat {} }
-        }
         Component {
             id: hermes
             PageSlot { sourceComponent: Hermes {} }

@@ -3,11 +3,10 @@ import QtQuick
 /**
  * One turn in a Hermes conversation.
  *
- * Shaped like AiMessageData so the markdown block splitter and the
- * MessageTextBlock / MessageCodeBlock / MessageThinkBlock trio render it
- * unchanged; the extra fields carry what the Hermes gateway streams and the
- * built-in Ai service has no concept of (tool calls, per-turn usage, the
- * approval a turn is parked on).
+ * Shaped for the markdown block splitter and the MessageTextBlock /
+ * MessageCodeBlock / MessageThinkBlock trio; the rest carries what the Hermes
+ * gateway streams (tool calls, per-turn usage, the approval a turn is parked
+ * on).
  */
 QtObject {
     property string role            // user | assistant | interface
