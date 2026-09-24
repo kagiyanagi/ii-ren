@@ -19,6 +19,8 @@ Item {
 
     property string translatedText: ""
     property list<string> languages: []
+    // Endonym -> "code English name", which the language picker also searches.
+    property var languageAliases: ({})
 
     property string targetLanguage: Config.options.language.translator.targetLanguage
     property string sourceLanguage: Config.options.language.translator.sourceLanguage
@@ -71,22 +73,23 @@ Item {
 
     Process {
         id: getLanguagesProc
-        command: ["trans", "-list-languages", "-no-bidi"]
-        property list<string> bufferList: ["auto"]
+        // One language a line: code, English name, endonym, in columns.
+        command: ["trans", "-list-all", "-no-bidi"]
+        property var buffer: []
         running: true
         stdout: SplitParser {
             onRead: data => {
-                getLanguagesProc.bufferList.push(data.trim());
+                const cols = data.trim().split(/\s{2,}/);
+                if (cols.length === 3) getLanguagesProc.buffer.push(cols);
             }
         }
         onExited: () => {
+            const aliases = {};
+            for (const [code, english, endonym] of getLanguagesProc.buffer) aliases[endonym] = `${code} ${english}`;
             // "auto" first, then the rest alphabetically.
-            let langs = getLanguagesProc.bufferList
-                .filter(lang => lang.trim().length > 0 && lang !== "auto")
-                .sort((a, b) => a.localeCompare(b));
-            langs.unshift("auto");
-            root.languages = langs;
-            getLanguagesProc.bufferList = [];
+            root.languages = ["auto", ...Object.keys(aliases).sort((a, b) => a.localeCompare(b))];
+            root.languageAliases = aliases;
+            getLanguagesProc.buffer = [];
         }
     }
 
@@ -218,6 +221,7 @@ Item {
             id: languageSelectorDialog
             titleText: Translation.tr("Select Language")
             items: root.languages
+            searchAliases: root.languageAliases
             defaultChoice: root.languageSelectorTarget ? root.targetLanguage : root.sourceLanguage
             onCanceled: () => {
                 root.showLanguageSelector = false;
