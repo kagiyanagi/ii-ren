@@ -142,10 +142,11 @@ StyledPopup {
      * A usage card with history behind it: CPU and GPU are the same card, and
      * were the same 250 lines written twice.
      *
-     * The graph well is rounded by `radius` and the Canvas is inset by that
-     * radius, so the filled plot can never reach a corner arc -- which is what
-     * the `layer.enabled` + OpacityMask pair here used to buy, at one extra
-     * framebuffer per card (DESIGN.md 8: prefer native radii over a mask clip).
+     * The plot fills its rounded well edge to edge and clips its own painting to
+     * the well's radius, inside the Canvas's image -- which is what the
+     * `layer.enabled` + OpacityMask pair here used to buy, at one extra
+     * framebuffer per card (DESIGN.md 8). The inset by the radius that replaced
+     * the mask was free too, but it stopped the plot a radius short of both edges.
      */
     component UsageGraphCard: Rectangle {
         id: graphCard
@@ -228,14 +229,10 @@ StyledPopup {
                     implicitHeight: 48
                     radius: Appearance.rounding.small
                     color: Appearance.colors.colSecondaryContainer
-                    clip: true
 
                     Graph {
                         anchors.fill: parent
-                        // Inset by the corner radius: past it the well's edge is
-                        // straight, so the plot's own fill cannot spill out of an arc.
-                        anchors.leftMargin: graphWell.radius
-                        anchors.rightMargin: graphWell.radius
+                        radius: graphWell.radius
                         values: graphCard.history
                         points: graphCard.points
                         alignment: Graph.Alignment.Right

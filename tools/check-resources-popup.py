@@ -14,9 +14,12 @@ corner arc, both just look like a rendering glitch at 60fps:
    and that stops holding.
 
 2. The two usage cards masked the graph well so the Canvas could not paint into
-   a rounded corner. The Canvas is now inset by the well's own corner radius,
-   past which the well's edge is straight. Drop the inset and the plot's fill
-   spills out of the bottom corners.
+   a rounded corner. The Canvas now fills the well and clips its own painting to
+   the well's radius (`Graph.radius`) -- antialiased, and inside the image the
+   Canvas already paints. An inset by the radius came first and was free too, but
+   it left the plot a radius short of both edges. Drop the clip and the fill
+   spills out of the bottom corners; leave it unbalanced and a resize keeps the
+   old size's corners, because clip() intersects with the clip already set.
 
 And `getDelay` staggers over *visible* siblings, so hiding swap or docker does
 not leave a hole in the sequence (DESIGN.md 2.8).
@@ -90,22 +93,25 @@ for track_w in (240, 380, 420):
 naive = covers((6.0, H, min(FULL, 3.0, H / 2), 0.0), (240, H, FULL))
 assert naive > 1, "a narrow raw-width fill no longer escapes; re-derive this check"
 
-# -- 2. the graph inset keeps the plot clear of the well's corner arcs --------
-assert re.search(r"anchors\.leftMargin:\s*graphWell\.radius", CODE), \
-    "the graph lost its left inset -- the plot can reach a corner arc again"
-assert re.search(r"anchors\.rightMargin:\s*graphWell\.radius", CODE), \
-    "the graph lost its right inset -- the plot can reach a corner arc again"
-
-WELL_H, WELL_R = 48, 12  # implicitHeight 48, radius `rounding.small` (12)
-for well_w in (120, 174, 240):
-    plot_w = well_w - 2 * WELL_R
-    # The Canvas is a plain rectangle: radius 0, offset right by the inset.
-    worst = covers((plot_w, WELL_H, 0.0, float(WELL_R)), (well_w, WELL_H, WELL_R))
-    assert worst <= 1e-6, (
-        f"the plot paints outside the {well_w}px well (overshoot {worst:.3f}px)")
-
-# A radius bigger than the inset would put the arc back under the plot.
-assert WELL_R * 2 <= WELL_H, "well radius exceeds half its height; the clamp changes the arc"
+# -- 2. the plot fills its well, clipped to the well's own corners ------------
+GRAPH = "\n".join(ln for ln in (QML.parent.parent.parent / "common/widgets/Graph.qml")
+                  .read_text().splitlines()
+                  if not ln.lstrip().startswith(("*", "//", "/*")))
+well = re.search(r"id: graphWell\b[\s\S]*?\n\s*Graph \{([\s\S]*?)\n\s*\}", CODE).group(1)
+assert "anchors.fill: parent" in well and "Margin" not in well, \
+    "the graph no longer fills its well -- the plot stops short of the edges again"
+assert re.search(r"radius:\s*graphWell\.radius", well), \
+    "the graph no longer clips to the well's radius -- its fill reaches a corner arc"
+assert re.search(r"roundedRect\(0, 0, width, height, root\.radius, root\.radius\)\s*"
+                 r"ctx\.clip\(\)", GRAPH), "Graph.qml no longer clips its painting to `radius`"
+assert GRAPH.count("ctx.save()") == GRAPH.count("ctx.restore()") == 1 and \
+    GRAPH.index("ctx.save()") < GRAPH.index("ctx.clip()") < GRAPH.index("ctx.fill()") \
+    < GRAPH.index("ctx.restore()"), \
+    "the clip is not undone after each paint -- a resize keeps the old corners"
+# A path that starts at the bottom strokes the plot's left edge too, and that
+# edge is the well's own left side now: a 1px border on one side only.
+assert "moveTo(x, height)" not in GRAPH and "moveTo(x, y)" in GRAPH, \
+    "Graph strokes its left edge again"
 
 # -- 3. the stagger counts visible siblings, and covers every child -----------
 STEP, CAP = (int(re.search(rf"{n}: (\d+)", (pathlib.Path(__file__).parent.parent
@@ -136,6 +142,6 @@ for hidden in ([], [3], [5], [3, 5]):
 for effect in ("layer.enabled", "OpacityMask"):
     assert effect not in CODE, f"{effect} is back in ResourcesPopup.qml (DESIGN.md 8)"
 
-print(f"ok: meter fill inside its track, plot inside its well, "
+print(f"ok: meter fill inside its track, plot clipped to its well edge to edge, "
       f"stagger {STEP}ms x min(i, {CAP}) over {n_children} children with no holes, "
       f"no layer/mask in ResourcesPopup")
