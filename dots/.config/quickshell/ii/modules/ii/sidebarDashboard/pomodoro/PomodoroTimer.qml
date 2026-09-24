@@ -44,7 +44,10 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     readOnly: TimerService.pomodoroRunning
                     activeFocusOnPress: !readOnly
-                    inputMethodHints: Qt.ImhPreferNumbers
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    validator: RegularExpressionValidator {
+                        regularExpression: /^\d{0,2}(:\d{0,2}){0,2}$/
+                    }
                     onEditingFinished: {
                         const seconds = Duration.parse(text);
                         if (seconds > 0)
