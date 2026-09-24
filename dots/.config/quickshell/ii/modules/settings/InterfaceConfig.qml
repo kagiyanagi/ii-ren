@@ -451,6 +451,20 @@ ContentPage {
             }
 
             ConfigSwitch {
+                buttonIcon: "rounded_corner"
+                text: Translation.tr("Curve into screen edge")
+                checked: Config.options.dock.curvedEdge
+                onCheckedChanged: {
+                    Config.options.dock.curvedEdge = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Flare the corners touching the edge outward, like the bar's hug style.")
+                }
+
+            }
+
+            ConfigSwitch {
                 buttonIcon: "format_color_fill"
                 text: Translation.tr("Apps button background")
                 checked: Config.options.dock.showAppsButtonBackground

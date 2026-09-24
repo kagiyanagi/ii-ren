@@ -1538,6 +1538,9 @@ Singleton {
                 // Sit flush against the screen edge, squaring off the two
                 // corners that touch it, instead of floating with a gap.
                 property bool attachToEdge: false
+                // Flare the two edge corners outward into the screen edge, like
+                // the bar's hug corners. Implies attachToEdge.
+                property bool curvedEdge: false
                 property string appsButtonShape: "Pill"
                 property string pinButtonShape: ""
                 property bool showPinButton: true

@@ -44,14 +44,16 @@ Scope {
         const contentH = opts.isLoaded ? opts.contentVisualHeight : (opts.isVertical ? unloadedH : 60)
         // Attached to the edge: only the inner gap is left, the outer one goes.
         const crossGaps = opts.attached ? gapsOut : gapsOut * 2
+        // Curved into the edge: each end needs room for its flare.
+        const mainGaps = Math.max(gapsOut, opts.flare) * 2
         return {
             maxWidth: maxW,
             maxHeight: maxH,
-            dockWidth: opts.isVertical ? contentW + crossGaps : Math.min(contentW + gapsOut * 2, maxW),
-            dockHeight: opts.isVertical ? Math.min(contentH + gapsOut * 2, maxH) : contentH + crossGaps,
+            dockWidth: opts.isVertical ? contentW + crossGaps : Math.min(contentW + mainGaps, maxW),
+            dockHeight: opts.isVertical ? Math.min(contentH + mainGaps, maxH) : contentH + crossGaps,
             dockThickness: opts.isVertical ? contentW + crossGaps : contentH + crossGaps,
-            backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxW - gapsOut * 2)),
-            backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxH - gapsOut * 2) : contentH)
+            backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxW - mainGaps)),
+            backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxH - mainGaps) : contentH)
         }
     }
 
@@ -118,11 +120,15 @@ Scope {
 
             onWorkspaceEmptyChanged: updateReveal()
 
-            readonly property bool attachedToEdge: Config.options?.dock?.attachToEdge ?? false
+            // Curving into the edge implies sitting on it.
+            readonly property bool curvedEdge: Config.options?.dock?.curvedEdge ?? false
+            readonly property bool attachedToEdge: curvedEdge || (Config.options?.dock?.attachToEdge ?? false)
+            readonly property real cornerRadius: Config.options?.dock?.cornerRadius >= 0 ? Config.options.dock.cornerRadius : Appearance.rounding.large
 
             readonly property var sizing: dock.computeSizes({
                 gapsOut: Appearance.sizes.hyprlandGapsOut,
                 attached: dockRoot.attachedToEdge,
+                flare: dockRoot.curvedEdge ? dockRoot.cornerRadius : 0,
                 isVertical: dock.isVertical,
                 barActive: dockRoot.barActive,
                 barIsVertical: dockRoot.barIsVertical,
@@ -294,8 +300,38 @@ Scope {
                             readonly property bool contentReady: content.ready && !dockRoot.positionChanging
                             opacity: contentReady ? 1.0 : 0.0
 
+                            // A shadow or border would draw a seam where the
+                            // flares meet the card, so the curved style has neither.
                             StyledRectangularShadow { 
                                 target: visualBackground
+                                visible: !dockRoot.curvedEdge
+                            }
+
+                            // Concave flares either side of the card, curving it
+                            // into the screen edge like the bar's hug corners.
+                            RoundCorner {
+                                readonly property string edge: dock.dockEffectivePosition
+                                visible: dockRoot.curvedEdge
+                                implicitSize: dockRoot.cornerRadius
+                                color: visualBackground.color
+                                corner: ({ bottom: RoundCorner.CornerEnum.BottomRight, top: RoundCorner.CornerEnum.TopRight,
+                                    left: RoundCorner.CornerEnum.BottomLeft, right: RoundCorner.CornerEnum.BottomRight })[edge]
+                                anchors.right: !dock.isVertical ? visualBackground.left : (edge === "right" ? parent.right : undefined)
+                                anchors.bottom: dock.isVertical ? visualBackground.top : (edge === "bottom" ? parent.bottom : undefined)
+                                anchors.top: edge === "top" ? parent.top : undefined
+                                anchors.left: edge === "left" ? parent.left : undefined
+                            }
+                            RoundCorner {
+                                readonly property string edge: dock.dockEffectivePosition
+                                visible: dockRoot.curvedEdge
+                                implicitSize: dockRoot.cornerRadius
+                                color: visualBackground.color
+                                corner: ({ bottom: RoundCorner.CornerEnum.BottomLeft, top: RoundCorner.CornerEnum.TopLeft,
+                                    left: RoundCorner.CornerEnum.TopLeft, right: RoundCorner.CornerEnum.TopRight })[edge]
+                                anchors.left: !dock.isVertical ? visualBackground.right : (edge === "left" ? parent.left : undefined)
+                                anchors.top: dock.isVertical ? visualBackground.bottom : (edge === "top" ? parent.top : undefined)
+                                anchors.bottom: edge === "bottom" ? parent.bottom : undefined
+                                anchors.right: edge === "right" ? parent.right : undefined
                             }
 
                             Rectangle {
@@ -316,9 +352,9 @@ Scope {
                                 width: dockRoot.sizing.backgroundWidth + (flushVertically ? 0 : edgeBleed)
                                 height: dockRoot.sizing.backgroundHeight + (flushVertically ? edgeBleed : 0)
                                 color: Appearance.colors.colLayer0
-                                border.width: 1
+                                border.width: dockRoot.curvedEdge ? 0 : 1
                                 border.color: Appearance.colors.colLayer0Border
-                                radius: Config.options?.dock?.cornerRadius >= 0 ? Config.options.dock.cornerRadius : Appearance.rounding.large
+                                radius: dockRoot.cornerRadius
                                 topLeftRadius: (flushEdge === "top" || flushEdge === "left") ? 0 : radius
                                 topRightRadius: (flushEdge === "top" || flushEdge === "right") ? 0 : radius
                                 bottomLeftRadius: (flushEdge === "bottom" || flushEdge === "left") ? 0 : radius
