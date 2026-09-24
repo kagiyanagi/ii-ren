@@ -108,7 +108,6 @@ MouseArea {
     }
 
     WeatherPopup {
-        compact: Config.options.bar.tooltips.compactPopups
         hoverTarget: root
     }
 }

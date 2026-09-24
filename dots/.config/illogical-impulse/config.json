@@ -1130,7 +1130,6 @@
         "tooltips": {
             "clickToShow": false,
             "closeDelay": 50,
-            "compactPopups": false,
             "enablePopups": true,
             "showSwap": false
         },

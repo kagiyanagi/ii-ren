@@ -10,8 +10,6 @@ StyledPopup {
     id: root
     stickyHover: true
 
-    required property bool compact
-    property bool compactMode: Config.options.bar.tooltips.compactPopups
     property int cardMargins: 16
 
     // Forecast data model bound to central Weather singleton
@@ -276,7 +274,7 @@ StyledPopup {
 
         HourlyForecast {
             id: hourlyForecast
-            visible: !root.compact && root.hasReading
+            visible: root.hasReading
             spacing: 6
 
             icon: "schedule"
@@ -299,7 +297,7 @@ StyledPopup {
 
         MetricsGrid {
             id: metricsGrid
-            visible: !root.compact && root.hasReading
+            visible: root.hasReading
 
             Layout.fillWidth: true
             columns: 2
@@ -316,7 +314,7 @@ StyledPopup {
 
         InDayForecast {
             id: inDayForecast
-            visible: !root.compact && root.hasReading
+            visible: root.hasReading
 
             Layout.minimumWidth: 360
             margins: root.cardMargins

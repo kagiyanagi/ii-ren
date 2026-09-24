@@ -78,11 +78,10 @@ StyledPopup {
         }
     }
 
-    required property bool compact
     stickyHover: true
 
     /*
-     * All three sections switched off, in compact mode, with no LocalSend on
+     * All three sections switched off, with no LocalSend on
      * the network, leaves a 400px-wide empty card under the pointer.
      *
      * These live on the root and not on the column that draws them, because
@@ -96,8 +95,7 @@ StyledPopup {
     readonly property bool hasClockFace: Config.options.time.alarms.showAnalogClock
     readonly property bool hasWorldClocks: Config.options.time.alarms.showWorldClocks
         && Config.options.time.worldClocks && Config.options.time.worldClocks.length > 0
-    readonly property bool hasInfoColumn: (!root.compact
-        && (LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0)) || LocalSend.available
+    readonly property bool hasInfoColumn: LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0 || LocalSend.available
     readonly property bool hasTransfer: LocalSend.currentTransfer !== null || LocalSend.droppedFiles.length > 0
     readonly property bool hasAlarms: Config.options.time.alarms.showAlarmsSection
 
@@ -313,7 +311,7 @@ StyledPopup {
         Loader {
             id: worldClocksLoader
             Layout.fillWidth: true
-            Layout.minimumWidth: root.compact ? 320 : 360
+            Layout.minimumWidth: 360
             visible: root.hasWorldClocks
             active: root.hasWorldClocks
             sourceComponent: worldClocksComponent
@@ -351,7 +349,7 @@ StyledPopup {
             InfoPill {
                 id: infoPill
                 startAnim: columnLayout.startAnim
-                visible: !root.compact && (LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0)
+                visible: LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0
                 
                 readonly property bool isTimerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning || root.stopwatchPaused || (TimerService.stopwatchTime > 0)
 
@@ -419,7 +417,7 @@ StyledPopup {
         Loader {
             id: localSendLoader
             Layout.fillWidth: true
-            Layout.minimumWidth: root.compact ? 320 : 360
+            Layout.minimumWidth: 360
             visible: active
             active: root.hasTransfer
             sourceComponent: LocalSend.currentTransfer !== null ? transferCard : sendCard
@@ -440,7 +438,7 @@ StyledPopup {
         AlarmsCard {
             id: alarmsCard
             Layout.fillWidth: true
-            Layout.minimumWidth: root.compact ? 320 : 360
+            Layout.minimumWidth: 360
             visible: root.hasAlarms
             startAnim: columnLayout.startAnim
             

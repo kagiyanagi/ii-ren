@@ -1255,15 +1255,6 @@ ContentPage {
                     text: Translation.tr("You will not be able to use the buttons on some popups if you enable this option.")
                 }
             }
-            ConfigSwitch {
-                buttonIcon: "compress"
-                text: Translation.tr("Compact popups")
-                Layout.fillWidth: true
-                checked: Config.options.bar.tooltips.compactPopups
-                onCheckedChanged: {
-                    Config.options.bar.tooltips.compactPopups = checked;
-                }
-            }
         }
 
     }

@@ -154,7 +154,6 @@ StyledPopup {
             }
 
             InfoPill {
-                visible: !Config.options.bar.tooltips.compactPopups
                 startAnim: contentLayout.startAnim
                 icon: "data_usage"
                 text: Translation.tr("Usage: ") + formatTotal(NetworkUsage.networkDownloadTotal + NetworkUsage.networkUploadTotal)

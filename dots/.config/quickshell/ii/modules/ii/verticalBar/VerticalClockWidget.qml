@@ -79,7 +79,6 @@ Item {
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
         Bar.ClockWidgetPopup {
-            compact: Config.options.bar.tooltips.compactPopups
             hoverTarget: mouseArea
         }
     }
