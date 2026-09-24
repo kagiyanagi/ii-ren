@@ -231,7 +231,21 @@ Singleton {
                     execute: () => {
                         Cliphist.copy(entry);
                     },
-                    actions: [root.createResult( {
+                    actions: [...(Cliphist.entryIsImage(entry) ? [root.createResult( {
+                            name: Translation.tr("Save"),
+                            iconName: "save",
+                            iconType: LauncherSearchResult.IconType.Material,
+                            execute: () => {
+                                Cliphist.saveImage(entry);
+                            }
+                        })] : []), ...(/^(https?:\/\/|www\.)\S+$/i.test(StringUtils.cleanCliphistEntry(entry)) ? [root.createResult( {
+                            name: Translation.tr("Open link"),
+                            iconName: "open_in_new",
+                            iconType: LauncherSearchResult.IconType.Material,
+                            execute: () => {
+                                Cliphist.openLink(entry);
+                            }
+                        })] : []), root.createResult( {
                             name: Translation.tr("Copy"),
                             iconName: "content_copy",
                             iconType: LauncherSearchResult.IconType.Material,

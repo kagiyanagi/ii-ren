@@ -34,13 +34,30 @@ Singleton {
         readProc.running = true
     }
 
-    function copy(entry) {
+    // Shell that writes the entry's full content to stdout.
+    function decodeCommand(entry) {
         if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
-            Quickshell.execDetached(["bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy`]);
-        else { // Stash
-            const entryNumber = entry.split("\t")[0];
-            Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | wl-copy`]);
-        }
+            return `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode`;
+        return `${root.cliphistBinary} decode ${entry.split("\t")[0]}`; // Stash
+    }
+
+    function copy(entry) {
+        Quickshell.execDetached(["bash", "-c", `${root.decodeCommand(entry)} | wl-copy`]);
+    }
+
+    // Same folder the screenshot preview's Save goes to.
+    function saveImage(entry) {
+        const dir = Config.options.screenSnip.savePath !== "" ? Config.options.screenSnip.savePath
+            : `${FileUtils.trimFileProtocol(Directories.pictures)}/Screenshots`;
+        const ext = entry.match(/binary data.*?\b(png|jpe?g|gif|webp|bmp)\b/i)?.[1] ?? "png";
+        Quickshell.execDetached(["bash", "-c",
+            `mkdir -p '${StringUtils.shellSingleQuoteEscape(dir)}' && ${root.decodeCommand(entry)} > `
+            + `'${StringUtils.shellSingleQuoteEscape(dir)}'/clipboard-"$(date '+%Y-%m-%d_%H.%M.%S')".${ext}`]);
+    }
+
+    // Decoded rather than taken from the list, which cliphist cuts at 100 characters.
+    function openLink(entry) {
+        Quickshell.execDetached(["bash", "-c", `xdg-open "$(${root.decodeCommand(entry)})"`]);
     }
 
     function paste(entry) {
