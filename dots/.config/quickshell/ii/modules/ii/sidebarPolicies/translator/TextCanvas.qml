@@ -11,6 +11,8 @@ Rectangle {
     property bool isInput: true // true for input, false for output
     property string placeholderText
     property string text: ""
+    property string language
+    property string languageHint
     property var inputTextArea: isInput ? inputLoader.item : undefined
     readonly property string displayedText: isInput ? inputLoader.item.text : 
         root.text.length > 0 ? outputLoader.item.text : ""
@@ -21,6 +23,7 @@ Rectangle {
     radius: Appearance.rounding.normal
 
     signal inputTextChanged();
+    signal languageClicked();
 
     ColumnLayout {
         id: inputColumn
@@ -63,12 +66,16 @@ Rectangle {
         RowLayout { // Status row
             Layout.fillWidth: true
             Layout.margins: 10
-            spacing: 10
+            spacing: 8
 
+            LanguageSelectorButton {
+                displayText: root.language
+                hintText: root.languageHint
+                onClicked: root.languageClicked()
+            }
             Loader {
                 active: root.isInput
                 visible: root.isInput
-                Layout.leftMargin: 10
                 sourceComponent: Text {
                     text: Translation.tr("%1 characters").arg(inputLoader.item.text.length)
                     color: Appearance.colors.colOnLayer1

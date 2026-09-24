@@ -18,6 +18,8 @@ Item {
     property var inputField: inputCanvas.inputTextArea
 
     property string translatedText: ""
+    // English name of what "auto" resolved to; empty when the source is picked by hand.
+    property string detectedLanguage: ""
     property list<string> languages: []
     // Endonym -> "code English name", which the language picker also searches.
     property var languageAliases: ({})
@@ -50,9 +52,13 @@ Item {
                 translateProc.running = false;
                 translateProc.buffer = "";
                 translateProc.running = true;
+                detectProc.running = false;
+                detectProc.running = root.sourceLanguage === "auto";
             } else {
                 root.translatedText = "";
             }
+            if (root.sourceLanguage !== "auto" || root.inputField.text.trim().length === 0)
+                root.detectedLanguage = "";
         }
     }
 
@@ -69,6 +75,18 @@ Item {
             }
         }
         onExited: () => root.translatedText = translateProc.buffer.trim()
+    }
+
+    Process {
+        id: detectProc
+        // `-brief` drops the source language, so identify it on a call of its own.
+        command: ["trans", "-id", "-no-ansi", "-no-bidi", root.inputField.text.trim()]
+        stdout: SplitParser {
+            onRead: data => {
+                const m = data.match(/^Name\s+(.+)$/);
+                if (m) root.detectedLanguage = m[1].trim();
+            }
+        }
     }
 
     Process {
@@ -108,17 +126,11 @@ Item {
                 id: contentColumn
                 anchors.fill: parent
 
-                LanguageSelectorButton { // Target language button
-                    id: targetLanguageButton
-                    displayText: root.targetLanguage
-                    onClicked: {
-                        root.showLanguageSelectorDialog(true);
-                    }
-                }
-
                 TextCanvas { // Content translation
                     id: outputCanvas
                     isInput: false
+                    language: root.targetLanguage
+                    onLanguageClicked: root.showLanguageSelectorDialog(true)
                     placeholderText: Translation.tr("Translation goes here...")
                     property bool hasTranslation: (root.translatedText.trim().length > 0)
                     text: hasTranslation ? root.translatedText : ""
@@ -163,17 +175,12 @@ Item {
             }
         }
 
-        LanguageSelectorButton { // Source language button
-            id: sourceLanguageButton
-            displayText: root.sourceLanguage
-            onClicked: {
-                root.showLanguageSelectorDialog(false);
-            }
-        }
-
         TextCanvas { // Content input
             id: inputCanvas
             isInput: true
+            language: root.sourceLanguage
+            languageHint: root.detectedLanguage
+            onLanguageClicked: root.showLanguageSelectorDialog(false)
             placeholderText: Translation.tr("Enter text to translate...")
             onInputTextChanged: {
                 translateTimer.restart();
