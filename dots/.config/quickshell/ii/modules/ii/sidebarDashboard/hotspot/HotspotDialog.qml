@@ -158,12 +158,13 @@ WindowDialog {
             placeholderText: Translation.tr("Password")
             rightPadding: revealButton.width + 12
 
-            // M3's trailing icon, inside the field.
+            // M3's trailing icon, inside the field. Centred on the outline, not the
+            // control: the outlined style reserves the floating label's room above it.
             RippleButton {
                 id: revealButton
                 anchors.right: parent.right
                 anchors.rightMargin: 6
-                anchors.verticalCenter: parent.verticalCenter
+                anchors.verticalCenter: parent.background.verticalCenter
                 implicitWidth: 40
                 implicitHeight: 40
                 buttonRadius: Appearance.rounding.full
