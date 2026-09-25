@@ -123,9 +123,16 @@ void main() {
         if (Config.options?.light?.comfortView) {
             Config.options.light.comfortView.intensity = clamped;
         }
-        if (root.effectiveActive) {
-            root.applyShader();
-        }
+        applyDebounce.restart();
+    }
+
+    // Every apply rewrites the shader and runs `hyprctl reload`, and a slider
+    // moves in integer steps: a drag was dozens of Hyprland reloads.
+    // ponytail: fixed 200ms settle, not tied to a motion token -- nothing animates on it.
+    Timer {
+        id: applyDebounce
+        interval: 200
+        onTriggered: if (root.effectiveActive) root.applyShader()
     }
 
     Connections {
@@ -157,7 +164,7 @@ void main() {
         }
         function onIntensityChanged() {
             root.intensity = Config.options.light.comfortView.intensity;
-            if (root.effectiveActive) root.applyShader();
+            applyDebounce.restart();
         }
     }
 

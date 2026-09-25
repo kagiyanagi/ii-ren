@@ -1,219 +1,139 @@
-import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell.Io
-import Quickshell
-import Quickshell.Wayland
-import Quickshell.Hyprland
 
 WindowDialog {
     id: root
-    property var screen: root.QsWindow.window?.screen
-    property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
-    backgroundHeight: 670
+
+    // Comfort View and Reading Mode follow Night Light's times, so all three say
+    // the same thing when automatic.
+    function scheduleStatus(on, automatic) {
+        if (automatic) return on ? Translation.tr("On until %1").arg(Hyprsunset.to) : Translation.tr("Turns on at %1").arg(Hyprsunset.from);
+        return on ? Translation.tr("On") : Translation.tr("Off");
+    }
 
     WindowDialogTitle {
+        id: title
         text: Translation.tr("Eye protection")
     }
 
+    // Scrolls only where the sidebar is too short for it; at 1080p it fits.
     StyledFlickable {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(scrollColumn.implicitHeight, 520)
-        contentHeight: scrollColumn.implicitHeight
+        Layout.preferredHeight: Math.min(body.implicitHeight, root.height - title.implicitHeight - buttonRow.implicitHeight - root.dialogPadding * 6)
+        contentHeight: body.implicitHeight
         contentWidth: width
         clip: true
 
         ColumnLayout {
-            id: scrollColumn
+            id: body
             width: parent.width
             spacing: 12
 
-            ContentSubsection {
-                title: Translation.tr("Night Light")
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "check"
-                    text: Translation.tr("Enable now")
-                    checked: Hyprsunset.temperatureActive
-                    onCheckedChanged: {
-                        Hyprsunset.toggleTemperature(checked)
-                    }
+            Card {
+                SwitchRow {
+                    first: true
+                    title: Translation.tr("Night Light")
+                    status: root.scheduleStatus(Hyprsunset.temperatureActive, Hyprsunset.automatic)
+                    on: Hyprsunset.temperatureActive
+                    onClicked: Hyprsunset.toggleTemperature(!Hyprsunset.temperatureActive)
                 }
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "night_sight_auto"
-                    text: Translation.tr("Automatic")
-                    checked: Config.options.light.night.automatic
-                    onCheckedChanged: {
-                        Config.options.light.night.automatic = checked;
-                    }
-                }
-
-                ConfigSlider {
-                    text: Translation.tr("Intensity")
+                // Right is warmer. hyprsunset retints live, so this one applies as it moves.
+                EffectSlider {
                     from: 6500
                     to: 1200
                     stopIndicatorValues: [5000, to]
                     usePercentTooltip: false
+                    tooltipContent: `${Math.round(value)}K`
                     value: Config.options.light.night.colorTemperature
                     onMoved: Config.options.light.night.colorTemperature = value
-                    tooltipContent: `${Math.round(value)}K`
+                }
+                SwitchRow {
+                    last: true
+                    title: Translation.tr("Automatic")
+                    on: Config.options.light.night.automatic
+                    onClicked: Config.options.light.night.automatic = !Config.options.light.night.automatic
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Comfort View")
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "visibility"
-                    text: Translation.tr("Enable now")
-                    checked: HyprlandComfortView.manualEnable
-                    onCheckedChanged: {
-                        HyprlandComfortView.toggleManual(checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Softens display colors and reduces OLED saturation to protect eyes.")
-                    }
+            Card {
+                SwitchRow {
+                    first: true
+                    title: Translation.tr("Comfort View")
+                    // The switch is the manual state; the schedule can have it on
+                    // with the switch off, and the status line says so.
+                    status: HyprlandComfortView.manualEnable ? Translation.tr("On") : root.scheduleStatus(HyprlandComfortView.effectiveActive, HyprlandComfortView.automatic)
+                    on: HyprlandComfortView.manualEnable
+                    onClicked: HyprlandComfortView.toggleManual()
                 }
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "auto_mode"
-                    text: Translation.tr("Dynamic automatic")
-                    checked: HyprlandComfortView.automatic
-                    onCheckedChanged: {
-                        HyprlandComfortView.toggleAutomatic(checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Automatically enables Comfort View based on schedule.")
-                    }
-                }
-
-                ConfigSlider {
-                    text: Translation.tr("Effect intensity")
-                    from: 0
-                    to: 100
+                EffectSlider {
                     value: HyprlandComfortView.intensity
                     onMoved: HyprlandComfortView.setIntensity(value)
-                    tooltipContent: `${Math.round(value)}%`
+                }
+                SwitchRow {
+                    last: true
+                    title: Translation.tr("Automatic")
+                    on: HyprlandComfortView.automatic
+                    onClicked: HyprlandComfortView.toggleAutomatic()
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Reading Mode")
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "menu_book"
-                    text: Translation.tr("Enable now")
-                    checked: HyprlandReadingMode.manualEnable
-                    onCheckedChanged: {
-                        HyprlandReadingMode.toggleManual(checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Grayscale monochrome display mode for long-term reading comfort.")
-                    }
+            Card {
+                SwitchRow {
+                    first: true
+                    title: Translation.tr("Reading Mode")
+                    status: HyprlandReadingMode.manualEnable ? Translation.tr("On") : root.scheduleStatus(HyprlandReadingMode.effectiveActive, HyprlandReadingMode.automatic)
+                    on: HyprlandReadingMode.manualEnable
+                    onClicked: HyprlandReadingMode.toggleManual()
                 }
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "auto_mode"
-                    text: Translation.tr("Dynamic automatic")
-                    checked: HyprlandReadingMode.automatic
-                    onCheckedChanged: {
-                        HyprlandReadingMode.toggleAutomatic(checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Automatically enables Reading Mode based on schedule.")
-                    }
-                }
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "history_edu"
-                    text: Translation.tr("Paper warmth tone")
-                    checked: HyprlandReadingMode.paperTone
-                    onCheckedChanged: {
-                        HyprlandReadingMode.togglePaperTone(checked);
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Simulates natural paper reflection tone to further ease reading fatigue.")
-                    }
-                }
-
-                ConfigSlider {
-                    text: Translation.tr("Grayscale intensity")
-                    from: 0
-                    to: 100
+                EffectSlider {
                     value: HyprlandReadingMode.intensity
                     onMoved: HyprlandReadingMode.setIntensity(value)
-                    tooltipContent: `${Math.round(value)}%`
+                }
+                SwitchRow {
+                    title: Translation.tr("Automatic")
+                    on: HyprlandReadingMode.automatic
+                    onClicked: HyprlandReadingMode.toggleAutomatic()
+                }
+                SwitchRow {
+                    last: true
+                    title: Translation.tr("Paper tone")
+                    status: Translation.tr("Warms the grey like paper")
+                    on: HyprlandReadingMode.paperTone
+                    onClicked: HyprlandReadingMode.togglePaperTone()
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Anti-flashbang (experimental)")
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "filter"
-                    text: Translation.tr("Content adjustment")
-                    checked: HyprlandAntiFlashbangShader.enabled
-                    onCheckedChanged: {
-                        if (checked) HyprlandAntiFlashbangShader.enable()
-                        else HyprlandAntiFlashbangShader.disable()
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("<b>Dims screen content</b> as needed.<br><br>Pros: Immediately responsive<br>Cons: Expensive and can hurt color accuracy<br><br><i>Uses a Hyprland screen shader</i>")
-                    }
-                }
-
-                ConfigSwitch {
-                    iconSize: Appearance.font.pixelSize.larger
-                    buttonIcon: "light_mode"
-                    text: Translation.tr("Brightness adjustment")
-                    checked: Config.options.light.antiFlashbang.enable
-                    onCheckedChanged: {
-                        Config.options.light.antiFlashbang.enable = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Adapts the <b>display (physical screen) brightness</b><br><br>Pros: Less expensive, retains colors<br>Cons: Not immediately responsive<br><br><i>Adjusts display brightness after each Hyprland IPC event</i>")
-                    }
-                }
+            StyledText {
+                Layout.topMargin: 4
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colSubtext
+                text: Translation.tr("Anti-flashbang (experimental)")
             }
 
-            ContentSubsection {
-                title: Translation.tr("Brightness")
-
-                ConfigSlider {
-                    value: root.brightnessMonitor.brightness
-                    onMoved: root.brightnessMonitor.setBrightness(value)
+            Card {
+                SwitchRow {
+                    first: true
+                    title: Translation.tr("Dim bright content")
+                    status: Translation.tr("Instant, but costs GPU")
+                    on: HyprlandAntiFlashbangShader.enabled
+                    onClicked: HyprlandAntiFlashbangShader.toggle()
                 }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Gamma")
-                Layout.bottomMargin: 8
-
-                ConfigSlider {
-                    from: Hyprsunset.gammaLowerLimit / 100
-                    value: Hyprsunset.gamma / 100
-                    onMoved: Hyprsunset.setGamma(value * 100)
-                    tooltipContent: `${Math.round(value * 100)}%`
+                SwitchRow {
+                    last: true
+                    title: Translation.tr("Adapt screen brightness")
+                    status: Translation.tr("Keeps colours, reacts slower")
+                    on: Config.options.light.antiFlashbang.enable
+                    onClicked: Config.options.light.antiFlashbang.enable = !Config.options.light.antiFlashbang.enable
                 }
             }
         }
     }
+
     WindowDialogButtonRow {
-        Layout.fillWidth: true
+        id: buttonRow
 
         Item {
             Layout.fillWidth: true
@@ -223,5 +143,76 @@ WindowDialog {
             buttonText: Translation.tr("Done")
             onClicked: root.dismiss()
         }
+    }
+
+    component Card: Rectangle {
+        default property alias rows: cardColumn.data
+        Layout.fillWidth: true
+        implicitHeight: cardColumn.implicitHeight
+        radius: Appearance.rounding.large
+        color: Appearance.colors.colSurfaceContainerHigh
+
+        ColumnLayout {
+            id: cardColumn
+            anchors.fill: parent
+            spacing: 0
+        }
+    }
+
+    // The Wi-Fi and hotspot dialogs' switch row. The row owns the state and the
+    // switch never toggles itself: ConfigSwitch's `checked = !checked` broke the
+    // binding, and the binding's next update then called the service as if
+    // clicked -- automatic Night Light turning on became a manual override.
+    component SwitchRow: DialogListItem {
+        id: row
+        required property string title
+        property string status
+        property bool on
+        property bool first
+        property bool last
+        Layout.fillWidth: true
+        topLeftRadius: first ? Appearance.rounding.large : 0
+        topRightRadius: topLeftRadius
+        bottomLeftRadius: last ? Appearance.rounding.large : 0
+        bottomRightRadius: bottomLeftRadius
+
+        contentItem: RowLayout {
+            spacing: 10
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                StyledText {
+                    Layout.fillWidth: true
+                    color: Appearance.colors.colOnSurfaceVariant
+                    elide: Text.ElideRight
+                    text: row.title
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    visible: row.status.length > 0
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                    elide: Text.ElideRight
+                    text: row.status
+                }
+            }
+            StyledSwitch {
+                checkable: false
+                checked: row.on
+                down: row.down
+                focusPolicy: Qt.NoFocus
+                onClicked: row.clicked()
+            }
+        }
+    }
+
+    component EffectSlider: StyledSlider {
+        Layout.fillWidth: true
+        Layout.leftMargin: 16
+        Layout.rightMargin: 16
+        Layout.bottomMargin: 8
+        configuration: StyledSlider.Configuration.XS
+        from: 0
+        to: 100
     }
 }

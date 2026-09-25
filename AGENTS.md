@@ -386,6 +386,15 @@ you touched; they are the only automated gate.
   on showing as on. Picking "None" hid the password field, which shrank the re-centring card
   and moved the buttons out from under the pointer, so the next click dismissed the dialog.
   It evaluates the status line under node against every state
+- `python3 tools/check-night-light-dialog.py` — the eye-protection dialog's switches follow
+  their effects, and its sliders do not reload Hyprland on every step. Each row was a
+  `ConfigSwitch` that called its service from `onCheckedChanged`, so a binding update looked
+  like a click: automatic Night Light switching on with the dialog open became a manual
+  override. Comfort View's and Reading Mode's `setIntensity` ran `hyprctl reload` for every
+  integer the slider crossed, and did it twice, because their own config write fired
+  `onIntensityChanged`, which applied again. Both paths share one debounce now. The check
+  evaluates the status line under node, which is the only place the dialog says the schedule
+  has an effect on while its switch is off
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
