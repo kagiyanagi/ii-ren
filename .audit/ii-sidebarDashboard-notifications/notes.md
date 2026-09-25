@@ -6,10 +6,9 @@ screen. `notify-send` is broken on this machine (a libnotify symbol lookup error
 shot uses whatever is already in `~/.cache/quickshell/notifications/notifications.json`.
 
 **The list is the user's real notifications.** Nothing here pressed Clear all or swiped a
-card. Two things are therefore **unverified live**: the empty state, where the count fades
-and Clear all dims to 0.4, and the drag rounding a card's joins to `small`. Both are one
-binding. If you need to see them, copy `notifications.json` aside first, and restore it before
-restarting the shell (the service loads it on start).
+card, so the empty state is **unverified live**: the count fading out and Clear all dimming
+to 0.4, one binding each. To see it, copy `notifications.json` aside first, and restore it
+before restarting the shell (the service loads it on start).
 
 **The "ki…" bug was a rounding error, not the layout.** Measured under
 `/usr/lib/qt6/bin/qml` with the shell's font (Space Grotesk 12px, wght 450). Output is only
@@ -20,11 +19,13 @@ theme swallows `console.*`. Results: "kitty" implicit 26.11 vs `TextMetrics.widt
 `.width` as a size, `waffle/looks/WTextWithFixedWidth.qml` and `ii/bar/Resource.qml`. They're
 out of this row, and neither has been seen eliding.
 
-**Why the stack lives in the shared card.** `NotificationGroup` only knows whether it's a
-popup. The list passes `stackTop`/`stackBottom` from `index` and `count`. Both default to
-true, so any other caller still gets a standalone card. The popup is always standalone,
-because `standalone` includes `popup`. `check-notification-stack.py` holds that rule and the
-`ceil(advanceWidth)` cap. Both were mutation-tested.
+**Reverted on review: the Android-shade stack.** The first commit joined the sidebar's
+groups into one stack: `rounding.small` at the ends, `unsharpenmore` at the joins, 4 apart,
+and all `small` while swiped. The owner prefers the original separate `rounding.large`
+cards 8 apart, so those radii, the gap, the `normal` clip and the 5 insets are back as they
+were. The 5s are off the 4dp grid, and check-design warns on them. That is deliberate: do
+not "fix" them back to 4 in a later row, and do not propose the stack again.
+`check-notification-app-name.py` covers only the name cap now.
 
 **Rejected.** Hiding Clear all when the list is empty, as the Android shade does. `visible`
 snaps, and fading `opacity` would fight RippleButton's own disabled fade. Disabled at 0.4 is
@@ -32,13 +33,11 @@ the shell's convention and animates by itself. Choosing the count label's fade s
 `root.count` was also dropped: that binding and the Behavior hang off the same change, in an
 undefined order (2.9). It fades on `elementMoveFast` both ways, matching the button.
 
-**Vision pass (agy, gemini-3.1-pro-high).** It claimed that the outer corners stayed large,
-that the joins were square, and that the footer order was reversed. The first two are wrong
-when you zoom in: about 12px at the ends and about 6px at the joins. The tonal step from
-`colLayer2` to `colLayer1` is small enough that it misread them. The third mistook the brief's
-order of visual weight for a left-to-right order.
+**Vision pass (agy, gemini-3.1-pro-high).** Run on the stack version. It misread the joins
+as square (they were about 6px), because the tonal step from `colLayer2` to `colLayer1` is
+small. It also mistook the brief's order of visual weight for a left-to-right order. It has
+not been rerun on the reverted cards.
 
-**For the cohesion pass (motion).** New: a sidebar card's join corners round to `small` on
-`elementMoveSmall` when a swipe starts, and back when it ends. The count label fades on
+**For the cohesion pass (motion).** The count label fades on
 `elementMoveFast`, and the silent icon's colour now follows its background on
 `elementMoveFast`.

@@ -16,17 +16,15 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: footer.top
-        anchors.bottomMargin: 4
+        anchors.bottomMargin: 5
 
-        // Clipped to the stack's own outer corners, so a card scrolled under the
-        // edge keeps the corners it has at rest.
         clip: true
         layer.enabled: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: listview.width
                 height: listview.height
-                radius: Appearance.rounding.small
+                radius: Appearance.rounding.normal
             }
         }
 

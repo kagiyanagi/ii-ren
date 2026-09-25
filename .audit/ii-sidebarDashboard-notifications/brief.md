@@ -10,21 +10,13 @@ pill at the foot, which is where the Android shade keeps it.
 `colSubtext`, then the silent toggle.
 
 **Reference.** The Android 16 notification shade (SystemUI's `NotificationStackScrollLayout`).
-It is one stack of cards with small corners where cards meet (`notification_corner_radius_small`)
-and full corners at the ends. A card that is being swiped rounds off by itself. The footer
-has a "Clear all" pill and no count. This panel keeps a count because there's no status bar
+The footer has a "Clear all" pill and no count. This panel keeps a count because there's no status bar
 icon row to carry it.
 
 **Interaction.**
-- *Stack.* When not a popup, the groups sit 4 apart (`ButtonGroup`'s gap, not the popup's 8).
-  The first card's top corners and the last card's bottom corners are `rounding.small`, nested
-  in the `rounding.normal` card the list sits on at a 4 inset. Every join is
-  `rounding.unsharpenmore`. A dragged card takes `rounding.small` on all four corners, on
-  `elementMoveSmall` (a shape, so spatial). The popup's cards are unchanged: standalone,
-  `rounding.large`, 8 apart.
-- *Clip.* The list's rounded clip is `rounding.small`, the same as the stack's outer corners. A
-  card scrolled halfway under the edge then has the same corners as a card at rest. It used to
-  be `normal`, bigger than the cards and the same as the parent (7).
+- *Cards.* Unchanged from before the audit, by the owner's choice: each group is its own
+  `rounding.large` card, 8 apart, under a `rounding.normal` clip at a 5 inset. An Android-shade
+  stack (small joins, 4 apart) was built, then reverted on review. See `notes.md`.
 - *Footer.* A `RowLayout`, not a `ButtonGroup`. The middle of the group was a disabled button
   pretending to be a label, drawn at 0.4 opacity as though it could be pressed but wasn't.
   - Silent: a round 40px `RippleButton` icon toggle (primary when on), with a tooltip. The
@@ -36,9 +28,9 @@ icon row to carry it.
   `advanceWidth` now. That is a fix to the shared card, so the popup gets it too.
 
 **Edge states.**
-- *Empty:* `PagePlaceholder` "No notifications" (was "Nothing"). The count and "Clear all"
-  hide, and the silent toggle stays, because silencing an empty shade still means something.
-- *One item:* one card, all four corners outer. "1 notification".
+- *Empty:* `PagePlaceholder` "No notifications" (was "Nothing"). The count fades out and
+  "Clear all" dims to disabled. The silent toggle stays, because silencing an empty shade still means something.
+- *One item:* one card. "1 notification".
 - *Many:* the list scrolls under the rounded clip, and the footer stays put.
 
 **Cost.** One `OpacityMask` layer over the list, as before, not repeated. The cards' shadow is
