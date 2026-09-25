@@ -336,6 +336,15 @@ you touched; they are the only automated gate.
   to prove nothing is drawn until the translations and the colours are both in, and that only
   real translations get a delegate. The box is opaque because that is what erases the text,
   and the check refuses the masked blur it replaced
+- `python3 tools/check-extension-options.py` — an extension's options in Settings → Extensions
+  write `plugins.json` only when the user changes one. Every write rewrites the whole file and
+  the `FileView` watch reloads it, so an unasked write is not free, and one mid-edit resets the
+  row under the caret. None of it shows on screen. The slider wrote on `valueChanged`, which
+  fires on every frame of its settle animation: one render of the old page left `gain: 57.3` in
+  a real config, for an extension that was not installed. The rows had their data wired in
+  `onLoaded` and wrote it back as it arrived. A spinbox evaluated before its `to` (default 99)
+  clamped a stored 150. This pins the `DelegateChooser` rows, `moved`, the guarded write, the
+  spinbox's bounds read, text on `editingFinished`, and a Remove that asks twice
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

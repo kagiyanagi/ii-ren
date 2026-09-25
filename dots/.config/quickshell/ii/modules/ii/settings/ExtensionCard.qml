@@ -3,8 +3,11 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions as CF
 import "."
+
+// One search result, as a store list item: the row opens the repo page, the
+// trailing button installs. Installed repos are filtered out upstream, so
+// nothing here asks whether this one is installed.
 Item {
     id: root
     required property var modelData
@@ -12,186 +15,134 @@ Item {
     required property int listCount
 
     readonly property var ext: modelData
-    readonly property var installedEntry: {
-        const installed = ExtensionManager.installedExtensions
-        for (let id in installed) {
-            if (installed[id].name === ext.name || installed[id].id === ext.name) return installed[id]
-        }
-        return null
-    }
-    readonly property bool isInstalled: root.installedEntry !== null
-    readonly property bool isLocalExtension: root.installedEntry?.isLocal ?? false
-    readonly property bool isCustomUrlExtension: root.installedEntry?.isCustomUrl ?? false
-    readonly property bool isEnabled: root.installedEntry?.enabled ?? false
+    readonly property bool noJson: (ext.extensionJsonError ?? null) !== null
+    readonly property bool recommended: ExtensionAudit.isExtensionRecommended(ext.name)
     readonly property string _auditState: {
         ExtensionAudit.auditDbVersion
         if (!ExtensionAudit.auditDatabaseReady || !ext.hasExtensionJson) return ""
         return ExtensionAudit.getExtensionAuditState(ext.name)
     }
 
-    property real topRadius: (listCount == 1 || index == 0) ? Appearance.rounding.large : Appearance.rounding.verysmall
-    property real bottomRadius: (listCount == 1 || index == listCount - 1) ? Appearance.rounding.large : Appearance.rounding.verysmall
+    readonly property real topRadius: index === 0 ? Appearance.rounding.large : Appearance.rounding.verysmall
+    readonly property real bottomRadius: index === listCount - 1 ? Appearance.rounding.large : Appearance.rounding.verysmall
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 90
-    visible: true
+    implicitHeight: Math.max(row.implicitHeight + 24, 72)
 
-    Rectangle {
+    RippleButton {
         anchors.fill: parent
-        topLeftRadius: topRadius
-        topRightRadius: topRadius
-        bottomLeftRadius: bottomRadius
-        bottomRightRadius: bottomRadius
-        color: Appearance.colors.colLayer1
+        colBackground: Appearance.colors.colSurfaceContainerHigh
+        topLeftRadius: root.topRadius
+        topRightRadius: root.topRadius
+        bottomLeftRadius: root.bottomRadius
+        bottomRightRadius: root.bottomRadius
+        onClicked: Qt.openUrlExternally(root.ext.htmlUrl)
+        // Button answers Space only; a row that opens something takes Enter too.
+        Keys.onReturnPressed: clicked()
+        Keys.onEnterPressed: clicked()
+    }
 
-        RowLayout {
-            anchors { fill: parent; margins: 10 }
-            spacing: 12
+    RowLayout {
+        id: row
+        anchors {
+            left: parent.left
+            right: parent.right
+            verticalCenter: parent.verticalCenter
+            leftMargin: 16
+            rightMargin: 16
+        }
+        spacing: 16
 
-            MaterialShape {
-                Layout.preferredWidth: 60
-                Layout.preferredHeight: 60
-                shapeString: ext.shapeString || ""
-                color: isEnabled ? Appearance.colors.colPrimaryContainer : ExtensionAudit.isExtensionRecommended(ext.name) ? Appearance.colors.colTertiary : Appearance.colors.colLayer3
-                
-                HoverHandler {
-                    id: hover
-                }
+        MaterialShape {
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            shapeString: root.ext.shapeString || ""
+            color: root.recommended ? Appearance.colors.colTertiary : Appearance.colors.colSurfaceContainerHighest
 
-                StyledToolTip {
-                    extraVisibleCondition: hover.hovered && ExtensionAudit.isExtensionRecommended(ext.name)
-                    text: ExtensionAudit.isExtensionRecommended(ext.name) ? Translation.tr("Recommended by the ii-vynx developer based on user feedback") : ""
-                }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    text: ext.icon || "extension"
-                    iconSize: 28
-                    color: isEnabled ? Appearance.colors.colOnPrimaryContainer : ExtensionAudit.isExtensionRecommended(ext.name) ? Appearance.colors.colOnTertiary : Appearance.colors.colSubtext
-                }
+            HoverHandler {
+                id: shapeHover
             }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 2
+            StyledToolTip {
+                extraVisibleCondition: shapeHover.hovered && root.recommended
+                text: Translation.tr("Recommended by the ii-vynx developer based on user feedback")
+            }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    StyledText {
-                        text: ext.displayName || ext.name
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.weight: Font.Medium
-                        color: Appearance.colors.colOnLayer0
-                        elide: Text.ElideRight
-                    }
-                    ExtensionBadge {
-                        label: Translation.tr("Official")
-                        tooltip: Translation.tr("Created by the ii-vynx developer")
-                        visible: ext.repoUrl && ext.repoUrl.includes("vaguesyntax")
-                    }
-                    ExtensionBadge {
-                        icon: "link"
-                        tooltip: Translation.tr("Custom URL extension")
-                        visible: isCustomUrlExtension
-                    }
-                    ExtensionBadge {
-                        icon: "folder"
-                        tooltip: Translation.tr("Local path extension")
-                        visible: isLocalExtension
-                    }
-                    ExtensionBadge {
-                        icon: root._auditState === "trusted" ? "verified" : "help"
-                        bgColor: root._auditState === "trusted" ? Appearance.m3colors.m3successContainer : Appearance.colors.colErrorContainer
-                        fgColor: root._auditState === "trusted" ? Appearance.m3colors.m3success : Appearance.colors.colError
-                        tooltip: root._auditState === "trusted" ? Translation.tr("This extension is trusted. You can safely use it") : Translation.tr("This extension has not been audited yet. It may have security vulnerabilities.")
-                        visible: root._auditState.length > 0 && root._auditState !== "blocked"
-                    }
-                }
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: root.ext.icon || "extension"
+                iconSize: 24
+                color: root.recommended ? Appearance.colors.colOnTertiary : Appearance.colors.colOnSurfaceVariant
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
                 StyledText {
-                    Layout.fillWidth: true
-                    text: ext.description || ""
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    color: Appearance.colors.colSubtext
-                    elide: Text.ElideRight
-                    maximumLineCount: 2
-                    wrapMode: Text.Wrap
+                    text: root.ext.displayName || root.ext.name
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.Medium
+                    color: Appearance.colors.colOnLayer1
                 }
-
-                RowLayout {
-                    spacing: 6
-                    StyledText {
-                        text: "★ " + ext.stars
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colTertiary
-                    }
-                    StyledText {
-                        visible: ext.hasExtensionJson
-                        text: "• " + (ext.version || "?")
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colSubtext
-                    }
-                    StyledText {
-                        visible: ext.extensionJsonError !== null
-                        text: "• " + Translation.tr("No extension.json")
-                        font.pixelSize: Appearance.font.pixelSize.smallest
-                        color: Appearance.colors.colError
-                    }
-                    Item { Layout.fillWidth: true }
+                ExtensionBadge {
+                    label: Translation.tr("Official")
+                    tooltip: Translation.tr("Created by the ii-vynx developer")
+                    visible: root.ext.repoUrl?.includes("vaguesyntax") ?? false
                 }
+                ExtensionBadge {
+                    icon: root._auditState === "trusted" ? "verified" : "help"
+                    bgColor: root._auditState === "trusted" ? Appearance.m3colors.m3successContainer : Appearance.colors.colErrorContainer
+                    fgColor: root._auditState === "trusted" ? Appearance.m3colors.m3success : Appearance.colors.colError
+                    tooltip: root._auditState === "trusted" ? Translation.tr("This extension is trusted. You can safely use it") : Translation.tr("This extension has not been audited yet. It may have security vulnerabilities.")
+                    visible: root._auditState.length > 0 && root._auditState !== "blocked"
+                }
+                // Lets the row grow; without it the row's maximum is its content
+                // and the column beside the shape could not take the free width.
+                Item { Layout.fillWidth: true }
             }
 
-            ColumnLayout {
-                Layout.fillHeight: true
-                spacing: 4
-
-                RippleButton {
-                    Layout.alignment: Qt.AlignRight
-                    implicitWidth: 80
-                    implicitHeight: 28
-                    padding: 0
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: Appearance.colors.colSecondaryContainer
-                    colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                    contentItem: StyledText {
-                        anchors.centerIn: parent
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        text: Translation.tr("Info")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnSecondaryContainer
-                    }
-                    onClicked: Qt.openUrlExternally(ext.htmlUrl)
-                }
-
-                RippleButton {
-                    Layout.alignment: Qt.AlignRight
-                    enabled: Config.options.extensions.enable
-                    implicitWidth: 80
-                    implicitHeight: 28
-                    padding: 0
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: Appearance.colors.colPrimaryContainer
-                    colBackgroundHover: Appearance.colors.colPrimaryContainerHover
-                    contentItem: StyledText {
-                        anchors.centerIn: parent
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        text: Translation.tr("Install")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnPrimaryContainer
-                    }
-                    StyledToolTip {
-                        extraVisibleCondition: root._auditState !== "trusted"
-                        text: Translation.tr("This extension has not been audited yet. It may have security vulnerabilities.")
-                    }
-                    onClicked: {
-                        ExtensionManager.installExtension(ext.repoUrl, ext.name, ext.defaultBranch || "main", ext.htmlUrl)
-                    }
-                }
+            StyledText {
+                Layout.fillWidth: true
+                visible: text.length > 0
+                text: root.ext.description || ""
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
             }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: root.noJson ? Translation.tr("No extension.json")
+                    : ["★ " + root.ext.stars, root.ext.version].filter(Boolean).join(" · ")
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                color: root.noJson ? Appearance.colors.colError : Appearance.colors.colSubtext
+            }
+        }
+
+        DialogButton {
+            // A repo without an extension.json clones and then fails to
+            // register, leaving the clone behind.
+            enabled: Config.options.extensions.enable && root.ext.hasExtensionJson
+            buttonText: Translation.tr("Install")
+            colBackground: Appearance.colors.colPrimaryContainer
+            colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+            colRipple: Appearance.colors.colPrimaryContainerActive
+            colEnabled: Appearance.colors.colOnPrimaryContainer
+            // The 0.4 opacity is the disabled state; DialogButton's outline
+            // text on top of it dimmed these twice.
+            colDisabled: colEnabled
+            StyledToolTip {
+                extraVisibleCondition: root._auditState !== "trusted"
+                text: Translation.tr("This extension has not been audited yet. It may have security vulnerabilities.")
+            }
+            onClicked: ExtensionManager.installExtension(root.ext.repoUrl, root.ext.name, root.ext.defaultBranch || "main", root.ext.htmlUrl)
         }
     }
 }

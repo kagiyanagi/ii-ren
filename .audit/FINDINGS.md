@@ -182,3 +182,12 @@ claims from these rows were driven rather than reasoned about.
 | `.audit/FINDINGS.md` (`ii-regionSelector` table, `DashedBorder` row) | Says `ScreenTranslatorPanel` uses `DashedBorder` for a live selection. It does not, and did not at this row's `HEAD`. The translator has no selection. `WRectangularSelection` is the only one left. | — |
 | `modules/ii/screenTranslator/ScreenTranslatorPanel.qml` (`ii-regionSelector` table, toolbar row) | **Fixed here**: the FAB is bound to `visible` and sits 8 above the reserved band. | done |
 
+
+## From auditing `ii-settings`, 2026-09-25
+
+| where | issue | owner |
+|---|---|---|
+| `modules/common/widgets/ConfigSwitch.qml` and every row on a `ContentGroup` card | **Hover tint is solved for the wrong layer.** The rows hover with `colLayer1Hover`, and `ContentGroup` paints `colSurfaceContainerHigh` under them. There is no `colSurfaceContainerHighHover` token, so the extension rows (which now sit on the same card colour) follow the same convention rather than invent a number. The fix is one token in `Appearance.qml` plus the row widgets that default to `colLayer1Hover`, and rule 9 applies to every one of them. | a `cw-config-rows` revisit |
+| `modules/common/widgets/GroupButtonWithTextField.qml:10` | `Duplicate signal name: invalid override of property change signal or superclass signal` on every load of the Extensions page (the toolbar's search field). Silent in normal use. | `settings-ExtensionsConfig` |
+| `modules/common/widgets/DialogButton.qml:19,33` | Disabled text turns `m3outline` **and** the root drops to `opacity: 0.4`, so every disabled `DialogButton` is dimmed twice (rule 6: disabled is 0.4, not a grey). The extension buttons override `colDisabled: colEnabled`. The default belongs to the widget and it has other callers. | a `cw-dialogs` revisit |
+| `modules/settings/ExtensionsConfig.qml` (`Component.onCompleted`) | Opening the page with extensions on runs a GitHub search and rewrites the whole `plugins.json` (the search cache lives in it), which the `FileView` watch then reloads. Measured in a sandbox: three `extensionConfigsChanged` in the first 2.5s, with no option touched. | `settings-ExtensionsConfig` |

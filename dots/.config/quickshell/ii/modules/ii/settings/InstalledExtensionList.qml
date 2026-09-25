@@ -8,6 +8,7 @@ import "."
 ColumnLayout {
     id: root
     visible: root.installedList.length > 0
+    spacing: 4
 
     readonly property var installedList: {
         let list = []
@@ -22,7 +23,7 @@ ColumnLayout {
     StyledText {
         Layout.fillWidth: true
         Layout.topMargin: 20
-        visible: root.installedList.length > 0
+        Layout.bottomMargin: 4
         text: Translation.tr("Installed")
         font.pixelSize: Appearance.font.pixelSize.normal
         font.weight: Font.Medium

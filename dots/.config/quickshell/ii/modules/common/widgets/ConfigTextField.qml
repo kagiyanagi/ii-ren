@@ -12,6 +12,8 @@ Item {
     property string text: ""
     property string inputText: ""
     property alias placeholderText: textField.placeholderText
+    // For callers that commit once rather than on every keystroke.
+    signal editingFinished()
 
     Layout.fillWidth: true
     implicitHeight: 48
@@ -94,6 +96,7 @@ Item {
             background: null
             verticalAlignment: Text.AlignVCenter
 
+            onEditingFinished: root.editingFinished()
             onTextChanged: {
                 if (root.inputText !== text) {
                     root.inputText = text;

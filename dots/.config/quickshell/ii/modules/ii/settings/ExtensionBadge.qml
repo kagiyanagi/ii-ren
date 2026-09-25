@@ -11,26 +11,26 @@ Rectangle {
 
     property color bgColor: Appearance.colors.colSecondaryContainer
     property color fgColor: Appearance.colors.colOnSecondaryContainer
-    property int iconSize: 16
-    property int extraWidth: label.length > 0 ? 0 : 14
 
-    visible: false
     radius: Appearance.rounding.full
     color: root.bgColor
 
-    implicitWidth: root.icon.length > 0 ? 22 + root.extraWidth : childrenRect.width + 20 + root.extraWidth
+    // Sized off the label's own implicitWidth: childrenRect.width read the
+    // children this width lays out, which was a binding loop on every card.
+    implicitWidth: root.icon.length > 0 ? 36 : labelText.implicitWidth + 20
     implicitHeight: 24
 
     MaterialSymbol {
         visible: root.icon.length > 0
         anchors.centerIn: parent
         text: root.icon
-        iconSize: root.iconSize
+        iconSize: 16
         color: root.fgColor
     }
 
     StyledText {
-        visible: root.icon.length === 0 && root.label.length > 0
+        id: labelText
+        visible: root.icon.length === 0
         text: root.label
         font.pixelSize: Appearance.font.pixelSize.smallest
         color: root.fgColor

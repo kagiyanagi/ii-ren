@@ -3,284 +3,286 @@ import QtQuick.Layouts
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions as CF
 import "."
 
+// One installed extension: an Android Settings app row with a trailing switch.
+// The row expands into the extension's options and its actions.
 Item {
     id: root
     required property var modelData
     required property int listCount
     required property int index
-    property var ext: modelData
-    property var updateState: ExtensionManager.updateStates[ext.id] || {}
-    property bool updateChecking: updateState.checking || false
-    property bool updateAvailable: updateState.updateAvailable || false
+
+    readonly property var ext: modelData
+    readonly property var updateState: ExtensionManager.updateStates[ext.id] ?? {}
+    readonly property bool updateChecking: updateState.checking ?? false
+    readonly property bool updateAvailable: (updateState.updateAvailable ?? false) && !updateChecking
+    readonly property bool hasConfigSchema: Object.keys(ext.configSchema ?? {}).length > 0
+    readonly property bool active: ext.enabled && Config.options.extensions.enable
     property bool expanded: false
-    readonly property bool hasConfigSchema: ext.configSchema && Object.keys(ext.configSchema).length > 0
-    readonly property string _auditState: {
-        ExtensionAudit.auditDbVersion
-        if (!ExtensionAudit.auditDatabaseReady) return ""
-        return ExtensionAudit.getExtensionAuditState(ext.id)
+    property bool confirmRemove: false
+    // Expand on default spatial, collapse on the fast exit, as NotificationGroup does.
+    property AnimSpec expandSpec: Appearance.animation.elementMove
+
+    readonly property real topRadius: index === 0 ? Appearance.rounding.large : Appearance.rounding.verysmall
+    readonly property real bottomRadius: index === listCount - 1 ? Appearance.rounding.large : Appearance.rounding.verysmall
+
+    function toggleExpanded() {
+        root.expandSpec = root.expanded ? Appearance.animation.elementMoveExit : Appearance.animation.elementMove
+        root.expanded = !root.expanded
+        root.confirmRemove = false
     }
 
-    property real topRadius: (listCount == 1 || index == 0) ? Appearance.rounding.large : Appearance.rounding.verysmall
-    property real bottomRadius: (listCount == 1 || index == listCount - 1) ? Appearance.rounding.large : Appearance.rounding.verysmall
-
     Layout.fillWidth: true
-    implicitHeight: 80 + panelArea.implicitHeight
-    clip: true
+    implicitHeight: header.height + panel.height
 
     Rectangle {
         anchors.fill: parent
-        topLeftRadius: topRadius
-        topRightRadius: topRadius
-        bottomLeftRadius: bottomRadius
-        bottomRightRadius: bottomRadius
-        color: Appearance.colors.colLayer1
+        color: Appearance.colors.colSurfaceContainerHigh
+        topLeftRadius: root.topRadius
+        topRightRadius: root.topRadius
+        bottomLeftRadius: root.bottomRadius
+        bottomRightRadius: root.bottomRadius
+    }
+
+    RippleButton {
+        id: header
+        width: parent.width
+        height: 72
+        colBackground: "transparent"
+        topLeftRadius: root.topRadius
+        topRightRadius: root.topRadius
+        bottomLeftRadius: panel.height > 0 ? 0 : root.bottomRadius
+        bottomRightRadius: bottomLeftRadius
+        onClicked: root.toggleExpanded()
+        // Button answers Space only; a row that opens something takes Enter too.
+        Keys.onReturnPressed: clicked()
+        Keys.onEnterPressed: clicked()
+    }
+
+    RowLayout {
+        anchors {
+            left: header.left
+            right: header.right
+            verticalCenter: header.verticalCenter
+            leftMargin: 16
+            rightMargin: 16
+        }
+        spacing: 16
+
+        MaterialShape {
+            Layout.preferredWidth: 48
+            Layout.preferredHeight: 48
+            shapeString: root.ext.shapeString || ""
+            color: root.active ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHighest
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
+
+            MaterialSymbol {
+                anchors.centerIn: parent
+                text: root.ext.icon || "extension"
+                iconSize: 24
+                color: root.active ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurfaceVariant
+            }
+        }
 
         ColumnLayout {
-            anchors.fill: parent
-            spacing: 0
+            Layout.fillWidth: true
+            spacing: 2
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 12
+                spacing: 8
 
-                    MaterialShape {
-                        Layout.preferredWidth: 60
-                        Layout.preferredHeight: 60
-                        shapeString: ext.shapeString || ""
-                        color: iconArea.containsMouse && !iconArea.held ? Appearance.colors.colPrimaryContainerHover
-                            : ext.enabled && Config.options.extensions.enable ? Appearance.colors.colPrimaryContainer : Appearance.colors.colLayer3
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: iconArea.containsMouse ? "info" : (ext.icon || "extension")
-                            iconSize: 28
-                            color: iconArea.containsMouse ? Appearance.colors.colOnPrimaryContainer
-                                : ext.enabled && Config.options.extensions.enable ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colSubtext
-                        }
-
-                    MouseArea {
-                        id: iconArea
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-
-                        onClicked: {
-                            let url = ext.htmlUrl || ext.repoUrl
-                            if (url) Qt.openUrlExternally(url)
-                        }
-                    }
+                StyledText {
+                    text: root.ext.name
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.weight: Font.Medium
+                    color: Appearance.colors.colOnLayer1
                 }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        StyledText {
-                            text: ext.name
-                            font.pixelSize: Appearance.font.pixelSize.normal
-                            font.weight: Font.Medium
-                            color: Appearance.colors.colOnLayer0
-                            elide: Text.ElideRight
-                        }
-                        ExtensionBadge {
-                            label: Translation.tr("Official")
-                            tooltip: Translation.tr("Created by the ii-vynx developer")
-                            visible: ext.repoUrl && ext.repoUrl.includes("vaguesyntax")
-                        }
-                        ExtensionBadge {
-                            icon: "link"
-                            tooltip: Translation.tr("Custom URL — installed from a custom link")
-                            visible: ext.isCustomUrl
-                        }
-                        ExtensionBadge {
-                            icon: "folder"
-                            tooltip: Translation.tr("Local path extension — files linked from your filesystem")
-                            visible: ext.isLocal
-                        }
-                    }
-
-                    RowLayout {
-                        spacing: 6
-                        StyledText {
-                            text: "v" + ext.version + " by " + ext.author
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colSubtext
-                        }
-                        StyledText {
-                            visible: ext.repoUrl && updateChecking
-                            text: Translation.tr("Checking update...")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colTertiary
-                        }
-                        StyledText {
-                            visible: ext.repoUrl && updateAvailable && !updateChecking
-                            text: Translation.tr("Update available!")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colPrimary
-                        }
-                        StyledText {
-                            visible: ext.repoUrl && !updateChecking && !updateAvailable && !!updateState.localHash
-                            text: Translation.tr("Up to date")
-                            font.pixelSize: Appearance.font.pixelSize.smallest
-                            color: Appearance.colors.colSubtext
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
+                ExtensionBadge {
+                    label: Translation.tr("Official")
+                    tooltip: Translation.tr("Created by the ii-vynx developer")
+                    visible: root.ext.repoUrl?.includes("vaguesyntax") ?? false
                 }
-
-                StyledSwitch {
-                    enabled: Config.options.extensions.enable
-                    checked: ext.enabled
-                    onClicked: ExtensionManager.toggleExtension(ext.id, !ext.enabled)
+                ExtensionBadge {
+                    icon: "link"
+                    tooltip: Translation.tr("Custom URL — installed from a custom link")
+                    visible: root.ext.isCustomUrl ?? false
                 }
-
-                RippleButton {
-                    Layout.alignment: Qt.AlignCenter
-                    implicitWidth: 28
-                    implicitHeight: 28
-                    buttonRadius: Appearance.rounding.full
-                    colBackground: "transparent"
-                    colBackgroundHover: Appearance.colors.colLayer2
-
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: root.expanded ? "expand_less" : "expand_more"
-                        iconSize: 20
-                        color: Appearance.colors.colSubtext
-                    }
-                    onClicked: root.expanded = !root.expanded
+                ExtensionBadge {
+                    icon: "folder"
+                    tooltip: Translation.tr("Local path extension — files linked from your filesystem")
+                    visible: root.ext.isLocal ?? false
                 }
+                // Lets the row grow; without it the row's maximum is its content
+                // and the column beside the shape could not take the free width.
+                Item { Layout.fillWidth: true }
             }
 
-            Item {
-                id: panelArea
+            // Only the status that asks for something is shown; "up to date"
+            // is the default and says nothing.
+            RowLayout {
                 Layout.fillWidth: true
-                implicitHeight: expanded ? panelContent.implicitHeight : 0
-                clip: true
-                Behavior on implicitHeight {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                spacing: 0
+
+                StyledText {
+                    text: [root.ext.version, root.ext.author].filter(Boolean).join(" · ")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
                 }
+                StyledText {
+                    visible: root.updateAvailable
+                    text: " · " + Translation.tr("Update available")
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colPrimary
+                }
+                Item { Layout.fillWidth: true }
+            }
+        }
 
-                ColumnLayout {
-                    id: panelContent
-                    anchors { left: parent.left; right: parent.right; top: parent.top }
-                    spacing: 0
+        StyledSwitch {
+            enabled: Config.options.extensions.enable
+            checked: root.ext.enabled
+            onClicked: ExtensionManager.toggleExtension(root.ext.id, !root.ext.enabled)
+        }
 
-                    ExtensionConfigPanel {
-                        id: configPanel
-                        Layout.fillWidth: true
-                        extensionId: ext.id
-                        schema: ext.configSchema || {}
+        MaterialSymbol {
+            text: "expand_more"
+            iconSize: 24
+            color: Appearance.colors.colSubtext
+            rotation: root.expanded ? 180 : 0
+            Behavior on rotation {
+                animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+            }
+        }
+    }
+
+    Item {
+        id: panel
+        y: header.height
+        width: parent.width
+        height: root.expanded ? panelContent.implicitHeight : 0
+        clip: true
+        Behavior on height {
+            NumberAnimation {
+                duration: root.expandSpec.duration
+                easing.type: root.expandSpec.type
+                easing.bezierCurve: root.expandSpec.bezierCurve
+            }
+        }
+
+        ColumnLayout {
+            id: panelContent
+            // A collapsed row still instantiates its buttons; hidden, they
+            // cost no offscreen pass.
+            visible: panel.height > 0
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+            }
+            spacing: 8
+
+            StyledText {
+                Layout.fillWidth: true
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                visible: text.length > 0
+                text: root.ext.description || ""
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                wrapMode: Text.Wrap
+            }
+
+            ExtensionConfigPanel {
+                Layout.fillWidth: true
+                // The group's cards bleed 8 past their rows, so this lands them
+                // 8 inside the extension card.
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                visible: root.hasConfigSchema
+                extensionId: root.ext.id
+                schema: root.ext.configSchema ?? {}
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                Layout.topMargin: 4
+                Layout.bottomMargin: 16
+                spacing: 8
+
+                ActionButton {
+                    visible: (root.ext.repoUrl?.length ?? 0) > 0 && !root.ext.isLocal
+                    buttonText: root.updateChecking ? Translation.tr("Checking…")
+                        : root.updateAvailable ? Translation.tr("Update") : Translation.tr("Check for updates")
+                    tone: root.updateAvailable ? "primary" : "secondary"
+                    onClicked: {
+                        if (root.updateChecking) return
+                        if (root.updateAvailable) ExtensionManager.updateExtension(root.ext.id)
+                        else ExtensionManager.checkUpdate(root.ext.id)
                     }
-
-                    RowLayout {
-                        enabled: Config.options.extensions.enable
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        Layout.topMargin: 8
-                        Layout.bottomMargin: 8
-                        spacing: 8
-
-                        StyledText {
-                            Layout.leftMargin: 8
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignVCenter
-                            text: ext.description || ""
-                            visible: ext.description && ext.description.length > 0
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                            elide: Text.ElideRight
-                            maximumLineCount: 1
+                }
+                ActionButton {
+                    visible: root.ext.isLocal ?? false
+                    buttonText: Translation.tr("Reload")
+                    onClicked: ExtensionManager.reinstallLocalExtension(root.ext.id)
+                }
+                ActionButton {
+                    visible: root.hasConfigSchema
+                    buttonText: Translation.tr("Reset to defaults")
+                    onClicked: ExtensionManager.resetExtensionConfig(root.ext.id)
+                }
+                ActionButton {
+                    // Reading the repo needs nothing running, so this one
+                    // stays live with extensions off.
+                    enabled: true
+                    visible: (root.ext.htmlUrl || root.ext.repoUrl || "").length > 0
+                    buttonText: Translation.tr("Repository")
+                    onClicked: Qt.openUrlExternally(root.ext.htmlUrl || root.ext.repoUrl)
+                }
+                Item { Layout.fillWidth: true }
+                // Removing deletes the clone and the extension's settings, so
+                // it asks twice, and it stands apart from the rest.
+                ActionButton {
+                    buttonText: root.confirmRemove ? Translation.tr("Confirm remove") : Translation.tr("Remove")
+                    tone: "error"
+                    onClicked: {
+                        if (!root.confirmRemove) {
+                            root.confirmRemove = true
+                            disarmTimer.restart()
+                            return
                         }
-
-                        RippleButton {
-                            visible: hasConfigSchema
-                            implicitHeight: 28
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colSecondaryContainer
-                            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                text: Translation.tr("Reset to defaults")
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnSecondaryContainer
-                            }
-
-                            onClicked: ExtensionManager.resetExtensionConfig(ext.id)
-                        }
-
-                        RippleButton {
-                            implicitHeight: 28
-                            padding: 10
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colSecondaryContainer
-                            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                            visible: ext.repoUrl && ext.repoUrl.length > 0 && !ext.isLocal
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                text: updateChecking ? "..." : (updateAvailable ? Translation.tr("Update") : Translation.tr("Check for updates"))
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnSecondaryContainer
-                            }
-                            onClicked: {
-                                if (updateAvailable) {
-                                    ExtensionManager.updateExtension(ext.id)
-                                } else {
-                                    ExtensionManager.checkUpdate(ext.id)
-                                }
-                            }
-                        }
-
-                        RippleButton {
-                            implicitHeight: 28
-                            padding: 10
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colTertiaryContainer
-                            colBackgroundHover: Appearance.colors.colTertiaryContainerHover
-                            visible: ext.isLocal
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                text: Translation.tr("Reload")
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnTertiaryContainer
-                            }
-                            onClicked: ExtensionManager.reinstallLocalExtension(ext.id)
-                        }
-
-                        RippleButton {
-                            implicitHeight: 28
-                            padding: 10
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colErrorContainer
-                            colBackgroundHover: Appearance.colors.colErrorContainerHover
-                            contentItem: StyledText {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                text: Translation.tr("Remove")
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colOnErrorContainer
-                            }
-                            onClicked: ExtensionManager.uninstallExtension(ext.id)
-                        }
+                        ExtensionManager.uninstallExtension(root.ext.id)
                     }
                 }
             }
         }
+    }
+
+    Timer {
+        id: disarmTimer
+        interval: 4000
+        onTriggered: root.confirmRemove = false
+    }
+
+    component ActionButton: DialogButton {
+        property string tone: "secondary"
+        enabled: Config.options.extensions.enable
+        implicitHeight: 32
+        colBackground: tone === "primary" ? Appearance.colors.colPrimaryContainer
+            : tone === "error" ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer
+        colBackgroundHover: tone === "primary" ? Appearance.colors.colPrimaryContainerHover
+            : tone === "error" ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSecondaryContainerHover
+        colRipple: tone === "primary" ? Appearance.colors.colPrimaryContainerActive
+            : tone === "error" ? Appearance.colors.colErrorContainerActive : Appearance.colors.colSecondaryContainerActive
+        colEnabled: tone === "primary" ? Appearance.colors.colOnPrimaryContainer
+            : tone === "error" ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSecondaryContainer
+        // The 0.4 opacity is the disabled state; DialogButton's outline
+        // text on top of it dimmed these twice.
+        colDisabled: colEnabled
     }
 }
