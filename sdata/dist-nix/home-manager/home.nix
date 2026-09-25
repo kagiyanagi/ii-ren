@@ -117,6 +117,7 @@ quickshell, home_attrs, ... }:
       kdePackages.bluedevil #bluedevil
       #gnome-keyring #gnome-keyring (TODO: Install via system PM instead; should install via nix in future when authentication problem fixed)
       networkmanager #networkmanager
+      iw #iw
       kdePackages.plasma-nm #plasma-nm
       #polkit-kde-agent (TODO: Install via system PM instead; should install via nix in future when authentication problem fixed)
       kdePackages.dolphin #dolphin

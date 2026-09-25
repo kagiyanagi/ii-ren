@@ -1662,6 +1662,11 @@ Singleton {
 
             property JsonObject networking: JsonObject {
                 property string userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+                // The switch in the Wi-Fi dialog. Off only hides it: the last
+                // choice stays in NetworkManager's config.
+                property JsonObject wifiPowerSave: JsonObject {
+                    property bool enable: true
+                }
             }
 
             property JsonObject notifications: JsonObject {

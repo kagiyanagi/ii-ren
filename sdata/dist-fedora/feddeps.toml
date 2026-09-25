@@ -96,6 +96,7 @@ packages = [
   "bluedevil",
   "gnome-keyring",
   "NetworkManager",
+  "iw",
   "plasma-nm",
   "polkit-kde",
   "dolphin",

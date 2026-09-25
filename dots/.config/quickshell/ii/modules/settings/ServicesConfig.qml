@@ -270,6 +270,18 @@ ContentPage {
         icon: "cell_tower"
         title: Translation.tr("Networking")
 
+        ConfigSwitch {
+            buttonIcon: "energy_savings_leaf"
+            text: Translation.tr("Wi-Fi power saving switch")
+            checked: Config.options.networking.wifiPowerSave.enable
+            onCheckedChanged: {
+                Config.options.networking.wifiPowerSave.enable = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Shows a switch in the Wi-Fi dialog to choose between saving battery and full speed. Turning this off only hides it: the last choice stays applied.")
+            }
+        }
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("User agent (for services that require it)")

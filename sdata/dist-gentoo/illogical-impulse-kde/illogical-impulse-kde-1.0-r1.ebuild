@@ -16,6 +16,7 @@ RDEPEND="
 	kde-plasma/bluedevil
 	gnome-base/gnome-keyring
 	net-misc/networkmanager
+	net-wireless/iw
 	kde-plasma/plasma-nm
 	kde-plasma/polkit-kde-agent
 	kde-apps/dolphin

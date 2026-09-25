@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import qs.modules.common
+import qs.modules.common.functions
 import qs.services.network
 
 /**
@@ -49,6 +50,12 @@ Singleton {
     property double hotspotRxBytes: 0
     property double hotspotTxBytes: 0
     property string hotspotDevice: ""
+
+    // "on"/"off" as the kernel reports it, "" with no Wi-Fi interface to ask.
+    // Not a Config option: the choice is kept in NetworkManager's config, so it
+    // holds before the shell starts and after it dies (see the script).
+    property string wifiPowerSave: ""
+    readonly property string wifiPowerSaveScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/network/wifi-powersave.sh`)
 
     property string materialSymbol: root.ethernet
         ? "lan"
@@ -108,6 +115,18 @@ Singleton {
             "NEW_SEC": security
         };
         applyHotspotConfigProc.running = true;
+    }
+
+    function fetchWifiPowerSave(): void {
+        wifiPowerSaveGetProc.running = true;
+    }
+
+    function setWifiPowerSave(enabled: bool): void {
+        // Shown at once; the re-read on exit takes it back if the prompt was cancelled.
+        root.wifiPowerSave = enabled ? "on" : "off";
+        // Only the root-owned copy runs without a password, so a changed script
+        // asks once to reinstall itself.
+        wifiPowerSaveSetProc.exec(["sh", "-c", 'cmp -s "$0" /usr/local/bin/ii-wifi-powersave || pkexec "$0" install; exec pkexec /usr/local/bin/ii-wifi-powersave "$1"', root.wifiPowerSaveScript, root.wifiPowerSave]);
     }
 
     function rescanWifi(): void {
@@ -186,6 +205,19 @@ Singleton {
             connectProc.running = false
             connectProc.running = true
         }
+    }
+
+    Process {
+        id: wifiPowerSaveGetProc
+        command: [root.wifiPowerSaveScript, "get"]
+        stdout: StdioCollector {
+            onStreamFinished: root.wifiPowerSave = text.trim()
+        }
+    }
+
+    Process {
+        id: wifiPowerSaveSetProc
+        onExited: wifiPowerSaveGetProc.running = true
     }
 
     Process {

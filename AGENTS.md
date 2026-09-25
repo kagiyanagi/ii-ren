@@ -311,6 +311,19 @@ you touched; they are the only automated gate.
   keypress from closing every window. Last, it runs the logind parse against real `busctl`
   output: `CanHibernate` is `na` on the machine this was written on, and the Hibernate
   tile closed the menu and did nothing
+- `python3 tools/check-wifi-powersave.py` — the Wi-Fi dialog's power-saving switch reads the
+  adapter that is connected and writes the value it shows. `scripts/network/wifi-powersave.sh`
+  keeps the choice in NetworkManager's config rather than the shell's, so it holds across
+  shell restarts, reboots and reconnects, and sets it live with `iw`, since NM cannot reapply
+  it to an active connection. The script installs a root-owned copy of itself that polkit
+  lets the active session run without a password, and writes a TLP drop-in where TLP is
+  installed, since TLP re-sets power save on every charger change. `get` prints nothing, which
+  greys the switch out, wherever a flip could not take: no `pkexec`, no station, NM stopped or
+  not managing the adapter, or a driver without power save. Nothing that breaks here shows:
+  `iw dev` also lists P2P and AP interfaces, NM's 2 means *disable* and 3 means *enable*, a copy whose path drifts from the
+  policy asks for the password on every flip, and a `Switch` that toggles itself breaks its
+  `checked` binding, so a cancelled prompt goes on looking applied. It runs `get` against a
+  fake `iw` and pins the rest
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

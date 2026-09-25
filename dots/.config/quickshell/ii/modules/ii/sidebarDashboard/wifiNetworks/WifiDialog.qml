@@ -12,6 +12,8 @@ WindowDialog {
     id: root
     backgroundHeight: 600
 
+    Component.onCompleted: if (Config.options.networking.wifiPowerSave.enable) Network.fetchWifiPowerSave()
+
     WindowDialogTitle {
         text: Translation.tr("Connect to Wi-Fi")
     }
@@ -41,6 +43,64 @@ WindowDialog {
                 required property WifiAccessPoint modelData
                 wifiNetwork: modelData
                 width: ListView.view.width
+            }
+        }
+    }
+    // The network rows' card and row, so it reads as part of this list rather
+    // than a settings row dropped in under it. A plain Rectangle: nothing scrolls
+    // under these corners, and the row's own mask already rounds its fill.
+    Rectangle {
+        visible: Config.options.networking.wifiPowerSave.enable
+        Layout.fillWidth: true
+        implicitHeight: powerSaveRow.implicitHeight
+        radius: Appearance.rounding.large
+        color: Appearance.colors.colSurfaceContainerHigh
+
+        DialogListItem {
+            id: powerSaveRow
+            readonly property bool saving: Network.wifiPowerSave === "on"
+            anchors.fill: parent
+            buttonRadius: Appearance.rounding.large
+            enabled: Network.wifiPowerSave !== ""
+            onClicked: Network.setWifiPowerSave(!saving)
+
+            contentItem: RowLayout {
+                spacing: 10
+                MaterialSymbol {
+                    iconSize: Appearance.font.pixelSize.larger
+                    text: "energy_savings_leaf"
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    StyledText {
+                        Layout.fillWidth: true
+                        color: Appearance.colors.colOnSurfaceVariant
+                        elide: Text.ElideRight
+                        text: Translation.tr("Power saving")
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                        elide: Text.ElideRight
+                        // "" is no station to set it on: no adapter, or the hotspot has it.
+                        text: !powerSaveRow.enabled ? Translation.tr("Unavailable")
+                            : powerSaveRow.saving ? Translation.tr("Saves battery, adds latency")
+                            : Translation.tr("Full speed, uses more battery")
+                    }
+                }
+                StyledSwitch {
+                    // The row owns the state: a switch that toggled itself would
+                    // break this binding, and a cancelled prompt could not undo it.
+                    checkable: false
+                    checked: powerSaveRow.saving
+                    down: powerSaveRow.down
+                    focusPolicy: Qt.NoFocus
+                    opacity: 1 // the row already dims to 0.4 when disabled (3.1)
+                    onClicked: powerSaveRow.clicked()
+                }
             }
         }
     }
