@@ -39,6 +39,7 @@ Singleton {
 
     property bool hotspotSupported: false
     property bool hotspotToggled: false
+    readonly property bool hotspotSwitching: startHotspotProc.running || stopHotspotProc.running
     property string hotspotName: ""
     property string hotspotSsid: ""
 
