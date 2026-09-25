@@ -5,14 +5,15 @@ import QtQuick.Layouts
 
 // The button pair both tabs share, so switching tabs moves and restyles
 // nothing under the pointer. `filled` is start/pause, the rest is neutral.
+// Compact (30-32px, DESIGN.md 9): a standard 40px pill outweighed the ring.
 RippleButton {
     id: root
     property string iconName
     property bool filled
     readonly property color colContent: filled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2
 
-    Layout.fillWidth: true
-    implicitHeight: 40
+    implicitHeight: 32
+    horizontalPadding: 16
     buttonRadius: Appearance.rounding.full
     colBackground: filled ? Appearance.colors.colPrimary : Appearance.colors.colLayer2
     colBackgroundHover: filled ? Appearance.colors.colPrimaryHover : Appearance.colors.colLayer2Hover
@@ -31,14 +32,14 @@ RippleButton {
 
             MaterialSymbol {
                 text: root.iconName
-                iconSize: Appearance.font.pixelSize.larger
+                iconSize: Appearance.font.pixelSize.large
                 fill: 1
                 color: root.colContent
             }
             StyledText {
                 Layout.fillWidth: true
                 text: root.buttonText
-                font.pixelSize: Appearance.font.pixelSize.normal
+                font.pixelSize: Appearance.font.pixelSize.small
                 color: root.colContent
             }
         }

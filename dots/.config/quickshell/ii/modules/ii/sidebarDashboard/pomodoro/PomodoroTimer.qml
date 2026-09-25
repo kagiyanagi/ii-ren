@@ -77,12 +77,10 @@ Item {
         RowLayout {
             id: controls
             anchors {
-                left: parent.left
-                right: parent.right
+                horizontalCenter: parent.horizontalCenter
                 bottom: parent.bottom
             }
             spacing: 8
-            uniformCellSizes: true
 
             TimerButton {
                 iconName: "restart_alt"

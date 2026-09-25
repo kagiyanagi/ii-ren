@@ -1,4 +1,5 @@
 import "../../bar/duration.js" as Duration
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -157,12 +158,10 @@ Item {
         RowLayout {
             id: controls
             anchors {
-                left: parent.left
-                right: parent.right
+                horizontalCenter: parent.horizontalCenter
                 bottom: parent.bottom
             }
             spacing: 8
-            uniformCellSizes: true
 
             TimerButton {
                 iconName: TimerService.stopwatchRunning ? "flag" : "restart_alt"

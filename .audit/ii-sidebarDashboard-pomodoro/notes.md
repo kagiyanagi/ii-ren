@@ -36,4 +36,21 @@ animating from it to `small` would sit clamped and then snap at the very end.
   That move is now `elementMove` (spatial, slight overshoot). It used to be
   `elementMoveFast`, an effects curve.
 - The play/pause pill squares to `rounding.small` while running and rounds again on pause,
-  on RippleButton's `elementMoveSmall`. Check that it is not too subtle at 40px.
+  on RippleButton's `elementMoveSmall`. Check that it is not too subtle at 32px.
+
+**Follow-up, same day: compact buttons and a frame clock that had never run.**
+- The owner found the 40px full-width pair too heavy against the ring. The buttons are now
+  the compact 32px size (DESIGN.md 9, and 32 is the minimum hit area), with `small` text
+  and a `large` icon. They sit as a centred pair sized to their labels. `uniformCellSizes`
+  was tried for equal widths, but it elided "Reset" to "Res…", so it was dropped.
+- `GlobalStates` is `import qs` (shell root), not `qs.modules.common`. AGENTS.md said
+  otherwise and has been corrected. In the first commit the frame clock's `running`
+  guard threw a ReferenceError whenever the stopwatch ran, so it came out undefined, and
+  the readout quietly showed the 100ms service value. The shots in that commit looked
+  fine because 100ms samples also land on odd hundredths. A 40ms burst of `grim` frames
+  is what tells the two apart: frame steps (.05, .09, .12), not 0.1s steps.
+- `stopwatchResume` set `running` before `start`. So the clock's sample on the running
+  edge read the last run's start for one frame, and the first frame after Start showed a
+  stale time (00:22.84 once, 04:51 another time). Start is written first now.
+- **Driving it:** a shell restart puts the inner tab back on Timer. A click aimed at the
+  stopwatch's Start then starts the countdown instead, so screenshot before every click.

@@ -34,7 +34,14 @@ for fn in ("stopwatchPause", "stopwatchRecordLap"):
 running = re.search(r"FrameAnimation \{.*?running: ([^\n]+)", stopwatch, re.S).group(1)
 for guard in ("TimerService.stopwatchRunning", "GlobalStates.sidebarRightOpen", "SwipeView.isCurrentItem"):
     assert guard in running, f"frame clock must be gated on {guard}"
+# GlobalStates is `import qs`, not qs.modules.common. Without it the guard throws, `running`
+# is undefined, and the readout silently falls back to the 100ms service value.
+assert re.search(r"^import qs$", stopwatch, re.M), "Stopwatch.qml reads GlobalStates and must `import qs`"
 assert "Timer {" not in stopwatch, "no Timer in the stopwatch view -- it has a frame clock"
+
+resume = re.search(r"function stopwatchResume\(\) \{(.*?)\n    \}", service, re.S).group(1)
+assert resume.index("stopwatch.start =") < resume.index("stopwatch.running = true"), \
+    "write start before running: the frame clock samples on the running edge"
 
 # L used to record a lap from either tab, paused or not, pushing a stale time.
 assert re.search(r"Key_L && tabBar\.currentIndex === 1 && TimerService\.stopwatchRunning", widget)

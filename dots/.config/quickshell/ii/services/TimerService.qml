@@ -110,8 +110,10 @@ Singleton {
 
     function stopwatchResume() {
         if (stopwatchTime === 0) Persistent.states.timer.stopwatch.laps = [];
-        Persistent.states.timer.stopwatch.running = true;
+        // Start before running: anything that samples on the running edge
+        // would otherwise read the last run's start for a frame.
         Persistent.states.timer.stopwatch.start = getCurrentTimeIn10ms() - stopwatchTime;
+        Persistent.states.timer.stopwatch.running = true;
     }
 
     function stopwatchReset() {

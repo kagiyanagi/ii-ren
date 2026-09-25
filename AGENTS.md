@@ -420,7 +420,7 @@ But focus on the ii (Illogical-Impulse) panel family when making any changes unl
 ### Core Singletons (`modules/common/`)
 
 - **`Config.qml`** — All shell options. Backed by `FileView` + `JsonAdapter` at `~/.config/illogical-impulse/config.json`. Has `readWriteDelay` (default 75ms) to batch writes. Check `Config.ready` before accessing options.
-- **`GlobalStates.qml`** — Centralized UI state booleans (`sidebarLeftOpen`, `sidebarRightOpen`, `overlayOpen`, `overviewOpen`, etc.). Also has `effectiveLeftOpen`/`effectiveRightOpen` computed properties that respect `Config.options.sidebar.position`.
+- **`GlobalStates.qml`** (shell root, `import qs` — not this directory) — Centralized UI state booleans (`sidebarLeftOpen`, `sidebarRightOpen`, `overlayOpen`, `overviewOpen`, etc.). Also has `effectiveLeftOpen`/`effectiveRightOpen` computed properties that respect `Config.options.sidebar.position`.
 - **`Directories.qml`** — XDG paths and internal config paths. All paths use `file://` protocol except noted "without file://" ones. Use `FileUtils.trimFileProtocol()` to strip.
 - **`Appearance.qml`** — Colors, fonts, rounding, animation curves
 - **`Icons.qml`**, **`Images.qml`** — Icon/image resources
