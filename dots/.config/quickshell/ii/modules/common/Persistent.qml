@@ -150,7 +150,8 @@ Singleton {
                 }
                 property JsonObject stopwatch: JsonObject {
                     property bool running: false
-                    property int start: 0
+                    // In 10ms ticks since the epoch, which passed int's range in 1970.
+                    property real start: 0
                     property list<var> laps: []
                 }
             }

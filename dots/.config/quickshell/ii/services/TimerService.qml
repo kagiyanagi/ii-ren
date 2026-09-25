@@ -21,7 +21,7 @@ Singleton {
 
     property bool stopwatchRunning: Persistent.states.timer.stopwatch.running
     property int stopwatchTime: 0
-    property int stopwatchStart: Persistent.states.timer.stopwatch.start
+    property real stopwatchStart: Persistent.states.timer.stopwatch.start
     property var stopwatchLaps: Persistent.states.timer.stopwatch.laps
 
     // Config durations can change at any time; while idle the displayed time is a
@@ -86,9 +86,11 @@ Singleton {
         stopwatchTime = getCurrentTimeIn10ms() - stopwatchStart;
     }
 
+    // The bar and the clock popup show whole seconds, so this only has to be
+    // close; the sidebar's centiseconds run off their own FrameAnimation.
     Timer {
         id: stopwatchTimer
-        interval: 10
+        interval: 100
         running: root.stopwatchRunning
         repeat: true
         onTriggered: refreshStopwatch()
@@ -102,6 +104,7 @@ Singleton {
     }
 
     function stopwatchPause() {
+        refreshStopwatch();
         Persistent.states.timer.stopwatch.running = false;
     }
 
@@ -118,6 +121,7 @@ Singleton {
     }
 
     function stopwatchRecordLap() {
+        refreshStopwatch();
         Persistent.states.timer.stopwatch.laps.push(stopwatchTime);
     }
 }

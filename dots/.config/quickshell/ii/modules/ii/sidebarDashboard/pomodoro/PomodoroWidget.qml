@@ -34,7 +34,7 @@ Item {
                 TimerService.stopwatchReset()
             }
             event.accepted = true
-        } else if (event.key === Qt.Key_L) { // Record lap with L
+        } else if (event.key === Qt.Key_L && tabBar.currentIndex === 1 && TimerService.stopwatchRunning) { // Record lap with L
             TimerService.stopwatchRecordLap()
             event.accepted = true
         }

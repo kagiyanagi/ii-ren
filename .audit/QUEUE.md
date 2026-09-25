@@ -103,7 +103,7 @@ fenced the same way the twelve `cw-*` rows were.
 | `ii-sidebarDashboard-hotspot` | `modules/ii/sidebarDashboard/hotspot` | sidebarDashboard | 1 | 1 | 309 | `ipc call sidebarRight openDialog Hotspot` | todo | |  |
 | `ii-sidebarDashboard-nightLight` | `modules/ii/sidebarDashboard/nightLight` | sidebarDashboard | 1 | 1 | 228 | `ipc call sidebarRight openDialog NightLight` | todo | |  |
 | `ii-sidebarDashboard-notifications` | `modules/ii/sidebarDashboard/notifications` | sidebarDashboard | 1 | 1 | 74 | ? | todo | |  |
-| `ii-sidebarDashboard-pomodoro` | `modules/ii/sidebarDashboard/pomodoro` | sidebarDashboard | 1 | 3 | 373 | ? | todo | |  |
+| `ii-sidebarDashboard-pomodoro` | `modules/ii/sidebarDashboard/pomodoro` | sidebarDashboard | 1 | 4 | 376 | `ipc call sidebarRight open` → Timer rail tab | done | 2026-09-25 | one `TimerButton` pair on both tabs, start/pause filled on the right and squaring while running; no more error-red Reset. The stopwatch's 10ms service timer is now 100ms plus a frame clock that runs only while it is seen; its start had overflowed int. `check-pomodoro.py` |
 | `ii-sidebarDashboard-quickToggles` | `modules/ii/sidebarDashboard/quickToggles` | sidebarDashboard | 1 | 47 | 4723 | ? | todo | |  |
 | `ii-sidebarDashboard-todo` | `modules/ii/sidebarDashboard/todo` | sidebarDashboard | 1 | 3 | 367 | ? | todo | |  |
 | `ii-sidebarDashboard-volumeMixer` | `modules/ii/sidebarDashboard/volumeMixer` | sidebarDashboard | 1 | 3 | 233 | `ipc call sidebarRight openDialog AudioOutput` | todo | |  |

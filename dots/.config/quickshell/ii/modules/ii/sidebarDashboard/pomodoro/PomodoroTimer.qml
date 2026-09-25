@@ -2,29 +2,23 @@ import "../../bar/duration.js" as Duration
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import Qt5Compat.GraphicalEffects
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell
 
 Item {
     id: root
 
-    implicitHeight: contentColumn.implicitHeight
-    implicitWidth: contentColumn.implicitWidth
-
-    ColumnLayout {
-        id: contentColumn
-        anchors.fill: parent
-        spacing: 0
+    Item {
+        anchors {
+            fill: parent
+            rightMargin: 12
+            bottomMargin: 12
+        }
 
         CircularProgress {
-            Layout.alignment: Qt.AlignHCenter
+            anchors.centerIn: ringArea
             lineWidth: 8
-            value: {
-                return TimerService.pomodoroSecondsLeft / TimerService.focusTime;
-            }
+            value: TimerService.pomodoroSecondsLeft / TimerService.focusTime
             implicitSize: 200
             enableAnimation: true
 
@@ -39,7 +33,10 @@ Item {
                     id: timeInput
                     Layout.alignment: Qt.AlignHCenter
                     text: Duration.format(TimerService.pomodoroSecondsLeft)
-                    font.pixelSize: 40
+                    font.pixelSize: Appearance.font.pixelSize.huge * 2
+                    font.family: Appearance.font.family.numbers
+                    font.variableAxes: ({})
+                    font.features: ({ "tnum": 1 })
                     color: Appearance.m3colors.m3onSurface
                     horizontalAlignment: Text.AlignHCenter
                     readOnly: TimerService.pomodoroRunning
@@ -60,51 +57,45 @@ Item {
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     visible: !TimerService.pomodoroRunning
-                    text: Translation.tr("Click to set")
-                    font.pixelSize: Appearance.font.pixelSize.normal
+                    text: TimerService.pomodoroSecondsLeft === TimerService.focusTime ? Translation.tr("Click to set") : Translation.tr("Paused")
+                    font.pixelSize: Appearance.font.pixelSize.small
                     color: Appearance.colors.colSubtext
                 }
             }
+        }
 
+        Item {
+            id: ringArea
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                bottom: controls.top
+            }
         }
 
         RowLayout {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 10
-
-            RippleButton {
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    text: TimerService.pomodoroRunning ? Translation.tr("Pause") : (TimerService.pomodoroSecondsLeft === TimerService.focusTime) ? Translation.tr("Start") : Translation.tr("Resume")
-                    color: TimerService.pomodoroRunning ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnPrimary
-                }
-                implicitHeight: 35
-                implicitWidth: 90
-                font.pixelSize: Appearance.font.pixelSize.larger
-                onClicked: TimerService.togglePomodoro()
-                colBackground: TimerService.pomodoroRunning ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary
-                colBackgroundHover: TimerService.pomodoroRunning ? Appearance.colors.colSecondaryContainer : Appearance.colors.colPrimary
+            id: controls
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
             }
+            spacing: 8
+            uniformCellSizes: true
 
-            RippleButton {
-                implicitHeight: 35
-                implicitWidth: 90
-
+            TimerButton {
+                iconName: "restart_alt"
+                buttonText: Translation.tr("Reset")
+                enabled: TimerService.pomodoroRunning || TimerService.pomodoroSecondsLeft < TimerService.focusTime
                 onClicked: TimerService.resetPomodoro()
-                enabled: TimerService.pomodoroSecondsLeft < TimerService.focusTime
-
-                font.pixelSize: Appearance.font.pixelSize.larger
-                colBackground: Appearance.colors.colErrorContainer
-                colBackgroundHover: Appearance.colors.colErrorContainerHover
-                colRipple: Appearance.colors.colErrorContainerActive
-
-                contentItem: StyledText {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    text: Translation.tr("Reset")
-                    color: Appearance.colors.colOnErrorContainer
-                }
+            }
+            TimerButton {
+                filled: true
+                iconName: TimerService.pomodoroRunning ? "pause" : "play_arrow"
+                buttonText: TimerService.pomodoroRunning ? Translation.tr("Pause") : TimerService.pomodoroSecondsLeft === TimerService.focusTime ? Translation.tr("Start") : Translation.tr("Resume")
+                buttonRadius: TimerService.pomodoroRunning ? Appearance.rounding.small : Math.min(Appearance.rounding.full, implicitHeight / 2)
+                onClicked: TimerService.togglePomodoro()
             }
         }
     }

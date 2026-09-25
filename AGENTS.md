@@ -365,6 +365,12 @@ you touched; they are the only automated gate.
   start of every enter and the end of every exit were never drawn. It hangs off a zero-size
   pivot at the day's top centre, so the scale's origin is exact even when the card is
   shifted inside the window. The check lifts that shift out of the QML and sweeps it
+- `python3 tools/check-pomodoro.py` — the sidebar stopwatch keeps exact time without a
+  100Hz timer. Its start is 10ms epoch ticks, about 1.8e11, and it was a QML `int`. That
+  worked only because two wrapped ints cancel mod 2^32, and a readout computed in doubles
+  shows garbage. The service ticks at 100ms, so Pause and Lap must sample before they
+  store. The frame clock that draws the centiseconds must be gated on the sidebar being
+  open and the tab showing. None of it shows in a screenshot
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
