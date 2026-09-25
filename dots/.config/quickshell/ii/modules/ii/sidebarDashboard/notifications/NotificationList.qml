@@ -97,9 +97,11 @@ Item {
             implicitHeight: 40
             horizontalPadding: 16
             buttonRadius: Appearance.rounding.full
-            colBackgroundHover: Appearance.colors.colLayer2Hover
-            colRipple: Appearance.colors.colLayer2Active
-            colText: Appearance.colors.colOnLayer2
+            // Tonal, like the timer's Reset: disabled colLayer2 on this card is
+            // only a smudge at each end.
+            colBackground: Appearance.colors.colSecondaryContainer
+            colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+            colRipple: Appearance.colors.colSecondaryContainerActive
             materialIcon: "clear_all"
             mainText: Translation.tr("Clear all")
             onClicked: Notifications.discardAllNotifications()

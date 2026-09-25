@@ -54,3 +54,9 @@ animating from it to `small` would sit clamped and then snap at the very end.
   stale time (00:22.84 once, 04:51 another time). Start is written first now.
 - **Driving it:** a shell restart puts the inner tab back on Timer. A click aimed at the
   stopwatch's Start then starts the countdown instead, so screenshot before every click.
+
+**2026-09-25, after review: the neutral button is tonal.** It was `colLayer2`. Reset rests
+disabled, and at 0.4 that is `#1C1E17` on the `#1A1C16` card, so only the pill's antialiased
+ends showed. The owner read it as a gradient at each end. `colSecondaryContainer` at 0.4 is
+about `#2A2F20`, a visible pill. The notification footer's "Clear all" had the same problem
+when empty, and got the same fix.
