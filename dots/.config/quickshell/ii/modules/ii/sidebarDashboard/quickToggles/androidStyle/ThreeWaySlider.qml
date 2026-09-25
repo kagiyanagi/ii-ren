@@ -183,11 +183,16 @@ Item {
         y: root.margin
         x: root.isDraggingKnob ? root.knobDragX : root.targetX
 
-        color: Appearance.colors.colPrimary
+        color: dragArea.pressed ? Appearance.colors.colPrimaryActive
+            : dragArea.containsMouse ? Appearance.colors.colPrimaryHover
+            : Appearance.colors.colPrimary
 
+        Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
         Behavior on x {
             enabled: !root.isDraggingKnob
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
         }
 
         MaterialSymbol {
@@ -199,21 +204,19 @@ Item {
         }
     }
 
+    // preventStealing is what keeps the pager and the panel's scroll off this
+    // drag. It used to also walk every ancestor and assign `interactive` false
+    // and then true, which destroyed their bindings for the rest of the session:
+    // after one tap the panel rubber-banded under any drag, and the pager turned
+    // in edit mode.
     MouseArea {
         id: dragArea
         anchors.fill: parent
         preventStealing: true
+        hoverEnabled: true
         cursorShape: root.isDraggingKnob ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
         onPressed: (mouse) => {
-            // Disable Flickables upwards to prevent sidebar page swiping
-            let p = parent;
-            while (p) {
-                if (p.toString().includes("Flickable") || p.interactive !== undefined) {
-                    p.interactive = false;
-                }
-                p = p.parent;
-            }
             root.isDraggingKnob = true;
             root.knobDragX = Math.max(root.posLeft, Math.min(root.posRight, mouse.x - root.knobSize / 2));
         }
@@ -225,14 +228,6 @@ Item {
         }
 
         onReleased: (mouse) => {
-            // Re-enable parent Flickables
-            let p = parent;
-            while (p) {
-                if (p.toString().includes("Flickable") || p.interactive !== undefined) {
-                    p.interactive = true;
-                }
-                p = p.parent;
-            }
             root.localOverrideIndex = root.hoverIndex;
             overrideResetTimer.restart();
             root.isDraggingKnob = false;
@@ -240,13 +235,6 @@ Item {
         }
 
         onCanceled: {
-            let p = parent;
-            while (p) {
-                if (p.toString().includes("Flickable") || p.interactive !== undefined) {
-                    p.interactive = true;
-                }
-                p = p.parent;
-            }
             root.isDraggingKnob = false;
         }
     }

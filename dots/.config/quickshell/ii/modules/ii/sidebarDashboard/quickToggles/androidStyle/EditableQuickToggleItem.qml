@@ -330,24 +330,32 @@ Item {
         }
     }
 
+    // What a click does in edit mode, on the tile it does it to: a drawer tile is
+    // added, a placed tile is removed. Placed tiles used to say nothing, and the
+    // click that toggles them outside edit mode deletes them in it. It sits inside
+    // the tile's corner: hung 6px outside it, the panel's clip cut it in half on
+    // the right column and the top row.
     Rectangle {
-        id: addBadge
+        id: actionBadge
         width: 20
         height: 20
         radius: Appearance.rounding.full
-        color: Appearance.m3colors.m3success
+        color: root.isUnused ? Appearance.m3colors.m3success : Appearance.colors.colErrorContainer
         anchors.top: parent.top
-        anchors.topMargin: -6
         anchors.right: parent.right
-        anchors.rightMargin: -6
-        visible: root.isUnused
+        opacity: root.target.isDragging || root.resizing ? 0 : 1
+        visible: opacity > 0
         z: 10
+
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
 
         MaterialSymbol {
             anchors.centerIn: parent
-            text: "add"
+            text: root.isUnused ? "add" : "remove"
             iconSize: Appearance.font.pixelSize.small
-            color: Appearance.m3colors.m3onSuccess
+            color: root.isUnused ? Appearance.m3colors.m3onSuccess : Appearance.colors.colOnErrorContainer
         }
     }
 

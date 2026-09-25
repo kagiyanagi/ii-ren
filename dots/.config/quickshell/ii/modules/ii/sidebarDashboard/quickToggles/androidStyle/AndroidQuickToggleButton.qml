@@ -49,7 +49,10 @@ Item {
     property QuickToggleModel toggleModel
     property string name: toggleModel?.name ?? ""
     property string statusText: (toggleModel?.hasStatusText) ? (toggleModel?.statusText || (root.toggled ? Translation.tr("Active") : Translation.tr("Inactive"))) : ""
-    property string tooltipText: toggleModel?.tooltipText ?? ""
+    // The models' tooltips describe the 1x1 tile's click ("click to cycle"). The
+    // three-way slider is not cycled, and its knob shows only an icon, so it
+    // says what it is set to instead.
+    property string tooltipText: root.is3WaySlider ? `${root.name}: ${root.statusText}` : (toggleModel?.tooltipText ?? "")
     property string buttonIcon: toggleModel?.icon ?? "close"
     property bool available: toggleModel?.available ?? true
     property bool toggled: toggleModel?.toggled ?? false
@@ -84,13 +87,14 @@ Item {
     }
     z: root.isDragging ? 100 : 0
 
+    // Spatial and reversible: the edit preview reflows on every pointer move.
     Behavior on x {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
     Behavior on y {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
 
     property real baseWidth: root.baseCellWidth * root.effectiveSizeW + cellSpacing * (root.effectiveSizeW - 1)
@@ -116,10 +120,10 @@ Item {
         y: 0
         
         Behavior on width {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
         Behavior on height {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
         
         width: root.width
@@ -130,7 +134,6 @@ Item {
             if (!root.available && !root.editMode) return 0.4;
             if (root.isUnused) return 0.5;
             if (root.editMode && !root.isDragging) return (!root.available ? 0.4 : 0.9);
-            if (root.isDragging) return 0.95;
             return 1.0;
         }
         z: root.isDragging ? 99 : 1
@@ -243,16 +246,12 @@ Item {
                         }
                     }
 
-                    Loader {
+                    StateOverlay {
                         anchors.fill: parent
-                        active: root.altAction
-                        sourceComponent: Rectangle {
-                            radius: tallIconBg.radius
-                            color: ColorUtils.transparentize(visualButton.colIcon, tallIconMouseArea.containsPress ? 0.88 : tallIconMouseArea.containsMouse ? 0.95 : 1)
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                            }
-                        }
+                        radius: tallIconBg.radius
+                        contentColor: root.toggled ? Appearance.colors.colOnPrimary : visualButton.colIcon
+                        hover: !!root.altAction && tallIconMouseArea.containsMouse
+                        press: !!root.altAction && tallIconMouseArea.containsPress
                     }
                 }
             }
@@ -342,16 +341,12 @@ Item {
                         text: root.buttonIcon
                     }
 
-                    Loader {
+                    StateOverlay {
                         anchors.fill: parent
-                        active: root.altAction
-                        sourceComponent: Rectangle {
-                            radius: iosIconBackground.radius
-                            color: ColorUtils.transparentize(visualButton.colIcon, iosIconMouseArea.containsPress ? 0.88 : iosIconMouseArea.containsMouse ? 0.95 : 1)
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                            }
-                        }
+                        radius: iosIconBackground.radius
+                        contentColor: root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3
+                        hover: !!root.altAction && iosIconMouseArea.containsMouse
+                        press: !!root.altAction && iosIconMouseArea.containsPress
                     }
                 }
             }
@@ -436,7 +431,7 @@ Item {
                     }
 
                     Behavior on radius {
-                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
                     }
                     Behavior on color {
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -459,16 +454,12 @@ Item {
                         text: root.buttonIcon
                     }
 
-                    Loader {
+                    StateOverlay {
                         anchors.fill: parent
-                        active: (root.isWide && root.altAction)
-                        sourceComponent: Rectangle {
-                            radius: iconBackground.radius
-                            color: ColorUtils.transparentize(visualButton.colIcon, iconMouseArea.containsPress ? 0.88 : iconMouseArea.containsMouse ? 0.95 : 1)
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                            }
-                        }
+                        radius: iconBackground.radius
+                        contentColor: visualButton.colIcon
+                        hover: root.isWide && !!root.altAction && iconMouseArea.containsMouse
+                        press: root.isWide && !!root.altAction && iconMouseArea.containsPress
                     }
                 }
             }

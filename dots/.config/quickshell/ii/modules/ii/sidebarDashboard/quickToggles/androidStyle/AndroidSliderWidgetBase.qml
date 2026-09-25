@@ -49,13 +49,14 @@ Item {
     }
     z: root.isDragging ? 100 : 0
 
+    // Spatial and reversible: the edit preview reflows on every pointer move.
     Behavior on x {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
     Behavior on y {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
 
     property string tooltipText: ""
@@ -100,10 +101,10 @@ Item {
         y: 0
         
         Behavior on width {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
         Behavior on height {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
         
         width: root.width
@@ -113,7 +114,6 @@ Item {
         opacity: {
             if (root.isUnused) return 0.5;
             if (root.editMode && !root.isDragging) return 0.9;
-            if (root.isDragging) return 0.95;
             return 1.0;
         }
         z: root.isDragging ? 99 : 1
@@ -152,7 +152,7 @@ Item {
                 }
                 onMoved: root.moved(value)
 
-                // Keeps a drag on the slider from flicking the panel
+                // Right-click opens the tile's dialog; the slider keeps the left button
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton
@@ -236,7 +236,7 @@ Item {
                 }
                 onMoved: root.moved(value)
 
-                // Keeps a drag on the slider from flicking the panel
+                // Right-click opens the tile's dialog; the slider keeps the left button
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.RightButton

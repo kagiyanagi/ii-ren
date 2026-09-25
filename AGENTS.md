@@ -395,6 +395,17 @@ you touched; they are the only automated gate.
   `onIntensityChanged`, which applied again. Both paths share one debounce now. The check
   evaluates the status line under node, which is the only place the dialog says the schedule
   has an effect on while its switch is off
+- `python3 tools/check-quick-toggles.py` — the Android quick-toggle grid is centred, and
+  nothing in it breaks the panel it sits in. `baseCellWidth` subtracted a gap per column,
+  where a row has one gap fewer, so the grid stopped 12px from the card's right edge and
+  6px from its left. The check runs that expression under node, with the real packer.
+  The rest has no symptom in a still frame. The three-way slider set `interactive` false,
+  then true, on every ancestor, which destroys the bindings it overwrites: after one tap
+  the panel rubber-banded under any drag for the rest of the session. The panel's height
+  animated twice, one `Behavior` chasing the other. Tile geometry ran on the effects spec,
+  and the state films were at 0.05/0.12. The Bluetooth icon keyed its colour on a service
+  flag and never looked on. The edit toolbar's `+` kept square outer corners on one page
+  and on the last one. The page-dot click handler is swept over every pixel of the row
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

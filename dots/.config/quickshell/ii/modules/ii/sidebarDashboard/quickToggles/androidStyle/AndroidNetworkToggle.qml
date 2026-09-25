@@ -146,9 +146,18 @@ AndroidQuickToggleButton {
                         id: netWideShape
                         anchors.fill: parent
                         shapeString: "Cookie7Sided"
-                        color: root.toggled
+                        // Same as the tall tile: the film is mixed into the fill, since
+                        // a Rectangle over a ShapeCanvas paints a square (3.1, 10.8).
+                        readonly property color colBase: root.toggled
                             ? Appearance.colors.colPrimary
                             : Appearance.colors.colLayer3
+                        readonly property color colFilm: root.toggled
+                            ? Appearance.colors.colOnPrimary
+                            : Appearance.colors.colOnLayer3
+                        color: !root.altAction ? colBase
+                            : netWideIconMouseArea.containsPress ? ColorUtils.mix(colFilm, colBase, 0.10)
+                            : netWideIconMouseArea.containsMouse ? ColorUtils.mix(colFilm, colBase, 0.08)
+                            : colBase
 
                         Behavior on color {
                             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -180,20 +189,6 @@ AndroidQuickToggleButton {
                         }
                     }
 
-                        Loader {
-                        anchors.fill: parent
-                        active: root.altAction
-                        sourceComponent: Rectangle {
-                            radius: netWideShape.radius
-                            color: ColorUtils.transparentize(
-                                root.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3,
-                                netWideIconMouseArea.containsPress ? 0.88 : netWideIconMouseArea.containsMouse ? 0.95 : 1
-                            )
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                            }
-                        }
-                    }
                 }
             }
 

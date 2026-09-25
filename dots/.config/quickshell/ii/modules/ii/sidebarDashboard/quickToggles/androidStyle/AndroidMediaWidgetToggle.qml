@@ -53,13 +53,14 @@ Item {
     }
     z: root.isDragging ? 100 : 0
 
+    // Spatial and reversible: the edit preview reflows on every pointer move.
     Behavior on x {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
     Behavior on y {
         enabled: root.hasExplicitGeometry && !root.isDragging
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(root)
     }
 
     property string tooltipText: {
@@ -146,10 +147,10 @@ Item {
         y: 0
         
         Behavior on width {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
         Behavior on height {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(visualButton)
+            animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(visualButton)
         }
 
         width: root.width
@@ -161,8 +162,6 @@ Item {
                 return 0.5;
             if (root.editMode && !root.isDragging)
                 return 0.9;
-            if (root.isDragging)
-                return 0.95;
             return 1.0;
         }
         z: root.isDragging ? 99 : 1
@@ -268,7 +267,7 @@ Item {
                         implicitWidth: 36
                         implicitHeight: 36
                         Layout.alignment: Qt.AlignVCenter
-                        buttonRadius: 12
+                        buttonRadius: Appearance.rounding.small
                         colBackground: Appearance.colors.colPrimary
                         colRipple: Appearance.colors.colPrimaryActive
                         contentItem: MaterialSymbol {
@@ -362,7 +361,7 @@ Item {
                         RippleButton {
                             implicitWidth: 32
                             implicitHeight: 32
-                            buttonRadius: 16
+                            buttonRadius: Appearance.rounding.full
                             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                             contentItem: MaterialSymbol {
                                 text: "skip_previous"
@@ -375,7 +374,7 @@ Item {
                         RippleButton {
                             implicitWidth: 44
                             implicitHeight: 44
-                            buttonRadius: 22
+                            buttonRadius: Appearance.rounding.full
                             colBackground: Appearance.colors.colPrimary
                             colRipple: Appearance.colors.colPrimaryActive
                             contentItem: MaterialSymbol {
@@ -390,7 +389,7 @@ Item {
                         RippleButton {
                             implicitWidth: 32
                             implicitHeight: 32
-                            buttonRadius: 16
+                            buttonRadius: Appearance.rounding.full
                             colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                             contentItem: MaterialSymbol {
                                 text: "skip_next"

@@ -39,8 +39,9 @@ AbstractQuickPanel {
 
     property real spacing: 6
     property real padding: 6
+    // A row of `columns` tiles has one gap fewer than it has tiles.
     readonly property real baseCellWidth: {
-        const availableWidth = root.width - (root.padding * 2) - (root.spacing * (root.columns));
+        const availableWidth = root.width - (root.padding * 2) - (root.spacing * (root.columns - 1));
         return availableWidth / root.columns;
     }
     readonly property real baseCellHeight: 56
@@ -230,12 +231,9 @@ AbstractQuickPanel {
             Item {
                 id: flickableContainer
                 width: parent.width
+                // Not animated: the panel's own implicitHeight is, and a Behavior
+                // here as well made that one chase a target moving every frame.
                 height: root.currentContentHeight
-
-                Behavior on height {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-
                 clip: true
 
                 Flickable {
@@ -280,8 +278,12 @@ AbstractQuickPanel {
                         id: snapAnimation
                         target: flickable
                         property: "contentX"
+                        // A panel-width page turn is a curve-based surface move (2.4):
+                        // decelerating, because a spatial curve would overshoot past
+                        // the last page into blank space.
                         duration: Appearance.animation.elementMoveSmall.duration
-                        easing.type: Easing.OutQuint
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
                     }
 
                     Row {
@@ -336,37 +338,61 @@ AbstractQuickPanel {
                 }
             }
 
-            Row {
+            Item {
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 6
+                implicitWidth: pageDots.implicitWidth
+                implicitHeight: pageDots.implicitHeight
                 visible: root.displayPages.length > 1
 
-                Repeater {
-                    model: root.displayPages.length
-                    delegate: Rectangle {
-                        required property int index
-                        width: root.currentPage === index ? 16 : 8
-                        height: 8
-                        radius: height / 2
-                        color: root.currentPage === index ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
-                        opacity: root.currentPage === index ? 1.0 : 0.5
+                Row {
+                    id: pageDots
+                    spacing: 6
 
-                        Behavior on width {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                        }
-                        Behavior on color {
-                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                        }
-                        Behavior on opacity {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                        }
+                    Repeater {
+                        model: root.displayPages.length
+                        delegate: Rectangle {
+                            required property int index
+                            width: root.currentPage === index ? 16 : 8
+                            height: 8
+                            radius: height / 2
+                            color: root.currentPage === index ? Appearance.colors.colPrimary : Appearance.colors.colOutlineVariant
+                            opacity: root.currentPage === index ? 1.0 : 0.5
 
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.margins: -4
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.goToPage(index)
+                            Behavior on width {
+                                animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+                            }
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
+                            Behavior on opacity {
+                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            }
                         }
+                    }
+                }
+
+                // One target over the whole row, 32px tall (DESIGN.md 3.4), turning
+                // to the dot nearest the pointer. Per-dot areas could only be as
+                // wide as a dot and half the 6px gap either side.
+                MouseArea {
+                    anchors.centerIn: parent
+                    width: parent.width + 16
+                    height: 32
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: mouse => {
+                        const px = mapToItem(pageDots, mouse.x, 0).x;
+                        let nearest = -1;
+                        let distance = Infinity;
+                        for (const dot of pageDots.children) {
+                            if (dot.index === undefined)
+                                continue;
+                            const d = Math.abs(dot.x + dot.width / 2 - px);
+                            if (d < distance) {
+                                distance = d;
+                                nearest = dot.index;
+                            }
+                        }
+                        root.goToPage(nearest);
                     }
                 }
             }
@@ -442,13 +468,19 @@ AbstractQuickPanel {
                         }
                     }
 
+                    // The middle of a connected group, so it takes the group's outer
+                    // corner on whichever side its neighbour is hidden.
                     RippleButton {
                         Layout.preferredWidth: root.baseCellHeight
                         Layout.preferredHeight: root.baseCellHeight * 0.6
-                        bottomLeftRadius: Appearance.rounding.verysmall
-                        topLeftRadius: Appearance.rounding.verysmall
-                        bottomRightRadius: Appearance.rounding.verysmall
-                        topRightRadius: Appearance.rounding.verysmall
+                        readonly property real groupLeftRadius: root.currentPage < root.displayPages.length - 1
+                            ? Appearance.rounding.verysmall : Appearance.rounding.full
+                        readonly property real groupRightRadius: root.displayPages.length > 1
+                            ? Appearance.rounding.verysmall : Appearance.rounding.full
+                        bottomLeftRadius: groupLeftRadius
+                        topLeftRadius: groupLeftRadius
+                        bottomRightRadius: groupRightRadius
+                        topRightRadius: groupRightRadius
                         buttonRadiusPressed: height / 2
                         colBackground: Appearance.colors.colPrimary
                         colBackgroundHover: Appearance.colors.colPrimaryHover
