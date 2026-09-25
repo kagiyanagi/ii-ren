@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import "calendar_layout.js" as CalendarLayout
 import qs
 import qs.modules.common
@@ -7,7 +8,10 @@ import qs.modules.common.widgets
 import qs.services
 
 Item {
+    id: root
+
     property int monthShift: 0
+    property var locale: Qt.locale(Config.options.calendar.locale)
     property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
     property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, Config.options.time.firstDayOfWeek)
 
@@ -38,7 +42,7 @@ Item {
         id: calendarColumn
 
         anchors.centerIn: parent
-        spacing: 5
+        spacing: 4
 
         RowLayout {
             Layout.fillWidth: true
@@ -46,7 +50,7 @@ Item {
 
             CalendarHeaderButton {
                 clip: true
-                buttonText: `${monthShift != 0 ? "• " : ""}${viewingDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")}`
+                buttonText: `${monthShift != 0 ? "• " : ""}${viewingDate.toLocaleDateString(root.locale, "MMMM yyyy")}`
                 tooltipText: (monthShift === 0) ? "" : Translation.tr("Jump to current month")
                 downAction: () => {
                     monthShift = 0;
@@ -91,57 +95,56 @@ Item {
         }
 
         RowLayout {
-            id: weekDaysRow
-
             Layout.alignment: Qt.AlignHCenter
-            Layout.fillHeight: false
-            spacing: 5
+            spacing: calendarColumn.spacing
 
             Repeater {
-                id: buttonRepeater
-                model: CalendarLayout.weekDays.map((_, i) => {
-                    return CalendarLayout.weekDays[(i + Config.options.time.firstDayOfWeek) % 7];
-                })
+                model: 7
 
-                delegate: CalendarDayButton {
-                    day: Translation.tr(modelData.day)
-                    isToday: modelData.today
-                    bold: true
-                    enabled: false
-                    taskList: []
+                delegate: StyledText {
+                    required property int index
+                    Layout.preferredWidth: 40
+                    horizontalAlignment: Text.AlignHCenter
+                    // Qt counts days from Sunday, firstDayOfWeek from Monday
+                    text: root.locale.dayName((index + Config.options.time.firstDayOfWeek + 1) % 7, Locale.NarrowFormat)
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnSurfaceVariant
                 }
-
             }
-
         }
 
         Repeater {
-            id: calendarRows
-
             model: 6
 
             delegate: RowLayout {
+                id: week
+                required property int index
                 Layout.alignment: Qt.AlignHCenter
-                Layout.fillHeight: false
-                spacing: 5
+                spacing: calendarColumn.spacing
 
                 Repeater {
-                    model: Array(7).fill(modelData)
+                    model: 7
 
                     delegate: CalendarDayButton {
-                        property var cell: calendarLayout[modelData][index]
-                        day: cell.day
-                        isToday: cell.today
-                        date: new Date(cell.year, cell.month, cell.day)
-                        taskList: CalendarService.getTasksByDate(date)
+                        id: day
+                        required property int index
+                        cell: root.calendarLayout[week.index][index]
+                        onShowsEventsChanged: {
+                            if (day.showsEvents)
+                                eventCard.show(day);
+                            else if (eventCard.cell === day)
+                                eventCard.hide();
+                        }
                     }
-
                 }
-
             }
-
         }
-
     }
 
+    CalendarPopup {
+        id: eventCard
+        parent: root.QsWindow?.contentItem ?? root
+        maxWidth: calendarColumn.width
+        locale: root.locale
+    }
 }

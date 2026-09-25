@@ -1,98 +1,66 @@
 import QtQuick
-import QtQuick.Layouts
-import Quickshell
-import Quickshell.Wayland
-import qs
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.services
 
-RippleButton {
-    id: button
-    property string day
-    property int isToday
-    property bool bold
-    property var date: null
-    property var taskList
-    readonly property int taskMargin: 5
-    property bool showPopup: false
-    
-    Layout.fillWidth: false
-    Layout.fillHeight: false
-    implicitWidth: 38
-    implicitHeight: 38
-    toggled: (isToday == 1)
-    buttonRadius: Appearance.rounding.small
-    downAction: () => {
-        if (date) Qt.openUrlExternally(`https://calendar.google.com/calendar/r/day/${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`)
-    }
-    
-    Rectangle {
-        width: 8
-        height: 8
-        radius: Appearance.rounding.full
-        color: (taskList.length > 0 && isToday !== -1 && !bold) ? 
-               toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colPrimary : "transparent"
-        anchors {
-            top: parent.top
-            left: parent.left
-            margins: 4
-        }
+// Not a RippleButton: that keeps a layer and an OpacityMask per instance for its
+// ripple, and the grid is 42 of these (DESIGN.md 8). Hover and press still land.
+Rectangle {
+    id: root
+
+    // today: 1 is today, 0 is this month, -1 spills over from a neighbouring one
+    required property var cell
+    readonly property var date: new Date(cell.year, cell.month, cell.day)
+    readonly property bool isToday: cell.today === 1
+    readonly property var events: cell.today === -1 ? [] : CalendarService.getTasksByDate(date)
+    readonly property bool showsEvents: events.length > 0 && (mouse.containsMouse || activeFocus)
+
+    function openDay(): void {
+        Qt.openUrlExternally(`https://calendar.google.com/calendar/r/day/${root.cell.year}/${root.cell.month + 1}/${root.cell.day}`);
     }
 
-    LazyLoader {
-        id: popupLoader
-        active: itemScale > 0.9
-
-        property real itemScale: button.showPopup ? 1 : 0.85
-        property real itemOpacity: button.showPopup ? 1 : 0
-        
-        Behavior on itemScale {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-        Behavior on itemOpacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-
-        component: CalendarPopup {
-            id: popup
-            parent: button.QsWindow?.contentItem // i cant believe this works..
-            scale: popupLoader.itemScale
-            opacity: popupLoader.itemOpacity
-            
-
-            x: {
-                if (!button.QsWindow) return 0;
-                const buttonPos = button.QsWindow.contentItem.mapFromItem(button, 0, 0);
-                const centeredX = buttonPos.x + (button.width / 2) - (popup.width / 2);
-                return Math.max(0, Math.min(centeredX, parent.width - popup.width));
-            }
-            
-            y: {
-                if (!button.QsWindow) return 0;
-                const buttonPos = button.QsWindow.contentItem.mapFromItem(button, 0, 0);
-                return buttonPos.y - popup.height - 4; 
-            }
-        }
-        
+    implicitWidth: 40
+    implicitHeight: 40
+    radius: Appearance.rounding.full
+    // Tab only: a click never focuses a Rectangle, so focus is the keyboard's alone.
+    // It shares pressed's 0.10 layer (DESIGN.md 3.1).
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.openDay()
+    Keys.onSpacePressed: root.openDay()
+    color: isToday
+        ? (mouse.pressed || activeFocus ? Appearance.colors.colPrimaryActive : mouse.containsMouse ? Appearance.colors.colPrimaryHover : Appearance.colors.colPrimary)
+        : (mouse.pressed || activeFocus ? Appearance.colors.colLayer1Active : mouse.containsMouse ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1))
+    Behavior on color {
+        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
     }
-    
-    MouseArea {
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton // hover only; clicks belong to the button
-        onEntered: {
-            if (button.taskList.length > 0 && button.isToday !== -1 && !button.bold) {
-                button.showPopup = true
-            }
-        }
-        onExited: button.showPopup = false
-    }
-    
+
     StyledText {
         anchors.centerIn: parent
-        text: day
-        horizontalAlignment: Text.AlignHCenter
-        font.weight: bold ? Font.DemiBold : Font.Normal
-        color: (isToday == 1) ? Appearance.m3colors.m3onPrimary : (isToday == 0) ? Appearance.colors.colOnLayer1 : Appearance.colors.colOutlineVariant
+        text: root.cell.day
+        color: root.isToday ? Appearance.colors.colOnPrimary : root.cell.today === 0 ? Appearance.colors.colOnLayer1 : Appearance.colors.colOutlineVariant
+    }
+
+    // M3's small badge: 6dp
+    Rectangle {
+        visible: root.events.length > 0
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            bottom: parent.bottom
+            bottomMargin: 4
+        }
+        width: 6
+        height: 6
+        radius: Appearance.rounding.full
+        color: root.isToday ? Appearance.colors.colOnPrimary : Appearance.colors.colPrimary
+    }
+
+    MouseArea {
+        id: mouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        // clicked, not released: a press dragged off the day opens nothing
+        onClicked: root.openDay()
     }
 }

@@ -11,9 +11,7 @@ RippleButton {
     implicitHeight: 30
     implicitWidth: forceCircle ? implicitHeight : (contentItem.implicitWidth + 10 * 2)
     Behavior on implicitWidth {
-        SmoothedAnimation {
-            velocity: Appearance.animation.elementMove.velocity
-        }
+        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
     }
 
     background.anchors.fill: button

@@ -1,86 +1,144 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import Quickshell.Wayland
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 
+// A zero-size pivot at the day's top centre with the card hanging off it. An Item
+// scales about its own origin, so the card grows out of the day even when it is
+// clamped against the window edge (DESIGN.md 2.6).
+Item {
+    id: root
 
-Rectangle {
-    id: dayPopRect
+    // The day being shown. It stays set through the exit so the card does not empty.
+    property CalendarDayButton cell: null
+    property real maxWidth
+    property var locale
+    readonly property int maxRows: 6
+    readonly property var events: (cell?.events ?? []).slice().sort((a, b) => (b.allDay ?? false) - (a.allDay ?? false) || a.startDate - b.startDate)
+    property bool shown: false
 
-    width: 200
-    height: Math.min(columnLayout.implicitHeight + 2 * taskMargin, 1000)
-    color: Appearance.m3colors.m3surfaceContainer
-    radius: Appearance.rounding.normal + 4
-    border.width: 2
-    border.color: Appearance.colors.colLayer3
+    function show(day: CalendarDayButton): void {
+        root.cell = day;
+        if (root.shown)
+            return;
+        root.shown = true;
+        motion.open();
+    }
 
-    StyledFlickable {
-        id: styledFlicker
+    function hide(): void {
+        if (!root.shown)
+            return;
+        root.shown = false;
+        motion.close();
+    }
 
-        contentWidth: parent.width
-        contentHeight: columnLayout.implicitHeight
+    function timeText(event): string {
+        if (event.allDay)
+            return Translation.tr("All day");
+        const format = Config.options.time.format;
+        return `${Qt.formatDateTime(event.startDate, format)} – ${Qt.formatDateTime(event.endDate, format)}`;
+    }
+
+    readonly property point anchorPoint: cell && parent ? parent.mapFromItem(cell, cell.width / 2, 0) : Qt.point(0, 0)
+    x: anchorPoint.x
+    y: anchorPoint.y
+    visible: opacity > 0
+    opacity: 0
+    scale: Appearance.animationCurves.arrowPopupScale
+
+    ArrowPopupMotion {
+        id: motion
+        target: root
+        onClosed: root.cell = null
+    }
+
+    StyledRectangularShadow {
+        target: card
+    }
+
+    Rectangle {
+        id: card
+
+        readonly property real gutter: Appearance.sizes.elevationMargin
+        readonly property real horizontalPadding: 16
+        readonly property real verticalPadding: 12
+
+        width: Math.min(root.maxWidth, column.implicitWidth + 2 * horizontalPadding)
+        height: column.implicitHeight + 2 * verticalPadding
+        x: Math.max(gutter - root.x, Math.min(-width / 2, (root.parent?.width ?? 0) - gutter - width - root.x))
+        y: -height - 4
+        radius: Appearance.rounding.small
+        // Floats over the sidebar rather than sitting on a layer, so the palette
+        // colour at full alpha, as DockFolderPopup does.
+        readonly property color base: Appearance.m3colors.m3surfaceContainerHigh
+        color: Qt.rgba(base.r, base.g, base.b, 1)
 
         ColumnLayout {
-            id: columnLayout
+            id: column
+            x: card.horizontalPadding
+            y: card.verticalPadding
+            width: card.width - 2 * card.horizontalPadding
+            spacing: 8
 
-            width: parent.width - 2 * taskMargin
-            height: parent.height - 2 * taskMargin
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 4
+            StyledText {
+                Layout.fillWidth: true
+                text: root.cell?.date.toLocaleDateString(root.locale, "dddd d MMMM") ?? ""
+                font.pixelSize: Appearance.font.pixelSize.small
+                font.weight: Font.Medium
+                color: Appearance.colors.colOnSurface
+                elide: Text.ElideRight
+            }
 
             Repeater {
-                model: ScriptModel {
-                    values: taskList.slice(0, 6) // limiting the elements
-                }
+                model: root.events.slice(0, root.maxRows)
 
-                delegate: Item {
-                    width: parent.width
-                    implicitHeight: contentColumn.implicitHeight
+                delegate: RowLayout {
+                    id: row
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignTop
+                        Layout.topMargin: 6
+                        implicitWidth: 8
+                        implicitHeight: 8
+                        radius: Appearance.rounding.full
+                        color: row.modelData.color
+                    }
 
                     ColumnLayout {
-                        id: contentColumn
-
-                        width: parent.width
+                        Layout.fillWidth: true
                         spacing: 0
-                        Layout.margins: 10
-                        
-                        RowLayout {
+
+                        StyledText {
                             Layout.fillWidth: true
-
-                            StyledText {
-                                Layout.fillWidth: true // Needed for wrapping
-                                Layout.leftMargin: 10
-                                Layout.rightMargin: 10
-                                Layout.topMargin: 4
-                                text: modelData.content
-                                elide: Text.ElideRight
-                            }
-
-                            Rectangle { // color indicator
-                                Layout.rightMargin: 10
-                                width: 12
-                                height: 12
-                                radius: 6
-                                color:  modelData.color
-                            }
+                            text: row.modelData.content
+                            color: Appearance.colors.colOnSurface
+                            elide: Text.ElideRight
                         }
 
                         StyledText {
-                            Layout.fillWidth: true // Needed for wrapping
-                            Layout.leftMargin: 10
-                            Layout.rightMargin: 10
-                                        
-                            text: Qt.formatDateTime(modelData.startDate,  Config.options.time.format) + " - " + Qt.formatDateTime(modelData.endDate,  Config.options.time.format)
-                            color: Appearance.m3colors.m3outline
-                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                            text: root.timeText(row.modelData)
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colOnSurfaceVariant
+                            elide: Text.ElideRight
                         }
                     }
                 }
             }
-        }   
+
+            StyledText {
+                visible: root.events.length > root.maxRows
+                Layout.leftMargin: 16
+                text: Translation.tr("+%1 more").arg(root.events.length - root.maxRows)
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+        }
     }
 }

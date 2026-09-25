@@ -357,6 +357,14 @@ you touched; they are the only automated gate.
   check evaluates that line so that a device mid-attempt never shows the last attempt's
   error. It also pins the nameless filter to unpaired devices only: a hidden paired device
   could not be forgotten
+- `python3 tools/check-calendar.py` — the sidebar calendar's 42 day cells carry no layer,
+  and its one event card grows out of the day it describes. The cells were `RippleButton`s,
+  and each keeps an `OpacityMask` layer for its ripple. `check-effect-budget.py` reads the
+  delegate's file, not the widget it instantiates, so it never saw them (the dock's blind
+  spot). The card used to be one `LazyLoader` per cell, active only past scale 0.9, so the
+  start of every enter and the end of every exit were never drawn. It hangs off a zero-size
+  pivot at the day's top centre, so the scale's origin is exact even when the card is
+  shifted inside the window. The check lifts that shift out of the QML and sweeps it
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

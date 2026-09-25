@@ -191,3 +191,9 @@ claims from these rows were driven rather than reasoned about.
 | `modules/common/widgets/GroupButtonWithTextField.qml:10` | `Duplicate signal name: invalid override of property change signal or superclass signal` on every load of the Extensions page (the toolbar's search field). Silent in normal use. | `settings-ExtensionsConfig` |
 | `modules/common/widgets/DialogButton.qml:19,33` | Disabled text turns `m3outline` **and** the root drops to `opacity: 0.4`, so every disabled `DialogButton` is dimmed twice (rule 6: disabled is 0.4, not a grey). The extension buttons override `colDisabled: colEnabled`. The default belongs to the widget and it has other callers. | a `cw-dialogs` revisit |
 | `modules/settings/ExtensionsConfig.qml` (`Component.onCompleted`) | Opening the page with extensions on runs a GitHub search and rewrites the whole `plugins.json` (the search cache lives in it), which the `FileView` watch then reloads. Measured in a sandbox: three `extensionConfigsChanged` in the first 2.5s, with no option touched. | `settings-ExtensionsConfig` |
+
+## From auditing `ii-sidebarDashboard-calendar`, 2026-09-25
+
+| where | issue | owner |
+|---|---|---|
+| `modules/common/widgets/RippleButton.qml:186` | **Every `RippleButton` keeps `layer.enabled` + `OpacityMask` whether or not a ripple is playing.** It exists to clip the ripple and the `StateOverlay` film to the corners. The calendar grid put 49 of them in one repeater, and it was moved off the widget for that reason. The same cost sits in any list built from `RippleButton` rows. Turning the layer on only while `ripple.visible`, and giving `StateOverlay` the button's radii so the film clips natively, would make the resting cost zero. But rule 9 applies to 155 files, and any caller whose content relies on the clip has to be found first. | a `cw-buttons` revisit |

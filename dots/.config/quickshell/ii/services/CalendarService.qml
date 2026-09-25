@@ -185,6 +185,7 @@ Singleton {
                       "startDate": startDate,
                       "endDate": endDate,
                       "color": ColorUtils.stringToColor(event['title']), 
+                      "allDay": !event['start-time'],
                       "description": event['description'] ?? ""
                   })
                 }
