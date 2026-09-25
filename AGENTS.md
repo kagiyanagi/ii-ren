@@ -345,6 +345,18 @@ you touched; they are the only automated gate.
   `onLoaded` and wrote it back as it arrived. A spinbox evaluated before its `to` (default 99)
   clamped a stored 150. This pins the `DelegateChooser` rows, `moved`, the guarded write, the
   spinbox's bounds read, text on `editingFinished`, and a Remove that asks twice
+- `python3 tools/check-bluetooth-dialog.py` — the sidebar's Bluetooth dialog can pair, and
+  says what a device is doing. Quickshell implements no `org.bluez.Agent1`, and BlueZ refuses
+  to pair while no agent is registered, so without blueman or bluedevil the dialog's pair
+  button did nothing but log a warning. `BluetoothStatus.pair()` borrows bluetoothctl's agent
+  for one attempt, as FastPair does. `Pair()` must wait for "Agent registered", and the agent
+  must be released on every ending, including the one where it never came up. `endPair` has
+  to clear the target *before* stopping the process, or `onRunningChanged` reads the release
+  as "bluetoothctl is not installed". A failed `connect()` or `pair()` only drops a state
+  back, with no signal, so the row's status line is the one place a failure is said. The
+  check evaluates that line so that a device mid-attempt never shows the last attempt's
+  error. It also pins the nameless filter to unpaired devices only: a hidden paired device
+  could not be forgotten
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

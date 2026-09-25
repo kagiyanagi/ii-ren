@@ -116,6 +116,17 @@ Scope {
         function open(): void {
             GlobalStates.sidebarRightOpen = true;
         }
+
+        // One of the dashboard's dialogs by name ("Bluetooth", "Wifi", "Hotspot",
+        // "NightLight", "AudioOutput", "AudioInput"), so each is reachable
+        // without a pointer — and by the audit, which has none.
+        function openDialog(name: string): void {
+            GlobalStates.sidebarRightOpen = true;
+            const content = sidebarContentLoader.item;
+            const key = `show${name}Dialog`;
+            if (content && key in content)
+                content[key] = true;
+        }
     }
 
     GlobalShortcut {

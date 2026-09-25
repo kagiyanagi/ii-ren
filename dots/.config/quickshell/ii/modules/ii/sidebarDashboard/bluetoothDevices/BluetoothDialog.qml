@@ -2,17 +2,11 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
-import Quickshell.Io
-import Quickshell.Bluetooth
 import Quickshell
+import Quickshell.Bluetooth
 import Quickshell.Widgets
-import Quickshell.Wayland
-import Quickshell.Hyprland
 
 WindowDialog {
     id: root
@@ -47,11 +41,17 @@ WindowDialog {
             delegate: BluetoothDeviceItem {
                 required property BluetoothDevice modelData
                 device: modelData
-                anchors {
-                    left: parent?.left
-                    right: parent?.right
-                }
+                width: ListView.view.width
             }
+        }
+
+        PagePlaceholder {
+            shown: BluetoothStatus.friendlyDeviceList.length === 0
+            icon: "bluetooth_searching"
+            title: !BluetoothStatus.available ? Translation.tr("Bluetooth unavailable")
+                : Bluetooth.defaultAdapter?.discovering ? Translation.tr("Searching for devices")
+                : Translation.tr("No devices found")
+            shape: MaterialShape.Shape.Cookie7Sided
         }
     }
     WindowDialogButtonRow {

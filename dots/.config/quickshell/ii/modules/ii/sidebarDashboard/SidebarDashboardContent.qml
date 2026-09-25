@@ -140,6 +140,9 @@ Item {
         shownPropertyString: "showBluetoothDialog"
         dialog: BluetoothDialog {}
         onShownChanged: {
+            // No adapter: the dialog says so, and there is nothing to switch on.
+            if (!Bluetooth.defaultAdapter)
+                return;
             if (!shown) {
                 Bluetooth.defaultAdapter.discovering = false;
             } else {
