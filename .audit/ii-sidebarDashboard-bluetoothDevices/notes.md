@@ -41,9 +41,14 @@ Windows 11's quick settings.
   workspaces as the pointer was being driven, and driving it further would have clicked
   into their windows.
 
-**For the cohesion pass (motion).** The chevron now rotates on `elementMoveSmall`. It
-used `elementMoveFast`, which is an effects spec, on a transform. Watch it at 60fps next
-to the Wi-Fi rows. Also: the busy row stays at full opacity, while Wi-Fi's busy row dims
+**For the cohesion pass (motion).** The chevron rotates on `elementMove`, the row's own
+height spec. It first moved from `elementMoveFast` (an effects spec, on a transform) to
+`elementMoveSmall`. The user found that version clunky: that curve's y1 is 1.67, and over
+180 degrees the overshoot wobbles. It was also off-centre, because `RippleButton` sizes the
+content box and the glyph was left-aligned in it. The rotation mirrored that offset, so the
+arrow slid 3px sideways as it flipped. The glyph is centred now, measured to within 0.5px
+in both states. `NotificationGroupExpandButton` still flips on `elementMoveSmall`; decide
+that one in the cohesion pass. Watch this chevron at 60fps next to the Wi-Fi rows. Also: the busy row stays at full opacity, while Wi-Fi's busy row dims
 to 0.4. The Wi-Fi row should come across to this one, not the other way round: 0.4 means
 disabled.
 

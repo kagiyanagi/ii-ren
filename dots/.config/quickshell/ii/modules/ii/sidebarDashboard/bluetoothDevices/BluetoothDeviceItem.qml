@@ -117,14 +117,23 @@ DialogListItem {
                 colStateLayer: Appearance.colors.colOnLayer4
                 onClicked: root.expanded = !root.expanded
 
+                // RippleButton sizes the content box, and a glyph is drawn at its
+                // start, so it sat off-centre. The rotation then mirrored the offset
+                // and slid the arrow sideways as it flipped. Centre it in the box.
                 contentItem: MaterialSymbol {
                     anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
                     text: "keyboard_arrow_down"
                     iconSize: Appearance.font.pixelSize.larger
                     color: Appearance.colors.colOnLayer3
                     rotation: root.expanded ? 180 : 0
+                    // The row's height change runs on elementMove, so the flip rides
+                    // the same spec and reads as one gesture. elementMoveSmall's
+                    // curve overshoots hardest of any token, and over 180 degrees
+                    // that was a visible wobble.
                     Behavior on rotation {
-                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
                 }
             }
