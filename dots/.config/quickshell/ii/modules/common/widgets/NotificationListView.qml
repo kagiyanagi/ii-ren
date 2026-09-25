@@ -9,7 +9,8 @@ StyledListView { // Scrollable window
     id: root
     property bool popup: false
 
-    spacing: 8
+    // The popup's toasts stand apart; the sidebar's groups join into one stack.
+    spacing: root.popup ? 8 : 4
 
     model: ScriptModel {
         values: root.popup ? Notifications.popupAppNameList : Notifications.appNameList
@@ -25,6 +26,8 @@ StyledListView { // Scrollable window
         // Handed down rather than read off `parent.children`: SwipeDismissible
         // nudges the neighbouring groups by it.
         itemIndex: group.index
+        stackTop: group.index === 0
+        stackBottom: group.index === root.count - 1
         width: ListView.view.width // https://doc.qt.io/qt-6/qml-qtquick-listview.html
         notificationGroup: group.popup ?
             Notifications.popupGroupsByAppName[group.modelData] :

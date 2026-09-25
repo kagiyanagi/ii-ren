@@ -37,6 +37,21 @@ MouseArea { // Notification group area
     // The group's index in the notification list, passed down rather than read
     // off `parent.children`: SwipeDismissible nudges the neighbours by it.
     property int itemIndex: -1
+    // Outside a popup the groups are one stack, as in the Android shade: the
+    // ends take the outer corners, the joins go small, and a card being swiped
+    // rounds off on its own. The defaults are a standalone card.
+    property bool stackTop: true
+    property bool stackBottom: true
+    readonly property real outerRadius: root.popup ? Appearance.rounding.large : Appearance.rounding.small
+    readonly property bool standalone: root.popup || dragManager.dragging
+    property real topRadius: root.standalone || root.stackTop ? root.outerRadius : Appearance.rounding.unsharpenmore
+    property real bottomRadius: root.standalone || root.stackBottom ? root.outerRadius : Appearance.rounding.unsharpenmore
+    Behavior on topRadius {
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+    }
+    Behavior on bottomRadius {
+        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+    }
     // The service stores urgency as the enum's decimal string; Number() reads
     // that and the raw enum alike.
     readonly property bool urgent: root.notifications.some(n => Number(n.urgency) === NotificationUrgency.Critical)
@@ -101,7 +116,12 @@ MouseArea { // Notification group area
         anchors.left: parent.left
         width: parent.width
         color: root.popup ? Appearance.colors.colBackgroundSurfaceContainer : Appearance.colors.colLayer2
-        radius: Appearance.rounding.large
+        // The shadow reads `radius`; it only shows on a standalone card.
+        radius: root.outerRadius
+        topLeftRadius: root.topRadius
+        topRightRadius: root.topRadius
+        bottomLeftRadius: root.bottomRadius
+        bottomRightRadius: root.bottomRadius
         anchors.leftMargin: dragManager.xOffset
 
         // The snap back after a released swipe: spatial, and on one spec rather
@@ -135,10 +155,10 @@ MouseArea { // Notification group area
             press: dragManager.pressed && !dragManager.dragging
             drag: dragManager.dragging
             contentColor: Appearance.colors.colOnLayer2
-            topLeftRadius: background.radius
-            topRightRadius: background.radius
-            bottomLeftRadius: background.radius
-            bottomRightRadius: background.radius
+            topLeftRadius: root.topRadius
+            topRightRadius: root.topRadius
+            bottomLeftRadius: root.bottomRadius
+            bottomRightRadius: root.bottomRadius
         }
 
         ColumnLayout {
@@ -170,6 +190,8 @@ MouseArea { // Notification group area
                     // An eliding Text reports the *elided* width as its
                     // implicitWidth once the layout gives it one, so measure
                     // the full string separately or the name shrinks to "a...".
+                    // `width` is rounded to an int: "kitty" is 26.11 and was
+                    // capped at 26, which elides it to "ki...".
                     id: appNameMetrics
                     font: appNameText.font
                     text: appNameText.text
@@ -180,7 +202,7 @@ MouseArea { // Notification group area
                     id: appNameText
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    Layout.maximumWidth: appNameMetrics.width
+                    Layout.maximumWidth: Math.ceil(appNameMetrics.advanceWidth)
                     elide: Text.ElideRight
                     text: root.notificationGroup?.appName || ""
                     font.pixelSize: header.fontSize

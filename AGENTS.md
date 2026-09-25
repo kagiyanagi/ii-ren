@@ -377,6 +377,11 @@ you touched; they are the only automated gate.
   tick. It is keyed now. The check runs the key binding under node. The key must be unique
   across identical tasks and must survive a tick and a delete above it. A matched key
   delivers the fresh `originalIndex` the service acts on
+- `python3 tools/check-notification-stack.py` — a notification group's header shows the
+  whole app name, and only the sidebar's groups join into a stack. `TextMetrics.width`
+  is rounded to an int, so a cap on it cut "kitty" (26.11px) to "ki…" and left "Beeper"
+  (41.4 → 42) alone. The cap is `ceil(advanceWidth)`. The joins' small corners must never
+  reach a popup toast or a card being swiped
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
