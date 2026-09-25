@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
@@ -20,7 +21,17 @@ Item {
     readonly property var events: (cell?.events ?? []).slice().sort((a, b) => (b.allDay ?? false) - (a.allDay ?? false) || a.startDate - b.startDate)
     property bool shown: false
 
+    signal closed
+
     function show(day: CalendarDayButton): void {
+        // BottomWidgetGroup clips, so the card is drawn from the window's content
+        // item. Set here, never as a binding: `parent: x.QsWindow?.contentItem`
+        // re-evaluates while Quickshell rebuilds the window on every sidebar open,
+        // and reparenting mid-rebuild segfaulted the shell.
+        const host = day.QsWindow?.contentItem;
+        if (!host)
+            return;
+        root.parent = host;
         root.cell = day;
         if (root.shown)
             return;
@@ -52,7 +63,10 @@ Item {
     ArrowPopupMotion {
         id: motion
         target: root
-        onClosed: root.cell = null
+        onClosed: {
+            root.cell = null;
+            root.closed();
+        }
     }
 
     StyledRectangularShadow {

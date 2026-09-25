@@ -44,6 +44,21 @@ with `keyboardFocus: None` never gets active focus. If the pointer rests on one 
 while another has keyboard focus, leaving the hovered day closes the card. That was left
 as it is.
 
+**The first commit segfaulted the shell (9cd2d7aae, fixed in the next commit).** The card
+was a permanent child of `CalendarWidget` with `parent: root.QsWindow?.contentItem ?? root`.
+Quickshell rebuilds a layer window when it becomes visible, and `completeWindow` →
+`setParentItem` → `refWindow` walks the whole tree. That walk re-fired the binding, and
+the card was reparented in the middle of it. The core dump shows
+`QQuickWindow::maybeUpdate` under `setParentItem` under `ProxyWindowBase::createWindow`.
+A second dump, `QQuickItem::update` from a posted event, came during a hot reload with the
+card still parented into the old window. The old per-cell card used the same binding. It
+got away with it because it only existed while a day was hovered. Now the card is
+reparented once, imperatively, in `show()`, and it lives in a `Loader` that is active only
+from the first hover until its exit ends. `check-calendar.py` refuses a `parent:` binding
+on `QsWindow` and a card that is always loaded. After the fix, 15 open/close cycles of the
+sidebar produced no dump. The old version was not re-run to reproduce the crash, because
+that would have taken the user's shell down again.
+
 **`check-design.py`'s one warning is a false positive.** `colOutlineVariant` is the *text*
 colour of spill-over days, not a fill. It was on HEAD before this row.
 

@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 import "calendar_layout.js" as CalendarLayout
 import qs
 import qs.modules.common
@@ -130,10 +129,12 @@ Item {
                         required property int index
                         cell: root.calendarLayout[week.index][index]
                         onShowsEventsChanged: {
-                            if (day.showsEvents)
-                                eventCard.show(day);
-                            else if (eventCard.cell === day)
-                                eventCard.hide();
+                            if (day.showsEvents) {
+                                cardLoader.active = true;
+                                cardLoader.item.show(day);
+                            } else if (cardLoader.item?.cell === day) {
+                                cardLoader.item.hide();
+                            }
                         }
                     }
                 }
@@ -141,10 +142,15 @@ Item {
         }
     }
 
-    CalendarPopup {
-        id: eventCard
-        parent: root.QsWindow?.contentItem ?? root
-        maxWidth: calendarColumn.width
-        locale: root.locale
+    // Exists only from the first hover until its exit ends, so it is not sitting in
+    // the window while Quickshell rebuilds that window or reloads the shell.
+    Loader {
+        id: cardLoader
+        active: false
+        sourceComponent: CalendarPopup {
+            maxWidth: calendarColumn.width
+            locale: root.locale
+            onClosed: Qt.callLater(() => cardLoader.active = false)
+        }
     }
 }

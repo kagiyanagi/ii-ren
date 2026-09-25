@@ -23,8 +23,8 @@ from pathlib import Path
 
 DIR = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules/ii/sidebarDashboard/calendar"
 day = re.sub(r"//.*", "", (DIR / "CalendarDayButton.qml").read_text())
-card = (DIR / "CalendarPopup.qml").read_text()
-widget = (DIR / "CalendarWidget.qml").read_text()
+card = re.sub(r"//.*", "", (DIR / "CalendarPopup.qml").read_text())
+widget = re.sub(r"//.*", "", (DIR / "CalendarWidget.qml").read_text())
 
 root = re.search(r"^(\w+) \{", day, re.M).group(1)
 assert root != "RippleButton", "a day cell is a RippleButton again: a layer and an OpacityMask per cell"
@@ -32,6 +32,10 @@ for effect in ("layer.enabled", "OpacityMask", "MultiEffect", "ShaderEffect", "S
     assert effect not in day, f"{effect} in CalendarDayButton, which repeats 42 times"
 
 assert widget.count("CalendarPopup {") == 1, "the calendar should own exactly one event card"
+assert not re.search(r"parent:.*QsWindow", widget + card), \
+    "the card's parent is a binding on QsWindow again: it re-fires mid window rebuild and segfaults"
+assert re.search(r"active:\s*false", widget) and "cardLoader.active = false" in widget, \
+    "the card must exist only while shown, not through every sidebar open"
 assert "ArrowPopupMotion" in card, "the event card must open and close on ArrowPopupMotion"
 assert "mapFromItem(cell, cell.width / 2, 0)" in card, "the pivot must sit on the day's top centre"
 assert re.search(r"^\s+onClicked:", day, re.M), "the tap must fire on clicked, so a drag off the day cancels"
