@@ -172,3 +172,13 @@ claims from these rows were driven rather than reasoned about.
 | where | issue | owner |
 |---|---|---|
 | `modules/common/widgets/RippleButton.qml:113-119` | **Drag-off does not cancel.** `onReleased` calls `root.click()` without asking whether the release was inside, and `MouseArea` emits `released` wherever the grab ends. **Measured**: a press on the session menu's Task Manager tile, dragged onto the scrim and released there, launched `plasma-systemmonitor`. That is every `RippleButton` in the shell (155 files instantiate the family), so the fix is one guard at the root (`containsMouse`, or move the call to `onClicked`). But rule 9 applies: a caller that starts a drag from a button and relies on the release firing has to be found first. It costs most on the session menu, where every tile but one ends the session. | a `cw-buttons` revisit |
+
+## From auditing `ii-screenTranslator`, 2026-09-25
+
+| where | issue | owner |
+|---|---|---|
+| `modules/common/models/TextTranslator.qml` | **17s for 78 lines.** One multi-line `trans -brief` request is how it avoids rate limits, but on a text-dense 1080p screen it is two thirds of a ~25s wait (measured: tesseract 7.5s, `trans` 16.9s). It also detects one source language for the whole batch, so a French line next to Japanese came back untranslated. | a models row |
+| `modules/common/models/TextRecognizer.qml` | `--psm 11` reads the dock's icons as Japanese and the translator lays "Country oA ... National interest mourning" over the dock. Its paragraph boxes are also tight to glyph bodies, so ascenders and descenders poke out of a box that is now opaque. | a models row |
+| `.audit/FINDINGS.md` (`ii-regionSelector` table, `DashedBorder` row) | Says `ScreenTranslatorPanel` uses `DashedBorder` for a live selection. It does not, and did not at this row's `HEAD`. The translator has no selection. `WRectangularSelection` is the only one left. | — |
+| `modules/ii/screenTranslator/ScreenTranslatorPanel.qml` (`ii-regionSelector` table, toolbar row) | **Fixed here**: the FAB is bound to `visible` and sits 8 above the reserved band. | done |
+

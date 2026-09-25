@@ -324,6 +324,18 @@ you touched; they are the only automated gate.
   policy asks for the password on every flip, and a `Switch` that toggles itself breaks its
   `checked` binding, so a cancelled prompt goes on looking applied. It runs `get` against a
   fake `iw` and pins the rest
+- `python3 tools/check-screen-translator.py` — the screen translator leaves visibly, stays on
+  the screen it froze, and reveals every box at once. `Loader.active` went false on the frame
+  the request cleared, so it had no exit; it is latched now and the panel releases it after
+  its fade, which a reopen mid-fade reverses. Zoom went down to 0.1 and a drag could pull the
+  frame off any edge, both of which show the window around it, and a wheel *event* zoomed 10%
+  whatever its delta, so a touchpad flick went from 1x to 5x. The `place()` clamp and the
+  wheel handler are lifted out and swept. Each box's colour was its own magick + cv2 Python
+  process, all at once and after the boxes were drawn, so they changed colour on screen. It
+  is one process (`scripts/images/text_color.py` takes every box), and `finish()` is evaluated
+  to prove nothing is drawn until the translations and the colours are both in, and that only
+  real translations get a delegate. The box is opaque because that is what erases the text,
+  and the check refuses the masked blur it replaced
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

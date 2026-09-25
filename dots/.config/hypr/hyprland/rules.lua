@@ -152,7 +152,7 @@ hl.layer_rule({ match = { namespace = "quickshell:popup" }, xray = false}) -- No
 hl.layer_rule({ match = { namespace = "quickshell:popup" }, ignore_alpha = 1}) -- No weird color for bar tooltips (but somehow this is necessary)
 hl.layer_rule({ match = { namespace = "quickshell:mediaControls" }, ignore_alpha = 1}) -- Same as above
 hl.layer_rule({ match = { namespace = "quickshell:reloadPopup" }, animation = "slide"})
-hl.layer_rule({ match = { namespace = "quickshell:regionSelector" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:(regionSelector|screenTranslator)" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:screenshot" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, blur = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, no_anim = true})

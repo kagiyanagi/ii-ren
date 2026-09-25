@@ -105,6 +105,11 @@ From the rows that retimed something and could not drive the shell:
   `elementMoveExit` now, and the card swipes away like the clipboard toast and the Fast
   Pair card. It shares their corner, so the three should feel identical thrown
   (`ii-regionSelector`).
+- The **screen translator's fade in and out**, which did not exist on the way out: 200ms
+  in, 130ms out (measured, 9–12 and 8 frames). Also the **reveal**, the scrim and status pill
+  leaving on `elementMoveExit` as the boxes land, after up to ~25s of OCR and `trans`. It is
+  unrecorded because it needs the lightweight mode and a long take. Watch whether it reads as
+  one event (`ii-screenTranslator`).
 
 ## Still nobody's call but yours
 
