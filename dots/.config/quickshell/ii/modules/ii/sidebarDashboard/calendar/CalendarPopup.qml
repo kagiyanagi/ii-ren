@@ -84,7 +84,7 @@ Item {
         height: column.implicitHeight + 2 * verticalPadding
         x: Math.max(gutter - root.x, Math.min(-width / 2, (root.parent?.width ?? 0) - gutter - width - root.x))
         y: -height - 4
-        radius: Appearance.rounding.small
+        radius: Appearance.rounding.normal
         // Floats over the sidebar rather than sitting on a layer, so the palette
         // colour at full alpha, as DockFolderPopup does.
         readonly property color base: Appearance.m3colors.m3surfaceContainerHigh
