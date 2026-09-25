@@ -1,9 +1,7 @@
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import Qt5Compat.GraphicalEffects
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 
@@ -12,80 +10,64 @@ Item {
     required property var taskList
     property string emptyPlaceholderIcon
     property string emptyPlaceholderText
-    property int todoListItemSpacing: 5
-    property int todoListItemPadding: 8
-    property int listBottomPadding: 80
+
+    function jumpToEnd() {
+        listView.jumpToEnd();
+    }
 
     StyledListView {
         id: listView
         anchors.fill: parent
-        spacing: root.todoListItemSpacing
-        animateAppearance: false
+        spacing: 4
+        popin: false
         model: ScriptModel {
+            // Todo.list is reparsed on every write, so every object is new. Keyed,
+            // a tick is one remove here instead of a rebuild of every row.
+            objectProp: "key"
             values: root.taskList
         }
-        delegate: Item {
-            id: todoItem
+        delegate: Rectangle {
+            id: taskRow
             required property var modelData
-            property bool pendingDoneToggle: false
-            property bool pendingDelete: false
-            property bool enableHeightAnimation: false
+            readonly property bool done: modelData.done
 
-            implicitHeight: todoItemRectangle.implicitHeight
             width: ListView.view.width
-            clip: true
+            implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins * 2
+            color: Appearance.colors.colLayer2
+            radius: Appearance.rounding.small
 
-            Behavior on implicitHeight {
-                enabled: enableHeightAnimation
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
+            RowLayout {
+                id: rowLayout
+                anchors.fill: parent
+                anchors.margins: 4
+                spacing: 4
 
-            Rectangle {
-                id: todoItemRectangle
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                implicitHeight: todoContentRowLayout.implicitHeight
-                color: Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
-
-                ColumnLayout {
-                    id: todoContentRowLayout
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-
-                    StyledText {
-                        id: todoContentText
-                        Layout.fillWidth: true // Needed for wrapping
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        Layout.topMargin: todoListItemPadding
-                        text: todoItem.modelData.content
-                        wrapMode: Text.Wrap
+                TodoItemActionButton {
+                    Layout.alignment: Qt.AlignTop
+                    materialIcon: taskRow.done ? "check_circle" : "radio_button_unchecked"
+                    iconFill: taskRow.done ? 1 : 0
+                    colIcon: taskRow.done ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+                    onClicked: {
+                        if (taskRow.done)
+                            Todo.markUnfinished(taskRow.modelData.originalIndex);
+                        else
+                            Todo.markDone(taskRow.modelData.originalIndex);
                     }
-                    RowLayout {
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        Layout.bottomMargin: todoListItemPadding
-                        Item {
-                            Layout.fillWidth: true
-                        }
-                        TodoItemActionButton {
-                            Layout.fillWidth: false
-                            materialIcon: todoItem.modelData.done ? "remove_done" : "check"
-                            onClicked: {
-                                if (!todoItem.modelData.done)
-                                    Todo.markDone(todoItem.modelData.originalIndex);
-                                else
-                                    Todo.markUnfinished(todoItem.modelData.originalIndex);
-                            }
-                        }
-                        TodoItemActionButton {
-                            Layout.fillWidth: false
-                            materialIcon: "delete_forever"
-                            onClicked: Todo.deleteItem(todoItem.modelData.originalIndex)
-                        }
-                    }
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.minimumHeight: 32 // One line centres on the buttons
+                    verticalAlignment: Text.AlignVCenter
+                    text: taskRow.modelData.content
+                    wrapMode: Text.Wrap
+                    color: taskRow.done ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2
+                    font.strikeout: taskRow.done
+                }
+                TodoItemActionButton {
+                    Layout.alignment: Qt.AlignTop
+                    materialIcon: "delete"
+                    colIcon: Appearance.colors.colSubtext
+                    onClicked: Todo.deleteItem(taskRow.modelData.originalIndex)
                 }
             }
         }

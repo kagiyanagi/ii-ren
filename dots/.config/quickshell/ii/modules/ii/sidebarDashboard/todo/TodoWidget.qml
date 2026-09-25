@@ -15,10 +15,31 @@ Item {
         "name": Translation.tr("Done"),
         "icon": "check_circle"
     }]
-    property bool showAddDialog: false
-    property int dialogMargins: 20
-    property int fabSize: 48
-    property int fabMargins: 14
+
+    // Each task keeps its index into Todo.list, which is what the service takes,
+    // and a key for the lists' models: its text, plus how many identical tasks
+    // came before it so duplicates stay distinct.
+    readonly property var tasks: {
+        const seen = {};
+        return Todo.list.map((item, i) => {
+            seen[item.content] = (seen[item.content] ?? 0) + 1;
+            return Object.assign({}, item, {
+                "originalIndex": i,
+                "key": `${seen[item.content]}:${item.content}`
+            });
+        });
+    }
+
+    function addTask() {
+        const text = todoInput.text.trim();
+        if (text.length === 0)
+            return;
+        Todo.addTask(text);
+        todoInput.text = "";
+        tabBar.setCurrentIndex(0);
+        // append() lands the task after the last one, so that is where to look
+        Qt.callLater(unfinishedList.jumpToEnd);
+    }
 
     Keys.onPressed: (event) => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
@@ -28,17 +49,14 @@ Item {
                 tabBar.decrementCurrentIndex();
             event.accepted = true;
         } else if (event.key === Qt.Key_N) {
-            root.showAddDialog = true;
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Escape && root.showAddDialog) {
-            root.showAddDialog = false;
+            todoInput.forceActiveFocus();
             event.accepted = true;
         }
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        spacing: 8
 
         SecondaryTabBar {
             id: tabBar
@@ -52,193 +70,70 @@ Item {
                     buttonText: modelData.name
                     buttonIcon: modelData.icon
                 }
-
             }
-
         }
 
         SwipeView {
             id: swipeView
 
-            Layout.topMargin: 10
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 10
+            spacing: 8
             clip: true
             currentIndex: tabBar.currentIndex
 
             TaskList {
-                listBottomPadding: root.fabSize + root.fabMargins * 2
+                id: unfinishedList
                 emptyPlaceholderIcon: "check_circle"
                 emptyPlaceholderText: Translation.tr("Nothing here!")
-                taskList: Todo.list.map(function(item, i) {
-                    return Object.assign({
-                    }, item, {
-                        "originalIndex": i
-                    });
-                }).filter(function(item) {
-                    return !item.done;
-                })
+                taskList: root.tasks.filter(item => !item.done)
             }
 
             TaskList {
-                listBottomPadding: root.fabSize + root.fabMargins * 2
                 emptyPlaceholderIcon: "checklist"
                 emptyPlaceholderText: Translation.tr("Finished tasks will go here")
-                taskList: Todo.list.map(function(item, i) {
-                    return Object.assign({
-                    }, item, {
-                        "originalIndex": i
-                    });
-                }).filter(function(item) {
-                    return item.done;
-                })
-            }
-
-        }
-
-    }
-
-    StyledRectangularShadow {
-        target: fabButton
-        radius: fabButton.buttonRadius
-        blur: 0.6 * Appearance.sizes.elevationMargin
-    }
-
-    FloatingActionButton {
-        id: fabButton
-
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: root.fabMargins
-        anchors.bottomMargin: root.fabMargins
-        onClicked: root.showAddDialog = true
-        iconText: "add"
-    }
-
-    Item {
-        anchors.fill: parent
-        z: 9999
-        visible: opacity > 0
-        opacity: root.showAddDialog ? 1 : 0
-        onVisibleChanged: {
-            if (!visible) {
-                todoInput.text = "";
-                fabButton.focus = true;
+                taskList: root.tasks.filter(item => item.done)
             }
         }
 
-        Rectangle { // Scrim
-            anchors.fill: parent
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colScrim
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
 
-            MouseArea {
-                hoverEnabled: true
-                anchors.fill: parent
-                preventStealing: true
-                propagateComposedEvents: false
-            }
-
-        }
-
-        Rectangle {
-            id: dialog
-
-            function addTask() {
-                if (todoInput.text.length > 0) {
-                    Todo.addTask(todoInput.text);
-                    todoInput.text = "";
-                    root.showAddDialog = false;
-                    tabBar.setCurrentIndex(0); // Show unfinished tasks
+            ToolbarTextField {
+                id: todoInput
+                Layout.fillWidth: true
+                Layout.fillHeight: false
+                implicitHeight: 40
+                colBackground: Appearance.colors.colLayer2
+                placeholderText: Translation.tr("Add a task")
+                onAccepted: root.addTask()
+                // Clears first; an empty field lets Escape through to close the sidebar
+                Keys.onEscapePressed: (event) => {
+                    event.accepted = text.length > 0;
+                    text = "";
                 }
             }
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: root.dialogMargins
-            implicitHeight: dialogColumnLayout.implicitHeight
+            RippleButton {
+                implicitWidth: 40
+                implicitHeight: 40
+                buttonRadius: Appearance.rounding.full
+                enabled: todoInput.text.trim().length > 0
+                colBackground: Appearance.colors.colPrimary
+                colBackgroundHover: Appearance.colors.colPrimaryHover
+                colRipple: Appearance.colors.colPrimaryActive
+                colStateLayer: Appearance.colors.colOnPrimary
+                onClicked: root.addTask()
 
-            color: Appearance.m3colors.m3surfaceContainerHigh
-            radius: Appearance.rounding.normal
-
-            ColumnLayout {
-                id: dialogColumnLayout
-
-                anchors.fill: parent
-                spacing: 16
-
-                StyledText {
-                    Layout.topMargin: 16
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.alignment: Qt.AlignLeft
-                    color: Appearance.m3colors.m3onSurface
-                    font.pixelSize: Appearance.font.pixelSize.larger
-                    text: Translation.tr("Add task")
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    text: "add"
+                    iconSize: Appearance.font.pixelSize.huge
+                    color: Appearance.colors.colOnPrimary
                 }
-
-                TextField {
-                    id: todoInput
-
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    padding: 10
-                    color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
-                    renderType: Text.NativeRendering
-                    selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
-                    selectionColor: Appearance.colors.colSecondaryContainer
-                    placeholderText: Translation.tr("Task description")
-                    placeholderTextColor: Appearance.m3colors.m3outline
-                    focus: root.showAddDialog
-                    onAccepted: dialog.addTask()
-
-                    background: Rectangle {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.verysmall
-                        border.width: 2
-                        border.color: todoInput.activeFocus ? Appearance.colors.colPrimary : Appearance.m3colors.m3outline
-                        color: "transparent"
-                    }
-
-                    cursorDelegate: Rectangle {
-                        width: 1
-                        color: todoInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
-                        radius: 1
-                    }
-
-                }
-
-                RowLayout {
-                    Layout.bottomMargin: 16
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    Layout.alignment: Qt.AlignRight
-                    spacing: 5
-
-                    DialogButton {
-                        buttonText: Translation.tr("Cancel")
-                        onClicked: root.showAddDialog = false
-                    }
-
-                    DialogButton {
-                        buttonText: Translation.tr("Add")
-                        enabled: todoInput.text.length > 0
-                        onClicked: dialog.addTask()
-                    }
-
-                }
-
             }
-
         }
-
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-
     }
-
 }

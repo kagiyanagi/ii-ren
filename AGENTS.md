@@ -371,6 +371,12 @@ you touched; they are the only automated gate.
   shows garbage. The service ticks at 100ms, so Pause and Lap must sample before they
   store. The frame clock that draws the centiseconds must be gated on the sidebar being
   open and the tab showing. None of it shows in a screenshot
+- `python3 tools/check-todo.py` — the sidebar to-do list animates only the row that
+  changed, and acts on the right line of the user's note. `Todo.list` is reparsed on every
+  write, so every object is new, and an unkeyed `ScriptModel` rebuilt every row on every
+  tick. It is keyed now. The check runs the key binding under node. The key must be unique
+  across identical tasks and must survive a tick and a delete above it. A matched key
+  delivers the fresh `originalIndex` the service acts on
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
