@@ -14,6 +14,11 @@ import QtQuick.Layouts
  * "session" and "always"), so the buttons come from `choices` rather than being
  * hardcoded here. Silence is not consent upstream -- the turn stays blocked until
  * this is answered or it times out -- so the card is deliberately loud.
+ *
+ * The Android 16 runtime-permission dialog: the choices stacked full-width in
+ * the gateway's order, the grant filled. Deny is tonal like the rest, because
+ * it is the safe answer; the danger is the request's, and the icon, the title
+ * and the verbatim command say so.
  */
 Rectangle {
     id: root
@@ -117,14 +122,14 @@ Rectangle {
             text: root.description
         }
 
-        Rectangle { // The command itself, verbatim
+        Rectangle { // The command itself, verbatim, and selectable
             Layout.fillWidth: true
             visible: root.command.length > 0
             implicitHeight: commandText.implicitHeight + 8 * 2
             radius: Appearance.rounding.small
             color: Appearance.colors.colLayer3
 
-            StyledText {
+            StyledTextArea {
                 id: commandText
                 anchors {
                     left: parent.left
@@ -132,7 +137,11 @@ Rectangle {
                     verticalCenter: parent.verticalCenter
                     margins: 8
                 }
-                wrapMode: Text.Wrap
+                padding: 0
+                background: null
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.Wrap
                 font.pixelSize: Appearance.font.pixelSize.small
                 font.family: Appearance.font.family.monospace
                 color: Appearance.colors.colOnLayer3
@@ -140,7 +149,7 @@ Rectangle {
             }
         }
 
-        FlowButtonGroup {
+        ColumnLayout {
             Layout.fillWidth: true
             spacing: 4
 
@@ -151,17 +160,18 @@ Rectangle {
                     id: choiceButton
                     required property string modelData
 
-                    readonly property bool destructive: choiceButton.modelData === "deny"
-
-                    implicitHeight: 32
+                    Layout.fillWidth: true
+                    implicitHeight: 40
                     buttonRadius: Appearance.rounding.full
-                    horizontalPadding: 16
 
-                    // "once" is the safe default, so it carries the filled emphasis.
+                    // Granting once is what the card is asking for, so it carries
+                    // the filled emphasis; the tonal rest take the card's next layer.
                     toggled: choiceButton.modelData === "once"
-                    colBackground: choiceButton.destructive ? Appearance.colors.colErrorContainer : Appearance.colors.colLayer3
-                    colBackgroundHover: choiceButton.destructive ? Appearance.colors.colErrorContainerHover : Appearance.colors.colLayer3Hover
-                    colBackgroundActive: choiceButton.destructive ? Appearance.colors.colErrorContainerActive : Appearance.colors.colLayer3Active
+                    colBackground: Appearance.colors.colLayer3
+                    colBackgroundHover: Appearance.colors.colLayer3Hover
+                    colBackgroundActive: Appearance.colors.colLayer3Active
+                    colRipple: Appearance.colors.colLayer3Active
+                    colStateLayer: choiceButton.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3
 
                     releaseAction: () => HermesService.respondToApproval(choiceButton.modelData)
 
@@ -169,7 +179,7 @@ Rectangle {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.pixelSize: Appearance.font.pixelSize.small
-                        color: choiceButton.destructive ? Appearance.m3colors.m3onErrorContainer : choiceButton.toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer3
+                        color: choiceButton.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3
                         text: root.labelFor(choiceButton.modelData)
                     }
                 }

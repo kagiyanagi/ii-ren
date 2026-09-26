@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 
@@ -70,7 +70,7 @@ RippleButton {
     colBackgroundHover: root.hot ? Appearance.colors.colErrorContainerHover : Appearance.colors.colLayer2Hover
     colBackgroundActive: root.hot ? Appearance.colors.colErrorContainerActive : Appearance.colors.colLayer2Active
 
-    releaseAction: () => pickerPopup.visible ? pickerPopup.close() : pickerPopup.open()
+    releaseAction: () => picker.toggle(root)
 
     contentItem: RowLayout {
         id: contentRow
@@ -104,9 +104,9 @@ RippleButton {
             text: "keyboard_arrow_down"
             iconSize: Appearance.font.pixelSize.smallest
             color: root.hot ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colSubtext
-            rotation: pickerPopup.visible ? 180 : 0
+            rotation: picker.shown ? 180 : 0
             Behavior on rotation {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
             Behavior on color {
                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -116,6 +116,7 @@ RippleButton {
 
     StyledToolTip {
         text: root.tooltipText
+        extraVisibleCondition: !picker.shown // not over its own open card
     }
 
     // One list row per mode -- selection comes straight from
@@ -130,14 +131,19 @@ RippleButton {
 
         readonly property bool selected: HermesService.approvalMode === modeRow.mode
         readonly property bool isOff: modeRow.mode === "off"
-        readonly property color onColor: modeRow.selected ? (modeRow.isOff ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colOnSecondaryContainer) : (modeRow.isOff ? Appearance.colors.colError : Appearance.colors.colOnLayer2)
+        readonly property color onColor: modeRow.selected ? (modeRow.isOff ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colOnSecondaryContainer) : (modeRow.isOff ? Appearance.colors.colError : Appearance.colors.colOnSurface)
 
         Layout.fillWidth: true
         implicitHeight: rowContent.implicitHeight + 8 * 2
         buttonRadius: Appearance.rounding.normal
 
         colBackground: modeRow.selected ? (modeRow.isOff ? Appearance.colors.colErrorContainer : Appearance.colors.colSecondaryContainer) : "transparent"
-        colBackgroundHover: modeRow.selected ? (modeRow.isOff ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSecondaryContainerHover) : Appearance.colors.colLayer2Hover
+        // Unselected rows sit on the popover's opaque card, which no colLayer
+        // token is solved for, so their states are films of the content colour
+        // over it: hover 0.08, pressed 0.10 (DESIGN.md 3.1).
+        colBackgroundHover: modeRow.selected ? (modeRow.isOff ? Appearance.colors.colErrorContainerHover : Appearance.colors.colSecondaryContainerHover) : ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.92)
+        colRipple: ColorUtils.transparentize(modeRow.onColor, 0.9)
+        colStateLayer: modeRow.onColor
 
         releaseAction: () => HermesService.setApprovalMode(modeRow.mode)
 
@@ -197,181 +203,101 @@ RippleButton {
         }
     }
 
-    Popup {
-        id: pickerPopup
-        parent: root
+    // Hangs from the pill's bottom centre: the pill sits in the status strip up
+    // top, so the menu opens downward. Wide enough that a description is one
+    // or two lines, not three; still a menu rather than a panel.
+    HermesPopover {
+        id: picker
 
-        // Wide enough that a description is one or two lines, not three;
-        // still a menu rather than a panel inside a 460px sidebar.
-        width: 340
-        padding: 12
-        leftPadding: 12
-        rightPadding: 12
-        y: root.height + 10 // Opens downward -- this pill sits in the status strip up top
-        x: {
-            // Left-aligned with the pill by default, nudged inward only if
-            // that would run the card past the window's edge (DockFolderPopup
-            // clamps the same way, just against a whole-screen window).
-            const globalLeft = root.mapToItem(null, 0, 0).x;
-            const winWidth = root.QsWindow?.window?.width ?? (globalLeft + pickerPopup.width + 16);
-            return Math.max(8 - globalLeft, Math.min(0, winWidth - 8 - pickerPopup.width - globalLeft));
+        StyledText {
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+            Layout.minimumWidth: 0
+            wrapMode: Text.Wrap
+            font.pixelSize: Appearance.font.pixelSize.small
+            font.weight: Font.DemiBold
+            color: Appearance.colors.colOnSurface
+            text: Translation.tr("Act without asking?")
         }
 
-        transformOrigin: Item.TopLeft
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
 
-        // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
-        enter: Transition {
-            ParallelAnimation {
-                SequentialAnimation {
-                    NumberAnimation {
-                        property: "scale"
-                        from: Appearance.animationCurves.arrowPopupScale
-                        to: Appearance.animationCurves.arrowPopupOvershoot
-                        duration: Appearance.animationCurves.arrowPopupScaleDuration
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
-                    }
-                    NumberAnimation {
-                        property: "scale"
-                        to: 1
-                        duration: Appearance.animationCurves.arrowPopupScaleDuration
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
-                    }
-                }
-                NumberAnimation {
-                    property: "opacity"
-                    from: 0
-                    to: 1
-                    duration: Appearance.animationCurves.arrowPopupFadeDuration
-                }
+            ModeRow {
+                mode: "manual"
+                modeIcon: root.modeInfo.manual.icon
+                modeLabel: root.modeInfo.manual.label
+                modeDescription: root.modeInfo.manual.description
+            }
+            ModeRow {
+                mode: "smart"
+                modeIcon: root.modeInfo.smart.icon
+                modeLabel: root.modeInfo.smart.label
+                modeDescription: root.modeInfo.smart.description
+            }
+            ModeRow {
+                mode: "off"
+                modeIcon: root.modeInfo.off.icon
+                modeLabel: root.modeInfo.off.label
+                modeDescription: root.modeInfo.off.description
             }
         }
 
-        exit: Transition {
-            ParallelAnimation {
-                NumberAnimation {
-                    property: "scale"
-                    to: Appearance.animationCurves.arrowPopupScale
-                    duration: Appearance.animationCurves.arrowPopupCloseDuration
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
-                }
-                SequentialAnimation {
-                    PauseAnimation {
-                        duration: Appearance.animationCurves.arrowPopupFadeHold
-                    }
-                    NumberAnimation {
-                        property: "opacity"
-                        to: 0
-                        duration: Appearance.animationCurves.arrowPopupFadeDuration
-                    }
-                }
-            }
-        }
-
-        background: Item {
-            StyledRectangularShadow {
-                target: popupCard
-            }
-
-            Rectangle {
-                id: popupCard
-                anchors.fill: parent
-                radius: Appearance.rounding.verylarge
-                color: Appearance.m3colors.m3surfaceContainerHigh
-            }
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 8
-
-            StyledText {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                Layout.minimumWidth: 0
-                wrapMode: Text.Wrap
-                font.pixelSize: Appearance.font.pixelSize.small
-                font.weight: Font.DemiBold
-                color: Appearance.colors.colOnLayer2
-                text: Translation.tr("Act without asking?")
-            }
+        Rectangle { // The blunt override -- kept visually separate and constantly cautionary, on or off
+            Layout.fillWidth: true
+            implicitHeight: yoloColumn.implicitHeight + 12 * 2
+            radius: Appearance.rounding.large
+            color: Appearance.colors.colErrorContainer
 
             ColumnLayout {
-                Layout.fillWidth: true
+                id: yoloColumn
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    margins: 12
+                }
                 spacing: 6
 
-                ModeRow {
-                    mode: "manual"
-                    modeIcon: root.modeInfo.manual.icon
-                    modeLabel: root.modeInfo.manual.label
-                    modeDescription: root.modeInfo.manual.description
-                }
-                ModeRow {
-                    mode: "smart"
-                    modeIcon: root.modeInfo.smart.icon
-                    modeLabel: root.modeInfo.smart.label
-                    modeDescription: root.modeInfo.smart.description
-                }
-                ModeRow {
-                    mode: "off"
-                    modeIcon: root.modeInfo.off.icon
-                    modeLabel: root.modeInfo.off.label
-                    modeDescription: root.modeInfo.off.description
-                }
-            }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
 
-            Rectangle { // The blunt override -- kept visually separate and constantly cautionary, on or off
-                Layout.fillWidth: true
-                implicitHeight: yoloColumn.implicitHeight + 12 * 2
-                radius: Appearance.rounding.large
-                color: Appearance.colors.colErrorContainer
-
-                ColumnLayout {
-                    id: yoloColumn
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        top: parent.top
-                        margins: 12
-                    }
-                    spacing: 6
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        MaterialSymbol {
-                            iconSize: Appearance.font.pixelSize.normal
-                            color: Appearance.m3colors.m3onErrorContainer
-                            text: "warning"
-                        }
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            wrapMode: Text.Wrap
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            font.weight: Font.DemiBold
-                            color: Appearance.m3colors.m3onErrorContainer
-                            text: Translation.tr("Skip approvals entirely")
-                        }
-
-                        StyledSwitch {
-                            checked: HermesService.yolo
-                            onToggled: HermesService.setYolo(checked)
-                        }
+                    MaterialSymbol {
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.m3colors.m3onErrorContainer
+                        text: "warning"
                     }
 
                     StyledText {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         wrapMode: Text.Wrap
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        lineHeight: 1.3
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
                         color: Appearance.m3colors.m3onErrorContainer
-                        text: Translation.tr("Overrides everything above. Hermes can run commands on this machine without asking, ever. Only for when you're watching closely.")
+                        text: Translation.tr("Skip approvals entirely")
                     }
+
+                    StyledSwitch {
+                        // The gateway owns the state and echoes it back: a switch
+                        // that toggled itself would break this binding, and a
+                        // refused change would go on looking applied.
+                        checkable: false
+                        checked: HermesService.yolo
+                        onClicked: HermesService.setYolo(!HermesService.yolo)
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    lineHeight: 1.3
+                    color: Appearance.m3colors.m3onErrorContainer
+                    text: Translation.tr("Overrides everything above. Hermes can run commands on this machine without asking, ever. Only for when you're watching closely.")
                 }
             }
         }

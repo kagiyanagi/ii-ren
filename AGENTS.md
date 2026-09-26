@@ -483,6 +483,20 @@ you touched; they are the only automated gate.
   bracket-to-range arithmetic, and holds the two runtime traps: the removals report their
   `textChanged` late (unguarded, that cleared every pill), and `InlineCode` as the view's
   `background:` segfaulted the shell on reload
+- `python3 tools/check-hermes-composer.py` — what sits around the Hermes composer: the
+  approval and clarify cards, the `!` console, and the three popovers. The three popovers
+  each assembled ArrowPopup by hand and each got it wrong: a QQC2 `Popup` whose origin
+  drifted with the clamp, a card scaling about its own bottom, and a toolbar whose
+  `visible: shown` deleted its fade-out. The mode menu and the context card are one
+  `HermesPopover` on `ArrowPopupMotion` from a zero-size pivot, and the toolbar has its own.
+  The check runs the popover clamp under node: centred on the opener when it fits, and
+  always inside the *panel*. The sidebar window is wider than the panel and masks input
+  to it, so a card clamped to the window can take clicks meant for the app behind. It
+  also pins the root's `visible` to `shown`: `open()` focuses the card while its opacity
+  is still 0, an invisible item cannot take focus, and Escape then closed the sidebar
+  instead of the menu. It runs the toolbar's in-view guard and the clarify card's reset
+  (a replaced batch opened at the old question), and holds Deny off the error container,
+  since Deny is the safe answer
 - `python3 tools/check-hermes-paste.py` — Ctrl+V in the Hermes composer attaches the
   image that was copied. The composer decides from cliphist that an image was copied, and
   it used to hand the attach to the gateway's `clipboard.paste`, which reads only the live

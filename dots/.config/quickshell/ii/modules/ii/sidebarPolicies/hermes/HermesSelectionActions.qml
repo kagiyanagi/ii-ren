@@ -20,6 +20,9 @@ import Quickshell
  * source view reports, and re-evaluated whenever `repositionTrigger` changes --
  * scrolling moves a selection without changing it, so a binding on the selection
  * alone would leave the toolbar behind.
+ *
+ * The Android floating text-selection toolbar: a pill that grows out of the
+ * selection's edge on ArrowPopupMotion, from a zero-size pivot (DESIGN.md §9).
  */
 Item {
     id: root
@@ -50,7 +53,7 @@ Item {
         return false;
     }
 
-    readonly property bool shown: TextSelectionService.active && root.inScope
+    readonly property bool selecting: TextSelectionService.active && root.inScope
 
     /**
      * The selection's bounding box in `anchorItem` coordinates.
@@ -60,12 +63,12 @@ Item {
      * toolbar centres on the start for a single-line selection and on the view for
      * anything taller, which is the only placement that stays over the text.
      */
-    readonly property rect selectionRect: {
+    readonly property rect liveRect: {
         root.repositionTrigger; // re-evaluate as the transcript scrolls
         root.anchorItem.width;  // ...and as it is resized
 
         const item = root.selectionSource;
-        if (!root.shown || !item || !item.positionToRectangle)
+        if (!root.selecting || !item || !item.positionToRectangle)
             return Qt.rect(0, 0, 0, 0);
 
         const start = item.positionToRectangle(item.selectionStart);
@@ -78,112 +81,138 @@ Item {
         return Qt.rect(left, topLeft.y, Math.max(0, right - left), Math.max(0, bottomRight.y - topLeft.y));
     }
 
+    // Not while the selection is scrolled out of the transcript: the toolbar
+    // would hang off an edge over text it does not belong to.
+    readonly property bool shown: root.selecting && root.liveRect.y + root.liveRect.height > 0 && root.liveRect.y < root.height
+
+    // Latched while shown. Through the exit the selection is already gone and
+    // the live rect is empty, which would drag the pivot into the corner.
+    property rect selectionRect
+    onLiveRectChanged: {
+        if (root.shown)
+            root.selectionRect = root.liveRect;
+    }
+    onShownChanged: {
+        if (root.shown)
+            motion.open();
+        else
+            motion.close();
+    }
+
+    readonly property real gap: 8
+    readonly property real edgeMargin: 4
+    // Above the selection by preference -- a toolbar below it covers the line
+    // the user is most likely reading next -- and flipped under when the
+    // selection starts too near the top to fit.
+    readonly property bool below: root.selectionRect.y - toolbar.height - root.gap < 0
+
+    // The container itself holds no input, so everything else in the transcript
+    // stays clickable; only the toolbar's buttons take a press.
     anchors.fill: parent
-    // The toolbar is the only thing here; everything else in the transcript has to
-    // stay clickable, so the container itself must not swallow input.
-    visible: root.shown
 
-    Rectangle {
-        id: toolbar
+    // At the selection's top centre, or its bottom centre when flipped under.
+    Item {
+        id: pivot
+        x: root.selectionRect.x + root.selectionRect.width / 2
+        y: root.below ? root.selectionRect.y + root.selectionRect.height : root.selectionRect.y
+        opacity: 0
+        scale: Appearance.animationCurves.arrowPopupScale
+        visible: opacity > 0
 
-        readonly property real gap: 6
-        readonly property real edgeMargin: 4
-        // Above the selection by preference -- a toolbar below it covers the line
-        // the user is most likely reading next -- and flipped under when the
-        // selection starts too near the top to fit.
-        readonly property bool below: root.selectionRect.y - height - gap < 0
-
-        x: Math.max(edgeMargin, Math.min(root.width - width - edgeMargin,
-            root.selectionRect.x + root.selectionRect.width / 2 - width / 2))
-        y: below ? root.selectionRect.y + root.selectionRect.height + gap
-                 : root.selectionRect.y - height - gap
-
-        implicitWidth: buttons.implicitWidth + 8
-        implicitHeight: buttons.implicitHeight + 8
-        radius: Appearance.rounding.small
-        // The raw M3 colour, not `colors.colSurfaceContainerHighest`: that one
-        // carries `1 - contentTransparency` as its alpha because it is solved to
-        // composite onto a known layer underneath. This floats over message text,
-        // so the words it covers would read straight through it.
-        color: Appearance.m3colors.m3surfaceContainerHighest
-
-        opacity: root.shown ? 1 : 0
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        ArrowPopupMotion {
+            id: motion
+            target: pivot
         }
 
         StyledRectangularShadow {
             target: toolbar
-            z: -1
         }
 
-        ButtonGroup {
-            id: buttons
-            anchors.centerIn: parent
-            spacing: 4
+        Rectangle {
+            id: toolbar
 
-            AiMessageControlButton {
-                id: speakSelectionButton
+            // Centred on the selection, then clamped inside the transcript.
+            x: Math.max(root.edgeMargin - pivot.x, Math.min(-width / 2, root.width - root.edgeMargin - width - pivot.x))
+            y: root.below ? root.gap : -height - root.gap
 
-                readonly property bool speakingThis: HermesService.speakingMessageId === HermesService.selectionSpeechId
+            implicitWidth: buttons.implicitWidth + 8
+            implicitHeight: buttons.implicitHeight + 8
+            radius: Appearance.rounding.full
+            // The raw M3 colour, not `colors.colSurfaceContainerHigh`: that one
+            // carries `1 - contentTransparency` as its alpha because it is solved to
+            // composite onto a known layer underneath. This floats over message text,
+            // so the words it covers would read straight through it.
+            readonly property color base: Appearance.m3colors.m3surfaceContainerHigh
+            color: Qt.rgba(base.r, base.g, base.b, 1)
 
-                // Focus would move off the text view, and a view that is not focused
-                // stops drawing its highlight -- the selection these buttons act on
-                // would vanish the moment one was pressed.
-                focusPolicy: Qt.NoFocus
-                activated: speakSelectionButton.speakingThis
-                buttonIcon: speakSelectionButton.speakingThis ? "stop" : "graphic_eq"
+            ButtonGroup {
+                id: buttons
+                anchors.centerIn: parent
+                spacing: 4
 
-                onClicked: {
-                    if (speakSelectionButton.speakingThis)
-                        HermesService.stopSpeaking();
-                    else
-                        HermesService.speakText(root.selectedText);
+                AiMessageControlButton {
+                    id: speakSelectionButton
+
+                    readonly property bool speakingThis: HermesService.speakingMessageId === HermesService.selectionSpeechId
+
+                    // Focus would move off the text view, and a view that is not focused
+                    // stops drawing its highlight -- the selection these buttons act on
+                    // would vanish the moment one was pressed.
+                    focusPolicy: Qt.NoFocus
+                    activated: speakSelectionButton.speakingThis
+                    buttonIcon: speakSelectionButton.speakingThis ? "stop" : "graphic_eq"
+
+                    onClicked: {
+                        if (speakSelectionButton.speakingThis)
+                            HermesService.stopSpeaking();
+                        else
+                            HermesService.speakText(root.selectedText);
+                    }
+
+                    StyledToolTip {
+                        text: speakSelectionButton.speakingThis ? Translation.tr("Stop reading") : Translation.tr("Read selection out loud")
+                    }
                 }
 
-                StyledToolTip {
-                    text: speakSelectionButton.speakingThis ? Translation.tr("Stop reading") : Translation.tr("Read selection out loud")
-                }
-            }
+                AiMessageControlButton {
+                    id: copySelectionButton
 
-            AiMessageControlButton {
-                id: copySelectionButton
+                    focusPolicy: Qt.NoFocus
+                    buttonIcon: activated ? "inventory" : "content_copy"
 
-                focusPolicy: Qt.NoFocus
-                buttonIcon: activated ? "inventory" : "content_copy"
+                    onClicked: {
+                        Quickshell.clipboardText = root.selectedText;
+                        copySelectionButton.activated = true;
+                        copyIconTimer.restart();
+                    }
 
-                onClicked: {
-                    Quickshell.clipboardText = root.selectedText;
-                    copySelectionButton.activated = true;
-                    copyIconTimer.restart();
-                }
+                    Timer {
+                        id: copyIconTimer
+                        interval: 1500
+                        onTriggered: copySelectionButton.activated = false
+                    }
 
-                Timer {
-                    id: copyIconTimer
-                    interval: 1500
-                    onTriggered: copySelectionButton.activated = false
-                }
-
-                StyledToolTip {
-                    text: Translation.tr("Copy selection")
-                }
-            }
-
-            AiMessageControlButton {
-                id: quoteSelectionButton
-
-                focusPolicy: Qt.NoFocus
-                buttonIcon: "format_quote"
-
-                // The quote goes to the composer, not to the agent: it is the
-                // opening of a reply the user still has to write.
-                onClicked: {
-                    root.quoteRequested(root.selectedText);
-                    TextSelectionService.dismiss();
+                    StyledToolTip {
+                        text: Translation.tr("Copy selection")
+                    }
                 }
 
-                StyledToolTip {
-                    text: Translation.tr("Quote and reply")
+                AiMessageControlButton {
+                    id: quoteSelectionButton
+
+                    focusPolicy: Qt.NoFocus
+                    buttonIcon: "format_quote"
+
+                    // The quote goes to the composer, not to the agent: it is the
+                    // opening of a reply the user still has to write.
+                    onClicked: {
+                        root.quoteRequested(root.selectedText);
+                        TextSelectionService.dismiss();
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Quote and reply")
+                    }
                 }
             }
         }

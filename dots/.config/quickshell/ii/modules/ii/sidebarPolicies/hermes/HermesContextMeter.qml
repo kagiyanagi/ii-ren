@@ -5,21 +5,16 @@ import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
 
 /**
  * Composer status pill: how full the context window is, and a tap-through to
  * a breakdown of what is in it plus the one action that helps -- folding the
  * conversation down.
  *
- * The breakdown popover reparents itself into the sidebar window's own
- * content item instead of staying in this component's tree: `inputWrapper` in
- * Hermes.qml clips, which would slice a card trying to grow upward out of
- * this pill. The sidebar's `PanelWindow` already runs
- * `WlrKeyboardFocus.OnDemand`, so escaping into its contentItem gets an
- * unclipped surface that a text field can still be typed into, without
- * opening a second Wayland surface -- compare `DockFolderPopup`, which needs
- * one only because the dock is a separate window.
+ * The breakdown is a HermesPopover, drawn from the sidebar window's content
+ * item because `inputWrapper` in Hermes.qml clips. The sidebar's `PanelWindow`
+ * already runs `WlrKeyboardFocus.OnDemand`, so the focus field can still be
+ * typed into without a second Wayland surface.
  */
 Item {
     id: root
@@ -83,35 +78,11 @@ Item {
         return out;
     }
 
-    property Item popoverItem: null
-
     function togglePopover(): void {
-        if (root.popoverItem) {
-            root.closePopover();
-            return;
-        }
-        const attached = root.QsWindow;
-        if (!attached?.window || !attached?.contentItem)
-            return;
-        const pos = attached.window.itemPosition(pill);
-        HermesService.refreshContextBreakdown();
-        root.popoverItem = popoverComponent.createObject(attached.contentItem, {
-            "anchorRect": Qt.rect(pos.x, pos.y, pill.width, pill.height)
-        });
+        if (!popover.shown)
+            HermesService.refreshContextBreakdown();
+        popover.toggle(pill);
     }
-
-    function closePopover(): void {
-        const item = root.popoverItem;
-        if (!item)
-            return;
-        root.popoverItem = null;
-        item.dismiss();
-    }
-
-    // The popover is parented to the window, not to us, once it exists -- if
-    // this page gets torn down (sidebar closed, content released) while it is
-    // open, nothing else would ever destroy it.
-    Component.onDestruction: root.popoverItem?.destroy()
 
     visible: root.percent > 0
     implicitWidth: pill.implicitWidth
@@ -124,7 +95,7 @@ Item {
         implicitHeight: 30
         implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
         buttonRadius: Appearance.rounding.full
-        toggled: root.popoverItem !== null
+        toggled: popover.shown
         colBackground: "transparent"
         colBackgroundHover: Appearance.colors.colLayer2Hover
         colBackgroundActive: Appearance.colors.colLayer2Active
@@ -171,323 +142,195 @@ Item {
 
         StyledToolTip {
             text: root.tooltipText
-            extraVisibleCondition: true
+            extraVisibleCondition: !popover.shown // not over its own open card
         }
     }
 
-    Component {
-        id: popoverComponent
+    // Hangs from the pill's top centre and opens upward, out of the composer.
+    HermesPopover {
+        id: popover
+        opensUp: true
+        spacing: 12
 
-        Item {
-            id: overlay
-            property rect anchorRect: Qt.rect(0, 0, 0, 0)
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 2
 
-            anchors.fill: parent
-            z: 1000
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
-            function dismiss(): void {
-                closeAnim.start();
-            }
-
-            Component.onCompleted: cardColumn.forceActiveFocus()
-
-            // Anywhere off the card closes it, like any other popover.
-            MouseArea {
-                anchors.fill: parent
-                onClicked: overlay.dismiss()
-            }
-
-            StyledRectangularShadow {
-                target: card
-                scale: card.scale
-                transformOrigin: card.transformOrigin
-                opacity: card.opacity
-            }
-
-            Rectangle {
-                id: card
-
-                readonly property real gutter: 8
-                readonly property real gap: 10
-
-                x: Math.max(gutter, Math.min(overlay.anchorRect.x + overlay.anchorRect.width / 2 - implicitWidth / 2, overlay.width - implicitWidth - gutter))
-                // Clamped, unlike DockFolderPopup's own bottom-dock case: this
-                // card's content is a lot taller than a folder name field, and
-                // a short chat area would otherwise push it off the top edge.
-                y: Math.max(gutter, overlay.anchorRect.y - implicitHeight - gap)
-
-                implicitWidth: Math.min(340, overlay.width - gutter * 2)
-                implicitHeight: cardColumn.implicitHeight + 12 * 2
-                radius: Appearance.rounding.verylarge
-                color: Appearance.colors.colLayer1Base
-
-                opacity: 0
-                scale: Appearance.animationCurves.arrowPopupScale
-                // Grows out of the pill that opened it, per ArrowPopup's pivot.
-                transformOrigin: Item.Bottom
-
-                // The ArrowPopup recipe, from Appearance.animationCurves.arrowPopup*.
-                ParallelAnimation {
-                    id: openAnim
-                    running: true
-                    SequentialAnimation {
-                        NumberAnimation {
-                            target: card
-                            property: "scale"
-                            from: Appearance.animationCurves.arrowPopupScale
-                            to: Appearance.animationCurves.arrowPopupOvershoot
-                            duration: Appearance.animationCurves.arrowPopupScaleDuration
-                            easing.type: Easing.Bezier
-                            easing.bezierCurve: Appearance.animationCurves.emphasizedDecel
-                        }
-                        NumberAnimation {
-                            target: card
-                            property: "scale"
-                            to: 1
-                            duration: Appearance.animationCurves.arrowPopupScaleDuration
-                            easing.type: Easing.Bezier
-                            easing.bezierCurve: Appearance.animationCurves.arrowPopupSettle
-                        }
-                    }
-                    NumberAnimation {
-                        target: card
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Appearance.animationCurves.arrowPopupFadeDuration
-                    }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Translation.tr("Context window")
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.weight: Font.DemiBold
+                    color: Appearance.colors.colOnSurface
                 }
 
-                ParallelAnimation {
-                    id: closeAnim
-                    NumberAnimation {
-                        target: card
-                        property: "scale"
-                        to: Appearance.animationCurves.arrowPopupScale
-                        duration: Appearance.animationCurves.arrowPopupCloseDuration
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
-                    }
-                    SequentialAnimation {
-                        PauseAnimation {
-                            duration: Appearance.animationCurves.arrowPopupFadeHold
-                        }
-                        NumberAnimation {
-                            target: card
-                            property: "opacity"
-                            to: 0
-                            duration: Appearance.animationCurves.arrowPopupFadeDuration
-                        }
-                    }
-                    onFinished: overlay.destroy()
+                StyledText {
+                    text: Translation.tr("%1%").arg(root.percent)
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: root.meterColor
                 }
+            }
 
-                // Swallows what the dismiss handler underneath would otherwise take.
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.AllButtons
-                }
+            StyledText {
+                Layout.fillWidth: true
+                text: Translation.tr("%1 / %2 tokens").arg(HermesService.contextUsed).arg(HermesService.contextMax)
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+            }
 
-                ColumnLayout {
-                    id: cardColumn
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        top: parent.top
-                        margins: 12
-                    }
-                    spacing: 12
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.breakdown?.context_estimated === true
+                wrapMode: Text.Wrap
+                text: Translation.tr("~%1 tokens estimated -- not reported by the provider").arg(root.breakdown?.estimated_total ?? HermesService.contextUsed)
+                font.pixelSize: Appearance.font.pixelSize.smallest
+                color: Appearance.colors.colSubtext
+            }
+        }
 
-                    focus: true
-                    Keys.onPressed: event => {
-                        if (event.key === Qt.Key_Escape) {
-                            event.accepted = true;
-                            overlay.dismiss();
-                        }
-                    }
+        RowLayout {
+            Layout.fillWidth: true
+            visible: root.breakdown === null
+            spacing: 8
 
-                    ColumnLayout {
+            MaterialLoadingIndicator {
+                implicitSize: 18
+                loading: true
+            }
+
+            StyledText {
+                text: Translation.tr("Loading breakdown…")
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.categories.length > 0
+            spacing: 8
+
+            Repeater {
+                model: root.categories
+
+                delegate: ColumnLayout {
+                    id: categoryRow
+                    required property var modelData
+
+                    Layout.fillWidth: true
+                    spacing: 2
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: 2
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            StyledText {
-                                Layout.fillWidth: true
-                                text: Translation.tr("Context window")
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                font.weight: Font.DemiBold
-                                color: Appearance.colors.colOnLayer1
-                            }
-
-                            StyledText {
-                                text: Translation.tr("%1%").arg(root.percent)
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                color: root.meterColor
-                            }
-                        }
+                        spacing: 8
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: Translation.tr("%1 / %2 tokens").arg(HermesService.contextUsed).arg(HermesService.contextMax)
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: categoryRow.modelData.label
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
+                            color: Appearance.colors.colOnSurface
                         }
 
                         StyledText {
-                            Layout.fillWidth: true
-                            visible: root.breakdown?.context_estimated === true
-                            wrapMode: Text.Wrap
-                            text: Translation.tr("~%1 tokens estimated -- not reported by the provider").arg(root.breakdown?.estimated_total ?? HermesService.contextUsed)
+                            text: categoryRow.modelData.tokens.toString()
                             font.pixelSize: Appearance.font.pixelSize.smallest
                             color: Appearance.colors.colSubtext
                         }
                     }
 
+                    StyledProgressBar {
+                        Layout.fillWidth: true
+                        valueBarHeight: 6
+                        value: categoryRow.modelData.tokens / root.maxCategoryTokens
+                        highlightColor: Appearance.colors.colPrimary
+                        trackColor: Appearance.colors.colSecondaryContainer
+                    }
+                }
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.contextFiles.length > 0
+            spacing: 4
+
+            StyledText {
+                text: Translation.tr("Loaded files")
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.weight: Font.DemiBold
+                color: Appearance.colors.colSubtext
+            }
+
+            Repeater {
+                model: root.contextFiles
+
+                delegate: StyledText {
+                    required property string modelData
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    elide: Text.ElideMiddle
+                    text: modelData
+                    font.pixelSize: Appearance.font.pixelSize.smallest
+                    font.family: Appearance.font.family.monospace
+                    color: Appearance.colors.colSubtext
+                }
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            // The optional focus comes before the action that
+            // consumes it: a field under the button it feeds reads
+            // as an afterthought, and is seen after the click.
+            MaterialTextField {
+                id: focusField
+                Layout.fillWidth: true
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                placeholderText: Translation.tr("Focus the fold on… (optional)")
+            }
+
+            RippleButtonWithIcon {
+                id: compressButton
+                Layout.alignment: Qt.AlignLeft
+                enabled: !HermesService.compressing && !HermesService.busy
+                // The spinner takes the icon's place rather than
+                // sitting beside it, so the pill keeps one state
+                // and does not change width when it starts.
+                materialIcon: HermesService.compressing ? "" : "unfold_less"
+                materialIconFill: false
+                colText: Appearance.colors.colOnPrimaryContainer
+                buttonRadius: Appearance.rounding.full
+                colBackground: Appearance.colors.colPrimaryContainer
+                colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+                colBackgroundActive: Appearance.colors.colPrimaryContainerActive
+                colRipple: Appearance.colors.colPrimaryContainerActive
+
+                releaseAction: () => HermesService.compressSession(focusField.text)
+
+                mainContentComponent: Component {
                     RowLayout {
-                        Layout.fillWidth: true
-                        visible: root.breakdown === null
                         spacing: 8
 
-                        MaterialLoadingIndicator {
-                            implicitSize: 18
-                            loading: true
+                        Loader {
+                            active: HermesService.compressing
+                            sourceComponent: MaterialLoadingIndicator {
+                                implicitSize: 16
+                                loading: true
+                            }
                         }
 
                         StyledText {
-                            text: Translation.tr("Loading breakdown…")
+                            text: Translation.tr("Fold conversation")
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: root.categories.length > 0
-                        spacing: 8
-
-                        Repeater {
-                            model: root.categories
-
-                            delegate: ColumnLayout {
-                                id: categoryRow
-                                required property var modelData
-
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 8
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        elide: Text.ElideRight
-                                        text: categoryRow.modelData.label
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
-                                        color: Appearance.colors.colOnLayer1
-                                    }
-
-                                    StyledText {
-                                        text: categoryRow.modelData.tokens.toString()
-                                        font.pixelSize: Appearance.font.pixelSize.smallest
-                                        color: Appearance.colors.colSubtext
-                                    }
-                                }
-
-                                StyledProgressBar {
-                                    Layout.fillWidth: true
-                                    valueBarHeight: 6
-                                    value: categoryRow.modelData.tokens / root.maxCategoryTokens
-                                    highlightColor: Appearance.colors.colPrimary
-                                    trackColor: Appearance.colors.colSecondaryContainer
-                                }
-                            }
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: root.contextFiles.length > 0
-                        spacing: 4
-
-                        StyledText {
-                            text: Translation.tr("Loaded files")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            font.weight: Font.DemiBold
-                            color: Appearance.colors.colSubtext
-                        }
-
-                        Repeater {
-                            model: root.contextFiles
-
-                            delegate: StyledText {
-                                required property string modelData
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                elide: Text.ElideMiddle
-                                text: modelData
-                                font.pixelSize: Appearance.font.pixelSize.smallest
-                                font.family: Appearance.font.family.monospace
-                                color: Appearance.colors.colSubtext
-                            }
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        // The optional focus comes before the action that
-                        // consumes it: a field under the button it feeds reads
-                        // as an afterthought, and is seen after the click.
-                        MaterialTextField {
-                            id: focusField
-                            Layout.fillWidth: true
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            placeholderText: Translation.tr("Focus the fold on… (optional)")
-                        }
-
-                        RippleButtonWithIcon {
-                            id: compressButton
-                            Layout.alignment: Qt.AlignLeft
-                            enabled: !HermesService.compressing && !HermesService.busy
-                            // The spinner takes the icon's place rather than
-                            // sitting beside it, so the pill keeps one state
-                            // and does not change width when it starts.
-                            materialIcon: HermesService.compressing ? "" : "unfold_less"
-                            materialIconFill: false
-                            colText: Appearance.colors.colOnPrimaryContainer
-                            buttonRadius: Appearance.rounding.full
-                            colBackground: Appearance.colors.colPrimaryContainer
-                            colBackgroundHover: Appearance.colors.colPrimaryContainerHover
-                            colBackgroundActive: Appearance.colors.colPrimaryContainerActive
-                            colRipple: Appearance.colors.colPrimaryContainerActive
-
-                            releaseAction: () => HermesService.compressSession(focusField.text)
-
-                            mainContentComponent: Component {
-                                RowLayout {
-                                    spacing: 8
-
-                                    Loader {
-                                        active: HermesService.compressing
-                                        sourceComponent: MaterialLoadingIndicator {
-                                            implicitSize: 16
-                                            loading: true
-                                        }
-                                    }
-
-                                    StyledText {
-                                        text: Translation.tr("Fold conversation")
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
-                                        color: Appearance.colors.colOnPrimaryContainer
-                                    }
-                                }
-                            }
+                            color: Appearance.colors.colOnPrimaryContainer
                         }
                     }
                 }

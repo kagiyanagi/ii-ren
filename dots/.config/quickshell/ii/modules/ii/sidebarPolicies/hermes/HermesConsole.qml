@@ -34,10 +34,6 @@ Rectangle {
     opacity: root.shown ? 1 : 0
     visible: implicitHeight > 0
 
-    // Grows from the bottom edge: it opens directly above the composer, which is
-    // the thing that sent the command (DESIGN.md 2.6).
-    transformOrigin: Item.Bottom
-
     Behavior on implicitHeight {
         NumberAnimation {
             duration: root.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
@@ -150,9 +146,7 @@ Rectangle {
             onContentHeightChanged: if (outputFlickable.following)
                 outputFlickable.contentY = Math.max(0, outputFlickable.contentHeight - outputFlickable.height)
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-            }
+            ScrollBar.vertical: StyledScrollBar {}
 
             TextEdit {
                 id: outputText

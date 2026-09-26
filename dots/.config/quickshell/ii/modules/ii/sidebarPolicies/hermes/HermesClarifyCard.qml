@@ -4,7 +4,6 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 /**
@@ -13,6 +12,9 @@ import QtQuick.Layouts
  * The turn is parked until this is answered, so it is deliberately as loud as the
  * approval card. Choices come from the payload; a question with none takes a typed
  * answer instead, and one marked `multi_select` accumulates picks until confirmed.
+ *
+ * An M3 single- or multi-choice dialog laid inline: the choices are full-width
+ * rows, a single choice answers on press, a multi-select row toggles its check.
  */
 Rectangle {
     id: root
@@ -27,6 +29,9 @@ Rectangle {
     onRequestChanged: {
         if (root.shown) {
             root.latched = root.request;
+            // A replaced batch starts at its first question, not where the
+            // last one was left.
+            root.questionIndex = 0;
             root.selected = [];
             answerField.text = "";
         }
@@ -55,6 +60,16 @@ Rectangle {
             root.questionIndex = 0;
         }
     }
+
+    // A question with nothing to pick is answered by typing, so the caret goes
+    // there. Visibility is checked because focus cannot land on a card that has
+    // not started to open.
+    function focusIfTyped(): void {
+        if (root.visible && root.choices.length === 0)
+            answerField.forceActiveFocus();
+    }
+    onCurrentChanged: root.focusIfTyped()
+    onVisibleChanged: root.focusIfTyped()
 
     function toggleChoice(choice: string): void {
         root.selected = root.selected.includes(choice) ? root.selected.filter(item => item !== choice) : [...root.selected, choice];
@@ -124,7 +139,7 @@ Rectangle {
             text: root.questionText
         }
 
-        FlowButtonGroup {
+        ColumnLayout {
             Layout.fillWidth: true
             visible: root.choices.length > 0
             spacing: 4
@@ -136,29 +151,54 @@ Rectangle {
                     id: choiceButton
                     required property string modelData
 
-                    implicitHeight: 32
-                    buttonRadius: Appearance.rounding.full
-                    horizontalPadding: 16
+                    Layout.fillWidth: true
+                    implicitHeight: Math.max(40, choiceRow.implicitHeight + 8 * 2)
+                    buttonRadius: Appearance.rounding.small
 
-                    toggled: root.selected.includes(choiceButton.modelData)
+                    // Picked rows of a multi-select take the secondary container,
+                    // the M3 selected-list-item colour; the rest sit a layer up.
+                    toggled: root.multiSelect && root.selected.includes(choiceButton.modelData)
                     colBackground: Appearance.colors.colLayer3
                     colBackgroundHover: Appearance.colors.colLayer3Hover
+                    colBackgroundActive: Appearance.colors.colLayer3Active
+                    colRipple: Appearance.colors.colLayer3Active
+                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+                    colRippleToggled: Appearance.colors.colSecondaryContainerActive
+                    colStateLayer: choiceButton.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer3
 
                     releaseAction: () => {
-                        // A single-choice question is answered by the press itself;
-                        // a multi-select one collects until Confirm.
                         if (root.multiSelect)
                             root.toggleChoice(choiceButton.modelData);
                         else
                             root.answer(choiceButton.modelData);
                     }
 
-                    contentItem: StyledText {
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: choiceButton.toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer3
-                        text: choiceButton.modelData
+                    contentItem: RowLayout {
+                        id: choiceRow
+                        spacing: 12
+
+                        MaterialSymbol {
+                            Layout.leftMargin: 12
+                            Layout.alignment: Qt.AlignVCenter
+                            visible: root.multiSelect
+                            text: choiceButton.toggled ? "check_box" : "check_box_outline_blank"
+                            fill: choiceButton.toggled ? 1 : 0
+                            iconSize: Appearance.font.pixelSize.larger
+                            color: choiceButton.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer3
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.leftMargin: root.multiSelect ? 0 : 16
+                            Layout.rightMargin: 16
+                            Layout.alignment: Qt.AlignVCenter
+                            wrapMode: Text.Wrap
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: choiceButton.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer3
+                            text: choiceButton.modelData
+                        }
                     }
                 }
             }
