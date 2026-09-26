@@ -13,12 +13,16 @@ MouseArea {
     property string statusText
     property string description
 
+    readonly property real verticalPadding: 4
+    readonly property real horizontalPadding: 8
+
     hoverEnabled: true
-    implicitHeight: rowLayout.implicitHeight
-    implicitWidth: rowLayout.implicitWidth
+    implicitHeight: rowLayout.implicitHeight + verticalPadding * 2
+    implicitWidth: rowLayout.implicitWidth + horizontalPadding * 2
 
     RowLayout {
         id: rowLayout
+        anchors.centerIn: parent
         spacing: 4
 
         MaterialSymbol {
@@ -27,6 +31,7 @@ MouseArea {
             color: Appearance.colors.colSubtext
         }
         StyledText {
+            visible: text.length > 0
             font.pixelSize: Appearance.font.pixelSize.small
             text: root.statusText
             color: Appearance.colors.colSubtext
