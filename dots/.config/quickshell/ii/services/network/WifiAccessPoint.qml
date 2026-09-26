@@ -11,4 +11,6 @@ QtObject {
     readonly property bool isSecure: security.length > 0
 
     property bool askingPassword: false
+    // How the last connect attempt failed: "password", "connect", or "" for none.
+    property string failure: ""
 }

@@ -10,31 +10,39 @@ import Quickshell.Widgets
 
 WindowDialog {
     id: root
-    backgroundHeight: 600
 
     Component.onCompleted: if (Config.options.networking.wifiPowerSave.enable) Network.fetchWifiPowerSave()
 
     WindowDialogTitle {
+        id: title
         text: Translation.tr("Connect to Wi-Fi")
     }
     StyledIndeterminateProgressBar {
+        id: scanBar
         visible: Network.wifiScanning
         Layout.fillWidth: true
         Layout.bottomMargin: -8
     }
     // ClippingRectangle: plain `clip` only clips to the bounding box, so a
     // row's hover fill would square off the card's corners.
+    // It fits its rows, and scrolls only where the sidebar is too short for them.
+    // It was a fixed 600px dialog, a third of it empty with four networks in range.
     ClippingRectangle {
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.preferredHeight: Math.min(
+            Math.max(list.contentHeight + list.topMargin + list.bottomMargin, placeholder.shown ? placeholder.iconWidget.implicitHeight + placeholder.titleWidget.implicitHeight + 4 + root.dialogPadding * 2 : 0),
+            root.height - title.implicitHeight - (scanBar.visible ? scanBar.implicitHeight : 0)
+                - (powerSaveCard.visible ? powerSaveCard.implicitHeight : 0) - buttonRow.implicitHeight - root.dialogPadding * 7)
         radius: Appearance.rounding.large
         color: Appearance.colors.colSurfaceContainerHigh
 
-        ListView {
+        StyledListView {
+            id: list
             anchors.fill: parent
             topMargin: 8
             bottomMargin: 8
             spacing: 0
+            animateAppearance: false
 
             model: ScriptModel {
                 values: Network.friendlyWifiNetworks
@@ -45,11 +53,22 @@ WindowDialog {
                 width: ListView.view.width
             }
         }
+
+        PagePlaceholder {
+            id: placeholder
+            shown: Network.friendlyWifiNetworks.length === 0
+            icon: "wifi_find"
+            title: !Network.wifiEnabled ? Translation.tr("Wi-Fi is off")
+                : Network.wifiScanning ? Translation.tr("Searching for networks")
+                : Translation.tr("No networks found")
+            shape: MaterialShape.Shape.Cookie7Sided
+        }
     }
     // The network rows' card and row, so it reads as part of this list rather
     // than a settings row dropped in under it. A plain Rectangle: nothing scrolls
     // under these corners, and the row's own mask already rounds its fill.
     Rectangle {
+        id: powerSaveCard
         visible: Config.options.networking.wifiPowerSave.enable
         Layout.fillWidth: true
         implicitHeight: powerSaveRow.implicitHeight
@@ -105,6 +124,7 @@ WindowDialog {
         }
     }
     WindowDialogButtonRow {
+        id: buttonRow
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {

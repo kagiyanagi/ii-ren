@@ -23,6 +23,9 @@ Singleton {
     property bool wifiScanning: false
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
+    // SSIDs NetworkManager holds a profile for, so a tap can tell a network it can
+    // join from one it must ask a password for first.
+    property list<string> savedWifiSsids: []
     readonly property list<WifiAccessPoint> wifiNetworks: []
     readonly property WifiAccessPoint active: wifiNetworks.find(n => n.active) ?? null
     readonly property list<var> friendlyWifiNetworks: [...wifiNetworks].sort((a, b) => {
@@ -133,14 +136,28 @@ Singleton {
     function rescanWifi(): void {
         wifiScanning = true;
         rescanProcess.running = true;
+        savedWifiProc.running = true;
     }
 
-    function connectToWifiNetwork(accessPoint: WifiAccessPoint): void {
+    // One attempt at a time: a second exec would kill the first, whose exit would
+    // then land on the second's target.
+    function connectToWifiNetwork(accessPoint: WifiAccessPoint, password = ""): void {
+        if (!accessPoint || accessPoint.active || connectProc.running)
+            return;
+        accessPoint.failure = "";
+        // Activating a profile with no secret takes the adapter off the current
+        // network before it fails, so ask first, as Android does.
+        if (password === "" && accessPoint.isSecure && !root.savedWifiSsids.includes(accessPoint.ssid)) {
+            accessPoint.askingPassword = true;
+            return;
+        }
         accessPoint.askingPassword = false;
         root.wifiConnectTarget = accessPoint;
-        // We use this instead of `nmcli connection up SSID` because this also creates a connection profile
-        connectProc.exec(["nmcli", "dev", "wifi", "connect", accessPoint.ssid])
-
+        connectProc.needsSecrets = false;
+        // `dev wifi connect` reuses a matching profile, writing the password into it,
+        // or creates one. `connection up` can do neither.
+        // ponytail: the password is in nmcli's argv while it runs; nmcli has no stdin form for this.
+        connectProc.exec(["nmcli", "dev", "wifi", "connect", accessPoint.ssid, ...(password === "" ? [] : ["password", password])]);
     }
 
     function disconnectWifiNetwork(): void {
@@ -151,45 +168,33 @@ Singleton {
         Quickshell.execDetached(["xdg-open", "https://nmcheck.gnome.org/"]) // From some StackExchange thread, seems to work
     }
 
-    function changePassword(network: WifiAccessPoint, password: string, username = ""): void {
-        // TODO: enterprise wifi with username
-        network.askingPassword = false;
-        changePasswordProc.exec({
-            "environment": {
-                "PASSWORD": password,
-                "SSID": network.ssid
-            },
-            "command": ["bash", "-c", 'nmcli connection modify "$SSID" wifi-sec.psk "$PASSWORD"']
-        })
-    }
-
     Process {
         id: enableWifiProc
     }
 
     Process {
         id: connectProc
+        property bool needsSecrets: false
         environment: ({
             LANG: "C",
             LC_ALL: "C"
         })
         stdout: SplitParser {
-            onRead: line => {
-                // print(line)
-                getNetworks.running = true
-            }
+            onRead: getNetworks.running = true
         }
         stderr: SplitParser {
-            onRead: line => {
-                // print("err:", line)
-                if (line.includes("Secrets were required")) {
-                    root.wifiConnectTarget.askingPassword = true
-                }
-            }
+            // Also what a wrong password comes back as: NM asks again, and no agent answers.
+            onRead: line => { if (line.includes("Secrets were required")) connectProc.needsSecrets = true; }
         }
         onExited: (exitCode, exitStatus) => {
-            root.wifiConnectTarget.askingPassword = (exitCode !== 0)
-            root.wifiConnectTarget = null
+            const target = root.wifiConnectTarget;
+            root.wifiConnectTarget = null;
+            getNetworks.running = true;
+            savedWifiProc.running = true;
+            if (!target || exitCode === 0)
+                return;
+            target.askingPassword = needsSecrets;
+            target.failure = needsSecrets ? "password" : "connect";
         }
     }
 
@@ -201,10 +206,16 @@ Singleton {
     }
 
     Process {
-        id: changePasswordProc
-        onExited: { // Re-attempt connection after changing password
-            connectProc.running = false
-            connectProc.running = true
+        id: savedWifiProc
+        running: true
+        command: ["sh", "-c", "nmcli -g UUID,TYPE connection show | sed -n 's/:802-11-wireless$//p' | xargs -r nmcli -g 802-11-wireless.ssid connection show"]
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        stdout: StdioCollector {
+            // One SSID per profile, blank lines between; terse output escapes ':'.
+            onStreamFinished: root.savedWifiSsids = text.split("\n").filter(s => s.length > 0).map(s => s.replace(/\\:/g, ":"))
         }
     }
 
@@ -387,12 +398,17 @@ Singleton {
 
                 const rNetworks = root.wifiNetworks;
 
-                const destroyed = rNetworks.filter(rn => !wifiNetworks.find(n => n.frequency === rn.frequency && n.ssid === rn.ssid && n.bssid === rn.bssid));
+                // Keyed on the SSID, which the map above already made unique: a key
+                // that included the BSSID and band destroyed the row whenever the
+                // strongest access point changed. One that is asking for a password
+                // or connecting outlives a scan that missed it, or the field being
+                // typed into would vanish.
+                const destroyed = rNetworks.filter(rn => !wifiNetworks.find(n => n.ssid === rn.ssid) && !rn.askingPassword && rn !== root.wifiConnectTarget);
                 for (const network of destroyed)
                     rNetworks.splice(rNetworks.indexOf(network), 1).forEach(n => n.destroy());
 
                 for (const network of wifiNetworks) {
-                    const match = rNetworks.find(n => n.frequency === network.frequency && n.ssid === network.ssid && n.bssid === network.bssid);
+                    const match = rNetworks.find(n => n.ssid === network.ssid);
                     if (match) {
                         match.lastIpcObject = network;
                     } else {

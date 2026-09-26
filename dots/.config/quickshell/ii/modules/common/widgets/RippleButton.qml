@@ -117,12 +117,13 @@ Button {
             if (event.button != Qt.LeftButton) return;
             if (root.releaseAction) root.releaseAction();
             root.click() // Because the MouseArea already consumed the event
-            if (!root.rippleEnabled) return;
+            // Unguarded: a click that turns rippleEnabled off (a row that goes busy)
+            // would otherwise leave the ripple it started at full opacity. With no
+            // ripple running this fades an opacity that is already 0.
             rippleFadeAnim.restart();
         }
         onCanceled: (event) => {
             root.down = false
-            if (!root.rippleEnabled) return;
             rippleFadeAnim.restart();
         }
     }

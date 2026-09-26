@@ -380,6 +380,16 @@ you touched; they are the only automated gate.
 - `python3 tools/check-notification-app-name.py` — a notification group's header shows the
   whole app name. `TextMetrics.width` is rounded to an int, so a cap on it cut "kitty"
   (26.11px) to "ki…" and left "Beeper" (41.4 → 42) alone. The cap is `ceil(advanceWidth)`
+- `python3 tools/check-wifi-dialog.py` — the sidebar's Wi-Fi dialog never drops the current
+  network to ask for a password, and says how an attempt went. Every tap used to run
+  `nmcli dev wifi connect` at once, so on an unsaved secured network the adapter left the
+  current network, failed on "Secrets were required", and only then asked. The password
+  retry re-ran the connect after its target was nulled, so both handlers threw. It evaluates
+  the tap decision (ask first, never reconnect the connected row, one attempt at a time),
+  the exit handler (a wrong password reopens the field; an open network out of range does
+  not), the saved-profile parse and the status line under node, because no real attempt is
+  safe on a machine whose only adapter is the uplink. It also pins rows to the SSID: a key
+  with the BSSID destroyed the row being typed into whenever a scan picked another AP
 - `python3 tools/check-hotspot-dialog.py` — the hotspot dialog's switch shows the real state,
   and the dialog holds still under the pointer. It was a `ConfigSwitch`, which sets
   `checked = !checked` on click and so broke its binding: a hotspot that failed to start went
