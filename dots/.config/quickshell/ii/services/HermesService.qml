@@ -142,6 +142,100 @@ Singleton {
     // only the last one.
     signal composerAppend(string text)
 
+    // An attachment's chip in the composer, placed where the caret was, and taken
+    // back out if the attachment goes before sending.
+    signal composerInsert(string text)
+    signal composerRemove(string text)
+
+    /*
+     * Composer token -> { kind, name, send, paths, icon, thumb }. kind is image, pdf,
+     * file or folder; paths are the images it staged on the session; thumb is the
+     * picture a tile shows, empty for a file. A token is the name bracketed
+     * with U+2063, led by figure spaces the chip's icon sits on, and made of
+     * non-breaking characters so it never wraps; HermesAttachmentChips draws the
+     * chip behind it. Sending swaps it for `send`, which is what the model reads.
+     */
+    property var composerMarkers: ({})
+
+    function _addMarker(kind: string, name: string, send: string, paths: var): void {
+        const shown = name.length > 28 ? name.slice(0, 27) + "…" : name;
+        // Four figure spaces hold the icon and the gap after it; the one at the end is
+        // the chip's right padding. Spaces are U+202F, not U+00A0: a plain TextArea
+        // hands U+00A0 back as a plain space, which read as an edit inside the token
+        // and deleted it, so a second paste of one name never stayed.
+        const base = "\u2063\u2007\u2007\u2007\u2007" + shown.replace(/ /g, "\u202f").replace(/-/g, "\u2011");
+        let token = base + "\u2007\u2063";
+        for (let n = 2; root.composerMarkers[token]; n++)
+            token = `${base}\u2007${n}\u2007\u2063`;
+        root.composerMarkers = Object.assign({}, root.composerMarkers, { [token]: root._marker(kind, name, send, paths) });
+        root.attachedImages = [...root.attachedImages, ...paths];
+        root.composerInsert(token);
+    }
+
+    function _marker(kind: string, name: string, send: string, paths: var): var {
+        const icon = kind === "folder" ? "folder" : FileUtils.iconForFile(name);
+        const thumb = kind === "image" || kind === "pdf" ? (paths[0] ?? "") : "";
+        return { kind, name, send, paths, icon, thumb };
+    }
+
+    /**
+     * A stored user turn, back as { text, attachments }. The gateway stores the text
+     * the model read: the references each chip was sent as, then its own context
+     * warnings, then one `@image:<path>` line per staged image, a PDF's pages named
+     * pdf_p*. tools/check-hermes-composer.py runs this.
+     */
+    function _restoredTurn(body: string): var {
+        const lines = body.split("\n");
+        const images = [];
+        while (lines.length > 0 && lines[lines.length - 1].startsWith("@image:"))
+            images.unshift(lines.pop().slice(7));
+        const text = lines.join("\n").replace(/\s*--- Context Warnings ---[\s\S]*$/, "").trim();
+        const pages = images.filter(path => FileUtils.fileNameForPath(path).startsWith("pdf_p"));
+        const photos = images.filter(path => !pages.includes(path));
+        const attachments = [];
+        // An exec loop: the shell's JS engine has no matchAll
+        const refs = /\[(Image|PDF): ([^\]\n]+)\]|@(file|folder):("[^"\n]+"|`[^`\n]+`|'[^'\n]+'|\S+)/g;
+        for (let match = refs.exec(text); match !== null; match = refs.exec(text)) {
+            if (attachments.some(item => item.send === match[0]))
+                continue;
+            if (match[1]) {
+                const image = match[1] === "Image";
+                attachments.push(root._marker(image ? "image" : "pdf", match[2], match[0], image ? photos.splice(0, 1) : pages.slice(0, 1)));
+            } else {
+                const path = match[4].replace(/^["'`]|["'`]$/g, "");
+                attachments.push(root._marker(match[3], match[3] === "folder" ? FileUtils.folderNameForPath(path) : FileUtils.fileNameForPath(path), match[0], []));
+            }
+        }
+        return { text, attachments };
+    }
+
+    /** The chip's text is gone from the composer: unstage what it carried. */
+    function dropMarker(token: string): void {
+        const marker = root.composerMarkers[token];
+        if (!marker)
+            return;
+        const next = Object.assign({}, root.composerMarkers);
+        delete next[token];
+        root.composerMarkers = next;
+        // The gateway detaches every copy of a path, so one pasted twice stays
+        // staged while the other chip holds it
+        const kept = Object.values(next).reduce((all, item) => all.concat(item.paths), []);
+        marker.paths.filter(path => !kept.includes(path))
+            .forEach(path => root.call("image.detach", { session_id: root.sessionId, path: path }, null));
+        root.attachedImages = root.attachedImages.filter(item => !marker.paths.includes(item) || kept.includes(item));
+    }
+
+    /** A tile's X: the chip leaves the composer, and what it carried the session. */
+    function removeMarker(token: string): void {
+        root.composerRemove(token);
+        root.dropMarker(token);
+    }
+
+    /** `text` with each chip swapped for what the model reads. */
+    function _expandMarkers(text: string): string {
+        return text.replace(/\u2063[^\u2063]*\u2063/g, token => root.composerMarkers[token]?.send ?? "");
+    }
+
     // ── Approvals ────────────────────────────────────────────────────────
 
     // Non-null while the agent is parked waiting for the user to allow a tool.
@@ -211,6 +305,14 @@ Singleton {
         const id = `hermes-${root.messageIDs.length}-${Date.now()}`;
         root.messageByID[id] = message;
         root.messageIDs = [...root.messageIDs, id];
+        return id;
+    }
+
+    // The attachments go with the turn that consumes them, so the bubble can show
+    // them after the send has cleared the composer.
+    function _newUserMessage(content: string): string {
+        const id = root._newMessage("user", content);
+        root.messageByID[id].attachments = Object.values(root.composerMarkers);
         return id;
     }
 
@@ -440,7 +542,9 @@ Singleton {
                 return; // No empty bubbles for rows that carry no prose.
 
             if (role === "user") {
-                const userId = restored("user", body);
+                const turn = root._restoredTurn(body);
+                const userId = restored("user", turn.text);
+                root.messageByID[userId].attachments = turn.attachments;
                 root.messageByID[userId].done = true;
                 lastAssistantId = ""; // A request starts a new run.
                 return;
@@ -724,7 +828,8 @@ Singleton {
                 root.addMessage(error.message ?? Translation.tr("Could not read that PDF."), root.interfaceRole);
                 return;
             }
-            root.attachedImages = [...root.attachedImages, ...(result.pages ?? []).map(page => page.path ?? "")];
+            const name = FileUtils.fileNameForPath(clean);
+            root._addMarker("pdf", name, `[PDF: ${name}]`, (result.pages ?? []).map(page => page.path ?? ""));
         });
     }
 
@@ -928,32 +1033,41 @@ Singleton {
                 root._attachAsFile(clean, error.message ?? "");
                 return;
             }
-            root.attachedImages = [...root.attachedImages, result.path ?? clean];
+            // A paste is written to a timestamped temp file, a name nobody chose
+            const file = FileUtils.fileNameForPath(clean);
+            const name = file.startsWith("hermes-clip-") ? "image" + file.slice(file.lastIndexOf(".")) : file;
+            root._addMarker("image", name, `[Image: ${name}]`, [result.path ?? clean]);
         });
     }
 
     function _attachAsFile(path: string, imageError: string): void {
         root.call("file.attach", { session_id: root.sessionId, path: path }, (result, error) => {
+            // The gateway resolves attachments as files, so a folder fails both
+            // attaches as "not found". Asked here, it goes in as an @folder:
+            // reference, which the agent expands into a listing.
             if (error) {
-                root.addMessage(imageError.length > 0 ? imageError : (error.message ?? Translation.tr("Could not attach that file")), root.interfaceRole);
+                const probe = root._isFolderProbe.createObject(root, { command: ["test", "-d", path] });
+                probe.exited.connect(code => {
+                    probe.destroy();
+                    if (code === 0) {
+                        const quoted = /[\s`"']/.test(path) ? `"${path}"` : path;
+                        root._addMarker("folder", FileUtils.folderNameForPath(path), `@folder:${quoted}`, []);
+                    } else {
+                        root.addMessage(imageError.length > 0 ? imageError : (error.message ?? Translation.tr("Could not attach that file")), root.interfaceRole);
+                    }
+                });
+                probe.running = true;
                 return;
             }
             // A staged file is referenced by text, not held as an attachment.
-            root.composerAppend((result.ref ?? result.path ?? "").toString());
+            root._addMarker("file", FileUtils.fileNameForPath(path), (result.ref_text ?? result.path ?? "").toString(), []);
         });
     }
 
-    function detachImage(path: string): void {
-        root.call("image.detach", { session_id: root.sessionId, path: path }, (result, error) => {
-            if (error)
-                return;
-            root.attachedImages = root.attachedImages.filter(item => item !== path);
-        });
-    }
+    property Component _isFolderProbe: Process {}
 
     function detachAll(): void {
-        root.attachedImages.forEach(path => root.call("image.detach", { session_id: root.sessionId, path: path }, null));
-        root.attachedImages = [];
+        Object.keys(root.composerMarkers).forEach(token => root.removeMarker(token));
     }
 
     /** Attach whatever image is on the clipboard, through the agent's own reader. */
@@ -985,7 +1099,7 @@ Singleton {
                 if (result === "text")
                     clipboardImageProc.onText?.();
                 else if (result.length > 0)
-                    root.attachImage(result);
+                    result.split("\n").forEach(line => root.attachImage(line.startsWith("file://") ? decodeURIComponent(line) : line));
                 else
                     root.addMessage(Translation.tr("No image found in clipboard"), root.interfaceRole);
             }
@@ -999,8 +1113,12 @@ Singleton {
         if (trimmed.length === 0)
             return;
 
-        root._newMessage("user", trimmed);
-        root._tryRoute(trimmed);
+        // Expanded here, while the composer's clear cannot yet have unstaged them
+        const sent = root._expandMarkers(trimmed).trim();
+        root._newUserMessage(sent);
+        root.composerMarkers = ({});
+        if (sent.length > 0)
+            root._tryRoute(sent);
     }
 
     property string _deferredPrompt: ""
@@ -1093,6 +1211,7 @@ Singleton {
         // The gateway consumes whatever is staged on this turn, so the local list
         // has to clear with it or the indicator would keep showing spent images.
         root.attachedImages = [];
+        root.composerMarkers = ({});
         root.speakingMessageId = "";
         root.call("prompt.submit", {
             session_id: root.sessionId,
@@ -1277,7 +1396,7 @@ Singleton {
 
     /** Send `text` to the agent while the transcript shows `display`. */
     function _submitPrompt(text: string, display: string): void {
-        root._newMessage("user", display.length > 0 ? display : text);
+        root._newUserMessage(display.length > 0 ? display : text);
         root._submit(text);
     }
 

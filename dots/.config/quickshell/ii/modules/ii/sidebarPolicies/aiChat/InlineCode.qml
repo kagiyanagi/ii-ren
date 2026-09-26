@@ -95,7 +95,10 @@ Item {
                     : view.positionToRectangle(lo).x + metrics.advanceWidth(view.getText(lo, lo + 1)) + root.pad;
                 // A pixel off each line's top and bottom, so a span wrapping across two
                 // lines is two pills and not one shape.
-                out.push(Qt.rect(first.x - root.pad, first.y + 1, right - first.x + root.pad, first.height - 2));
+                // A span that opens on a no-break space (an attachment chip) carries its
+                // left padding inside, so a chip starting a line starts at the margin.
+                const lead = pos === start && view.getText(start, start + 1) === "\u00a0" ? 0 : root.pad;
+                out.push(Qt.rect(first.x - lead, first.y + 1, right - first.x + lead, first.height - 2));
                 pos = lo + 1;
             }
         }

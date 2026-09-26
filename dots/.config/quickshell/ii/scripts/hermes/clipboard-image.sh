@@ -2,8 +2,9 @@
 # Saves the image on the clipboard for the Hermes composer to attach.
 #
 # usage: clipboard-image.sh <dir> [cliphist-binary]
-# Prints the saved file's path, `text` when the clipboard holds something else
-# (the composer then pastes it as text), or nothing when there is no image.
+# Prints the saved file's path, the file:// URIs of copied files one per line (a
+# file manager's copy), `text` when the clipboard holds something else (the
+# composer then pastes it as text), or nothing when there is no image.
 #
 # The live selection comes first, since it is what was copied last. cliphist is
 # the fallback only when the selection is *empty*: a Wayland selection dies with
@@ -21,6 +22,13 @@ mkdir -p "$dir"
 out="$dir/hermes-clip-$(date +%s%N)"
 
 types=$(wl-paste --list-types 2>/dev/null)
+# Copied files come first: they are the files themselves, name and all, where an
+# image type offered beside them is a preview. cliphist's list line cuts a long
+# selection short, so the live one is read whole.
+if grep -qx 'text/uri-list' <<<"$types"; then
+    uris=$(wl-paste --no-newline --type text/uri-list 2>/dev/null | tr -d '\r' | grep '^file://')
+    [[ -n $uris ]] && { echo "$uris"; exit 0; }
+fi
 mime=$(grep -m1 -xE 'image/(png|jpeg|webp|gif|bmp)' <<<"$types")
 if [[ -n $mime ]]; then
     ext=${mime#image/}
