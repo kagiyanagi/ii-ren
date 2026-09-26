@@ -1,175 +1,203 @@
-import qs
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import Quickshell
+import Quickshell.Wayland
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import Quickshell
-import Quickshell.Wayland
-import Quickshell.Hyprland
 
-Item {
+Scope {
     id: wrappedFrame
 
-    property int frameThickness: Config.options.appearance.wrappedFrameThickness
-    property bool barVertical: Config.options.bar.vertical
-    property bool barBottom: Config.options.bar.bottom
+    readonly property bool active: Config.options.appearance.fakeScreenRounding === 3
+    readonly property int frameThickness: Config.options.appearance.wrappedFrameThickness
+    readonly property bool barVertical: Config.options.bar.vertical
+    readonly property bool barBottom: Config.options.bar.bottom
+
+    readonly property bool barAtTop: !barVertical && !barBottom
+    readonly property bool barAtBottom: !barVertical && barBottom
+    readonly property bool barAtLeft: barVertical && !barBottom
+    readonly property bool barAtRight: barVertical && barBottom
 
     // A frame strip pinned to one screen edge, stretched along the other axis.
     component EdgeFrame: PanelWindow {
+        id: edgeFrameWindow
         required property string edge // "top" | "bottom" | "left" | "right"
         property bool showBackground: true
         readonly property bool horizontal: edge === "top" || edge === "bottom"
 
-        color: showBackground ? Appearance.colors.colLayer0 : "transparent"
-        implicitWidth: frameThickness;implicitHeight: frameThickness
+        WlrLayershell.namespace: "quickshell:wrappedFrame"
+        mask: Region {}
+
+        color: edgeFrameWindow.showBackground ? Appearance.colors.colLayer0 : "transparent"
+        implicitWidth: wrappedFrame.frameThickness
+        implicitHeight: wrappedFrame.frameThickness
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
         anchors {
-            left: horizontal || edge === "left"
-            right: horizontal || edge === "right"
-            top: !horizontal || edge === "top"
-            bottom: !horizontal || edge === "bottom"
+            left: edgeFrameWindow.horizontal || edgeFrameWindow.edge === "left"
+            right: edgeFrameWindow.horizontal || edgeFrameWindow.edge === "right"
+            top: !edgeFrameWindow.horizontal || edgeFrameWindow.edge === "top"
+            bottom: !edgeFrameWindow.horizontal || edgeFrameWindow.edge === "bottom"
+        }
+
+        margins {
+            right: (Config.options.interactions.deadPixelWorkaround.enable && edgeFrameWindow.anchors.right) * -1
+            bottom: (Config.options.interactions.deadPixelWorkaround.enable && edgeFrameWindow.anchors.bottom) * -1
         }
     }
 
+    // A concave corner fillet matching the frame color to curve the screen corners.
     component ScreenCorner: PanelWindow {
         id: screenCornerWindow
-        property bool left
-        property bool bottom
+        required property var corner // RoundCorner.CornerEnum
         property bool showBackground: true
-        screen: monitorScope.modelData
-        anchors {
-            bottom: bottom
-            top: !bottom
-            left: left
-            right: !left
-        }
-        implicitHeight: Appearance.rounding.screenRounding
-        implicitWidth: Appearance.rounding.screenRounding
-        color: "transparent"
-            
-        RoundCorner {
-            id: leftCorner
-            anchors {
-                top: !bottom ? parent.top : undefined
-                bottom: bottom ? parent.bottom : undefined
-                left: left ? parent.left : undefined
-                right: !left ? parent.right : undefined
-            }
 
+        readonly property bool isLeft: corner === RoundCorner.CornerEnum.TopLeft || corner === RoundCorner.CornerEnum.BottomLeft
+        readonly property bool isBottom: corner === RoundCorner.CornerEnum.BottomLeft || corner === RoundCorner.CornerEnum.BottomRight
+
+        WlrLayershell.namespace: "quickshell:wrappedFrame"
+        exclusionMode: ExclusionMode.Ignore
+        mask: Region {}
+
+        color: "transparent"
+        implicitWidth: Appearance.rounding.screenRounding
+        implicitHeight: Appearance.rounding.screenRounding
+
+        anchors {
+            left: screenCornerWindow.isLeft
+            right: !screenCornerWindow.isLeft
+            top: !screenCornerWindow.isBottom
+            bottom: screenCornerWindow.isBottom
+        }
+
+        margins {
+            right: (Config.options.interactions.deadPixelWorkaround.enable && screenCornerWindow.anchors.right) * -1
+            bottom: (Config.options.interactions.deadPixelWorkaround.enable && screenCornerWindow.anchors.bottom) * -1
+        }
+
+        RoundCorner {
+            id: cornerShape
+            anchors.fill: parent
+            corner: screenCornerWindow.corner
+            rightVisualMargin: (Config.options.interactions.deadPixelWorkaround.enable && screenCornerWindow.anchors.right) * 1
+            bottomVisualMargin: (Config.options.interactions.deadPixelWorkaround.enable && screenCornerWindow.anchors.bottom) * 1
             implicitSize: Appearance.rounding.screenRounding
-            color: showBackground ? Appearance.colors.colLayer0 : "transparent"
+            color: screenCornerWindow.showBackground ? Appearance.colors.colLayer0 : "transparent"
 
             Behavior on color {
                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
             }
-
-            corner: screenCornerWindow.left ? 
-                (screenCornerWindow.bottom ? RoundCorner.CornerEnum.BottomLeft : RoundCorner.CornerEnum.TopLeft) :
-                (screenCornerWindow.bottom ? RoundCorner.CornerEnum.BottomRight : RoundCorner.CornerEnum.TopRight)
         }
     }
 
-    Loader {
-        active: Config.options.appearance.fakeScreenRounding == 3
-        sourceComponent: Variants {
-            id: wrappedFrameVariant
-            property var variantModel: Quickshell.screens
-            model: variantModel
+    Variants {
+        model: wrappedFrame.active ? Quickshell.screens : []
 
-            Scope {
-                id: monitorScope
-                required property var modelData
+        Scope {
+            id: monitorScope
+            required property ShellScreen modelData
 
-                property int index: wrappedFrameVariant.variantModel.indexOf(monitorScope.modelData)
-                property bool hasActiveWindows: false
-                property bool showBarBackground: monitorScope.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1
+            property bool hasActiveWindows: false
+            readonly property bool showBarBackground: (monitorScope.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2)
+                || Config.options.bar.barBackgroundStyle === 1
 
-                Connections {
-                    enabled: Config.options.bar.barBackgroundStyle === 2
-                    target: HyprlandData
-                    function onWindowListChanged() {
-                        const monitor = HyprlandData.monitors.find(m => m.id === monitorScope.index);
-                        const wsId = monitor?.activeWorkspace?.id;
+            function updateActiveWindows() {
+                if (Config.options.bar.barBackgroundStyle !== 2) return;
+                const monitor = HyprlandData.monitors.find(m => m.name === monitorScope.modelData.name);
+                const wsId = monitor?.activeWorkspace?.id;
+                monitorScope.hasActiveWindows = wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
+            }
 
-                        const hasWindow = wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
+            Component.onCompleted: updateActiveWindows()
 
-                        monitorScope.hasActiveWindows = hasWindow
-                    }
+            Connections {
+                enabled: Config.options.bar.barBackgroundStyle === 2
+                target: HyprlandData
+                function onWindowListChanged() {
+                    monitorScope.updateActiveWindows();
                 }
+                function onMonitorsChanged() {
+                    monitorScope.updateActiveWindows();
+                }
+            }
 
-                // SCREEN CORNERS
-                Loader {
-                    active: !(barBottom && !barVertical) && !(barVertical && !barBottom)
-                    sourceComponent: ScreenCorner {
-                        left: true
-                        bottom: true
-                        showBackground: monitorScope.showBarBackground
-                    }
+            Connections {
+                target: Config.options.bar
+                function onBarBackgroundStyleChanged() {
+                    monitorScope.updateActiveWindows();
                 }
-                Loader {
-                    active: barBottom
-                    sourceComponent: ScreenCorner {
-                        left: true
-                        bottom: false
-                        showBackground: showBarBackground
-                    }
-                }
-                Loader {
-                    active: !(!barBottom && !barVertical) && !(barVertical && barBottom)
-                    sourceComponent: ScreenCorner {
-                        left: false
-                        bottom: false
-                        showBackground: monitorScope.showBarBackground
-                    }
-                }
-                Loader {
-                    active:  !barBottom
-                    sourceComponent: ScreenCorner {
-                        left: false
-                        bottom: true
-                        showBackground: showBarBackground
-                    }
-                }
+            }
 
-                // FRAMES
+            // SCREEN CORNERS
+            Loader {
+                active: !(wrappedFrame.barAtTop || wrappedFrame.barAtLeft)
+                sourceComponent: ScreenCorner {
+                    corner: RoundCorner.CornerEnum.TopLeft
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
+                }
+            }
+            Loader {
+                active: !(wrappedFrame.barAtTop || wrappedFrame.barAtRight)
+                sourceComponent: ScreenCorner {
+                    corner: RoundCorner.CornerEnum.TopRight
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
+                }
+            }
+            Loader {
+                active: !(wrappedFrame.barAtBottom || wrappedFrame.barAtLeft)
+                sourceComponent: ScreenCorner {
+                    corner: RoundCorner.CornerEnum.BottomLeft
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
+                }
+            }
+            Loader {
+                active: !(wrappedFrame.barAtBottom || wrappedFrame.barAtRight)
+                sourceComponent: ScreenCorner {
+                    corner: RoundCorner.CornerEnum.BottomRight
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
+                }
+            }
 
-                Loader {
-                    active: !(!barVertical && barBottom)
-                    sourceComponent: EdgeFrame {
-                        edge: "bottom"
-                        screen: monitorScope.modelData
-                        showBackground: monitorScope.showBarBackground
-                    }
+            // FRAMES
+            Loader {
+                active: !wrappedFrame.barAtBottom
+                sourceComponent: EdgeFrame {
+                    edge: "bottom"
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
                 }
-                Loader {
-                    active: !(!barVertical && !barBottom)
-                    sourceComponent: EdgeFrame {
-                        edge: "top"
-                        screen: monitorScope.modelData
-                        showBackground: showBarBackground
-                    }
+            }
+            Loader {
+                active: !wrappedFrame.barAtTop
+                sourceComponent: EdgeFrame {
+                    edge: "top"
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
                 }
-                Loader {
-                    active: !(barVertical && barBottom)
-                    sourceComponent: EdgeFrame {
-                        edge: "right"
-                        screen: monitorScope.modelData
-                        showBackground: showBarBackground
-                    }
+            }
+            Loader {
+                active: !wrappedFrame.barAtRight
+                sourceComponent: EdgeFrame {
+                    edge: "right"
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
                 }
-                Loader {
-                    active: !(barVertical && !barBottom)
-                    sourceComponent: EdgeFrame {
-                        edge: "left"
-                        screen: monitorScope.modelData
-                        showBackground: showBarBackground
-                    }
+            }
+            Loader {
+                active: !wrappedFrame.barAtLeft
+                sourceComponent: EdgeFrame {
+                    edge: "left"
+                    screen: monitorScope.modelData
+                    showBackground: monitorScope.showBarBackground
                 }
             }
         }

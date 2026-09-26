@@ -83,5 +83,5 @@ Scope {
     PanelLoader { component: SidebarDashboard {} }
     PanelLoader { extraCondition: Config.options.bar.vertical && barExtraCondition; component: VerticalBar {} }
     PanelLoader { component: WallpaperSelector {} }
-    PanelLoader { component: WrappedFrame {} }
+    PanelLoader { extraCondition: usingWrappedFrame; component: WrappedFrame {} }
 }
