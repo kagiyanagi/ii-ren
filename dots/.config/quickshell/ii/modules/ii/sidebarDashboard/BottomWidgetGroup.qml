@@ -14,9 +14,15 @@ Rectangle {
     color: Appearance.colors.colLayer1
     clip: true
     implicitHeight: collapsed ? collapsedBottomWidgetGroupRow.implicitHeight : 350
-    property int selectedTab: Persistent.states.sidebar.bottomGroup.tab
-    property int previousIndex: -1
-    property bool collapsed: Persistent.states.sidebar.bottomGroup.collapsed
+    // Persistent is the one source; writing selectedTab would break this binding.
+    // Clamped, so a tab whose extension was removed lands on the last one.
+    readonly property int selectedTab: Math.max(0, Math.min(Persistent.states.sidebar.bottomGroup.tab, tabs.length - 1))
+    property int lastTab // which way a switch slides; seeded once, not bound, or it races the change
+    readonly property bool collapsed: Persistent.states.sidebar.bottomGroup.collapsed
+
+    function selectTab(index) {
+        Persistent.states.sidebar.bottomGroup.tab = Math.max(0, Math.min(index, root.tabs.length - 1));
+    }
     property var extensionTabs: ExtensionManager.ready ? ExtensionManager.getContributionPoint("sidebarRightBottom") : []
 
     function syncExtensionTabs() {
@@ -88,43 +94,29 @@ Rectangle {
 
     function setCollapsed(state) {
         Persistent.states.sidebar.bottomGroup.collapsed = state;
-        if (collapsed) {
-            bottomWidgetGroupRow.opacity = 0;
-        } else {
-            collapsedBottomWidgetGroupRow.opacity = 0;
-        }
-        collapseCleanFadeTimer.start();
     }
 
+    // Fade-through: the leaving row goes at once, the arriving one waits out its exit.
+    onCollapsedChanged: fadeThroughGap.restart()
     Timer {
-        id: collapseCleanFadeTimer
-        interval: Appearance.animation.elementMoveFast.duration
-        repeat: false
-        onTriggered: {
-            if (collapsed)
-                collapsedBottomWidgetGroupRow.opacity = 1;
-            else
-                bottomWidgetGroupRow.opacity = 1;
-        }
+        id: fadeThroughGap
+        interval: Appearance.animation.elementMoveExit.duration
     }
 
     Keys.onPressed: event => {
         if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.ControlModifier) {
-            if (event.key === Qt.Key_PageDown) {
-                root.selectedTab = Math.min(root.selectedTab + 1, root.tabs.length - 1);
-            } else if (event.key === Qt.Key_PageUp) {
-                root.selectedTab = Math.max(root.selectedTab - 1, 0);
-            }
+            root.selectTab(root.selectedTab + (event.key === Qt.Key_PageDown ? 1 : -1));
             event.accepted = true;
         }
     }
 
     RowLayout { // Collapsed
         id: collapsedBottomWidgetGroupRow
-        opacity: collapsed ? 1 : 0
+        opacity: root.collapsed && !fadeThroughGap.running ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            id: collapsedFade
+            FadeThrough { owner: collapsedFade }
         }
 
         spacing: 15
@@ -157,10 +149,11 @@ Rectangle {
     RowLayout { // Expanded
         id: bottomWidgetGroupRow
 
-        opacity: collapsed ? 0 : 1
+        opacity: !root.collapsed && !fadeThroughGap.running ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+            id: expandedFade
+            FadeThrough { owner: expandedFade }
         }
 
         anchors.fill: parent
@@ -188,10 +181,7 @@ Rectangle {
                         toggled: root.selectedTab == index
                         buttonText: modelData.name
                         buttonIcon: modelData.icon
-                        onPressed: {
-                            root.selectedTab = index;
-                            Persistent.states.sidebar.bottomGroup.tab = index;
-                        }
+                        onPressed: root.selectTab(index)
                     }
                 }
             }
@@ -237,15 +227,15 @@ Rectangle {
                 }
 
                 Component.onCompleted: {
+                    root.lastTab = root.selectedTab;
                     tabStack.source = root.tabs[root.selectedTab].widget;
                 }
 
                 Connections {
                     target: root
                     function onSelectedTabChanged() {
-                        // `currentTab` never existed here, so which way the page
-                        // slid was whatever the last switch left behind.
-                        tabSwitchBehavior.animation.down = root.selectedTab > root.previousIndex;
+                        tabSwitchBehavior.animation.down = root.selectedTab > root.lastTab;
+                        root.lastTab = root.selectedTab;
                         tabStack.source = root.tabs[root.selectedTab].widget;
                     }
                 }
@@ -269,17 +259,17 @@ Rectangle {
                 target: tabStack
                 properties: "opacity"
                 to: 0
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
             }
             PropertyAnimation {
                 target: tabStack.anchors
                 properties: "topMargin"
                 to: 10 * (switchAnim.down ? -1 : 1)
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
             }
         }
         PropertyAction {
@@ -293,7 +283,7 @@ Rectangle {
                 properties: "topMargin"
                 from: 10 * -(switchAnim.down ? -1 : 1)
                 to: 0
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: Appearance.animation.elementMoveEnter.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
             }
@@ -303,13 +293,17 @@ Rectangle {
                 to: 1
                 duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
             }
         }
-        ScriptAction {
-            script: {
-                root.previousIndex = root.selectedTab;
-            }
-        }
+    }
+
+    // Behavior writes targetValue before it builds the transition, so the spec is
+    // picked per direction: out on fast effects, in on default effects.
+    component FadeThrough: NumberAnimation {
+        required property Behavior owner
+        duration: owner.targetValue > 0 ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
     }
 }

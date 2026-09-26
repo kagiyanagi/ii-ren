@@ -91,7 +91,7 @@ Item {
                 active: {
                     const configQuickSliders = Config.options.sidebar.quickSliders
                     if (!configQuickSliders.enable) return false
-                    if (!configQuickSliders.showMic && !configQuickSliders.showVolume && !configQuickSliders.showBrightness) return false;
+                    if (!configQuickSliders.showMic && !configQuickSliders.showVolume && !configQuickSliders.showBrightness && !configQuickSliders.showGamma) return false;
                     // The android panel carries sliders as grid tiles instead.
                     return Config.options.sidebar.quickToggles.style !== "android";
                 }
