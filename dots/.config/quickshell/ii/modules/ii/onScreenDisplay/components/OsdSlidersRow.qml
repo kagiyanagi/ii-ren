@@ -4,6 +4,7 @@ import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import "."
 
 RowLayout {
     id: root
