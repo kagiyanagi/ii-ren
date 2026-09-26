@@ -7,7 +7,7 @@ import Quickshell
 import Quickshell.Services.Pipewire
 
 // Where the sound goes first, since the dialog is named for it, then one row per
-// app. Sized by its content; it scrolls only when its host is shorter than that.
+// app. Top-aligned in whatever height its host gives it, and scrolls past that.
 StyledFlickable {
     id: root
     required property bool isSink
@@ -38,6 +38,8 @@ StyledFlickable {
     ColumnLayout {
         id: body
         width: parent.width
+        // At least the host's height, so the apps card can take what the devices leave.
+        height: Math.max(implicitHeight, root.height)
         spacing: 12
 
         Card {
@@ -168,8 +170,9 @@ StyledFlickable {
             }
         }
 
-        Card {
+        Card { // stretches, like the Wi-Fi dialog's list card
             padding: 8
+            Layout.fillHeight: true
 
             Repeater {
                 model: ScriptModel {
@@ -183,8 +186,16 @@ StyledFlickable {
                 }
             }
 
+            Item { // keeps the rows at the top of a card taller than they are
+                visible: root.appPwNodes.length > 0
+                Layout.fillHeight: true
+            }
+
             EmptyLine {
                 visible: root.appPwNodes.length === 0
+                Layout.fillHeight: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
                 text: root.isSink ? Translation.tr("No apps are playing sound") : Translation.tr("No apps are recording")
             }
         }

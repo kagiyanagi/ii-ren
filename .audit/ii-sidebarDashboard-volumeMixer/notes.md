@@ -81,3 +81,14 @@ not safe to force the stop from QML. If it recurs: restart the shell, and don't 
 **Device order is not stable** across a shell reload (the ALC row moved from last to
 first). One test click therefore landed on the laptop speakers. Drive this dialog from a
 fresh screenshot every time.
+
+## Owner decision: a fixed height, scaled to the screen (2026-09-26)
+
+The brief made the dialog fit its content. The owner wants it fixed, like its siblings. It
+takes the Wi-Fi dialog's `Math.round(root.height * 0.6)` (about 600 at 1080p, the
+Bluetooth dialog's number, but scaled to the screen). The apps card stretches into what the
+devices card leaves, the way Wi-Fi's list card does, and "No apps…" centres in it. The body
+scrolls past that height. A fixed card also stops re-centring under the pointer when a
+stream arrives or a device joins, which is the reason the Wi-Fi dialog gave for the same
+choice. `check-volume-dialog.py` pins the expression to Wi-Fi's, so the two cannot drift.
+Do not return this dialog to content height.

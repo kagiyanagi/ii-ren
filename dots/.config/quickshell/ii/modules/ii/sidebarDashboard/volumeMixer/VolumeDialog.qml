@@ -9,22 +9,22 @@ import Quickshell
 WindowDialog {
     id: root
     property bool isSink: true
+    // The Wi-Fi dialog's height: a share of the sidebar, so it scales with the screen
+    // (about 600 at 1080p), and fixed while open, so a stream arriving or a device
+    // joining scrolls the body instead of re-centring the card under the pointer.
+    backgroundHeight: Math.round(root.height * 0.6)
 
     WindowDialogTitle {
-        id: title
         text: root.isSink ? Translation.tr("Audio output") : Translation.tr("Audio input")
     }
 
     VolumeDialogContent {
         isSink: root.isSink
         Layout.fillWidth: true
-        // Scrolls only where the sidebar is too short for it; at 1080p it fits.
-        Layout.preferredHeight: Math.min(implicitHeight, root.height - title.implicitHeight - buttonRow.implicitHeight - root.dialogPadding * 6)
+        Layout.fillHeight: true
     }
 
     WindowDialogButtonRow {
-        id: buttonRow
-
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {

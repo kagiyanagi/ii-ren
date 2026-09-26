@@ -41,7 +41,11 @@ for name, src in (("VolumeMixerEntry", code(entry)), ("VolumeDialogContent", cod
     for effect in ("Desaturate", "ColorOverlay", "MultiEffect", "OpacityMask", "GraphicalEffects", "layer.enabled"):
         assert effect not in src, f"{name}: {effect} runs once per row"
 assert "MouseArea" not in code(entry), "VolumeMixerEntry: the mute button must be a RippleButton, a MouseArea has no states"
-assert "backgroundHeight" not in dialog, "VolumeDialog: a fixed height is a void under one app row"
+wifi = (II / "modules/ii/sidebarDashboard/wifiNetworks/WifiDialog.qml").read_text()
+height = re.search(r"backgroundHeight:\s*(.+)", dialog)
+assert height and height.group(1) == re.search(r"backgroundHeight:\s*(.+)", wifi).group(1), \
+    "VolumeDialog: must share the Wi-Fi dialog's screen-scaled height, not a fixed 600 or its content's"
+assert re.search(r"VolumeDialogContent \{[^}]*Layout\.fillHeight:\s*true", dialog), "VolumeDialog: the body must fill the card and scroll"
 
 switch = re.search(r"StyledSwitch \{(.*?)\}", content, re.S)
 assert switch and re.search(r"checkable:\s*false", switch.group(1)), "VolumeDialogContent: the switch must not toggle itself"
