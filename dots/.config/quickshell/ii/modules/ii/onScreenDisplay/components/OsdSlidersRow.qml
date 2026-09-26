@@ -1,6 +1,5 @@
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.ii.topLayer.osd
 import qs.services
 import QtQuick
 import QtQuick.Layouts

@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.modules.common
@@ -36,7 +35,7 @@ Item {
 
     readonly property string appIconSource: appIconName !== "" ? Quickshell.iconPath(appIconName, "image-missing") : ""
 
-    implicitWidth: 56
+    implicitWidth: 48
     implicitHeight: 120
 
     StyledVerticalSlider {
@@ -47,7 +46,7 @@ Item {
         value: (root.node && root.node.audio) ? root.node.audio.volume : 0
         rawValue: (root.node && root.node.audio) ? root.node.audio.volume : 0
         materialSymbol: ""
-        configuration: 38
+        configuration: 40
         usePercentTooltip: false
         tooltipContent: root.node ? Audio.appNodeDisplayName(root.node) : ""
 
@@ -59,12 +58,11 @@ Item {
         }
     }
 
-    // App icon overlay at the bottom of the slider
+    // App icon overlay, in the slider's icon slot
     Item {
         id: iconOverlay
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 8
+        y: slider.y + slider.iconSlotY + (slider.trackWidth - height) / 2
         width: 20
         height: 20
 
@@ -90,15 +88,15 @@ Item {
     // Muted overlay
     Rectangle {
         anchors.fill: iconOverlay
-        color: "#80000000"
+        color: Appearance.colors.colScrim
         visible: root.isMuted
-        radius: 4
+        radius: Appearance.rounding.small
 
         MaterialSymbol {
             anchors.centerIn: parent
             text: "volume_off"
             iconSize: 12
-            color: "white"
+            color: Appearance.colors.colOnError
         }
     }
 
