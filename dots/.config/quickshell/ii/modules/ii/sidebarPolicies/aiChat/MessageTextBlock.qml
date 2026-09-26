@@ -23,8 +23,9 @@ ColumnLayout {
     // `{}` here is an empty block, not an empty object, so this was undefined --
     // which is what logged a TypeError per chunk on every message rendered.
     property var messageData: null
-    property bool done: true
+    property bool done: false
     property bool forceDisableChunkSplitting: false
+    property bool isHistorical: false
     /** Passage a read-aloud is speaking right now, marked live. Empty when silent. */
     property string speakingPhrase: ""
     /** How far into it the voice is, 0..1, or -1 when unknown. */
@@ -47,7 +48,19 @@ ColumnLayout {
     property list<string> renderedLatexHashes: []
     property string renderedSegmentContent: ""
     property string shownText: ""
-    property bool fadeChunkSplitting: !forceDisableChunkSplitting && !editing && !/\n\|/.test(shownText) && Config.options.sidebar.ai.textFadeIn
+    property bool fadeChunkSplitting: false
+    property string targetText: ""
+    property int revealedWordCount: 0
+    property int totalWordCount: 0
+    property int settleCounter: 10
+
+    Timer {
+        id: streamTimer
+        interval: 35 // design-ok: token streaming cadence, 28 words/sec
+        repeat: true
+        running: false
+        onTriggered: root.advanceStream()
+    }
 
     Layout.fillWidth: true
 
@@ -186,14 +199,222 @@ ColumnLayout {
         }
     }
 
+    /**
+     * Applies an intense, creative trailing word-by-word fade-in to newly revealed words.
+     * The newest words enter with a luminous primary accent glow and low opacity (5%),
+     * smoothly transitioning into standard reading color and full opacity across a 10-step
+     * gradient wave. Tags and inline code spans are preserved untouched.
+     */
+    function applyWordFade(text: string, fadeCount: int, textColor: color, primaryColor: color): string {
+        if (!text || fadeCount <= 0)
+            return text;
+
+        const cText = Qt.color(textColor);
+        const tr = Math.round(cText.r * 255);
+        const tg = Math.round(cText.g * 255);
+        const tb = Math.round(cText.b * 255);
+
+        const cPrim = Qt.color(primaryColor);
+        const pr = Math.round(cPrim.r * 255);
+        const pg = Math.round(cPrim.g * 255);
+        const pb = Math.round(cPrim.b * 255);
+
+        // 10-step ladder: oldest word (0.98, neutral) to newest word (0.05, primary tint)
+        const FADE_LADDER = [
+            { alpha: 0.98, tint: 0.00 },
+            { alpha: 0.94, tint: 0.06 },
+            { alpha: 0.88, tint: 0.14 },
+            { alpha: 0.80, tint: 0.24 },
+            { alpha: 0.70, tint: 0.36 },
+            { alpha: 0.58, tint: 0.50 },
+            { alpha: 0.44, tint: 0.65 },
+            { alpha: 0.30, tint: 0.80 },
+            { alpha: 0.16, tint: 0.92 },
+            { alpha: 0.05, tint: 1.00 }
+        ];
+
+        const activeLadder = FADE_LADDER.slice(0, Math.min(fadeCount, FADE_LADDER.length));
+        if (activeLadder.length === 0)
+            return text;
+
+        const parts = text.split(/(<[^>]+>|`[^`]+`)/);
+        const wordsToFade = [];
+        for (let pIdx = parts.length - 1; pIdx >= 0; pIdx--) {
+            const p = parts[pIdx];
+            if (p.startsWith("<") || p.startsWith("`"))
+                continue;
+
+            const regex = /\b[\w'-]+(?:\.[\w'-]+)*\b/gu;
+            let match;
+            const matches = [];
+            while ((match = regex.exec(p)) !== null) {
+                matches.push({ start: match.index, end: regex.lastIndex });
+            }
+            for (let i = matches.length - 1; i >= 0; i--) {
+                wordsToFade.push({ pIdx: pIdx, start: matches[i].start, end: matches[i].end });
+                if (wordsToFade.length >= activeLadder.length)
+                    break;
+            }
+            if (wordsToFade.length >= activeLadder.length)
+                break;
+        }
+
+        if (wordsToFade.length === 0)
+            return text;
+
+        wordsToFade.reverse();
+        const num = wordsToFade.length;
+        const ladderSlice = activeLadder.slice(activeLadder.length - num);
+
+        const partMods = {};
+        for (let i = 0; i < wordsToFade.length; i++) {
+            const item = wordsToFade[i];
+            if (!partMods[item.pIdx])
+                partMods[item.pIdx] = [];
+            const step = ladderSlice[i];
+            partMods[item.pIdx].push({ start: item.start, end: item.end, alpha: step.alpha, tint: step.tint });
+        }
+
+        const newParts = [...parts];
+        for (const pIdxStr in partMods) {
+            const pIdx = parseInt(pIdxStr);
+            let p = parts[pIdx];
+            const mods = partMods[pIdx];
+            mods.sort((x, y) => y.start - x.start);
+            for (let m = 0; m < mods.length; m++) {
+                const mod = mods[m];
+                const word = p.slice(mod.start, mod.end);
+                const r = Math.round(tr + (pr - tr) * mod.tint);
+                const g = Math.round(tg + (pg - tg) * mod.tint);
+                const b = Math.round(tb + (pb - tb) * mod.tint);
+                const span = `<span style="color:rgba(${r},${g},${b},${mod.alpha.toFixed(2)});">` + word + `</span>`;
+                p = p.slice(0, mod.start) + span + p.slice(mod.end);
+            }
+            newParts[pIdx] = p;
+        }
+
+        return newParts.join("");
+    }
+
+    function updateStreamedText(): void {
+        if (!root.targetText) {
+            root.shownText = "";
+            return;
+        }
+
+        if (root.revealedWordCount >= root.totalWordCount && root.settleCounter <= 0) {
+            root.shownText = root.targetText;
+            return;
+        }
+
+        const tokens = root.targetText.split(/(\s+)/);
+        const wordIndices = [];
+        for (let i = 0; i < tokens.length; i++) {
+            if (!/^\s*$/.test(tokens[i]))
+                wordIndices.push(i);
+        }
+
+        let slice = "";
+        if (root.revealedWordCount >= wordIndices.length) {
+            slice = root.targetText;
+        } else if (root.revealedWordCount > 0) {
+            const lastTokenIdx = wordIndices[root.revealedWordCount - 1];
+            slice = tokens.slice(0, lastTokenIdx + 1).join("");
+        } else {
+            slice = "";
+        }
+
+        const textColor = root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2;
+        const primaryColor = Appearance.m3colors.m3primary;
+        root.shownText = root.applyWordFade(slice, root.settleCounter, textColor, primaryColor);
+    }
+
+    function advanceStream(): void {
+        const remaining = root.totalWordCount - root.revealedWordCount;
+        if (remaining > 0) {
+            let step = 1;
+            if (remaining > 80) {
+                step = 3;
+            } else if (remaining > 40) {
+                step = 2;
+            }
+            root.revealedWordCount = Math.min(root.totalWordCount, root.revealedWordCount + step);
+            root.settleCounter = 10;
+            root.updateStreamedText();
+        } else {
+            if (root.settleCounter > 0) {
+                root.settleCounter--;
+                root.updateStreamedText();
+            } else {
+                streamTimer.stop();
+                root.shownText = root.targetText;
+            }
+        }
+    }
+
+    function syncContent(): void {
+        const text = renderedSegmentContent ? renderedSegmentContent : (segmentContent ? segmentContent : "");
+        if (!text) {
+            root.targetText = "";
+            root.shownText = "";
+            if (streamTimer.running)
+                streamTimer.stop();
+            return;
+        }
+
+        root.targetText = text;
+
+        const fadeEnabled = Config.options.sidebar?.ai?.textFadeIn ?? true;
+        if (root.isHistorical || root.editing || !fadeEnabled) {
+            if (streamTimer.running)
+                streamTimer.stop();
+            root.revealedWordCount = 0;
+            root.settleCounter = 0;
+            root.shownText = text;
+            return;
+        }
+
+        const tokens = text.split(/(\s+)/);
+        let count = 0;
+        for (let i = 0; i < tokens.length; i++) {
+            if (!/^\s*$/.test(tokens[i]))
+                count++;
+        }
+        root.totalWordCount = count;
+
+        if (root.revealedWordCount >= root.totalWordCount && root.settleCounter <= 0) {
+            root.shownText = text;
+            if (streamTimer.running)
+                streamTimer.stop();
+            return;
+        }
+
+        if (!streamTimer.running) {
+            streamTimer.start();
+            root.advanceStream();
+        }
+    }
+
     onDoneChanged: {
         renderTimer.restart();
+        if (root.done) {
+            if (root.revealedWordCount >= root.totalWordCount && root.settleCounter <= 0) {
+                if (streamTimer.running)
+                    streamTimer.stop();
+                root.shownText = root.targetText ? root.targetText : (root.renderedSegmentContent ? root.renderedSegmentContent : "");
+            } else if (!streamTimer.running && !root.isHistorical) {
+                streamTimer.start();
+            }
+        }
     }
     onEditingChanged: {
         if (!editing) {
-            renderLatex()
+            renderLatex();
+            root.syncContent();
         } else {
-            root.shownText = segmentContent
+            if (streamTimer.running)
+                streamTimer.stop();
+            root.shownText = segmentContent;
         }
     }
 
@@ -202,11 +423,23 @@ ColumnLayout {
         if (!root.editing && segmentContent) {
             root.renderLatex();
         }
+        root.syncContent();
     }
 
     onRenderedSegmentContentChanged: {
-        if (renderedSegmentContent) {
-            root.shownText = renderedSegmentContent;
+        root.syncContent();
+    }
+
+    Component.onCompleted: {
+        const text = renderedSegmentContent ? renderedSegmentContent : (segmentContent ? segmentContent : "");
+        if (root.done || (root.messageData && root.messageData.done)) {
+            root.isHistorical = true;
+            root.targetText = text;
+            root.shownText = text;
+            root.revealedWordCount = 999999;
+            root.settleCounter = 0;
+        } else {
+            root.syncContent();
         }
     }
 

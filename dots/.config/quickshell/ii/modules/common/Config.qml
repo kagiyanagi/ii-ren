@@ -1874,7 +1874,7 @@ Singleton {
                     property list<string> fixes: ["grammar", "spelling", "punctuation", "style"]
                 }
                 property JsonObject ai: JsonObject {
-                    property bool textFadeIn: false
+                    property bool textFadeIn: true
                 }
                 property JsonObject booru: JsonObject {
                     property bool allowNsfw: false

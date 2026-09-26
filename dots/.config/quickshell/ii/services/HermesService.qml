@@ -1420,12 +1420,19 @@ Singleton {
         root.pendingApproval = null;
         if (!request)
             return;
-        root.call("approval.respond", {
-            session_id: root.sessionId,
+        root._reply(request.srq, {
             choice: choice,
-            all: all,
-            request_id: request.request_id ?? request.id ?? undefined
-        }, null);
+            all: all
+        });
+    }
+
+    // Answer a server->client request: a response frame carrying its id.
+    function _reply(id: string, result: var): void {
+        gatewayProc.write(JSON.stringify({
+            jsonrpc: "2.0",
+            id: id,
+            result: result
+        }) + "\n");
     }
 
     /**
@@ -1436,22 +1443,25 @@ Singleton {
         const request = root.pendingClarify;
         if (!request)
             return;
-        const params = {
-            session_id: root.sessionId,
-            request_id: request.request_id ?? "",
+        // A single question is answered by the response frame itself.
+        if ((questionId ?? "").length === 0) {
+            root.pendingClarify = null;
+            root._reply(request.srq, {
+                answer: answer
+            });
+            return;
+        }
+        // A batch locks one answer per call; the last lock resolves the request.
+        root.call("clarify.lock", {
+            request_id: request.srq,
+            question_id: questionId,
             answer: answer
-        };
-        if ((questionId ?? "").length > 0)
-            params.question_id = questionId;
-
-        root.call("clarify.respond", params, (result, error) => {
+        }, (result, error) => {
             if (error) {
                 root.addMessage(error.message ?? Translation.tr("Could not send that answer"), root.interfaceRole);
                 return;
             }
-            // A batch stays open until nothing is left unanswered.
-            const remaining = result?.remaining ?? [];
-            if (remaining.length === 0)
+            if ((result?.remaining ?? []).length === 0 && root.pendingClarify === request)
                 root.pendingClarify = null;
         });
     }
@@ -1459,6 +1469,12 @@ Singleton {
     // ── Event handling ───────────────────────────────────────────────────
 
     function _handleFrame(frame: var): void {
+        // The gateway asking us something (clarify, approval, ...): it has an id
+        // like a reply, and a method like a call.
+        if (frame.method && frame.method !== "event" && frame.id !== undefined && frame.id !== null) {
+            root._handleServerRequest(frame);
+            return;
+        }
         if (frame.id !== undefined && frame.id !== null) {
             const callback = root._pendingCalls[frame.id];
             delete root._pendingCalls[frame.id];
@@ -1468,6 +1484,34 @@ Singleton {
         }
         if (frame.method === "event")
             root._handleEvent(frame.params ?? {});
+    }
+
+    function _handleServerRequest(frame: var): void {
+        // `srq` is the id the answer must carry; `request_id` is approval's own.
+        const request = Object.assign({}, frame.params ?? {}, {
+            srq: frame.id
+        });
+        switch (frame.method) {
+        case "approval":
+            root.pendingApproval = request;
+            root.statusText = Translation.tr("Waiting for your approval");
+            break;
+        case "clarify":
+            root.pendingClarify = request;
+            root.statusText = Translation.tr("Waiting for your answer");
+            break;
+        default:
+            // sudo, secret, vault and desktop bridges have no card here. Saying so
+            // ends the agent's wait now instead of at its timeout.
+            gatewayProc.write(JSON.stringify({
+                jsonrpc: "2.0",
+                id: frame.id,
+                error: {
+                    code: -32601,
+                    message: `${frame.method} is not supported by the sidebar`
+                }
+            }) + "\n");
+        }
     }
 
     function _handleEvent(params: var): void {
@@ -1568,20 +1612,12 @@ Singleton {
             root.statusText = "";
             break;
 
-        case "approval.request":
-            root.pendingApproval = payload;
-            root.statusText = Translation.tr("Waiting for your approval");
-            break;
-
-        case "clarify.request":
-            // The agent has stopped mid-turn to ask something. Without this the
-            // turn simply hangs until the clarify timeout expires.
-            root.pendingClarify = payload;
-            root.statusText = Translation.tr("Waiting for your answer");
-            break;
-
-        case "clarify.expire":
-            root.pendingClarify = null;
+        case "request.cancel":
+            // A question timed out or the turn was interrupted: take its card down.
+            if (root.pendingApproval?.srq === payload.id)
+                root.pendingApproval = null;
+            if (root.pendingClarify?.srq === payload.id)
+                root.pendingClarify = null;
             break;
 
         case "session.info":
@@ -2072,20 +2108,32 @@ Singleton {
         if (trimmed.length <= root._minFirstChunk)
             return [trimmed];
         // Split *after* the punctuation, keeping it with the sentence it ends.
-        const sentences = trimmed.split(/(?<=[.!?])\s+/);
-        const chunks = [];
-        sentences.forEach(sentence => {
-            const floor = chunks.length === 1 ? root._minFirstChunk : root._minChunk;
-            if (chunks.length > 0 && chunks[chunks.length - 1].length < floor)
-                chunks[chunks.length - 1] += ` ${sentence}`;
+        // Chunks are slices of the text, whitespace and all: joined back with
+        // spaces, a list item's `- ` stopped being at the start of a line, the
+        // transcript could no longer tell it from a word, and the spoken-word
+        // mark drifted a marker further ahead after every item.
+        const spans = [];
+        const ends = /[.!?]\s+/g;
+        let start = 0;
+        let match;
+        const add = end => {
+            const floor = spans.length === 1 ? root._minFirstChunk : root._minChunk;
+            const last = spans[spans.length - 1];
+            if (last && last.end - last.start < floor)
+                last.end = end;
             else
-                chunks.push(sentence);
-        });
+                spans.push({ start: start, end: end });
+        };
+        while ((match = ends.exec(trimmed)) !== null) {
+            add(match.index + 1);
+            start = ends.lastIndex;
+        }
+        add(trimmed.length);
         // Past the cap the tail is spoken as one piece: more requests would not
         // start the audio any sooner, and each one costs a round trip.
-        if (chunks.length > root._maxChunks)
-            return [...chunks.slice(0, root._maxChunks - 1), chunks.slice(root._maxChunks - 1).join(" ")];
-        return chunks;
+        if (spans.length > root._maxChunks)
+            spans.splice(root._maxChunks - 1, spans.length, { start: spans[root._maxChunks - 1].start, end: trimmed.length });
+        return spans.map(span => trimmed.slice(span.start, span.end));
     }
 
     // What the clip now playing is saying, and which slice of that text it covers

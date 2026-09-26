@@ -168,6 +168,16 @@ assert got["afterReplace"] == [0, 0, ""], f"HermesClarifyCard: a replaced batch 
 assert got["afterAnswer"] == 1, "HermesClarifyCard: answering a batch no longer walks to the next question"
 assert re.search(r"onCurrentChanged:\s*root\.focusIfTyped\(\)", clarify), "HermesClarifyCard: a typed-only question no longer takes the caret"
 
+# The cards are fed by server->client requests: a frame with an id AND a method.
+# Hermes dropped the old `clarify.request` / `approval.request` events and
+# `clarify.respond`; routed as a reply, the request was dropped and no card opened.
+svc = (H.parents[3] / "services/HermesService.qml").read_text()
+frame = block(svc, "function _handleFrame(")
+assert frame.index("_handleServerRequest") < frame.index("_pendingCalls"), \
+    "HermesService: a server request (clarify, approval) is taken for a reply and dropped"
+assert '"clarify.respond"' not in svc and '"approval.request"' not in svc, "HermesService: the pre-server-request protocol is back"
+assert '"clarify.lock"' in svc and 'case "request.cancel"' in svc, "HermesService: batch answers or withdrawals are not handled"
+
 # Console: nothing inert, the shared scroll bar.
 assert "transformOrigin" not in console, "HermesConsole: a transformOrigin on something that never scales"
 assert "StyledScrollBar" in console and not re.search(r":\s*ScrollBar\s*\{", console), "HermesConsole: a raw ScrollBar again"

@@ -193,6 +193,13 @@ Item {
      * TextEdit reports its unwrapped width as implicitWidth, so a two-word prompt
      * asks for two words and a long one asks for the cap and wraps inside it.
      */
+    TextMetrics {
+        id: userTextMetrics
+        font.family: Appearance.font.family.reading
+        font.pixelSize: Appearance.font.pixelSize.small
+        text: root.isUser ? (root.messageData?.content ?? "") : ""
+    }
+
     readonly property real bubbleMaxWidth: root.width * 0.85
     readonly property real bubbleWidth: Math.min(root.bubbleMaxWidth, messageContentColumnLayout.implicitWidth + root.messagePadding * 2)
 
@@ -303,10 +310,16 @@ Item {
             Layout.rightMargin: root.isUser ? root.messagePadding : 0
             spacing: root.contentSpacing
 
-            ColumnLayout { // Message content
+            Item { // Message content
                 id: messageContentColumnLayout
                 Layout.fillWidth: true
-                spacing: 0
+                implicitWidth: root.isUser ? Math.max(20, Math.ceil(userTextMetrics.width + 16)) : contentColumnLayout.implicitWidth
+                implicitHeight: contentColumnLayout.implicitHeight
+
+                ColumnLayout {
+                    id: contentColumnLayout
+                    anchors.fill: parent
+                    spacing: 0
 
                 Item {
                     Layout.fillWidth: true
@@ -429,6 +442,7 @@ Item {
                     }
                 }
             }
+        }
 
             Rectangle { // Error
                 Layout.fillWidth: true
