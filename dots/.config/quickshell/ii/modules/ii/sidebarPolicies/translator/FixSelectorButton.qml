@@ -38,13 +38,12 @@ StyledComboBox {
         return Translation.tr("Fix: %1").arg(picked[0].text) + (picked.length > 1 ? ` +${picked.length - 1}` : "");
     }
 
-    // Sits on a TextCanvas card, which is layer 2, beside the layer-3 language button.
+    // Leads the output card's action row; the card is layer 2.
     colBackground: Appearance.colors.colLayer3
     colBackgroundHover: Appearance.colors.colLayer3Hover
     colBackgroundActive: Appearance.colors.colLayer3Active
-    buttonRadius: Appearance.rounding.small
+    buttonRadius: Appearance.rounding.full
     Layout.fillWidth: false
-    // TextCanvas sizes it to the language button beside it.
     // StyledComboBox's own insets: 16 each side of the text, 8 before the indicator.
     implicitWidth: contentItem.implicitWidth + indicator.width + 40
     font.pixelSize: Appearance.font.pixelSize.small

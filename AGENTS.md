@@ -453,6 +453,15 @@ you touched; they are the only automated gate.
   inside a clipped card, and its pills sit a layer above the card they are on (the library
   default is the card's own layer, invisible at rest). The phone card must not fade itself when
   out of reach: that ghosted the one pill that fixes it. None of it shows in a still frame
+- `python3 tools/check-translator.py` — the sidebar translator says when a translation failed,
+  swaps to a real language, and lets its language dialog leave. It runs `translateProc`'s exit
+  handler under node: a failed or empty `trans` run must say so, and a run killed by the next
+  keystroke must say nothing, or the error flashes between results. It evaluates the swap's
+  lookup from the English name `trans -id` reports to the endonym the language list uses. It
+  pins the dialog's `Loader` as a latch released on `!visible && !show` (bound to the flag, it
+  had no exit), the two cards splitting the page's height with the text scrolling inside each,
+  and the equal-width pills: sized by their text, the detected hint pushed the swap button out
+  from under the pointer. It also runs `translator/test_refine.js`
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

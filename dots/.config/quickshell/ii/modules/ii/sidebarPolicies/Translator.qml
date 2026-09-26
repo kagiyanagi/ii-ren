@@ -15,9 +15,10 @@ Item {
     id: root
 
     property real padding: 4
-    property var inputField: inputCanvas.inputTextArea
+    property var inputField: inputCanvas.textArea
 
     property string translatedText: ""
+    property string translateError: ""
     // English name of what "auto" resolved to; empty when the source is picked by hand.
     property string detectedLanguage: ""
     property list<string> languages: []
@@ -40,7 +41,15 @@ Item {
     // The text a check ran on, with its matches, so the offsets never meet other text.
     property var refineResult: ({ text: "", matches: [] })
     property string refineError: ""
-    readonly property string refinedText: root.refineError || root.applyFixes(root.refineResult.text, root.refineResult.matches, Config.options.sidebar.translator.fixes)
+    readonly property string refinedText: root.applyFixes(root.refineResult.text, root.refineResult.matches, Config.options.sidebar.translator.fixes)
+    readonly property string outputError: root.refining ? root.refineError : root.translateError
+    readonly property string outputText: (root.refining ? root.refinedText : root.translatedText).trim()
+    // What auto resolved to, as the endonym the language list and the swap use.
+    readonly property string detectedEndonym: Object.keys(root.languageAliases).find(k => {
+        const a = root.languageAliases[k];
+        return a.slice(a.indexOf(" ") + 1) === root.detectedLanguage;
+    }) ?? ""
+    readonly property string swapTarget: root.sourceLanguage === "auto" ? root.detectedEndonym : root.sourceLanguage
 
     function ltCode(code: string): string {
         const L = root.ltLanguages;
@@ -68,17 +77,45 @@ Item {
         return out;
     }
 
-    property bool showLanguageSelector: false
     property bool languageSelectorTarget: false // true for target language, false for source language
 
     function showLanguageSelectorDialog(isTargetLang: bool) {
         root.languageSelectorTarget = isTargetLang;
-        root.showLanguageSelector = true
+        languageDialog.active = true;
+        languageDialog.item.show = true;
+    }
+
+    function setLanguage(isTarget: bool, language: string) {
+        if (isTarget) {
+            root.targetLanguage = language;
+            Config.options.language.translator.targetLanguage = language;
+        } else {
+            root.sourceLanguage = language;
+            Config.options.language.translator.sourceLanguage = language;
+        }
+        translateTimer.restart();
+    }
+
+    // Google's swap: the languages trade places and a translation that is
+    // showing becomes the input.
+    function swapLanguages() {
+        const target = root.targetLanguage;
+        const carried = root.refining || root.outputError ? "" : root.outputText;
+        root.setLanguage(true, root.swapTarget);
+        root.setLanguage(false, target);
+        if (carried) root.inputField.text = carried;
     }
 
     onFocusChanged: (focus) => {
         if (focus) {
             root.inputField.forceActiveFocus()
+        }
+    }
+
+    Connections {
+        target: root.inputField
+        function onTextChanged() {
+            translateTimer.restart();
         }
     }
 
@@ -100,12 +137,14 @@ Item {
                     refineProc.running = code.length > 0;
                 } else {
                     translateProc.buffer = "";
+                    root.translateError = "";
                     translateProc.running = true;
                 }
                 detectProc.running = false;
                 detectProc.running = root.sourceLanguage === "auto";
             } else {
                 root.translatedText = "";
+                root.translateError = "";
                 root.refineResult = { text: "", matches: [] };
                 root.refineError = "";
             }
@@ -126,7 +165,14 @@ Item {
                 translateProc.buffer += data + "\n";
             }
         }
-        onExited: () => root.translatedText = translateProc.buffer.trim()
+        onExited: (exitCode, exitStatus) => {
+            // A run that was killed for a newer keystroke says nothing.
+            if (exitStatus !== 0) return;
+            const out = translateProc.buffer.trim();
+            if (exitCode === 127) root.translateError = Translation.tr("Translating needs `trans` (translate-shell)");
+            else if (exitCode !== 0 || !out) root.translateError = Translation.tr("Couldn't translate. Check your connection");
+            else root.translatedText = out;
+        }
     }
 
     Process {
@@ -195,112 +241,150 @@ Item {
         }
     }
 
+    // The language bar, then the two cards sharing the rest of the height, as
+    // Google Translate lays out a tall screen. Each card scrolls its own text.
     ColumnLayout {
         anchors {
             fill: parent
             margins: root.padding
         }
+        spacing: 8
 
-        StyledFlickable {
+        // From, swap, to. The pills share the row equally, so the detected
+        // hint growing in never moves the swap button.
+        RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentHeight: contentColumn.implicitHeight
+            spacing: 4
 
-            ColumnLayout {
-                id: contentColumn
-                anchors.fill: parent
-
-                TextCanvas { // Content translation
-                    id: outputCanvas
-                    isInput: false
-                    language: root.targetLanguage
-                    onLanguageClicked: root.showLanguageSelectorDialog(true)
-                    placeholderText: Translation.tr("Translation goes here...")
-                    readonly property string result: root.refining ? root.refinedText : root.translatedText
-                    text: result.trim().length > 0 ? result : ""
-                    statusComponent: root.refining ? fixSelector : null
-                    GroupButton {
-                        id: copyButton
-                        baseWidth: height
-                        buttonRadius: Appearance.rounding.small
-                        enabled: outputCanvas.displayedText.trim().length > 0
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            iconSize: Appearance.font.pixelSize.larger
-                            text: "content_copy"
-                            color: copyButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                        }
-                        onClicked: {
-                            Quickshell.clipboardText = outputCanvas.displayedText
-                        }
-                    }
-                    GroupButton {
-                        id: searchButton
-                        baseWidth: height
-                        buttonRadius: Appearance.rounding.small
-                        enabled: outputCanvas.displayedText.trim().length > 0
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            iconSize: Appearance.font.pixelSize.larger
-                            text: "travel_explore"
-                            color: searchButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                        }
-                        onClicked: {
-                            let url = Config.options.search.engineBaseUrl + outputCanvas.displayedText;
-                            for (let site of Config.options.search.excludedSites) {
-                                url += ` -site:${site}`;
-                            }
-                            Qt.openUrlExternally(url);
-                        }
+            LanguageSelectorButton {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                displayText: root.sourceLanguage === "auto" ? Translation.tr("Auto") : root.sourceLanguage
+                hintText: root.sourceLanguage === "auto" ? root.detectedLanguage : ""
+                onClicked: root.showLanguageSelectorDialog(false)
+            }
+            RippleButton {
+                id: swapButton
+                property int turns: 0
+                implicitWidth: 40
+                implicitHeight: 40
+                buttonRadius: Appearance.rounding.full
+                enabled: root.swapTarget.length > 0
+                onClicked: {
+                    swapButton.turns++;
+                    root.swapLanguages();
+                }
+                contentItem: MaterialSymbol {
+                    anchors.centerIn: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    iconSize: Appearance.font.pixelSize.hugeass
+                    text: "swap_horiz"
+                    color: Appearance.colors.colOnLayer1
+                    rotation: swapButton.turns * 180
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
                 }
-
+                StyledToolTip {
+                    text: Translation.tr("Swap languages")
+                }
+            }
+            LanguageSelectorButton {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                displayText: root.targetLanguage
+                onClicked: root.showLanguageSelectorDialog(true)
             }
         }
 
         TextCanvas { // Content input
             id: inputCanvas
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 1
             isInput: true
-            language: root.sourceLanguage
-            languageHint: root.detectedLanguage
-            onLanguageClicked: root.showLanguageSelectorDialog(false)
             placeholderText: Translation.tr("Enter text to translate...")
-            onInputTextChanged: {
-                translateTimer.restart();
-            }
-            GroupButton {
-                id: pasteButton
-                baseWidth: height
-                buttonRadius: Appearance.rounding.small
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    iconSize: Appearance.font.pixelSize.larger
-                    text: "content_paste"
-                    color: pasteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
+            leading: Component {
+                StyledText {
+                    leftPadding: 8
+                    verticalAlignment: Text.AlignVCenter
+                    text: Translation.tr("%1 characters").arg(root.inputField.text.length)
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.smaller
                 }
+            }
+            CardButton {
+                symbol: "content_paste"
+                onClicked: root.inputField.text = Quickshell.clipboardText
+            }
+            CardButton {
+                symbol: "close"
+                enabled: root.inputField.text.length > 0
+                onClicked: root.inputField.text = ""
+            }
+        }
+
+        TextCanvas { // Content translation
+            id: outputCanvas
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 1
+            isInput: false
+            emptyIcon: "translate"
+            emptyTitle: Translation.tr("Translation")
+            emptyDescription: Translation.tr("Appears here as you type\nPick the same language on both sides to fix spelling and grammar instead")
+            text: root.outputError || root.outputText
+            error: root.outputError.length > 0
+            busy: translateProc.running || refineProc.running
+            leading: root.refining ? fixSelector : null
+            CardButton {
+                id: copyButton
+                property bool copied: false
+                symbol: copied ? "check" : "content_copy"
+                enabled: !outputCanvas.error && root.outputText.length > 0
                 onClicked: {
-                    root.inputField.text = Quickshell.clipboardText
+                    Quickshell.clipboardText = root.outputText;
+                    copyButton.copied = true;
+                    copiedTimer.restart();
+                }
+                Timer {
+                    id: copiedTimer
+                    interval: 1500
+                    onTriggered: copyButton.copied = false
                 }
             }
-            GroupButton {
-                id: deleteButton
-                baseWidth: height
-                buttonRadius: Appearance.rounding.small
-                enabled: inputCanvas.inputTextArea.text.length > 0
-                contentItem: MaterialSymbol {
-                    anchors.centerIn: parent
-                    horizontalAlignment: Text.AlignHCenter
-                    iconSize: Appearance.font.pixelSize.larger
-                    text: "close"
-                    color: deleteButton.enabled ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
-                }
+            CardButton {
+                symbol: "travel_explore"
+                enabled: copyButton.enabled
                 onClicked: {
-                    root.inputField.text = ""
+                    let url = Config.options.search.engineBaseUrl + root.outputText;
+                    for (let site of Config.options.search.excludedSites) {
+                        url += ` -site:${site}`;
+                    }
+                    Qt.openUrlExternally(url);
                 }
             }
+        }
+    }
+
+    // The card actions: an M3 button group on the layer-2 cards.
+    component CardButton: GroupButton {
+        id: cardButton
+        property string symbol
+        baseWidth: 40
+        baseHeight: 40
+        // Round at rest, so no pressed morph (DESIGN.md 4.3); the group's
+        // bounce is the press.
+        buttonRadius: Appearance.rounding.full
+        buttonRadiusPressed: Appearance.rounding.full
+        colBackgroundHover: Appearance.colors.colLayer2Hover
+        colBackgroundActive: Appearance.colors.colLayer2Active
+        contentItem: MaterialSymbol {
+            anchors.centerIn: parent
+            horizontalAlignment: Text.AlignHCenter
+            iconSize: Appearance.font.pixelSize.larger
+            text: cardButton.symbol
+            color: Appearance.colors.colOnLayer2
         }
     }
 
@@ -309,34 +393,23 @@ Item {
         FixSelectorButton {}
     }
 
+    // Latched: it stays loaded until the dialog's exit has played.
     Loader {
+        id: languageDialog
         anchors.fill: parent
-        active: root.showLanguageSelector
-        visible: root.showLanguageSelector
+        active: false
         z: 9999
         sourceComponent: SelectionDialog {
-            id: languageSelectorDialog
             titleText: Translation.tr("Select Language")
             items: root.languages
             searchAliases: root.languageAliases
             defaultChoice: root.languageSelectorTarget ? root.targetLanguage : root.sourceLanguage
-            onCanceled: () => {
-                root.showLanguageSelector = false;
+            onCanceled: show = false
+            onSelected: result => {
+                show = false;
+                if (result?.length > 0) root.setLanguage(root.languageSelectorTarget, result);
             }
-            onSelected: (result) => {
-                root.showLanguageSelector = false;
-                if (!result || result.length === 0) return;
-
-                if (root.languageSelectorTarget) {
-                    root.targetLanguage = result;
-                    Config.options.language.translator.targetLanguage = result;
-                } else {
-                    root.sourceLanguage = result;
-                    Config.options.language.translator.sourceLanguage = result;
-                }
-
-                translateTimer.restart();
-            }
+            onVisibleChanged: if (!visible && !show) languageDialog.active = false
         }
     }
 }
