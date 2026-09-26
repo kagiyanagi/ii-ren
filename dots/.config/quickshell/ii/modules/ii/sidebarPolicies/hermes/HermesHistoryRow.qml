@@ -43,8 +43,11 @@ RippleButton {
     implicitHeight: contentColumn.implicitHeight + 10 * 2
     buttonRadius: Appearance.rounding.small
 
+    // A drawer row: bare on the layer 1 sheet, so its films are layer 1's, and
+    // tonal only for the conversation that is open.
     colBackground: root.current ? Appearance.colors.colSecondaryContainer : "transparent"
-    colBackgroundHover: root.current ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colLayer2Hover
+    colBackgroundHover: root.current ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colLayer1Hover
+    colRipple: root.current ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colLayer1Active
 
     releaseAction: () => {
         if (root.confirmingDelete) {
@@ -101,14 +104,24 @@ RippleButton {
             }
         }
 
-        RippleButton {
+        HermesIconButton {
             id: deleteButton
             Layout.rightMargin: 6
-            implicitWidth: 32
-            implicitHeight: 32
-            buttonRadius: Appearance.rounding.small
+            symbol: root.confirmingDelete ? "delete_forever" : "delete"
+            tooltip: root.confirmingDelete ? Translation.tr("Press again to delete") : Translation.tr("Delete this chat")
+            iconColor: root.confirmingDelete ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colSubtext
             colBackground: root.confirmingDelete ? Appearance.colors.colErrorContainer : "transparent"
-            colBackgroundHover: root.confirmingDelete ? Appearance.colors.colErrorContainerHover : Appearance.colors.colLayer2Hover
+            // Unarmed, its hover is a film: the row under it is already at
+            // colLayer1Hover, so a replacement colour would match it exactly.
+            colBackgroundHover: root.confirmingDelete ? Appearance.colors.colErrorContainerHover : "transparent"
+            colRipple: root.confirmingDelete ? Appearance.colors.colErrorContainerActive : Appearance.colors.colLayer1Active
+
+            StateOverlay {
+                anchors.fill: parent
+                radius: deleteButton.buttonRadius
+                hover: deleteButton.hovered && !root.confirmingDelete
+                contentColor: Appearance.colors.colOnLayer1
+            }
 
             releaseAction: () => {
                 if (!root.confirmingDelete) {
@@ -119,18 +132,6 @@ RippleButton {
                 disarm.stop();
                 root.confirmingDelete = false;
                 HermesService.deleteSession(root.session?.id ?? "");
-            }
-
-            contentItem: MaterialSymbol {
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                iconSize: Appearance.font.pixelSize.larger
-                color: root.confirmingDelete ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colSubtext
-                text: root.confirmingDelete ? "delete_forever" : "delete"
-            }
-
-            StyledToolTip {
-                text: root.confirmingDelete ? Translation.tr("Press again to delete") : Translation.tr("Delete this chat")
             }
         }
     }

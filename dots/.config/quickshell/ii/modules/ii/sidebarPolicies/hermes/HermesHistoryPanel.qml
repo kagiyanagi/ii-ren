@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 /**
  * Stored conversations: search, open, delete.
@@ -31,7 +32,18 @@ Rectangle {
     readonly property var sessions: HermesService.recentSessions ?? []
     readonly property string currentId: HermesService.storedSessionId
 
-    /** Flat list of section headers and sessions, so one ListView renders both. */
+    // session.list has answered at least once. Until then an empty list means
+    // "not asked yet", not "no conversations".
+    // ponytail: a failed session.list never assigns, so a dead gateway keeps
+    // the loading row; a loaded flag in HermesService would end it.
+    property bool answered: false
+    onSessionsChanged: root.answered = true
+    readonly property bool loading: !root.answered && root.sessions.length === 0
+
+    /**
+     * Flat list of section headers and sessions, so one ListView renders both.
+     * `key` is what the ScriptModel matches a refresh's fresh objects on.
+     */
     readonly property var rows: {
         const needle = root.query.trim().toLowerCase();
         const matched = needle.length === 0 ? root.sessions : root.sessions.filter(session =>
@@ -47,11 +59,13 @@ Rectangle {
                 group = label;
                 out.push({
                     "kind": "header",
+                    "key": "header:" + label,
                     "label": label
                 });
             }
             out.push({
                 "kind": "session",
+                "key": "session:" + session.id,
                 "session": session
             });
         }
@@ -89,7 +103,7 @@ Rectangle {
             MaterialTextField {
                 id: searchField
                 Layout.fillWidth: true
-                placeholderText: Translation.tr("Search %1 conversations…").arg(root.sessions.length)
+                placeholderText: root.loading ? Translation.tr("Search conversations…") : Translation.tr("Search %1 conversations…").arg(root.sessions.length)
                 onTextChanged: root.query = text
                 // Esc backs out of the search before it backs out of the panel, so a
                 // stray filter never leaves the list looking empty.
@@ -101,7 +115,7 @@ Rectangle {
                 }
             }
 
-            HistoryIconButton {
+            HermesIconButton {
                 symbol: "add_comment"
                 tooltip: Translation.tr("Start a new conversation")
                 onReleased: {
@@ -110,7 +124,7 @@ Rectangle {
                 }
             }
 
-            HistoryIconButton {
+            HermesIconButton {
                 symbol: "close"
                 tooltip: Translation.tr("Close history")
                 onReleased: root.requestClose()
@@ -127,41 +141,40 @@ Rectangle {
                 anchors.fill: parent
                 clip: true
                 spacing: 2
-                model: root.rows
+                model: ScriptModel {
+                    objectProp: "key"
+                    values: root.rows
+                }
 
-                delegate: Item {
-                    id: row
-                    required property var modelData
-                    width: listView.width
-                    implicitHeight: loader.item?.implicitHeight ?? 0
+                delegate: DelegateChooser {
+                    role: "kind"
 
-                    Loader {
-                        id: loader
-                        width: row.width
-                        sourceComponent: row.modelData.kind === "header" ? headerComponent : cardComponent
-
-                        Component {
-                            id: headerComponent
-                            StyledText {
-                                topPadding: 12
-                                bottomPadding: 4
-                                leftPadding: 4
-                                text: row.modelData.label
-                                color: Appearance.colors.colSubtext
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                font.weight: Font.DemiBold
-                            }
+                    DelegateChoice {
+                        roleValue: "header"
+                        StyledText {
+                            required property var modelData
+                            width: listView.width
+                            topPadding: 12
+                            bottomPadding: 4
+                            leftPadding: 4
+                            text: modelData.label
+                            color: Appearance.colors.colSubtext
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            font.weight: Font.DemiBold
                         }
+                    }
 
-                        Component {
-                            id: cardComponent
-                            HermesHistoryRow {
-                                session: row.modelData.session
-                                current: row.modelData.session.id === root.currentId
-                                onOpenRequested: {
-                                    HermesService.resumeSession(row.modelData.session.id);
-                                    root.requestClose();
-                                }
+                    DelegateChoice {
+                        roleValue: "session"
+                        HermesHistoryRow {
+                            id: sessionRow
+                            required property var modelData
+                            width: listView.width
+                            session: sessionRow.modelData.session
+                            current: sessionRow.modelData.session.id === root.currentId
+                            onOpenRequested: {
+                                HermesService.resumeSession(sessionRow.modelData.session.id);
+                                root.requestClose();
                             }
                         }
                     }
@@ -178,42 +191,41 @@ Rectangle {
             }
         }
 
+        Item { // Until session.list first answers
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: root.loading
+
+            RowLayout {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: 16
+                spacing: 8
+
+                MaterialLoadingIndicator {
+                    // The inline size, as on the Live tab's running rows.
+                    implicitSize: 20
+                    loading: root.loading
+                }
+                StyledText {
+                    text: Translation.tr("Loading conversations…")
+                    color: Appearance.colors.colSubtext
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+            }
+        }
+
         Item { // PagePlaceholder anchors itself, so it needs a plain parent in a layout
             Layout.fillWidth: true
             Layout.fillHeight: true
-            visible: root.rows.length === 0
+            visible: !root.loading && root.rows.length === 0
 
             PagePlaceholder { // Nothing to show, for one of two quite different reasons
-                shown: root.rows.length === 0
+                shown: !root.loading && root.rows.length === 0
                 icon: root.sessions.length === 0 ? "forum" : "search_off"
                 title: root.sessions.length === 0 ? Translation.tr("No conversations yet") : Translation.tr("No matches")
                 description: root.sessions.length === 0 ? Translation.tr("Chats are saved as soon as you send a message.") : Translation.tr("Nothing matching “%1”.").arg(root.query)
             }
-        }
-    }
-
-    /** Small square icon button, used for the header actions. */
-    component HistoryIconButton: RippleButton {
-        id: iconButton
-        required property string symbol
-        property string tooltip: ""
-
-        implicitWidth: 34
-        implicitHeight: 34
-        buttonRadius: Appearance.rounding.small
-        colBackground: "transparent"
-
-        contentItem: MaterialSymbol {
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            text: iconButton.symbol
-            iconSize: Appearance.font.pixelSize.larger
-            color: Appearance.m3colors.m3onSurface
-        }
-
-        StyledToolTip {
-            text: iconButton.tooltip
-            extraVisibleCondition: iconButton.tooltip.length > 0
         }
     }
 }

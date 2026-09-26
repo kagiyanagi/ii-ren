@@ -5,6 +5,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 /**
  * Everything Hermes has in flight, and what it did before.
@@ -48,11 +49,8 @@ Rectangle {
         HermesService.refreshSpawnTrees();
     }
 
-    // Covers both ways this panel tends to get mounted: a Loader that
-    // constructs it fresh each open (onCompleted), and a permanent child
-    // whose visibility is toggled by opacity, same as HermesHistoryPanel
-    // (onVisibleChanged catches the false -> true edge).
-    Component.onCompleted: root.refreshActiveTab()
+    // A permanent child of Hermes.qml whose visibility follows its opacity, so
+    // the false -> true edge is the open.
     onVisibleChanged: if (root.visible)
         root.refreshActiveTab()
 
@@ -122,13 +120,13 @@ Rectangle {
                 }
             }
 
-            PanelIconButton {
+            HermesIconButton {
                 symbol: "refresh"
                 tooltip: Translation.tr("Refresh")
                 onReleased: root.refreshActiveTab()
             }
 
-            PanelIconButton {
+            HermesIconButton {
                 symbol: "close"
                 tooltip: Translation.tr("Close")
                 onReleased: root.requestClose()
@@ -149,19 +147,20 @@ Rectangle {
             }
         }
 
-        Item {
+        PageSwap {
+            id: tabSwap
             Layout.fillWidth: true
             Layout.fillHeight: true
+            page: tabBar.currentIndex
 
             HermesSideTasksPanel {
                 id: liveTab
                 anchors.fill: parent
-                embedded: true
-                visible: tabBar.currentIndex === 0
+                visible: tabSwap.shownPage === 0
             }
             SpawnTreesTab {
                 anchors.fill: parent
-                visible: tabBar.currentIndex === 1
+                visible: tabSwap.shownPage === 1
             }
         }
     }
@@ -181,13 +180,6 @@ Rectangle {
         property var loadedTree: null // { session_id, started_at, finished_at, label, subagents }
         property bool showingDetail: false
 
-        // Crossfade-and-shift page swap between the run list and a loaded
-        // tree -- the same recipe Continuity.qml uses for its notification
-        // drill-in: fade+shift out on fast effects/accel, swap the content at
-        // the midpoint, fade+shift back in on default spatial/effects.
-        property real swapOpacity: 1
-        property real swapShift: 0
-
         function openEntry(entry: var): void {
             if (!entry || (entry.path ?? "").length === 0)
                 return;
@@ -198,231 +190,184 @@ Rectangle {
                     return;
                 treeTab.loadedTree = payload;
                 treeTab.showingDetail = true;
-                swapAnim.restart();
             });
         }
 
-        function closeDetail(): void {
-            treeTab.showingDetail = false;
-            swapAnim.restart();
-        }
-
-        SequentialAnimation {
-            id: swapAnim
-            ParallelAnimation {
-                NumberAnimation {
-                    target: treeTab
-                    property: "swapOpacity"
-                    to: 0
-                    duration: Appearance.animationCurves.expressiveFastEffectsDuration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
-                }
-                NumberAnimation {
-                    target: treeTab
-                    property: "swapShift"
-                    to: treeTab.showingDetail ? -12 : 12
-                    duration: Appearance.animationCurves.expressiveFastEffectsDuration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
-                }
-            }
-            ScriptAction {
-                script: treeTab.swapShift = treeTab.showingDetail ? 12 : -12
-            }
-            ParallelAnimation {
-                NumberAnimation {
-                    target: treeTab
-                    property: "swapOpacity"
-                    to: 1
-                    duration: Appearance.animationCurves.expressiveEffectsDuration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-                }
-                NumberAnimation {
-                    target: treeTab
-                    property: "swapShift"
-                    to: 0
-                    duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-                }
-            }
-        }
-
-        Item {
+        PageSwap {
+            id: detailSwap
             anchors.fill: parent
-            visible: !treeTab.showingDetail
-            opacity: treeTab.swapOpacity
-            transform: Translate {
-                y: treeTab.swapShift
-            }
+            page: treeTab.showingDetail ? 1 : 0
 
             Item {
                 anchors.fill: parent
-                visible: treeTab.entries.length > 0
+                visible: detailSwap.shownPage === 0
 
-                StyledListView {
-                    id: treeList
+                Item {
                     anchors.fill: parent
-                    clip: true
-                    spacing: 8
-                    model: treeTab.entries
+                    visible: treeTab.entries.length > 0
 
-                    delegate: RippleButton {
-                        id: treeRow
-                        required property var modelData
-                        width: treeList.width
-                        implicitHeight: treeContent.implicitHeight + 20
-                        buttonRadius: Appearance.rounding.small
-                        colBackground: Appearance.colors.colLayer2
-                        colBackgroundHover: Appearance.colors.colLayer2Hover
+                    StyledListView {
+                        id: treeList
+                        anchors.fill: parent
+                        clip: true
+                        spacing: 8
+                        // Every save replaces spawnTrees; keyed, a new run is one insert.
+                        model: ScriptModel {
+                            objectProp: "path"
+                            values: treeTab.entries
+                        }
 
-                        readonly property bool loadingThis: treeTab.loadingPath.length > 0 && treeTab.loadingPath === (treeRow.modelData.path ?? "")
+                        delegate: RippleButton {
+                            id: treeRow
+                            required property var modelData
+                            width: treeList.width
+                            implicitHeight: treeContent.implicitHeight + 20
+                            buttonRadius: Appearance.rounding.small
+                            colBackground: Appearance.colors.colLayer2
+                            colBackgroundHover: Appearance.colors.colLayer2Hover
 
-                        releaseAction: () => treeTab.openEntry(treeRow.modelData)
+                            readonly property bool loadingThis: treeTab.loadingPath.length > 0 && treeTab.loadingPath === (treeRow.modelData.path ?? "")
 
-                        contentItem: RowLayout {
-                            id: treeContent
-                            spacing: 10
+                            releaseAction: () => treeTab.openEntry(treeRow.modelData)
 
-                            MaterialSymbol {
-                                Layout.alignment: Qt.AlignVCenter
-                                text: "account_tree"
-                                iconSize: Appearance.font.pixelSize.larger
-                                color: Appearance.colors.colOnLayer2
+                            contentItem: RowLayout {
+                                id: treeContent
+                                spacing: 10
+
+                                MaterialSymbol {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    text: "account_tree"
+                                    iconSize: Appearance.font.pixelSize.larger
+                                    color: Appearance.colors.colOnLayer2
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    spacing: 2
+
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        elide: Text.ElideRight
+                                        text: (treeRow.modelData.label ?? "").length > 0 ? treeRow.modelData.label : root.formatTimestamp(treeRow.modelData.started_at ?? 0)
+                                        color: Appearance.colors.colOnLayer2
+                                        font.pixelSize: Appearance.font.pixelSize.smallie
+                                    }
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        Layout.minimumWidth: 0
+                                        elide: Text.ElideRight
+                                        text: treeRow.loadingThis ? Translation.tr("Loading…") : [Translation.tr("%1 subagents").arg(treeRow.modelData.count ?? 0), root.formatDuration((treeRow.modelData.finished_at ?? 0) - (treeRow.modelData.started_at ?? 0))].join("  ·  ")
+                                        color: Appearance.colors.colSubtext
+                                        font.pixelSize: Appearance.font.pixelSize.small
+                                    }
+                                }
                             }
+                        }
+                    }
+                }
 
+                Item {
+                    anchors.fill: parent
+                    visible: treeTab.entries.length === 0
+
+                    PagePlaceholder {
+                        shown: treeTab.entries.length === 0
+                        icon: "account_tree"
+                        title: Translation.tr("No delegation runs yet")
+                        description: Translation.tr("Runs are saved here once the agent spawns subagents.")
+                    }
+                }
+            }
+
+            ColumnLayout {
+                anchors.fill: parent
+                visible: detailSwap.shownPage === 1
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+
+                    HermesIconButton {
+                        symbol: "arrow_back"
+                        tooltip: Translation.tr("Back to runs")
+                        onReleased: treeTab.showingDetail = false
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: (treeTab.loadedTree?.label ?? "").length > 0 ? treeTab.loadedTree.label : root.formatTimestamp(treeTab.loadedTree?.started_at ?? 0)
+                            font.weight: Font.DemiBold
+                            color: Appearance.colors.colOnLayer1
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            text: root.formatDuration((treeTab.loadedTree?.finished_at ?? 0) - (treeTab.loadedTree?.started_at ?? 0))
+                            font.pixelSize: Appearance.font.pixelSize.small
+                            color: Appearance.colors.colSubtext
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    StyledListView {
+                        id: subList
+                        anchors.fill: parent
+                        clip: true
+                        spacing: 4
+                        model: root.subagentRowsFor(treeTab.loadedTree)
+
+                        delegate: RowLayout {
+                            id: subRow
+                            required property var modelData
+                            width: subList.width
+                            spacing: 6
+
+                            Item {
+                                Layout.preferredWidth: subRow.modelData.depth * 16
+                            }
+                            MaterialSymbol {
+                                visible: subRow.modelData.depth > 0
+                                text: "subdirectory_arrow_right"
+                                iconSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colSubtext
+                            }
                             ColumnLayout {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                spacing: 2
+                                spacing: 0
 
                                 StyledText {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    elide: Text.ElideRight
-                                    text: (treeRow.modelData.label ?? "").length > 0 ? treeRow.modelData.label : root.formatTimestamp(treeRow.modelData.started_at ?? 0)
-                                    color: Appearance.colors.colOnLayer2
-                                    font.pixelSize: Appearance.font.pixelSize.smallie
-                                }
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    elide: Text.ElideRight
-                                    text: treeRow.loadingThis ? Translation.tr("Loading…") : [Translation.tr("%1 subagents").arg(treeRow.modelData.count ?? 0), root.formatDuration((treeRow.modelData.finished_at ?? 0) - (treeRow.modelData.started_at ?? 0))].join("  ·  ")
-                                    color: Appearance.colors.colSubtext
+                                    wrapMode: Text.Wrap
+                                    text: subRow.modelData.goal
                                     font.pixelSize: Appearance.font.pixelSize.small
+                                    color: Appearance.colors.colOnLayer1
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Item {
-                anchors.fill: parent
-                visible: treeTab.entries.length === 0
-
-                PagePlaceholder {
-                    shown: treeTab.entries.length === 0
-                    icon: "account_tree"
-                    title: Translation.tr("No delegation runs yet")
-                    description: Translation.tr("Runs are saved here once the agent spawns subagents.")
-                }
-            }
-        }
-
-        ColumnLayout {
-            anchors.fill: parent
-            visible: treeTab.showingDetail
-            opacity: treeTab.swapOpacity
-            transform: Translate {
-                y: treeTab.swapShift
-            }
-            spacing: 8
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 4
-
-                PanelIconButton {
-                    symbol: "arrow_back"
-                    tooltip: Translation.tr("Back to runs")
-                    onReleased: treeTab.closeDetail()
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    spacing: 0
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        elide: Text.ElideRight
-                        text: (treeTab.loadedTree?.label ?? "").length > 0 ? treeTab.loadedTree.label : root.formatTimestamp(treeTab.loadedTree?.started_at ?? 0)
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer1
-                    }
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        elide: Text.ElideRight
-                        text: root.formatDuration((treeTab.loadedTree?.finished_at ?? 0) - (treeTab.loadedTree?.started_at ?? 0))
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        color: Appearance.colors.colSubtext
-                    }
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                StyledListView {
-                    id: subList
-                    anchors.fill: parent
-                    clip: true
-                    spacing: 4
-                    model: root.subagentRowsFor(treeTab.loadedTree)
-
-                    delegate: RowLayout {
-                        id: subRow
-                        required property var modelData
-                        width: subList.width
-                        spacing: 6
-
-                        Item {
-                            Layout.preferredWidth: subRow.modelData.depth * 16
-                        }
-                        MaterialSymbol {
-                            visible: subRow.modelData.depth > 0
-                            text: "subdirectory_arrow_right"
-                            iconSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colSubtext
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 0
-
-                            StyledText {
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                wrapMode: Text.Wrap
-                                text: subRow.modelData.goal
-                                font.pixelSize: Appearance.font.pixelSize.small
-                                color: Appearance.colors.colOnLayer1
-                            }
-                            StyledText {
-                                visible: text.length > 0
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                elide: Text.ElideRight
-                                text: subRow.modelData.meta
-                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                color: Appearance.colors.colSubtext
+                                StyledText {
+                                    visible: text.length > 0
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
+                                    text: subRow.modelData.meta
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    color: Appearance.colors.colSubtext
+                                }
                             }
                         }
                     }
@@ -431,27 +376,71 @@ Rectangle {
         }
     }
 
-    component PanelIconButton: RippleButton {
-        id: iconButton
-        required property string symbol
-        property string tooltip: ""
+    /**
+     * Fade-through between the pages of one area. The old page leaves on the
+     * fast effects spec and the new one arrives on the default spatial one.
+     * `page` is what was asked for and `shownPage` is what is drawn; only the
+     * midpoint moves it, so neither page changes on the first frame.
+     */
+    component PageSwap: Item {
+        id: swap
+        property int page: 0
+        property int shownPage: 0
+        property bool forward: true
 
-        implicitWidth: 34
-        implicitHeight: 34
-        buttonRadius: Appearance.rounding.small
-        colBackground: "transparent"
-
-        contentItem: MaterialSymbol {
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            text: iconButton.symbol
-            iconSize: Appearance.font.pixelSize.larger
-            color: Appearance.m3colors.m3onSurface
+        onPageChanged: {
+            swap.forward = swap.page > swap.shownPage;
+            swapAnim.restart();
         }
 
-        StyledToolTip {
-            text: iconButton.tooltip
-            extraVisibleCondition: iconButton.tooltip.length > 0
+        transform: Translate {
+            id: shift
+        }
+
+        SequentialAnimation {
+            id: swapAnim
+            ParallelAnimation {
+                NumberAnimation {
+                    target: swap
+                    property: "opacity"
+                    to: 0
+                    duration: Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+                }
+                NumberAnimation {
+                    target: shift
+                    property: "y"
+                    to: swap.forward ? -12 : 12
+                    duration: Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+                }
+            }
+            ScriptAction {
+                script: {
+                    swap.shownPage = swap.page;
+                    shift.y = swap.forward ? 12 : -12;
+                }
+            }
+            ParallelAnimation {
+                NumberAnimation {
+                    target: swap
+                    property: "opacity"
+                    to: 1
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
+                }
+                NumberAnimation {
+                    target: shift
+                    property: "y"
+                    to: 0
+                    duration: Appearance.animation.elementMoveEnter.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animation.elementMoveEnter.bezierCurve
+                }
+            }
         }
     }
 }

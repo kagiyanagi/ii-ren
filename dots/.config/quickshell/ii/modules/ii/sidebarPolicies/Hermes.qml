@@ -604,12 +604,13 @@ Item {
                 anchors.fill: parent
 
                 // Enter decelerating on spatial, exit accelerating on fast effects at
-                // about half the duration (DESIGN.md 2.5). Scale grows from the top,
-                // which is the edge the button that opens it sits under.
+                // about half the duration (DESIGN.md 2.5). Scale grows from the
+                // bottom right, the corner nearest the composer-row button under the
+                // sheet that opens it (2.6).
                 opacity: root.historyShown ? 1 : 0
                 scale: root.historyShown ? 1 : 0.96
                 visible: opacity > 0
-                transformOrigin: Item.Top
+                transformOrigin: Item.BottomRight
 
                 Behavior on opacity {
                     NumberAnimation {
@@ -634,12 +635,12 @@ Item {
                 z: 4
                 anchors.fill: parent
 
-                // Same enter/exit pairing and top origin as the history panel:
-                // both grow from under the control row that opens them.
+                // Same enter/exit pairing and origin as the history panel: both
+                // open from buttons at the right end of the composer row.
                 opacity: root.workShown ? 1 : 0
                 scale: root.workShown ? 1 : 0.96
                 visible: opacity > 0
-                transformOrigin: Item.Top
+                transformOrigin: Item.BottomRight
 
                 Behavior on opacity {
                     NumberAnimation {

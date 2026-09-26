@@ -515,6 +515,19 @@ you touched; they are the only automated gate.
   the state (a switch that toggles itself, or a row that writes its `checked`, breaks the
   binding and zerochan kept reading "on"), Anime's send button to its own press, and the
   detached window off the other component's `panelWindow` id
+- `python3 tools/check-hermes-panels.py` — the Hermes history and work sheets survive a
+  poll, swap pages visibly, and grow out of their buttons. Both lists were plain arrays
+  rebuilt from `HermesService` on every refresh (the Live list every 2s while a turn runs),
+  so every row was destroyed each pass: a half-typed steer lost its caret and every row
+  re-ran its entrance. They are keyed `ScriptModel`s behind a `DelegateChooser` now, and
+  the check runs both `rows` builders under node against two polls of fresh objects: the
+  keys must match, stay unique, survive a removal above them, and put running side work
+  above finished. The run list/detail swap flipped `showingDetail` before its animation
+  started, so both pages changed on frame 1 and the new one faded out and back in. Every
+  page now follows a `PageSwap`'s `shownPage`, which only the midpoint moves, and the Live
+  and History tabs share it. It also pins the sheets' `BottomRight` origin (the buttons
+  that open them are at the right end of the composer row, below them), the history
+  loading row, and the one `HermesIconButton`
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -5,39 +5,25 @@ import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 /**
  * Side work: background turns, `btw` questions, and the current turn's
  * delegated children -- everything running off to the side of the main
- * conversation rather than in it.
+ * conversation rather than in it. The Live tab of HermesWorkPanel, which draws
+ * the sheet and the header and refreshes this when it is shown.
  */
-Rectangle {
+Item {
     id: root
-
-    signal requestClose
-
-    // Opaque, for the same reason as HermesHistoryPanel: colLayer1 carries the
-    // alpha the shell composites over layer 0 with, colLayer1Base is the solid
-    // surface a panel actually needs.
-    readonly property color panelColor: Appearance.colors.colLayer1Base
-
-    // Set when this is hosted inside a tab that already draws the surface and
-    // the header; the panel then contributes only its list.
-    property bool embedded: false
-
-    color: root.embedded ? "transparent" : root.panelColor
-    radius: root.embedded ? 0 : Appearance.rounding.normal
 
     readonly property var sideTasks: HermesService.sideTasks ?? []
     readonly property var subagents: HermesService.subagents ?? []
     readonly property var processes: HermesService.agentProcesses ?? []
     readonly property bool hasFinishedSideTasks: root.sideTasks.some(task => task.done)
 
-    // Per-child UI state, keyed by subagent_id rather than held on the row
-    // delegate itself: subagent.list hands back a brand new array on every
-    // poll, which is a wholesale model reset for a ListView bound to a plain
-    // JS array -- every delegate is destroyed and recreated. Keying state on
-    // root is what lets a half-typed steer or an open tail survive that.
+    // Per-child UI state, keyed by subagent_id on root rather than held on the
+    // row: the rows are keyed now and survive a poll, but a child that drops
+    // out of subagent.list and comes back is a new delegate.
     property var expandedTail: ({})
     property var tailText: ({})
     property var tailAvailable: ({})
@@ -102,42 +88,53 @@ Rectangle {
         return Translation.tr("%1m %2s").arg(Math.floor(secs / 60)).arg(secs % 60);
     }
 
-    /** Flat list of section headers and rows, so one ListView renders both kinds. */
+    /**
+     * Flat list of section headers and rows, so one ListView renders every
+     * kind. `key` is what the ScriptModel matches a poll's fresh objects on:
+     * a header by its kind, a row by its own id, and the index only where the
+     * gateway gave no id.
+     */
     readonly property var rows: {
         let out = [];
         if (root.sideTasks.length > 0) {
             out.push({
-                "kind": "tasksHeader"
+                "kind": "tasksHeader",
+                "key": "tasksHeader"
             });
-            root.sideTasks.forEach(task => out.push({
+            // Running above finished; the service appends, so a new task
+            // would otherwise land under the ones already done.
+            root.sideTasks.map((task, i) => [task, i]).sort((a, b) => a[0].done - b[0].done).forEach(([task, i]) => out.push({
                 "kind": "task",
+                "key": "task:" + (task.taskId || i),
                 "task": task
             }));
         }
         if (root.subagents.length > 0) {
             out.push({
-                "kind": "subagentsHeader"
+                "kind": "subagentsHeader",
+                "key": "subagentsHeader"
             });
-            root.subagents.forEach(subagent => out.push({
+            root.subagents.forEach((subagent, i) => out.push({
                 "kind": "subagent",
+                "key": "subagent:" + (subagent.subagent_id || i),
                 "subagent": subagent
             }));
         }
         if (root.processes.length > 0) {
             out.push({
-                "kind": "processesHeader"
+                "kind": "processesHeader",
+                "key": "processesHeader"
             });
-            root.processes.forEach(process => out.push({
+            root.processes.forEach((process, i) => out.push({
                 "kind": "process",
+                "key": "process:" + (process.session_id || i),
                 "process": process
             }));
         }
         return out;
     }
 
-    // One shared timer for every open tail, rather than one per row: a row's
-    // own Timer would be destroyed and restarted on every subagent.list
-    // refresh along with the rest of the delegate.
+    // One shared timer for every open tail, rather than one per row.
     Timer {
         interval: 1500
         repeat: true
@@ -155,489 +152,368 @@ Rectangle {
         onTriggered: root.nowMs = Date.now()
     }
 
-    // Covers both ways this panel might come alive: freshly instantiated by a
-    // Loader, or kept around and just toggled visible.
     function refreshAll(): void {
         HermesService.refreshDelegation();
         HermesService.refreshAgentProcesses();
     }
 
-    Component.onCompleted: root.refreshAll()
-    onVisibleChanged: {
-        if (root.visible)
-            root.refreshAll();
-    }
-
-    ColumnLayout {
+    Item { // Plain parent, so the fade can anchor to the list as its sibling
         anchors.fill: parent
-        anchors.margins: root.embedded ? 0 : 12
-        spacing: 8
+        visible: root.rows.length > 0
 
-        RowLayout { // Header
-            Layout.fillWidth: true
+        StyledListView {
+            id: listView
+            anchors.fill: parent
+            clip: true
             spacing: 8
-            visible: !root.embedded
-
-            StyledText {
-                Layout.fillWidth: true
-                text: Translation.tr("Live work")
-                font.pixelSize: Appearance.font.pixelSize.normal
-                font.family: Appearance.font.family.title
-                color: Appearance.colors.colOnLayer1
+            model: ScriptModel {
+                objectProp: "key"
+                values: root.rows
             }
 
-            PanelIconButton {
-                symbol: "close"
-                tooltip: Translation.tr("Close side work")
-                onReleased: root.requestClose()
-            }
-        }
+            delegate: DelegateChooser {
+                role: "kind"
 
-        Item { // Plain parent, so the fade can anchor to the list as its sibling
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: root.rows.length > 0
+                DelegateChoice {
+                    roleValue: "tasksHeader"
+                    SectionHeader {
+                        text: Translation.tr("Background & side work")
 
-            StyledListView {
-                id: listView
-                anchors.fill: parent
-                clip: true
-                spacing: 8
-                model: root.rows
+                        HermesIconButton {
+                            visible: root.hasFinishedSideTasks
+                            symbol: "clear_all"
+                            tooltip: Translation.tr("Clear finished")
+                            onReleased: HermesService.clearFinishedSideTasks()
+                        }
+                    }
+                }
 
-                delegate: Item {
-                    id: rowItem
-                    required property var modelData
-                    width: listView.width
-                    implicitHeight: loader.item?.implicitHeight ?? 0
+                DelegateChoice {
+                    roleValue: "subagentsHeader"
+                    SectionHeader {
+                        text: Translation.tr("Delegated children")
 
-                    Loader {
-                        id: loader
-                        width: rowItem.width
-                        sourceComponent: {
-                            switch (rowItem.modelData.kind) {
-                            case "tasksHeader":
-                                return tasksHeaderComponent;
-                            case "task":
-                                return taskCardComponent;
-                            case "subagentsHeader":
-                                return subagentsHeaderComponent;
-                            case "processesHeader":
-                                return processesHeaderComponent;
-                            case "process":
-                                return processRowComponent;
-                            case "subagent":
-                                return subagentRowComponent;
-                            default:
-                                return null;
-                            }
+                        StyledText {
+                            text: Translation.tr("Pause spawning")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
                         }
 
-                        Component {
-                            id: tasksHeaderComponent
-                            Item {
-                                implicitHeight: tasksHeaderRow.implicitHeight + 8
+                        StyledSwitch {
+                            checked: HermesService.spawnPaused
+                            onToggled: HermesService.setSpawnPaused(checked)
+                        }
+                    }
+                }
 
-                                RowLayout {
-                                    id: tasksHeaderRow
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        bottom: parent.bottom
-                                    }
-                                    spacing: 8
+                DelegateChoice {
+                    roleValue: "processesHeader"
+                    SectionHeader {
+                        text: Translation.tr("Background processes")
+                    }
+                }
 
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: Translation.tr("Background & side work")
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        font.weight: Font.DemiBold
-                                    }
+                DelegateChoice {
+                    roleValue: "task"
+                    Rectangle {
+                        id: taskCard
+                        required property var modelData
+                        readonly property var task: taskCard.modelData.task
+                        readonly property bool failed: taskCard.task.failed ?? false
 
-                                    PanelIconButton {
-                                        visible: root.hasFinishedSideTasks
-                                        symbol: "clear_all"
-                                        tooltip: Translation.tr("Clear finished")
-                                        implicitWidth: 28
-                                        implicitHeight: 28
-                                        onReleased: HermesService.clearFinishedSideTasks()
+                        width: listView.width
+                        implicitHeight: taskColumn.implicitHeight + 8 * 2
+                        radius: Appearance.rounding.small
+                        color: Appearance.colors.colLayer2
+
+                        ColumnLayout {
+                            id: taskColumn
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                top: parent.top
+                                margins: 8
+                            }
+                            spacing: 4
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Loader {
+                                    active: !taskCard.task.done
+                                    sourceComponent: MaterialLoadingIndicator {
+                                        // 20 is the established inline-icon size for
+                                        // this widget -- see Hermes.qml's activity line.
+                                        implicitSize: 20
+                                        loading: true
                                     }
+                                }
+
+                                MaterialSymbol {
+                                    visible: taskCard.task.done
+                                    iconSize: Appearance.font.pixelSize.normal
+                                    text: taskCard.failed ? "error" : "check_circle"
+                                    color: taskCard.failed ? Appearance.colors.colError : Appearance.colors.colPrimary
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
+                                    text: taskCard.task.kind === "btw" ? Translation.tr("Side question") : Translation.tr("Background task")
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    font.weight: Font.DemiBold
+                                    color: Appearance.colors.colOnLayer2
+                                }
+
+                                StyledText {
+                                    visible: !taskCard.task.done
+                                    text: root.elapsed(taskCard.task.startedAt)
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    font.family: Appearance.font.family.numbers
+                                    color: Appearance.colors.colSubtext
+                                }
+
+                                CardIconButton {
+                                    symbol: "close"
+                                    tooltip: Translation.tr("Dismiss")
+                                    onReleased: HermesService.dismissSideTask(taskCard.task.taskId)
+                                }
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colSubtext
+                                text: taskCard.task.text ?? ""
+                            }
+
+                            TextEdit { // Selectable/copyable result
+                                Layout.fillWidth: true
+                                visible: taskCard.task.done && text.length > 0
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: Text.Wrap
+                                textFormat: TextEdit.PlainText
+                                renderType: Text.NativeRendering
+                                font.family: Appearance.font.family.main
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: taskCard.failed ? Appearance.colors.colError : Appearance.colors.colOnLayer2
+                                selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
+                                selectionColor: Appearance.colors.colSecondaryContainer
+                                text: taskCard.task.result ?? ""
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.NoButton
+                                    hoverEnabled: true
+                                    cursorShape: Qt.IBeamCursor
                                 }
                             }
                         }
+                    }
+                }
 
-                        Component {
-                            id: taskCardComponent
-                            Rectangle {
-                                id: taskCard
-                                // rowItem is the delegate root one level up -- Component
-                                // blocks stay inside its scope, same as HermesHistoryPanel's
-                                // cardComponent reading row.modelData.session directly.
-                                readonly property var task: rowItem.modelData.task
-                                readonly property bool failed: taskCard.task.failed ?? false
+                DelegateChoice {
+                    roleValue: "process"
+                    Rectangle {
+                        id: processCard
+                        required property var modelData
+                        readonly property var process: processCard.modelData.process
 
-                                width: rowItem.width
-                                implicitHeight: taskColumn.implicitHeight + 8 * 2
-                                radius: Appearance.rounding.small
-                                color: Appearance.colors.colLayer2
+                        width: listView.width
+                        implicitHeight: processColumn.implicitHeight + 12 * 2
+                        radius: Appearance.rounding.small
+                        color: Appearance.colors.colLayer2
 
-                                ColumnLayout {
-                                    id: taskColumn
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        top: parent.top
-                                        margins: 8
-                                    }
-                                    spacing: 4
+                        ColumnLayout {
+                            id: processColumn
+                            anchors {
+                                left: parent.left
+                                right: parent.right
+                                verticalCenter: parent.verticalCenter
+                                leftMargin: 12
+                                rightMargin: 12
+                            }
+                            spacing: 4
 
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 8
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: processCard.process.command ?? ""
+                                font.family: Appearance.font.family.monospace
+                                font.pixelSize: Appearance.font.pixelSize.small
+                                color: Appearance.colors.colOnLayer2
+                                elide: Text.ElideRight
+                            }
 
-                                        Loader {
-                                            active: !taskCard.task.done
-                                            sourceComponent: MaterialLoadingIndicator {
-                                                // 20 is the established inline-icon size for
-                                                // this widget -- see Hermes.qml's activity line.
-                                                implicitSize: 20
-                                                loading: true
-                                            }
-                                        }
-
-                                        MaterialSymbol {
-                                            visible: taskCard.task.done
-                                            iconSize: Appearance.font.pixelSize.normal
-                                            text: taskCard.failed ? "error" : "check_circle"
-                                            color: taskCard.failed ? Appearance.colors.colError : Appearance.colors.colPrimary
-                                        }
-
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            elide: Text.ElideRight
-                                            text: taskCard.task.kind === "btw" ? Translation.tr("Side question") : Translation.tr("Background task")
-                                            font.pixelSize: Appearance.font.pixelSize.small
-                                            font.weight: Font.DemiBold
-                                            color: Appearance.colors.colOnLayer2
-                                        }
-
-                                        StyledText {
-                                            visible: !taskCard.task.done
-                                            text: root.elapsed(taskCard.task.startedAt)
-                                            font.pixelSize: Appearance.font.pixelSize.smaller
-                                            font.family: Appearance.font.family.numbers
-                                            color: Appearance.colors.colSubtext
-                                        }
-
-                                        PanelIconButton {
-                                            symbol: "close"
-                                            tooltip: Translation.tr("Dismiss")
-                                            implicitWidth: 28
-                                            implicitHeight: 28
-                                            onReleased: HermesService.dismissSideTask(taskCard.task.taskId)
-                                        }
-                                    }
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        wrapMode: Text.Wrap
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        color: Appearance.colors.colSubtext
-                                        text: taskCard.task.text ?? ""
-                                    }
-
-                                    TextEdit { // Selectable/copyable result
-                                        Layout.fillWidth: true
-                                        visible: taskCard.task.done && text.length > 0
-                                        readOnly: true
-                                        selectByMouse: true
-                                        wrapMode: Text.Wrap
-                                        textFormat: TextEdit.PlainText
-                                        renderType: Text.NativeRendering
-                                        font.family: Appearance.font.family.main
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        color: taskCard.failed ? Appearance.colors.colError : Appearance.colors.colOnLayer2
-                                        selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
-                                        selectionColor: Appearance.colors.colSecondaryContainer
-                                        text: taskCard.task.result ?? ""
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            acceptedButtons: Qt.NoButton
-                                            hoverEnabled: true
-                                            cursorShape: Qt.IBeamCursor
-                                        }
-                                    }
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: {
+                                    const status = processCard.process.status ?? "";
+                                    const up = root.elapsedSeconds(processCard.process.uptime ?? 0);
+                                    return status.length > 0 ? Translation.tr("%1 · up %2").arg(status).arg(up) : Translation.tr("up %1").arg(up);
                                 }
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                elide: Text.ElideRight
                             }
                         }
+                    }
+                }
 
-                        Component {
-                            id: subagentsHeaderComponent
-                            Item {
-                                implicitHeight: subagentsHeaderRow.implicitHeight + 8
+                DelegateChoice {
+                    roleValue: "subagent"
+                    Item {
+                        id: subRow
+                        required property var modelData
+                        readonly property var subagent: subRow.modelData.subagent
+                        readonly property string subId: subRow.subagent.subagent_id ?? ""
+                        readonly property bool tailOpen: root.isTailExpanded(subRow.subId)
+                        readonly property bool canSteer: subRow.subagent.accepting_steer === true
+                        // Indent by nesting depth. The card sits in a plain Item
+                        // because a ListView owns its delegate's position.
+                        readonly property real indent: Math.min((subRow.subagent.depth ?? 0) * 16, 64)
+
+                        width: listView.width
+                        implicitHeight: subCard.implicitHeight
+
+                        Rectangle {
+                            id: subCard
+                            x: subRow.indent
+                            width: subRow.width - subRow.indent
+                            // The Revealer below animates the tail; this follows it.
+                            implicitHeight: subColumn.implicitHeight + 8 * 2
+                            radius: Appearance.rounding.small
+                            color: Appearance.colors.colLayer2
+
+                            ColumnLayout {
+                                id: subColumn
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                    margins: 8
+                                }
+                                spacing: 4
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    wrapMode: Text.Wrap
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                    color: Appearance.colors.colOnLayer2
+                                    text: subRow.subagent.goal ?? ""
+                                }
 
                                 RowLayout {
-                                    id: subagentsHeaderRow
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        bottom: parent.bottom
-                                    }
+                                    Layout.fillWidth: true
                                     spacing: 8
 
                                     StyledText {
-                                        Layout.fillWidth: true
-                                        text: Translation.tr("Delegated children")
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    StyledText {
-                                        text: Translation.tr("Pause spawning")
+                                        text: subRow.subagent.status ?? ""
                                         font.pixelSize: Appearance.font.pixelSize.smaller
-                                        color: Appearance.colors.colSubtext
-                                    }
-
-                                    StyledSwitch {
-                                        checked: HermesService.spawnPaused
-                                        onToggled: HermesService.setSpawnPaused(checked)
-                                    }
-                                }
-                            }
-                        }
-
-                        Component {
-                            id: processesHeaderComponent
-                            Item {
-                                implicitHeight: processesHeaderRow.implicitHeight + 8
-
-                                RowLayout {
-                                    id: processesHeaderRow
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        bottom: parent.bottom
-                                    }
-                                    spacing: 8
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: Translation.tr("Background processes")
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.small
                                         font.weight: Font.DemiBold
-                                    }
-                                }
-                            }
-                        }
-
-                        Component {
-                            id: processRowComponent
-                            Rectangle {
-                                id: processCard
-                                readonly property var process: rowItem.modelData.process
-
-                                implicitHeight: processColumn.implicitHeight + 12 * 2
-                                radius: Appearance.rounding.small
-                                color: Appearance.colors.colLayer2
-
-                                ColumnLayout {
-                                    id: processColumn
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        verticalCenter: parent.verticalCenter
-                                        leftMargin: 12
-                                        rightMargin: 12
-                                    }
-                                    spacing: 4
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: processCard.process.command ?? ""
-                                        font.family: Appearance.font.family.monospace
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        color: Appearance.colors.colOnLayer2
-                                        elide: Text.ElideRight
-                                    }
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: {
-                                            const status = processCard.process.status ?? "";
-                                            const up = root.elapsedSeconds(processCard.process.uptime ?? 0);
-                                            return status.length > 0 ? Translation.tr("%1 · up %2").arg(status).arg(up) : Translation.tr("up %1").arg(up);
-                                        }
-                                        font.pixelSize: Appearance.font.pixelSize.smaller
                                         color: Appearance.colors.colSubtext
-                                        elide: Text.ElideRight
                                     }
-                                }
-                            }
-                        }
-
-                        Component {
-                            id: subagentRowComponent
-                            Rectangle {
-                                id: subCard
-                                // See taskCard above: rowItem is reached through normal id
-                                // scoping, not an injected delegate role.
-                                readonly property var subagent: rowItem.modelData.subagent
-                                readonly property string subId: subCard.subagent.subagent_id ?? ""
-                                readonly property bool tailOpen: root.isTailExpanded(subCard.subId)
-                                readonly property bool canSteer: subCard.subagent.accepting_steer === true
-                                // Indent by nesting depth instead of Layout.leftMargin: this
-                                // Rectangle sits in a Loader inside a ListView delegate, not
-                                // inside a Layout, so a Layout attached property would be
-                                // silently ignored.
-                                readonly property real indent: Math.min((subCard.subagent.depth ?? 0) * 16, 64)
-
-                                x: subCard.indent
-                                width: rowItem.width - subCard.indent
-                                implicitHeight: subColumn.implicitHeight + 8 * 2
-                                radius: Appearance.rounding.small
-                                color: Appearance.colors.colLayer2
-
-                                // Growing to show the tail is a size change: spatial spec,
-                                // may overshoot (DESIGN.md 2.3).
-                                Behavior on implicitHeight {
-                                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                                }
-
-                                ColumnLayout {
-                                    id: subColumn
-                                    anchors {
-                                        left: parent.left
-                                        right: parent.right
-                                        top: parent.top
-                                        margins: 8
-                                    }
-                                    spacing: 4
 
                                     StyledText {
                                         Layout.fillWidth: true
                                         Layout.minimumWidth: 0
-                                        wrapMode: Text.Wrap
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                        color: Appearance.colors.colOnLayer2
-                                        text: subCard.subagent.goal ?? ""
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Appearance.font.pixelSize.smaller
+                                        font.family: Appearance.font.family.monospace
+                                        color: Appearance.colors.colSubtext
+                                        text: {
+                                            const model = subRow.subagent.model ?? "";
+                                            const tools = Translation.tr("%1 tools").arg(subRow.subagent.tool_count ?? 0);
+                                            const lastTool = subRow.subagent.last_tool ?? "";
+                                            const parts = [model, tools];
+                                            if (lastTool.length > 0)
+                                                parts.push(lastTool);
+                                            return parts.filter(part => part.length > 0).join("  ·  ");
+                                        }
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    // Disabled together when the child stops taking
+                                    // steer; interrupt stays live.
+                                    MaterialTextField {
+                                        id: steerField
+                                        Layout.fillWidth: true
+                                        enabled: subRow.canSteer
+                                        opacity: enabled ? 1 : 0.4
+                                        placeholderText: Translation.tr("Steer…")
+                                        text: root.steerDraftFor(subRow.subId)
+                                        onTextChanged: root.setSteerDraft(subRow.subId, text)
+                                        onAccepted: root.sendSteer(subRow.subId)
                                     }
 
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 8
+                                    CardIconButton {
+                                        symbol: "send"
+                                        tooltip: Translation.tr("Steer this child")
+                                        enabled: subRow.canSteer && steerField.text.trim().length > 0
+                                        onReleased: root.sendSteer(subRow.subId)
+                                    }
 
-                                        StyledText {
-                                            text: subCard.subagent.status ?? ""
-                                            font.pixelSize: Appearance.font.pixelSize.smaller
-                                            font.weight: Font.DemiBold
-                                            color: Appearance.colors.colSubtext
-                                        }
+                                    CardIconButton {
+                                        symbol: "stop_circle"
+                                        tooltip: Translation.tr("Interrupt")
+                                        onReleased: HermesService.interruptSubagent(subRow.subId)
+                                    }
 
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            Layout.minimumWidth: 0
-                                            elide: Text.ElideRight
-                                            font.pixelSize: Appearance.font.pixelSize.smaller
-                                            font.family: Appearance.font.family.monospace
-                                            color: Appearance.colors.colSubtext
-                                            text: {
-                                                const model = subCard.subagent.model ?? "";
-                                                const tools = Translation.tr("%1 tools").arg(subCard.subagent.tool_count ?? 0);
-                                                const lastTool = subCard.subagent.last_tool ?? "";
-                                                const parts = [model, tools];
-                                                if (lastTool.length > 0)
-                                                    parts.push(lastTool);
-                                                return parts.filter(part => part.length > 0).join("  ·  ");
+                                    CardIconButton {
+                                        symbol: "terminal"
+                                        tooltip: subRow.tailOpen ? Translation.tr("Hide output") : Translation.tr("Show output")
+                                        iconColor: subRow.tailOpen ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                                        onReleased: root.setTailExpanded(subRow.subId, !subRow.tailOpen)
+                                    }
+                                }
+
+                                Revealer {
+                                    Layout.fillWidth: true
+                                    vertical: true
+                                    reveal: subRow.tailOpen
+
+                                    Rectangle {
+                                        width: subColumn.width
+                                        implicitHeight: tailText.implicitHeight + 8 * 2
+                                        radius: Appearance.rounding.verysmall
+                                        color: Appearance.colors.colLayer3
+
+                                        TextEdit {
+                                            id: tailText
+                                            anchors {
+                                                left: parent.left
+                                                right: parent.right
+                                                top: parent.top
+                                                margins: 8
                                             }
-                                        }
-                                    }
+                                            readOnly: true
+                                            selectByMouse: true
+                                            wrapMode: Text.Wrap
+                                            textFormat: TextEdit.PlainText
+                                            renderType: Text.NativeRendering
+                                            font.family: Appearance.font.family.monospace
+                                            font.pixelSize: Appearance.font.pixelSize.smaller
+                                            color: Appearance.colors.colOnLayer3
+                                            text: {
+                                                const body = root.tailText[subRow.subId] ?? "";
+                                                if (body.length > 0)
+                                                    return body;
+                                                return root.tailAvailable[subRow.subId] === false ? Translation.tr("Nothing to show yet.") : "";
+                                            }
 
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 4
-
-                                        MaterialTextField {
-                                            id: steerField
-                                            Layout.fillWidth: true
-                                            enabled: subCard.canSteer
-                                            placeholderText: Translation.tr("Steer…")
-                                            text: root.steerDraftFor(subCard.subId)
-                                            onTextChanged: root.setSteerDraft(subCard.subId, text)
-                                            onAccepted: root.sendSteer(subCard.subId)
-                                        }
-
-                                        PanelIconButton {
-                                            symbol: "send"
-                                            tooltip: Translation.tr("Steer this child")
-                                            implicitWidth: 28
-                                            implicitHeight: 28
-                                            enabled: subCard.canSteer && steerField.text.trim().length > 0
-                                            onReleased: root.sendSteer(subCard.subId)
-                                        }
-
-                                        PanelIconButton {
-                                            symbol: "stop_circle"
-                                            tooltip: Translation.tr("Interrupt")
-                                            implicitWidth: 28
-                                            implicitHeight: 28
-                                            onReleased: HermesService.interruptSubagent(subCard.subId)
-                                        }
-
-                                        PanelIconButton {
-                                            symbol: "terminal"
-                                            tooltip: subCard.tailOpen ? Translation.tr("Hide output") : Translation.tr("Show output")
-                                            implicitWidth: 28
-                                            implicitHeight: 28
-                                            iconColor: subCard.tailOpen ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
-                                            onReleased: root.setTailExpanded(subCard.subId, !subCard.tailOpen)
-                                        }
-                                    }
-
-                                    Revealer {
-                                        Layout.fillWidth: true
-                                        vertical: true
-                                        reveal: subCard.tailOpen
-
-                                        Rectangle {
-                                            width: subColumn.width
-                                            implicitHeight: tailText.implicitHeight + 8 * 2
-                                            radius: Appearance.rounding.verysmall
-                                            color: Appearance.colors.colLayer3
-
-                                            TextEdit {
-                                                id: tailText
-                                                anchors {
-                                                    left: parent.left
-                                                    right: parent.right
-                                                    top: parent.top
-                                                    margins: 8
-                                                }
-                                                readOnly: true
-                                                selectByMouse: true
-                                                wrapMode: Text.Wrap
-                                                textFormat: TextEdit.PlainText
-                                                renderType: Text.NativeRendering
-                                                font.family: Appearance.font.family.monospace
-                                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                                color: Appearance.colors.colOnLayer3
-                                                text: {
-                                                    const body = root.tailText[subCard.subId] ?? "";
-                                                    if (body.length > 0)
-                                                        return body;
-                                                    return root.tailAvailable[subCard.subId] === false ? Translation.tr("Nothing to show yet.") : "";
-                                                }
-
-                                                MouseArea {
-                                                    anchors.fill: parent
-                                                    acceptedButtons: Qt.NoButton
-                                                    hoverEnabled: true
-                                                    cursorShape: Qt.IBeamCursor
-                                                }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                acceptedButtons: Qt.NoButton
+                                                hoverEnabled: true
+                                                cursorShape: Qt.IBeamCursor
                                             }
                                         }
                                     }
@@ -647,54 +523,62 @@ Rectangle {
                     }
                 }
             }
-
-            // Rows dissolve into the panel at both ends instead of being sliced off
-            // by the clip, which is what makes a scrolling list read as scrollable.
-            ScrollEdgeFade {
-                z: 1
-                target: listView
-                color: root.panelColor
-                fadeSize: 28
-            }
         }
 
-        Item { // PagePlaceholder anchors itself, so it needs a plain parent in a layout
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: root.rows.length === 0
+        // Rows dissolve into the panel at both ends instead of being sliced off
+        // by the clip, which is what makes a scrolling list read as scrollable.
+        ScrollEdgeFade {
+            z: 1
+            target: listView
+            color: Appearance.colors.colLayer1Base
+            fadeSize: 28
+        }
+    }
 
-            PagePlaceholder {
-                shown: root.rows.length === 0
-                icon: "device_hub"
-                title: Translation.tr("Nothing running")
-                description: Translation.tr("Background turns, side questions and delegated agents show up here.")
+    Item { // PagePlaceholder anchors itself, so it needs a plain parent
+        anchors.fill: parent
+        visible: root.rows.length === 0
+
+        PagePlaceholder {
+            shown: root.rows.length === 0
+            icon: "device_hub"
+            title: Translation.tr("Nothing running")
+            description: Translation.tr("Background turns, side questions and delegated agents show up here.")
+        }
+    }
+
+    /** A section's label, with whatever acts on the whole section at its end. */
+    component SectionHeader: Item {
+        required property var modelData
+        property alias text: label.text
+        default property alias actions: headerRow.data
+
+        width: listView.width
+        implicitHeight: headerRow.implicitHeight + 8
+
+        RowLayout {
+            id: headerRow
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+            }
+            spacing: 8
+
+            StyledText {
+                id: label
+                Layout.fillWidth: true
+                color: Appearance.colors.colSubtext
+                font.pixelSize: Appearance.font.pixelSize.small
+                font.weight: Font.DemiBold
             }
         }
     }
 
-    /** Small square icon button, used for header and per-row actions. */
-    component PanelIconButton: RippleButton {
-        id: iconButton
-        required property string symbol
-        property string tooltip: ""
-        property color iconColor: Appearance.m3colors.m3onSurface
-
-        implicitWidth: 34
-        implicitHeight: 34
-        buttonRadius: Appearance.rounding.small
-        colBackground: "transparent"
-
-        contentItem: MaterialSymbol {
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            text: iconButton.symbol
-            iconSize: Appearance.font.pixelSize.larger
-            color: iconButton.iconColor
-        }
-
-        StyledToolTip {
-            text: iconButton.tooltip
-            extraVisibleCondition: iconButton.tooltip.length > 0
-        }
+    /** HermesIconButton on a layer 2 card: that card's hover and ripple. */
+    component CardIconButton: HermesIconButton {
+        iconColor: Appearance.colors.colOnLayer2
+        colBackgroundHover: Appearance.colors.colLayer2Hover
+        colRipple: Appearance.colors.colLayer2Active
     }
 }
