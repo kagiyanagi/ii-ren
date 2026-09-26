@@ -421,7 +421,7 @@ Item {
                     top: parent.top
                     topMargin: 4
                 }
-                implicitWidth: (root.searchShown ? searchRowLayout.width : statusRowLayout.implicitWidth) + 12 * 2
+                implicitWidth: (root.searchShown ? searchRowLayout.width + 12 * 2 : statusRowLayout.implicitWidth + 8 * 2)
                 implicitHeight: Math.max(root.searchShown ? searchRowLayout.implicitHeight : statusRowLayout.implicitHeight, 40)
 
                 // One surface changing what it holds, so it resizes rather than
@@ -443,7 +443,7 @@ Item {
                     id: statusRowLayout
                     anchors.centerIn: parent
                     // Whitespace, not dots, between the readings (DESIGN.md 5.5).
-                    spacing: 12
+                    spacing: 0
                     opacity: root.searchShown ? 0 : 1
                     visible: opacity > 0
 
