@@ -46,6 +46,13 @@ Item {
                 root.showNightLightDialog = false;
             }
         }
+        // The media popup's audio-device pill. Nothing read this, so the pill
+        // opened the sidebar and stopped there.
+        function onRequestVolumeDialogChanged() {
+            if (!GlobalStates.requestVolumeDialog) return;
+            GlobalStates.requestVolumeDialog = false;
+            root.showAudioOutputDialog = true;
+        }
     }
 
     implicitHeight: sidebarRightBackground.implicitHeight

@@ -406,6 +406,15 @@ you touched; they are the only automated gate.
   and the state films were at 0.05/0.12. The Bluetooth icon keyed its colour on a service
   flag and never looked on. The edit toolbar's `+` kept square outer corners on one page
   and on the last one. The page-dot click handler is swept over every pixel of the row
+- `python3 tools/check-volume-dialog.py` — the sidebar's audio dialogs cost nothing per app,
+  and the device card keeps its corners. Every app row ran a `Desaturate` in a repeated
+  delegate, and `check-effect-budget.py` never saw it because the delegate is its own file
+  (the dock's blind spot). The device rows round their own end corners on an unclipped card,
+  and which row is last depends on the device count and on whether the "several devices"
+  switch row shows. A square corner there appears only on hover, so the expressions are
+  evaluated under node for every combination. It also holds the one reader of
+  `GlobalStates.requestVolumeDialog`: the media popup's audio pill set it for as long as it
+  existed and nothing read it
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

@@ -1,100 +1,91 @@
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
-import Qt5Compat.GraphicalEffects
 
-Item {
+RowLayout {
     id: root
     required property PwNode node
+    readonly property bool muted: node?.audio.muted ?? false
+    spacing: 12
+
     PwObjectTracker {
         objects: [root.node]
     }
 
-    implicitHeight: rowLayout.implicitHeight
+    // Was a bare MouseArea over a Desaturate: no states, and an offscreen pass
+    // per row in a repeated delegate.
+    RippleButton {
+        implicitWidth: 40
+        implicitHeight: 40
+        buttonRadius: Appearance.rounding.full
+        colBackground: ColorUtils.transparentize(Appearance.colors.colLayer4)
+        colBackgroundHover: Appearance.colors.colLayer4Hover
+        colRipple: Appearance.colors.colLayer4Active
+        colStateLayer: Appearance.colors.colOnLayer4
+        onClicked: root.node.audio.muted = !root.muted
 
-    RowLayout {
-        id: rowLayout
-        anchors.fill: parent
-        spacing: 6
+        StyledToolTip {
+            text: root.muted ? Translation.tr("Unmute") : Translation.tr("Mute")
+        }
 
-        MouseArea {
-            property real size: 36
-            Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-            Layout.preferredWidth: size
-            Layout.preferredHeight: size
-
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.node.audio.muted = !root.node.audio.muted
-            hoverEnabled: true
-
-            StyledToolTip {
-                text: root.node?.audio.muted ? Translation.tr("Click to unmute") : Translation.tr("Click to mute")
-            }
-
-            StyledImage {
-                id: iconImg
-                anchors.fill: parent
-                visible: false
-                source: {
-                    let icon;
-                    icon = AppSearch.guessIcon(root.node?.properties["application.icon-name"] ?? "");
-                    if (AppSearch.iconExists(icon))
-                        return Quickshell.iconPath(icon, "image-missing");
-                    icon = AppSearch.guessIcon(root.node?.properties["node.name"] ?? "");
-                    return Quickshell.iconPath(icon, "image-missing");
-                }
-            }
-
-            Desaturate {
-                anchors.fill: iconImg
-                source: iconImg
-                desaturation: root.node?.audio.muted ? 1.0 : 0.0
-                visible: iconImg.source !== ""
-                opacity: root.node?.audio.muted ? 0.4 : 1.0
-
+        contentItem: Item {
+            Item {
+                anchors.centerIn: parent
+                width: 28
+                height: 28
+                opacity: root.muted ? 0 : 1
                 Behavior on opacity {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-                Behavior on desaturation {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                StyledImage {
+                    anchors.fill: parent
+                    source: {
+                        let icon = AppSearch.guessIcon(root.node?.properties["application.icon-name"] ?? "");
+                        if (!AppSearch.iconExists(icon))
+                            icon = AppSearch.guessIcon(root.node?.properties["node.name"] ?? "");
+                        return Quickshell.iconPath(icon, "image-missing");
+                    }
                 }
             }
-
             MaterialSymbol {
                 anchors.centerIn: parent
-                visible: root.node?.audio.muted ?? false
+                opacity: root.muted ? 1 : 0
+                Behavior on opacity {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                }
                 text: root.node?.isSink ? "volume_off" : "mic_off"
-                iconSize: 22
-                color: Appearance.colors.colOnLayer1
+                iconSize: Appearance.font.pixelSize.larger
+                color: Appearance.colors.colOnSurfaceVariant
+            }
+        }
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 0
+
+        StyledText {
+            Layout.fillWidth: true
+            color: Appearance.colors.colOnSurfaceVariant
+            elide: Text.ElideRight
+            textFormat: Text.PlainText
+            text: {
+                const app = Audio.appNodeDisplayName(root.node);
+                const media = root.node?.properties["media.name"];
+                return media != undefined ? `${app} • ${media}` : app;
             }
         }
 
-        ColumnLayout {
+        StyledSlider {
             Layout.fillWidth: true
-            spacing: -4
-
-            StyledText {
-                Layout.fillWidth: true
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colSubtext
-                elide: Text.ElideRight
-                text: {
-                    const app = Audio.appNodeDisplayName(root.node);
-                    const media = root.node.properties["media.name"];
-                    return media != undefined ? `${app} • ${media}` : app;
-                }
-            }
-
-            StyledSlider {
-                id: slider
-                value: root.node?.audio.volume ?? 0
-                onMoved: root.node.audio.volume = value
-                configuration: StyledSlider.Configuration.S
-            }
+            configuration: StyledSlider.Configuration.S
+            value: root.node?.audio.volume ?? 0
+            onMoved: root.node.audio.volume = value
         }
     }
 }
