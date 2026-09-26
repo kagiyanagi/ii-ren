@@ -278,6 +278,24 @@ Item {
             messageInputField.cursorPosition = messageInputField.text.length;
             messageInputField.forceActiveFocus();
         }
+        // At the caret, spaced off whatever touches it, so it reads where it was put.
+        function onComposerInsert(text) {
+            const at = messageInputField.cursorPosition;
+            const before = messageInputField.text.slice(0, at);
+            const after = messageInputField.text.slice(at);
+            const lead = before.length > 0 && !/\s$/.test(before) ? " " : "";
+            const trail = /^\s/.test(after) ? "" : " ";
+            attachmentChips.setText(before + lead + text + trail + after, (before + lead + text + trail).length);
+            messageInputField.forceActiveFocus();
+        }
+        function onComposerRemove(text) {
+            const current = messageInputField.text;
+            const at = current.indexOf(text);
+            if (at < 0)
+                return;
+            const end = at + text.length + (current[at + text.length] === " " ? 1 : 0);
+            attachmentChips.setText(current.slice(0, at) + current.slice(end), at);
+        }
         function onDictationTranscript(text) {
             const existing = messageInputField.text.trim();
             messageInputField.text = existing.length > 0 ? `${existing} ${text}` : text;
@@ -835,30 +853,6 @@ Item {
             }
         }
 
-        ColumnLayout { // Staged attachments
-            // A sibling of the input surface, not a child of it: AttachedFileIndicator
-            // derives its height from its width, so nesting it inside a Rectangle whose
-            // implicitHeight depended on that height was a circular constraint -- the
-            // layout gave up and the whole page collapsed to nothing.
-            id: attachmentStrip
-            Layout.fillWidth: true
-            spacing: 4
-            visible: HermesService.attachedImages.length > 0
-
-            Repeater {
-                model: ScriptModel {
-                    values: HermesService.attachedImages
-                }
-
-                delegate: AttachedFileIndicator {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    filePath: modelData
-                    onRemove: HermesService.detachImage(modelData)
-                }
-            }
-        }
-
         HermesConsole { // A `!` command, while it runs and once it has
             Layout.fillWidth: true
             Layout.bottomMargin: visible ? 4 : 0
@@ -872,10 +866,27 @@ Item {
             radius: Appearance.rounding.normal - root.padding
             color: Appearance.colors.colLayer2
             implicitHeight: Math.max(inputFieldRowLayout.implicitHeight + commandButtonsRow.implicitHeight + commandButtonsRow.anchors.bottomMargin + inputWrapper.spacing, 45)
+                + (composerAttachments.visible ? composerAttachments.height + composerAttachments.anchors.topMargin : 0)
             clip: true
 
             Behavior on implicitHeight {
                 animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+            }
+
+            HermesAttachmentStrip { // What is attached, above the text it sits in
+                id: composerAttachments
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                    topMargin: 8
+                    leftMargin: 8
+                    rightMargin: 8
+                }
+                height: implicitHeight
+                removable: true
+                attachments: Object.keys(HermesService.composerMarkers).map(token => Object.assign({ token: token }, HermesService.composerMarkers[token]))
+                onRemoveRequested: attachment => HermesService.removeMarker(attachment.token)
             }
 
             RowLayout {
@@ -904,6 +915,11 @@ Item {
                         placeholderText: Translation.tr('Message Hermes... "%1" for commands').arg(root.commandPrefix)
 
                         background: null
+
+                        HermesAttachmentChips {
+                            id: attachmentChips
+                            target: messageInputField
+                        }
 
                         onTextChanged: {
                             if (!messageInputField.text.startsWith(root.commandPrefix)) {
@@ -952,19 +968,15 @@ Item {
                             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
                                 if (event.modifiers & Qt.ShiftModifier)
                                     return; // Shift+Ctrl+V stays a plain text paste.
-                                // Only divert when cliphist saw an image copied. The
+                                // Only divert when cliphist saw an image or files copied. The
                                 // live clipboard can have moved on since (its cached
                                 // list refreshes on a text change), so the service
                                 // re-reads it and hands a text selection back here.
                                 const entry = Cliphist.entries[0] ?? "";
-                                if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(entry)) {
+                                // cliphist's line is cut short, so a file manager's copy
+                                // of several files is read whole from the live selection
+                                if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(entry) || StringUtils.cleanCliphistEntry(entry).startsWith("file://")) {
                                     HermesService.attachClipboardImage(() => messageInputField.paste());
-                                    event.accepted = true;
-                                    return;
-                                }
-                                const cleaned = StringUtils.cleanCliphistEntry(entry);
-                                if (cleaned.startsWith("file://")) {
-                                    HermesService.attachImage(decodeURIComponent(cleaned));
                                     event.accepted = true;
                                     return;
                                 }
@@ -976,7 +988,7 @@ Item {
                                 } else if (HermesService.speakingMessageId.length > 0) {
                                     HermesService.stopSpeaking();
                                     event.accepted = true;
-                                } else if (HermesService.attachedImages.length > 0) {
+                                } else if (Object.keys(HermesService.composerMarkers).length > 0) {
                                     HermesService.detachAll();
                                     event.accepted = true;
                                 } else if (root.searchShown) {

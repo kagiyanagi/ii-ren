@@ -64,6 +64,13 @@ assert out.endswith(".png") and body == OLD, \
 out, body = run("", listed=IMAGE_LINE, stored=OLD, binary="stash")
 assert body == OLD, "stash decodes by id, the way Cliphist.decodeCommand calls it"
 
+URIS = b"file:///tmp/a%20b.txt\r\nfile:///tmp/c.py\r\nhttps://example.com/x\r\n"
+out, _ = run("text/uri-list\nimage/png\n", live=URIS, listed="5952\tfile:///tmp/a%20b.txt file:///tm")
+assert out == "file:///tmp/a%20b.txt\nfile:///tmp/c.py", \
+    f"copied files must come back whole from the live selection, local ones only: {out!r}"
+out, body = run("text/uri-list\nimage/png\n", live=PNG)
+assert out != "" and not out.startswith("file://"), f"a uri-list with no local file falls through to the image: {out!r}"
+
 out, _ = run("", listed="5951\tsome copied text")
 assert out == "", f"nothing to attach must print nothing: {out!r}"
 

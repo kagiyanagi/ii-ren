@@ -15,6 +15,9 @@ QtObject {
     property string model
     property bool done: false
     property string error: ""
+    // What was attached when this turn was sent (user turns only): the composer's
+    // markers, { kind, name, send, paths, icon, thumb }, in the order attached
+    property var attachments: []
 
     // Tool activity for this turn: [{ id, name, detail, status, output }]
     // status: running | ok | failed

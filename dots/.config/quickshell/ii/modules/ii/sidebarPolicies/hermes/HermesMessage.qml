@@ -113,8 +113,38 @@ Item {
      * spend nine rows on nine `read_file`s -- but a group only ever covers calls
      * that really did run back to back.
      */
+    /**
+     * Your turn with each attachment's reference drawn as the chip the composer
+     * showed: its icon, then the name, bracketed with U+2063 for InlineCode's pill
+     * and spaced on its last character the way styleCodeSpans spaces a code span.
+     * An icon, even for an image, whose picture is in the tile above: Qt breaks a
+     * line after any inline `<img>`, whatever joins it to the name, so a picture
+     * split its chip at a wrap. tools/check-hermes-composer.py runs this.
+     */
+    function withChips(content: string, attachments: var): string {
+        const escape = text => text.replace(/([!"#$%'()*+,\-./:;=?@\[\\\]^_`{|}~])/g, "\\$1")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const px = Appearance.font.pixelSize.normal;
+        return (attachments ?? []).reduce((text, item) => {
+            if (!item.send || !text.includes(item.send))
+                return text;
+            const icon = `<span style="font-family:'${Appearance.font.family.iconMaterial}'; font-size:${px}px;">${item.icon}</span>`;
+            const name = item.name || "file";
+            // Led by a no-break space, which InlineCode takes as the pill's own left
+            // padding, so a chip starting a line lines up with the text under it.
+            // The word before gets letter-spacing for the gap, as styleCodeSpans
+            // gives a code span's; at a wrap it ends the line above instead.
+            const chip = `\u2063&nbsp;${icon}&nbsp;${escape(name.slice(0, -1))}<span style="letter-spacing:${root.chipGap}px;">${escape(name.slice(-1))}</span>\u2063`;
+            const ref = item.send.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            return text.replace(new RegExp(`([A-Za-z0-9\\u00C0-\\u2062\\u2064-\\uFFFF.,;:!?'")\\]])?(\\s*)${ref}`, "g"),
+                (match, before, gap) => (before ? `<span style="letter-spacing:${root.chipGap / 2}px;">${escape(before)}</span>` : "") + gap + chip);
+        }, content);
+    }
+    // InlineCode's gap: its pad on either side of the text
+    readonly property real chipGap: 8
+
     function resplit(): void {
-        const content = root.messageData?.content ?? "";
+        const content = root.isUser ? root.withChips(root.messageData?.content ?? "", root.messageData?.attachments) : (root.messageData?.content ?? "");
         const calls = root.showToolCalls ? (root.messageData?.toolCalls ?? []) : [];
         if (calls.length === 0) {
             root.messageBlocks = StringUtils.splitMarkdownBlocks(content);
@@ -193,11 +223,19 @@ Item {
      * TextEdit reports its unwrapped width as implicitWidth, so a two-word prompt
      * asks for two words and a long one asks for the cap and wraps inside it.
      */
+    FontMetrics {
+        id: userLineMetrics
+        font.family: Appearance.font.family.reading
+        font.pixelSize: Appearance.font.pixelSize.small
+    }
+
     TextMetrics {
         id: userTextMetrics
         font.family: Appearance.font.family.reading
         font.pixelSize: Appearance.font.pixelSize.small
-        text: root.isUser ? (root.messageData?.content ?? "") : ""
+        // A chip measures as its name after two and a half em spaces, about its icon
+        // and padding, whatever the reference it stands for spells
+        text: root.isUser ? (root.messageData?.attachments ?? []).reduce((text, item) => item.send ? text.split(item.send).join(`\u2003\u2003\u2002${item.name}`) : text, root.messageData?.content ?? "") : ""
     }
 
     readonly property real bubbleMaxWidth: root.width * 0.85
@@ -300,6 +338,15 @@ Item {
             }
         }
 
+        HermesAttachmentStrip { // On your turns, what was attached, above the bubble
+            // In the order attached, the row flush right like the bubble
+            Layout.alignment: Qt.AlignRight
+            Layout.preferredWidth: Math.min(implicitWidth, root.bubbleMaxWidth)
+            visible: root.isUser && attachments.length > 0
+            attachments: root.isUser ? (root.messageData?.attachments ?? []) : []
+            tileColor: Appearance.colors.colLayer2
+        }
+
         ColumnLayout { // Everything under the header; on your turns, the bubble's inside
             id: body
             Layout.fillWidth: !root.isUser
@@ -313,12 +360,30 @@ Item {
             Item { // Message content
                 id: messageContentColumnLayout
                 Layout.fillWidth: true
-                implicitWidth: root.isUser ? Math.max(20, Math.ceil(userTextMetrics.width + 16)) : contentColumnLayout.implicitWidth
-                implicitHeight: contentColumnLayout.implicitHeight
+                // advanceWidth, not width, which rounds 56.6 down and wrapped "prove it";
+                // 16 is the text area's own left and right padding (10 + 6)
+                implicitWidth: root.isUser ? Math.max(20, Math.ceil(userTextMetrics.advanceWidth) + 16) : contentColumnLayout.implicitWidth
+                implicitHeight: userClamp.implicitHeight
+
+                // ClampBox has no motion of its own; on your turns the bubble is
+                // the fold, so Show more opens it on the spatial spec
+                Behavior on implicitHeight {
+                    enabled: root.isUser
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+
+                // A long turn of yours stops at ten lines, with Show more under it
+                ClampBox {
+                    id: userClamp
+                    width: parent.width
+                    maxHeight: root.isUser ? userLineMetrics.lineSpacing * 10 : Number.MAX_VALUE
+                    colBase: Appearance.colors.colLayer2
+                    colHover: Appearance.colors.colLayer2Hover
+                    colActive: Appearance.colors.colLayer2Active
 
                 ColumnLayout {
                     id: contentColumnLayout
-                    anchors.fill: parent
+                    width: parent.width
                     spacing: 0
 
                 Item {
@@ -442,6 +507,7 @@ Item {
                     }
                 }
             }
+                }
         }
 
             Rectangle { // Error

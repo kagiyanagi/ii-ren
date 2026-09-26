@@ -178,6 +178,132 @@ assert frame.index("_handleServerRequest") < frame.index("_pendingCalls"), \
 assert '"clarify.respond"' not in svc and '"approval.request"' not in svc, "HermesService: the pre-server-request protocol is back"
 assert '"clarify.lock"' in svc and 'case "request.cancel"' in svc, "HermesService: batch answers or withdrawals are not handled"
 
+# Attachment chips: a token is one character to the editor. Backspace into it takes
+# all of it (and unstages it); typing inside it lands after it. A half-deleted token
+# is text the model reads and a chip nobody can remove.
+chips = (H / "HermesAttachmentChips.qml").read_text()
+got = node(f"""
+const T = "\\u2063\\u2007\\u2007\\u2007image.png\\u2063";
+const HermesService = {{ composerMarkers: {{ [T]: {{}} }} }};
+const dropped = [];
+HermesService.dropMarker = t => dropped.push(t);
+const Qt = {{ callLater: f => f() }};
+const target = {{ text: "", cursorPosition: 0 }};
+const root = {{ target, previous: "", layoutRects() {{}} }};
+root.tokenRanges = function (text) {{ {block(chips, "function tokenRanges(")} }};
+root.onEdit = function () {{ {block(chips, "function onEdit(")} }};
+function edit(before, after, cursor) {{ root.previous = before; target.text = after; target.cursorPosition = cursor ?? 0; root.onEdit(); return target.text; }}
+const base = "look at " + T + " now";
+const back = edit(base, base.slice(0, 8 + T.length - 1) + base.slice(8 + T.length));
+const droppedAfterBack = dropped.length;
+const typed = edit(base, base.slice(0, 12) + "x" + base.slice(12));
+// Two chips with nothing between them: a backspace after the first must take the
+// first, though a bare diff lines the deletion up with the second one's opening.
+const U = "\\u2063\\u2007\\u2007\\u2007tool.py\\u2063";
+HermesService.composerMarkers[U] = {{}};
+dropped.length = 0;
+const pair = "a " + T + U + " b";
+const cut = 2 + T.length - 1;
+const adjacent = edit(pair, pair.slice(0, cut) + pair.slice(cut + 1), cut);
+console.log(JSON.stringify({{ back, droppedAfterBack, typed, T, U, adjacent, droppedAdjacent: dropped }}));
+""")
+assert got["back"] == "look at  now" and got["droppedAfterBack"] == 1, \
+    f"HermesAttachmentChips: a backspace into a chip left {got['back']!r} and unstaged {got['droppedAfterBack']}"
+assert got["typed"] == "look at " + got["T"] + "x now", f"HermesAttachmentChips: typing inside a chip broke it: {got['typed']!r}"
+assert got["adjacent"] == "a " + got["U"] + " b" and got["droppedAdjacent"] == [got["T"]], \
+    f"HermesAttachmentChips: a backspace after one chip took its neighbour: {got['adjacent']!r}, unstaged {got['droppedAdjacent']!r}"
+
+# A sent bubble draws the same chips: the reference the model read becomes an
+# icon and the name, bracketed for InlineCode's pill. Never an inline `<img>`:
+# Qt breaks a line after one whatever joins it to the name.
+message = (H / "HermesMessage.qml").read_text()
+got = node(f"""
+const Appearance = {{ font: {{ pixelSize: {{ normal: 16 }}, family: {{ iconMaterial: "Material Symbols Rounded" }} }} }};
+const root = {{ chipGap: 8 }};
+function withChips(content, attachments) {{ {block(message, "function withChips(")} }}
+const items = [
+    {{ kind: "image", name: "shot 1.png", send: "[Image: shot 1.png]", thumb: "/tmp/shot 1.png", icon: "image" }},
+    {{ kind: "file", name: "notes_a.txt", send: "@file:notes_a.txt", thumb: "", icon: "description" }},
+    {{ kind: "file", name: "gone.txt", send: "@file:gone.txt", thumb: "", icon: "description" }}
+];
+console.log(JSON.stringify({{
+    out: withChips("look [Image: shot 1.png] and @file:notes_a.txt now", items),
+    plain: withChips("no refs here", items)
+}}));
+""")
+out = got["out"]
+assert "[Image:" not in out and "@file:" not in out, f"HermesMessage.withChips: a reference is left as text: {out!r}"
+assert out.count("\u2063") == 4, f"HermesMessage.withChips: each chip needs its pair of U+2063 for the pill: {out!r}"
+assert "<img" not in out and ">image</span>" in out, f"HermesMessage.withChips: a chip holds an inline picture, which a wrap splits off its name: {out!r}"
+assert "notes\\_a" in out, f"HermesMessage.withChips: a name's markdown is not escaped, `a_b_c` renders as emphasis: {out!r}"
+assert got["plain"] == "no refs here", "HermesMessage.withChips: a turn without its references changed"
+got = node(f"""
+const Appearance = {{ font: {{ pixelSize: {{ normal: 16 }}, family: {{ iconMaterial: "Material Symbols Rounded" }} }} }};
+const root = {{ chipGap: 8 }};
+function withChips(content, attachments) {{ {block(message, "function withChips(")} }}
+const item = {{ kind: "file", name: "a.txt", send: "@file:a.txt", thumb: "", icon: "description" }};
+console.log(JSON.stringify({{ start: withChips("@file:a.txt then", [item]), mid: withChips("see @file:a.txt", [item]) }}));
+""")
+assert got["start"].startswith("\u2063&nbsp;"), f"HermesMessage.withChips: a chip opening the turn is indented: {got['start']!r}"
+assert got["mid"].startswith('se<span style="letter-spacing:4px;">e</span> \u2063&nbsp;'), \
+    f"HermesMessage.withChips: the word before a chip is not spaced off it: {got['mid']!r}"
+
+# A plain TextArea hands U+00A0 back as a space, so a token holding one read as
+# an edit inside it and was deleted: a second paste of one name never stayed.
+assert "\\u00a0" not in block((H.parents[3] / "services/HermesService.qml").read_text(), "function _addMarker("), \
+    "HermesService._addMarker: a token holds U+00A0, which the composer reads back as a plain space"
+
+# node runs these, but the shell's JS engine has no matchAll, flatMap, flat,
+# replaceAll or at: one of them threw on every resumed chat and emptied it.
+for name in ("services/HermesService.qml", "modules/ii/sidebarPolicies/hermes/HermesAttachmentChips.qml",
+             "modules/ii/sidebarPolicies/hermes/HermesAttachmentStrip.qml", "modules/ii/sidebarPolicies/hermes/HermesMessage.qml"):
+    found = re.findall(r"\.(matchAll|flatMap|flat|replaceAll|at)\(", (H.parents[3] / name).read_text())
+    assert not found, f"{name}: {sorted(set(found))} do not exist in the shell's JS engine"
+
+# A resumed turn rebuilds its chips from the text the gateway stored.
+svc_text = (H.parents[3] / "services/HermesService.qml").read_text()
+got = node(f"""
+const FileUtils = {{
+    fileNameForPath: p => p.split("/").pop(),
+    folderNameForPath: p => p.replace(/\\/$/, "").split("/").pop(),
+    iconForFile: n => n.endsWith(".py") ? "code" : "draft"
+}};
+const root = {{}};
+root._marker = function (kind, name, send, paths) {{ {block(svc_text, "function _marker(")} }};
+root._restoredTurn = function (body) {{ {block(svc_text, "function _restoredTurn(")} }};
+const body = "look [Image: shot.png] and [PDF: doc.pdf] @file:/x/tool-5.py @folder:\\"/tmp/my dir\\" now\\n\\n--- Context Warnings ---\\n- @file:/x/tool-5.py: path is outside the allowed workspace\\n@image:/tmp/pdf_p1_a.png\\n@image:/tmp/shot.png";
+console.log(JSON.stringify(root._restoredTurn(body)));
+""")
+assert got["text"] == 'look [Image: shot.png] and [PDF: doc.pdf] @file:/x/tool-5.py @folder:"/tmp/my dir" now', \
+    f"HermesService._restoredTurn: the gateway's warnings or image lines are left in the bubble: {got['text']!r}"
+kinds = [(a["kind"], a["name"], a["thumb"]) for a in got["attachments"]]
+assert kinds == [("image", "shot.png", "/tmp/shot.png"), ("pdf", "doc.pdf", "/tmp/pdf_p1_a.png"),
+                 ("file", "tool-5.py", ""), ("folder", "my dir", "")], f"HermesService._restoredTurn: {kinds}"
+
+# Each file type's icon must exist in the older Material Symbols build, the one Qt
+# resolves the family to; a missing ligature renders as its name, not an icon.
+utils = (H.parents[3] / "modules/common/functions/FileUtils.qml").read_text()
+icons = set(re.findall(r'\["(\w+)", "[\w ]+"\]', block(utils, "function iconForFile(")))
+icons.add("draft")
+old_font = next(Path("/usr/share/fonts/ii-sddm-theme-fonts/MaterialSymbols").glob("MaterialSymbolsRounded*.ttf"), None) \
+    if Path("/usr/share/fonts/ii-sddm-theme-fonts/MaterialSymbols").is_dir() else None
+if old_font:
+    from fontTools.ttLib import TTFont
+    ligatures = set()
+    def walk(st):
+        if st is None:
+            return
+        if hasattr(st, "ExtSubTable"):
+            return walk(st.ExtSubTable)
+        for first, ligs in getattr(st, "ligatures", {}).items():
+            for lig in ligs:
+                ligatures.add("".join([first] + list(lig.Component)).replace("underscore", "_"))
+    for lookup in TTFont(old_font)["GSUB"].table.LookupList.Lookup:
+        for st in lookup.SubTable:
+            walk(st)
+    missing = sorted(icons - ligatures)
+    assert not missing, f"FileUtils.iconForFile: not in the Material Symbols build Qt loads: {missing}"
+
 # Console: nothing inert, the shared scroll bar.
 assert "transformOrigin" not in console, "HermesConsole: a transformOrigin on something that never scales"
 assert "StyledScrollBar" in console and not re.search(r":\s*ScrollBar\s*\{", console), "HermesConsole: a raw ScrollBar again"
