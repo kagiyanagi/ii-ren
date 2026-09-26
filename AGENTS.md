@@ -430,6 +430,14 @@ you touched; they are the only automated gate.
   on for playback (a Bluetooth member is ~200ms behind a wired one) and holds the one reader
   of `GlobalStates.requestVolumeDialog`: the media popup's audio pill set it for as long as
   it existed and nothing read it
+- `python3 tools/check-anime.py` — the sidebar's anime grid costs one layer per response,
+  fills its width, and does not hand a remote string to a shell. Every tile carried its own
+  `OpacityMask` plus a `RippleButton` (another mask) for its corner menu button: forty
+  offscreen passes for a page of twenty, which `check-effect-budget.py` never saw because
+  the tile is its own file (the dock's blind spot). One mask per response now, drawn from
+  the same rows as the tiles. It runs the row packer under node (rows stopped a gap short
+  of the width) and sweeps the menu clamp, which flips by where the pointer is. Download
+  passes the API's URL and file name as arguments rather than into `bash -c`
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
