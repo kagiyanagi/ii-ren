@@ -412,9 +412,14 @@ you touched; they are the only automated gate.
   (the dock's blind spot). The device rows round their own end corners on an unclipped card,
   and which row is last depends on the device count and on whether the "several devices"
   switch row shows. A square corner there appears only on hover, so the expressions are
-  evaluated under node for every combination. It also holds the one reader of
-  `GlobalStates.requestVolumeDialog`: the media popup's audio pill set it for as long as it
-  existed and nothing read it
+  evaluated under node for every combination. With devices combined, each member row has a
+  slider over that device's own volume, its balance against the others, and the gate
+  evaluates the service's rule that only a *joining* member is levelled to unity: every
+  member join or leave reloads the combine module, and the service used to level them all,
+  so adding a third speaker silently flattened the first two. It pins latency compensation
+  on for playback (a Bluetooth member is ~200ms behind a wired one) and holds the one reader
+  of `GlobalStates.requestVolumeDialog`: the media popup's audio pill set it for as long as
+  it existed and nothing read it
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

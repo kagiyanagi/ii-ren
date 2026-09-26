@@ -20,7 +20,10 @@ function toggleMember(names, name) {
 
 // pw-cli -m stays alive hosting the module, so killing it removes the virtual
 // device again. The rules match members by name, which also means a member
-// that disconnects rejoins by itself when it comes back.
+// that disconnects rejoins by itself when it comes back. Latency compensation
+// delays the faster outputs to match the slowest, so wired speakers wait for a
+// Bluetooth one (~200ms behind) instead of echoing ahead of it; a capture set
+// has no listener to be out of step for.
 function command(isSink, names, description) {
     const matches = names.map(name => `{ node.name = "${name}" }`).join(" ");
     const args = `{
@@ -28,6 +31,7 @@ function command(isSink, names, description) {
     node.name = ${nodeName(isSink)}
     node.description = "${description}"
     combine.props = { audio.position = [ FL FR ] }
+    combine.latency-compensate = ${isSink}
     stream.rules = [ { matches = [ ${matches} ] actions = { create-stream = { } } } ]
 }`;
     return ["pw-cli", "-m", "load-module", "libpipewire-module-combine-stream", args];

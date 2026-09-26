@@ -159,9 +159,11 @@ Singleton {
         if (isSink) root.setDefaultSink(node);
         else root.setDefaultSource(node);
     }
-    // One master for the lot: members play at unity and the combined device carries the
-    // level, so no device has to be cranked up by hand before switching this on. A device
-    // dropping out of the set keeps the level it was last playing at.
+    // One master for the lot: a device joining the set starts at unity and the combined
+    // device carries the level, so none has to be cranked up by hand before switching this
+    // on. After that each member's own volume is its balance against the others, and is
+    // left alone -- a reload for a new member must not flatten it. A device dropping out
+    // of the set keeps the level it was last playing at.
     function combineProcess(isSink) {
         return isSink ? combineSinkProcess : combineSourceProcess;
     }
@@ -180,8 +182,12 @@ Singleton {
     function setCombinedNames(isSink, names) {
         const previous = root.combinedNames(isSink);
         const level = root.levelToCarry(isSink);
+        const stream = root.combineProcess(isSink);
         if (previous.length < 2 && names.length > 1) // the level in use becomes the master
-            root.combineProcess(isSink).seedVolume = (isSink ? root.sink : root.source)?.audio?.volume ?? 1;
+            stream.seedVolume = (isSink ? root.sink : root.source)?.audio?.volume ?? 1;
+        // Going combined levels everyone, the device in use included; later, only newcomers.
+        const joining = previous.length < 2 ? names : names.filter(name => !previous.includes(name));
+        stream.joining = names.length < 2 ? [] : stream.joining.filter(name => names.includes(name)).concat(joining);
         const leaving = names.length < 2 ? previous : previous.filter(name => !names.includes(name));
         leaving.forEach(name => root.setNodeVolume(root.deviceByName(isSink, name), level));
         if (names.length < 2) {
@@ -225,6 +231,7 @@ Singleton {
         property list<string> loadedNames: [] // what the running module was started with
         property real seedVolume: 1 // the master level to hand the combined device
         property bool restarting: false
+        property list<string> joining: [] // members still to be brought to unity
         readonly property PwNode node: stream.isSink ? root.combineSink : root.combineSource
 
         // Held off a moment: a fresh node drops a volume set that lands too early, and a
@@ -233,7 +240,8 @@ Singleton {
             interval: 300
             onTriggered: {
                 root.setNodeVolume(stream.node, stream.seedVolume);
-                root.combinedNames(stream.isSink).forEach(name => root.setNodeVolume(root.deviceByName(stream.isSink, name), 1));
+                stream.joining.forEach(name => root.setNodeVolume(root.deviceByName(stream.isSink, name), 1));
+                stream.joining = [];
             }
         }
 

@@ -11,6 +11,15 @@ its own end corners. Which row is last depends on how many devices there are and
 the "several devices" switch row is showing. A square corner there shows only on hover,
 so the expressions are lifted out and evaluated under node for every combination.
 
+With devices combined, each member row carries a slider over that device's own volume,
+which is its balance against the others; the combined device is the master. That balance
+is only worth having if it survives the module being reloaded, which happens every time a
+member joins or leaves: the service used to level *every* member to unity on each reload,
+so adding a third speaker silently flattened the first two. Only a device that is joining
+is levelled now, and the rule is evaluated under node. The module is also loaded with
+latency compensation for playback, so wired speakers wait for a Bluetooth one instead of
+echoing ~200ms ahead of it.
+
 `GlobalStates.requestVolumeDialog` is set by the media popup's audio-device pill, and for
 as long as it existed nothing read it: the pill opened the sidebar and stopped there.
 """
@@ -25,6 +34,7 @@ entry = (MIXER / "VolumeMixerEntry.qml").read_text()
 content = (MIXER / "VolumeDialogContent.qml").read_text()
 dialog = (MIXER / "VolumeDialog.qml").read_text()
 sidebar = (II / "modules/ii/sidebarDashboard/SidebarDashboardContent.qml").read_text()
+audio = (II / "services/Audio.qml").read_text()
 
 code = lambda s: re.sub(r"//.*", "", s)
 for name, src in (("VolumeMixerEntry", code(entry)), ("VolumeDialogContent", code(content))):
@@ -74,4 +84,45 @@ for c in cases:
         assert top == (1 if i == 0 else 0), f"row {i} top corner wrong: {c}"
         assert bottom == (1 if i == len(c["rows"]) - 1 else 0), f"row {i} bottom corner wrong: {c}"
 
-print(f"ok: no per-row effect, the pill's request is read, and {len(cases)} device-card layouts keep their corners")
+balance = re.search(r"visible:\s*root\.combined && deviceRow\.inUse(.*?)StyledText", content, re.S)
+assert balance, "VolumeDialogContent: a combined member row has no balance slider"
+assert re.search(r"onMoved:\s*deviceRow\.modelData\.audio\.volume = value", balance.group(1)), "the balance slider must write the member's own volume"
+assert re.search(r"PwObjectTracker \{[^}]*objects:\s*root\.devices", content), "a device's volume is unreadable unless tracked"
+
+timer = re.search(r"property Timer levelTimer: Timer \{(.*?)\n        \}", audio, re.S).group(1)
+assert "combinedNames" not in timer, "Audio: the reload timer must not level every member, that flattens the balance"
+assert "stream.joining.forEach" in timer and "stream.joining = []" in timer, "Audio: the reload timer must level the joining members, once"
+joining = re.search(r"(const joining = .+;)\n\s*(stream\.joining = .+;)", audio)
+assert joining, "Audio: could not lift the joining rule out of setCombinedNames"
+JOIN = f"""
+const out = %s.map(([previous, names, pending]) => {{
+    const stream = {{ joining: pending }};
+    {joining.group(1)}
+    {joining.group(2)}
+    return stream.joining;
+}});
+console.log(JSON.stringify(out));
+"""
+join_cases = [
+    (([], ["A"], []), []),                         # multi-device on: one member, nothing combined yet
+    ((["A"], ["A", "B"], []), ["A", "B"]),         # going combined levels the device in use too
+    ((["A", "B"], ["A", "B", "C"], []), ["C"]),    # later, only the newcomer: A and B keep their balance
+    ((["A", "B", "C"], ["A", "C"], ["C"]), ["C"]), # C left pending by a reload still in flight
+    ((["A", "B", "C"], ["A", "B"], ["C"]), []),    # a pending member that leaves is dropped
+    ((["A", "B"], [], ["B"]), []),                 # multi-device off: nothing combined, nothing pending
+]
+got = json.loads(subprocess.run(["node", "-e", JOIN % json.dumps([c for c, _ in join_cases])],
+                                capture_output=True, text=True, check=True).stdout)
+for (case, want), line in zip(join_cases, got):
+    assert line == want, f"Audio joining: {case} gave {line}, want {want}"
+
+JS_COMBINE = f"""
+const c = require({json.dumps(str(II / "services/combineStream.js"))});
+console.log(JSON.stringify([c.command(true, ["a", "b"], "x")[4], c.command(false, ["a", "b"], "x")[4]]));
+"""
+sink_args, source_args = json.loads(subprocess.run(["node", "-e", JS_COMBINE], capture_output=True, text=True, check=True).stdout)
+assert "combine.latency-compensate = true" in sink_args, "combineStream: playback must compensate latency, or Bluetooth echoes behind the rest"
+assert "combine.latency-compensate = false" in source_args, "combineStream: capture has no listener to align"
+
+print(f"ok: no per-row effect, the pill's request is read, and {len(cases)} device-card layouts keep their corners,"
+      f" and {len(join_cases)} member changes level only the newcomers")

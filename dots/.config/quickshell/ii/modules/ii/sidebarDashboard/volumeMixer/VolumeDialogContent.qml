@@ -4,6 +4,7 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Services.Pipewire
 
 // Where the sound goes first, since the dialog is named for it, then one row per
 // app. Sized by its content; it scrolls only when its host is shorter than that.
@@ -15,11 +16,17 @@ StyledFlickable {
     readonly property bool multiple: Audio.multiDeviceEnabled(isSink)
     // Nothing to combine with one device, but a leftover set must stay switchable off.
     readonly property bool showMultiple: devices.length > 1 || multiple
+    // Two or more members: a combined device exists and each member has a balance slider.
+    readonly property bool combined: Audio.combinedNames(isSink).length > 1
 
     implicitHeight: body.implicitHeight
     contentHeight: body.implicitHeight
     contentWidth: width
     clip: true
+
+    PwObjectTracker { // a device's volume is only readable and writable while tracked
+        objects: root.devices
+    }
 
     function deviceIcon(node) {
         const name = node?.name ?? "";
@@ -52,25 +59,61 @@ StyledFlickable {
                     bottomRightRadius: bottomLeftRadius
                     onClicked: Audio.pickDevice(modelData, root.isSink)
 
-                    contentItem: RowLayout {
-                        spacing: 10
-                        MaterialSymbol {
-                            iconSize: Appearance.font.pixelSize.larger
-                            text: root.deviceIcon(deviceRow.modelData)
-                            color: deviceRow.inUse ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    contentItem: ColumnLayout {
+                        spacing: 4
+                        RowLayout {
+                            spacing: 10
+                            MaterialSymbol {
+                                id: deviceIcon
+                                iconSize: Appearance.font.pixelSize.larger
+                                text: root.deviceIcon(deviceRow.modelData)
+                                color: deviceRow.inUse ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
+                                Behavior on color {
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                }
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                color: deviceRow.inUse ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
+                                Behavior on color {
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                }
+                                elide: Text.ElideRight
+                                textFormat: Text.PlainText
+                                text: Audio.friendlyDeviceName(deviceRow.modelData)
+                            }
+                            // With devices combined a tap adds or drops one, so each row says which.
+                            MaterialSymbol {
+                                visible: root.multiple
+                                iconSize: Appearance.font.pixelSize.larger
+                                fill: deviceRow.inUse ? 1 : 0
+                                text: deviceRow.inUse ? "check_circle" : "radio_button_unchecked"
+                                color: deviceRow.inUse ? Appearance.colors.colPrimary : Appearance.colors.colSubtext
+                                Behavior on color {
+                                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                }
                             }
                         }
-                        StyledText {
-                            Layout.fillWidth: true
-                            color: deviceRow.inUse ? Appearance.colors.colPrimary : Appearance.colors.colOnSurfaceVariant
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                        // A member's own volume is its balance against the others; the
+                        // combined device, which the sidebar's volume slider drives, is the
+                        // master over all of them.
+                        RowLayout {
+                            visible: root.combined && deviceRow.inUse
+                            Layout.leftMargin: deviceIcon.width + 10
+                            spacing: 8
+                            StyledSlider {
+                                Layout.fillWidth: true
+                                configuration: StyledSlider.Configuration.S
+                                value: deviceRow.modelData?.audio?.volume ?? 0
+                                onMoved: deviceRow.modelData.audio.volume = value
                             }
-                            elide: Text.ElideRight
-                            textFormat: Text.PlainText
-                            text: Audio.friendlyDeviceName(deviceRow.modelData)
+                            StyledText {
+                                Layout.preferredWidth: 36
+                                horizontalAlignment: Text.AlignRight
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                color: Appearance.colors.colSubtext
+                                text: `${Math.round((deviceRow.modelData?.audio?.volume ?? 0) * 100)}%`
+                            }
                         }
                     }
                 }

@@ -38,3 +38,46 @@ icon ↔ mute-glyph crossfade on `elementMoveFast`, in both directions, as the o
 `Desaturate` opacity was.
 
 **Not done.** The agy/Gemini vision pass was not run.
+
+## Follow-up: per-device balance (asked for on 2026-09-26)
+
+With devices combined (two or more members), each member row has a slider and a percent
+readout for that device's own volume, which is its balance against the others. The combined
+device is the master, and the sidebar's volume slider drives it. With multiple on, every row
+ends in a check or an empty circle, so it is clear what a tap will add or drop.
+
+- **Levelling.** Before, every member was set back to unity on each module reload, and the
+  module reloads whenever a member joins or leaves. Adding a third speaker flattened the
+  first two. `Audio.setCombinedNames` now queues only the members that are *joining*
+  (everyone when going from one member to combined), and `levelTimer` levels that queue
+  once. The balance also survives a shell restart now, because nothing levels on startup,
+  and WirePlumber restores each device's own volume.
+- **Latency.** `combine.latency-compensate = true` for playback. PipeWire 1.6.9 has it, and
+  the loaded module was confirmed with it in `pgrep -a pw-cli`. The sync itself was **not
+  heard**, because the test members were null sinks.
+
+**Driven live** with two null sinks (`pactl load-module module-null-sink
+sink_name=ii_test_kitchen …`) plus the Nirvana Ion earbuds:
+- Kitchen dragged to 0.72; the earbuds stayed at 1.00; the master (`ii_combine_sink`) stayed
+  at 0.12.
+- Bedroom set to 0.5 by hand and then added. The module reloaded (node 87 → 127). Kitchen
+  **stayed at 0.72**, Bedroom went to 1.00, and the master stayed at 0.12.
+- Multi off: the earbuds became the default at 0.12, and `pw-cli` exited. Two- and
+  three-member runs both shut down cleanly.
+- Everything was put back afterwards: sinks unloaded, `combinedSinks` `[]`, the laptop
+  speakers at 0.42.
+
+**Found, not fixed (quickshell).** Once, after a three-member run, switching off left
+`pw-cli` running, because `sync()` was holding on "the default is still the combined node".
+Instrumented reruns did not reproduce it. The log shows the default flapping during every
+reload (combined → none → combined → member → combined), and the hold rode that out each
+time. Killing that `pw-cli` by hand then segfaulted the shell on its next reload, in
+`Pipewire.defaultAudioSink` → `PwNodeIface::instance` on a freed node. That is quickshell
+0.2.1's stale default tracker, the same bug `setCombinedNames`' ponytail comment works
+around. So the stuck state was quickshell's default pointing at a destroyed node, and it is
+not safe to force the stop from QML. If it recurs: restart the shell, and don't kill the
+`pw-cli`.
+
+**Device order is not stable** across a shell reload (the ALC row moved from last to
+first). One test click therefore landed on the laptop speakers. Drive this dialog from a
+fresh screenshot every time.
