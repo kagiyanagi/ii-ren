@@ -438,6 +438,12 @@ you touched; they are the only automated gate.
   the same rows as the tiles. It runs the row packer under node (rows stopped a gap short
   of the width) and sweeps the menu clamp, which flips by where the pointer is. Download
   passes the API's URL and file name as arguments rather than into `bash -c`
+- `python3 tools/check-booru.py` — the booru service builds the request each provider
+  actually answers. Five of seven providers failed with the same generic "That didn't
+  work": Gelbooru pages are zero-based and it needs a key now, waifu.im moved to `/images`,
+  Zerochan put the tags in its colour filter, Alcy with no tag fetched an HTML page, and a
+  missing image source threw away the whole page. It runs `constructRequestUrl` and
+  `getWorkingImageSource` under node against stub providers
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

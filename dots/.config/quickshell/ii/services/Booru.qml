@@ -19,6 +19,14 @@ Singleton {
     property var responses: []
     property int runningRequests: 0
     property var defaultUserAgent: Config.options?.networking?.userAgent || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+    // Zerochan asks API clients to name themselves, and serves a browser check to
+    // anything that claims to be Chrome.
+    readonly property string zerochanUsername: Config.options?.sidebar?.booru?.zerochan?.username ?? ""
+    readonly property string zerochanUserAgent: `ii-ren sidebar booru viewer${zerochanUsername && zerochanUsername !== "[unset]" ? ` - username: ${zerochanUsername}` : ""}`
+    readonly property var gelbooruAuth: Config.options?.sidebar?.booru?.gelbooru ?? {}
+    readonly property string gelbooruAuthMessage: Translation.tr("Gelbooru needs an API key. Copy the API key and user ID from [gelbooru.com → Account → Options](https://gelbooru.com/index.php?page=account&s=options) into the `sidebar.booru.gelbooru.apiKey` and `sidebar.booru.gelbooru.userId` config options.")
+    readonly property string challengeMessage: Translation.tr("%1 answered with a browser check (Cloudflare) instead of results, which a background request cannot pass. It is blocking requests from your network; try another provider.")
+    readonly property int maxRetries: 2
     property var providerList: Object.keys(providers).filter(provider => provider !== "system" && providers[provider].api)
 
     // Moebooru-style post shape, shared by yande.re and Konachan
@@ -80,6 +88,9 @@ Singleton {
             "mapFunc": (response) => {
                 response = response.items
                 return response.map(item => {
+                    // The listing only has the 240px AVIF; the 600px JPEG sits at the same
+                    // path. The full image's extension is only in a per-post request.
+                    const large = item.thumbnail.replace("/240/", "/600/").replace(/\.avif$/, ".jpg")
                     return {
                         "id": item.id,
                         "width": item.width,
@@ -89,11 +100,11 @@ Singleton {
                         "rating": "safe", // Zerochan doesn't have nsfw
                         "is_nsfw": false,
                         "md5": item.md5,
-                        "preview_url": item.thumbnail,
-                        "sample_url": item.thumbnail,
-                        "file_url": item.thumbnail,
-                        "file_ext": "avif",
-                        "source": getWorkingImageSource(item.source) ?? item.thumbnail,
+                        "preview_url": large,
+                        "sample_url": large,
+                        "file_url": large,
+                        "file_ext": "jpg",
+                        "source": getWorkingImageSource(item.source) ?? `https://www.zerochan.net/${item.id}`,
                         "character": item.tag
                     }
                 })
@@ -113,7 +124,7 @@ Singleton {
                         "aspect_ratio": item.image_width / item.image_height,
                         "tags": item.tag_string,
                         "rating": item.rating,
-                        "is_nsfw": (item.rating != 's'),
+                        "is_nsfw": (item.rating != 'g'),
                         "md5": item.md5,
                         "preview_url": item.preview_file_url,
                         "sample_url": item.file_url ?? item.large_file_url,
@@ -148,7 +159,7 @@ Singleton {
                         "aspect_ratio": item.width / item.height,
                         "tags": item.tags,
                         "rating": item.rating.replace('general', 's').charAt(0),
-                        "is_nsfw": (item.rating != 's'),
+                        "is_nsfw": (item.rating != 'general'),
                         "md5": item.md5,
                         "preview_url": item.preview_url,
                         "sample_url": item.sample_url ?? item.file_url,
@@ -171,32 +182,32 @@ Singleton {
         "waifu.im": {
             "name": "waifu.im",
             "url": "https://waifu.im",
-            "api": "https://api.waifu.im/search",
+            "api": "https://api.waifu.im/images",
             "description": Translation.tr("Waifus only | Excellent quality, limited quantity"),
             "mapFunc": (response) => {
-                response = response.images
-                return response.map(item => {
+                return response.items.map(item => {
                     return {
-                        "id": item.image_id,
+                        "id": item.id,
                         "width": item.width,
                         "height": item.height,
                         "aspect_ratio": item.width / item.height,
-                        "tags": item.tags.map(tag => {return tag.name}).join(" "),
-                        "rating": item.is_nsfw ? "e" : "s",
-                        "is_nsfw": item.is_nsfw,
-                        "md5": item.md5,
-                        "preview_url": item.sample_url ?? item.url, // preview_url just says access denied (maybe i fucked up and sent too many requests idk)
+                        "tags": item.tags.map(tag => tag.slug).join(" "),
+                        "rating": item.isNsfw ? "e" : "s",
+                        "is_nsfw": item.isNsfw,
+                        "md5": item.perceptualHash,
+                        "preview_url": item.url, // The API has no thumbnail
                         "sample_url": item.url,
                         "file_url": item.url,
-                        "file_ext": item.extension,
+                        "file_ext": item.extension.replace(/^\./, ""),
                         "source": getWorkingImageSource(item.source) ?? item.url,
                     }
                 })
             },
-            "tagSearchTemplate": "https://api.waifu.im/tags",
-            "tagMapFunc": (response) => {
-                return [...response.versatile.map(item => {return {"name": item}}), 
-                    ...response.nsfw.map(item => {return {"name": item}})]
+            "tagSearchTemplate": "https://api.waifu.im/tags?PageSize=100",
+            "tagMapFunc": (response, query) => {
+                return response.items
+                    .filter(tag => tag.slug.includes(query.toLowerCase()))
+                    .map(tag => ({ "name": tag.slug, "count": tag.imageCount }))
             }
         },
         "t.alcy.cc": {
@@ -232,7 +243,7 @@ Singleton {
             ],
             "manualParseFunc": (responseText) => {
                 // Alcy just returns image links, each on a new line
-                const lines = responseText.trim().split('\n');
+                const lines = responseText.trim().split('\n').map(line => line.trim()).filter(line => /^https?:\/\//.test(line));
                 return lines.map(line => {
                     return {
                         "id": Qt.md5(line),
@@ -257,6 +268,8 @@ Singleton {
     property var currentProvider: Persistent.states.booru.provider
 
     function getWorkingImageSource(url) {
+        if (!url)
+            return null;
         if (url.includes('pximg.net')) {
             return `https://www.pixiv.net/en/artworks/${url.substring(url.lastIndexOf('/') + 1).replace(/_p\d+\.(png|jpg|jpeg|gif)$/, '')}`;
         }
@@ -268,7 +281,7 @@ Singleton {
         if (providerList.indexOf(provider) !== -1) {
             Persistent.states.booru.provider = provider
             root.addSystemMessage(Translation.tr("Provider set to ") + providers[provider].name
-                + (provider == "zerochan" ? Translation.tr(". Notes for Zerochan:\n- You must enter a color\n- Set your zerochan username in `sidebar.booru.zerochan.username` config option. You [might be banned for not doing so](https://www.zerochan.net/api#:~:text=The%20request%20may%20still%20be%20completed%20successfully%20without%20this%20custom%20header%2C%20but%20your%20project%20may%20be%20banned%20for%20being%20anonymous.)!") : ""))
+                + (provider == "zerochan" ? Translation.tr(". Notes for Zerochan:\n- Tags are Zerochan's tag names, with _ for spaces: `hatsune_miku`\n- Set your zerochan username in `sidebar.booru.zerochan.username` config option. You [might be banned for not doing so](https://www.zerochan.net/api#:~:text=The%20request%20may%20still%20be%20completed%20successfully%20without%20this%20custom%20header%2C%20but%20your%20project%20may%20be%20banned%20for%20being%20anonymous.)!") : ""))
         } else {
             root.addSystemMessage(Translation.tr("Invalid API provider. Supported: \n- ") + providerList.join("\n- "))
         }
@@ -294,7 +307,7 @@ Singleton {
         var url = baseUrl
         var tagString = tags.join(" ")
         if (!nsfw && !(["zerochan", "waifu.im", "t.alcy.cc"].includes(currentProvider))) {
-            if (currentProvider == "gelbooru") 
+            if (currentProvider == "gelbooru" || currentProvider == "danbooru")
                 tagString += " rating:general";
             else 
                 tagString += " rating:safe";
@@ -302,22 +315,27 @@ Singleton {
         var params = []
         // Tags & limit
         if (currentProvider === "zerochan") {
-            params.push("c=" + tagString) // zerochan doesn't have search in api, so we use color
+            // A search is the tag's page: /Hatsune+Miku,Blue?json. Tags are typed
+            // booru-style, so hatsune_miku is the tag "Hatsune Miku". No tags is the
+            // front page's popular listing.
+            if (tags.length > 0)
+                url = `${provider.url}/${tags.map(tag => encodeURIComponent(tag.replace(/_/g, " ")).replace(/%20/g, "+")).join(",")}?json`
             params.push("l=" + limit)
             params.push("s=" + "fav")
-            params.push("t=" + 1)
+            if (tags.length === 0)
+                params.push("t=" + 1)
             params.push("p=" + page)
         }
         else if (currentProvider === "waifu.im") {
-            var tagsArray = tagString.split(" ");
-            tagsArray.forEach(tag => {
-                params.push("included_tags=" + encodeURIComponent(tag));
+            tags.forEach(tag => {
+                params.push("IncludedTags=" + encodeURIComponent(tag));
             });
-            params.push("limit=" + Math.min(limit, 30)) // Only admin can do > 30
-            params.push("is_nsfw=" + (nsfw ? "null" : "false")) // null is random
+            params.push("PageSize=" + limit)
+            params.push("PageNumber=" + page)
+            params.push("IsNsfw=" + (nsfw ? "All" : "False"))
         }
         else if (currentProvider === "t.alcy.cc") {
-            url += tagString
+            url += tags[0] ?? "ycy" // One category per request; the bare root is the site's HTML page
             params.push("json")
             params.push("quantity=" + limit)
         }
@@ -325,13 +343,15 @@ Singleton {
             params.push("tags=" + encodeURIComponent(tagString))
             params.push("limit=" + limit)
             if (currentProvider == "gelbooru") {
-                params.push("pid=" + page)
+                params.push("pid=" + (page - 1)) // Zero-based
+                if (root.gelbooruAuth.apiKey && root.gelbooruAuth.userId)
+                    params.push(`api_key=${encodeURIComponent(root.gelbooruAuth.apiKey)}&user_id=${encodeURIComponent(root.gelbooruAuth.userId)}`)
             }
             else {
                 params.push("page=" + page)
             }
         }
-        if (baseUrl.indexOf("?") === -1) {
+        if (url.indexOf("?") === -1) {
             url += "?" + params.join("&")
         } else {
             url += "&" + params.join("&")
@@ -340,66 +360,75 @@ Singleton {
     }
 
     function makeRequest(tags, nsfw=false, limit=20, page=1) {
-        var url = constructRequestUrl(tags, nsfw, limit, page)
-        console.log("[Booru] Making request to " + url)
-
+        const provider = currentProvider
         const newResponse = {
-            "provider": currentProvider,
+            "provider": provider,
             "tags": tags,
             "page": page,
             "images": [],
             "message": ""
         }
-
-        var xhr = new XMLHttpRequest()
-        xhr.open("GET", url)
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    // console.log("[Booru] Raw response: " + xhr.responseText)
-                    const provider = providers[currentProvider]
-                    let response;
-                    if (provider.manualParseFunc) {
-                        response = provider.manualParseFunc(xhr.responseText)
-                    } else {
-                        response = JSON.parse(xhr.responseText)
-                        response = provider.mapFunc(response)
-                    }
-                    // console.log("[Booru] Mapped response: " + JSON.stringify(response))
-                    newResponse.images = response
-                    newResponse.message = response.length > 0 ? "" : root.failMessage
-                    
-                } catch (e) {
-                    console.log("[Booru] Failed to parse response: " + e)
-                    newResponse.message = root.failMessage
-                } finally {
-                    root.runningRequests--;
-                    root.responses = [...root.responses, newResponse]
-                }
-            }
-            else if (xhr.readyState === XMLHttpRequest.DONE) {
-                console.log("[Booru] Request failed with status: " + xhr.status)
-                newResponse.message = root.failMessage
-                root.runningRequests--;
-                root.responses = [...root.responses, newResponse]
-            }
+        const finish = (message) => {
+            if (message !== undefined)
+                newResponse.message = message
+            root.runningRequests--;
+            root.responses = [...root.responses, newResponse]
             root.responseFinished()
         }
 
-        try {
-            // Required for danbooru
-            if (currentProvider == "danbooru") {
-                xhr.setRequestHeader("User-Agent", defaultUserAgent)
-            }
-            else if (currentProvider == "zerochan") {
-                const userAgent = Config.options?.sidebar?.booru?.zerochan?.username ? `Desktop sidebar booru viewer - username: ${Config.options.sidebar.booru.zerochan.username}` : defaultUserAgent
-                xhr.setRequestHeader("User-Agent", userAgent)
-            }
+        if (provider === "gelbooru" && !(root.gelbooruAuth.apiKey && root.gelbooruAuth.userId)) {
             root.runningRequests++;
+            finish(root.gelbooruAuthMessage)
+            return
+        }
+
+        const url = constructRequestUrl(tags, nsfw, limit, page)
+        const send = (attempt) => {
+            console.log("[Booru] Making request to " + url)
+            const xhr = new XMLHttpRequest()
+            xhr.open("GET", url)
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== XMLHttpRequest.DONE)
+                    return
+                if (xhr.status === 0 && attempt < root.maxRetries) {
+                    // yande.re's edge resets about half its connections from some networks
+                    console.log("[Booru] Connection failed, retrying")
+                    send(attempt + 1)
+                    return
+                }
+                if (xhr.status !== 200) {
+                    console.log("[Booru] Request failed with status: " + xhr.status)
+                    if (xhr.status === 403 && xhr.responseText.includes("<title>Just a moment...</title>"))
+                        finish(root.challengeMessage.arg(providers[provider].name))
+                    else if (provider === "gelbooru" && xhr.status === 401)
+                        finish(root.gelbooruAuthMessage)
+                    else
+                        finish(root.failMessage)
+                    return
+                }
+                try {
+                    let response;
+                    if (providers[provider].manualParseFunc) {
+                        response = providers[provider].manualParseFunc(xhr.responseText)
+                    } else {
+                        response = providers[provider].mapFunc(JSON.parse(xhr.responseText))
+                    }
+                    newResponse.images = response
+                    finish(response.length > 0 ? "" : root.failMessage)
+                } catch (e) {
+                    console.log("[Booru] Failed to parse response: " + e)
+                    finish(root.failMessage)
+                }
+            }
+            if (provider == "danbooru")
+                xhr.setRequestHeader("User-Agent", defaultUserAgent)
+            else if (provider == "zerochan")
+                xhr.setRequestHeader("User-Agent", root.zerochanUserAgent)
             xhr.send()
-        } catch (error) {
-            console.log("Could not set User-Agent:", error)
-        } 
+        }
+
+        root.runningRequests++;
+        send(0)
     }
 
     property var currentTagRequest: null
@@ -416,6 +445,11 @@ Singleton {
             return
         }
         var url = provider.tagSearchTemplate.replace("{{query}}", encodeURIComponent(query))
+        if (currentProvider === "gelbooru") {
+            if (!(root.gelbooruAuth.apiKey && root.gelbooruAuth.userId))
+                return
+            url += `&api_key=${encodeURIComponent(root.gelbooruAuth.apiKey)}&user_id=${encodeURIComponent(root.gelbooruAuth.userId)}`
+        }
 
         var xhr = new XMLHttpRequest()
         currentTagRequest = xhr
@@ -426,7 +460,7 @@ Singleton {
                 try {
                     // console.log("[Booru] Raw response: " + xhr.responseText)
                     var response = JSON.parse(xhr.responseText)
-                    response = provider.tagMapFunc(response)
+                    response = provider.tagMapFunc(response, query)
                     // console.log("[Booru] Mapped response: " + JSON.stringify(response))
                     root.tagSuggestion(query, response)
                 } catch (e) {
