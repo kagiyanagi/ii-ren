@@ -40,12 +40,14 @@ replaces the bare `ListView`, so a re-sort slides rows rather than cutting them.
   no longer opens a password field on an open network.
 - *Empty*: "Searching for networks" while the scan runs, "No networks found" after it,
   "Wi-Fi is off" when the radio is off. Before, the card was blank.
-- *One network*: the card fits its rows. It was a fixed 600px dialog, and with four
-  networks in range, a third of the card was empty.
+- *One network*: the card keeps its height, as Bluetooth's does. The height is 0.6 of the
+  sidebar rather than a literal 600, so it scales with the screen. A card that fitted its
+  rows was built first and rejected by the owner: it re-centred on every scan and when a
+  password field opened, which moved the rows out from under the pointer.
 
 **Cost.** None. No effects. The `ClippingRectangle` stays the one clip.
 
-**Delete.** The fixed `backgroundHeight: 600`. The trailing "check" and
+**Delete.** The literal `backgroundHeight: 600`. The trailing "check" and
 "settings_ethernet" glyphs, which the status line replaces. `Network.changePassword()` and
 its process: it modified a profile named after the SSID, which misses any profile NM had
 named "SSID 1", and then re-ran the connect with its target already nulled, so the retry

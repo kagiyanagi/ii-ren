@@ -10,34 +10,31 @@ import Quickshell.Widgets
 
 WindowDialog {
     id: root
+    // A share of the sidebar rather than the Bluetooth dialog's fixed 600, so it
+    // scales with the screen (about 600 at 1080p). Fixed while open: a card that
+    // followed its rows re-centred on every scan and when a password field opened,
+    // and moved the rows out from under the pointer.
+    backgroundHeight: Math.round(root.height * 0.6)
 
     Component.onCompleted: if (Config.options.networking.wifiPowerSave.enable) Network.fetchWifiPowerSave()
 
     WindowDialogTitle {
-        id: title
         text: Translation.tr("Connect to Wi-Fi")
     }
     StyledIndeterminateProgressBar {
-        id: scanBar
         visible: Network.wifiScanning
         Layout.fillWidth: true
         Layout.bottomMargin: -8
     }
     // ClippingRectangle: plain `clip` only clips to the bounding box, so a
     // row's hover fill would square off the card's corners.
-    // It fits its rows, and scrolls only where the sidebar is too short for them.
-    // It was a fixed 600px dialog, a third of it empty with four networks in range.
     ClippingRectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(
-            Math.max(list.contentHeight + list.topMargin + list.bottomMargin, placeholder.shown ? placeholder.iconWidget.implicitHeight + placeholder.titleWidget.implicitHeight + 4 + root.dialogPadding * 2 : 0),
-            root.height - title.implicitHeight - (scanBar.visible ? scanBar.implicitHeight : 0)
-                - (powerSaveCard.visible ? powerSaveCard.implicitHeight : 0) - buttonRow.implicitHeight - root.dialogPadding * 7)
+        Layout.fillHeight: true
         radius: Appearance.rounding.large
         color: Appearance.colors.colSurfaceContainerHigh
 
         StyledListView {
-            id: list
             anchors.fill: parent
             topMargin: 8
             bottomMargin: 8
@@ -55,7 +52,6 @@ WindowDialog {
         }
 
         PagePlaceholder {
-            id: placeholder
             shown: Network.friendlyWifiNetworks.length === 0
             icon: "wifi_find"
             title: !Network.wifiEnabled ? Translation.tr("Wi-Fi is off")
@@ -68,7 +64,6 @@ WindowDialog {
     // than a settings row dropped in under it. A plain Rectangle: nothing scrolls
     // under these corners, and the row's own mask already rounds its fill.
     Rectangle {
-        id: powerSaveCard
         visible: Config.options.networking.wifiPowerSave.enable
         Layout.fillWidth: true
         implicitHeight: powerSaveRow.implicitHeight
@@ -124,7 +119,6 @@ WindowDialog {
         }
     }
     WindowDialogButtonRow {
-        id: buttonRow
         DialogButton {
             buttonText: Translation.tr("Details")
             onClicked: {

@@ -52,11 +52,14 @@ unsaved secured network there now does nothing visible, because it sets `askingP
 and waffle has no field. Before, it also dropped the uplink first. Giving waffle a password
 field is its own row.
 
-**Known, not fixed: the card re-centres.** When the password field opens or closes, the
-card changes height and `WindowDialog` re-centres it, so the rows move under the pointer
-(about 57px at 1080p). That is `WindowDialog`'s centring, shared with every dialog, and
-the hotspot row hit it too. A dialog that grows from a fixed top would fix it; that is
-`cw-dialogs` territory.
+**Height: fixed while open, scaled with the screen — the owner's call.** The first
+version fitted the card to its rows. That re-centred the card on every scan and whenever
+the password field opened or closed, and moved the rows under the pointer (about 57px at
+1080p). The owner asked for a Bluetooth-style static height that follows the screen size.
+It is `root.height * 0.6`, about 600 at 1080p, and the list scrolls inside it (driven
+live: opening the field left the card where it was). The Bluetooth dialog is still a
+literal 600. Bring it across in the cohesion pass if the two should match on other
+screens.
 
 **Live-reload trap, again.** The Write tool replaces a file's inode, and Quickshell's
 watcher then stops seeing that file. An in-place rewrite with *identical* content does not

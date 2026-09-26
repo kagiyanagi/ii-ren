@@ -47,7 +47,12 @@ assert re.search(r"onClicked:\s*if \(tappable\)", row), "WifiNetworkItem: a tap 
 assert re.search(r"rippleEnabled:\s*tappable", row), "WifiNetworkItem: a row a tap cannot act on must not ripple"
 assert not re.search(r"^\s*enabled:", row.split("contentItem")[0], re.M), \
     "WifiNetworkItem: a busy row must stay at full opacity; 0.4 means disabled"
-assert "backgroundHeight" not in dialog, "WifiDialog: the card fits its rows; a fixed height left a third of it empty"
+# Fixed while open, scaled with the screen: a card that followed its rows re-centred on
+# every scan and when a password field opened, moving the rows under the pointer.
+assert re.search(r"backgroundHeight:\s*Math\.round\(root\.height \* [0-9.]+\)", dialog), \
+    "WifiDialog: the height is a share of the sidebar, not a literal and not the content's"
+assert re.search(r"ClippingRectangle \{\s*Layout\.fillWidth: true\s*Layout\.fillHeight: true", dialog), \
+    "WifiDialog: the list card takes the dialog's spare height"
 assert "StyledListView" in dialog, "WifiDialog: use StyledListView"
 assert "PagePlaceholder" in dialog, "WifiDialog: an empty list needs its empty state"
 
