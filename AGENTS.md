@@ -444,6 +444,15 @@ you touched; they are the only automated gate.
   Zerochan put the tags in its colour filter, Alcy with no tag fetched an HTML page, and a
   missing image source threw away the whole page. It runs `constructRequestUrl` and
   `getWorkingImageSource` under node against stub providers
+- `python3 tools/check-continuity.py` — the Continuity page's device cards stay open and fold
+  only when asked. `Tailscale.qml` rebuilds `peers` from fresh objects on every 8s poll, and the
+  peer `ScriptModel` was unkeyed, so every row was destroyed and an expanded peer folded shut
+  mid-read; it pins the key to one `_toPeer` emits. Both cards take the whole-card click on a
+  `MouseArea` *under* their content, so a pill's press never also toggles the card, with a hover
+  and pressed film. The peer's actions fade out on `elementMoveExit` before the height drops,
+  inside a clipped card, and its pills sit a layer above the card they are on (the library
+  default is the card's own layer, invisible at rest). The phone card must not fade itself when
+  out of reach: that ghosted the one pill that fixes it. None of it shows in a still frame
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

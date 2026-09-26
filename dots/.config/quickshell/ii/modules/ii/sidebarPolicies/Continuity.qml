@@ -453,7 +453,12 @@ Item {
                 }
 
                 Repeater {
-                    model: ScriptModel { values: Tailscale.running ? Tailscale.peers : [] }
+                    // Keyed: every 8s poll hands over new objects, and unkeyed each
+                    // one rebuilt its row, folding an open peer shut mid-read.
+                    model: ScriptModel {
+                        objectProp: "id"
+                        values: Tailscale.running ? Tailscale.peers : []
+                    }
                     TailnetPeerItem {}
                 }
 
