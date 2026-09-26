@@ -40,6 +40,12 @@ for name in ("HyprlandComfortView", "HyprlandReadingMode"):
     assert on_int and "applyShader" not in on_int.group(1), f"{name}: onIntensityChanged re-applies on setIntensity's own config write"
     assert re.search(r"id: applyDebounce\s*\n\s*interval: \d+", svc), f"{name}: no applyDebounce Timer"
 
+wifi = (II / "modules/ii/sidebarDashboard/wifiNetworks/WifiDialog.qml").read_text()
+height = re.search(r"backgroundHeight:\s*(.+)", dialog)
+assert height and height.group(1) == re.search(r"backgroundHeight:\s*(.+)", wifi).group(1), \
+    "NightLightDialog: must share the Wi-Fi dialog's screen-scaled height, not a fixed one or its content's"
+assert re.search(r"StyledFlickable \{[^}]*Layout\.fillHeight:\s*true", dialog), "NightLightDialog: the body must fill the card and scroll"
+
 sunset = (II / "services/Hyprsunset.qml").read_text()
 assert "Hyprland.dispatch(`hyprctl" not in sunset, "Hyprsunset: `hyprctl` is not a dispatcher; that line is a Lua error in this config"
 

@@ -28,6 +28,12 @@ of the Night Light, Comfort View, Reading Mode or Anti-flashbang tiles.
 - Turning Night Light's automatic off leaves the temperature wherever the schedule had put
   it. Android does the same.
 
+**Height (2026-09-26, owner's call).** The first pass sized the card to its content, about
+870px at 1080p. The owner wanted the same height as the Wi-Fi, audio and Bluetooth dialogs,
+so it is `Math.round(root.height * 0.6)` now, with the flickable filling the space. The
+body scrolls, and Night Light stays at the top. `check-night-light-dialog.py` pins the
+expression to the Wi-Fi dialog's.
+
 **Brightness and gamma were removed** on the grounds that the sidebar's default quick
 slider (`sidebar.quickSliders.showGamma`, on by default) covers both. If
 `showGamma` is switched off, this dialog no longer offers a fallback. Restore the section

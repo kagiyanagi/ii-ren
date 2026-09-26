@@ -14,15 +14,17 @@ WindowDialog {
         return on ? Translation.tr("On") : Translation.tr("Off");
     }
 
+    // The Wi-Fi and audio dialogs' height: a share of the sidebar, so it scales with
+    // the screen (about 600 at 1080p), and fixed while open. The body scrolls inside it.
+    backgroundHeight: Math.round(root.height * 0.6)
+
     WindowDialogTitle {
-        id: title
         text: Translation.tr("Eye protection")
     }
 
-    // Scrolls only where the sidebar is too short for it; at 1080p it fits.
     StyledFlickable {
         Layout.fillWidth: true
-        Layout.preferredHeight: Math.min(body.implicitHeight, root.height - title.implicitHeight - buttonRow.implicitHeight - root.dialogPadding * 6)
+        Layout.fillHeight: true
         contentHeight: body.implicitHeight
         contentWidth: width
         clip: true
@@ -133,7 +135,6 @@ WindowDialog {
     }
 
     WindowDialogButtonRow {
-        id: buttonRow
 
         Item {
             Layout.fillWidth: true

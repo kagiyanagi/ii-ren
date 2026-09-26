@@ -6,7 +6,9 @@ long press: Night Light, Comfort View, Reading Mode and Anti-flashbang.
 
 **Primary action.** Each effect's own switch. Before, the dialog was a 520px scroll box, so
 only Night Light and half of Comfort View were on screen, and three rows said "Enable now".
-It fits its content at 1080p now. The scroll box stays only as a cap for a shorter sidebar.
+It now has the Wi-Fi and audio dialogs' height: 0.6 of the sidebar, which is about 600px
+at 1080p. That scales with the screen and holds while the dialog is open. Night Light is
+first, and the rest scrolls inside the card.
 
 **Hierarchy.** One card per effect, in the order the tiles sit. Its first row is the
 effect's name, a status line and the switch. Under it is the intensity slider, then
@@ -40,7 +42,7 @@ The three sidebar dialogs read as one family.
   line says "On until 06:30".
 - *Automatic off while on*: Night Light stays on (the service's existing behaviour), and
   the status line drops to "On".
-- *A shorter sidebar*: the body scrolls under a fixed title and button row.
+- *Any screen*: the card is 0.6 of the sidebar, and the body scrolls under a fixed title and button row.
 
 **Cost.** No effects. Service side: one debounce `Timer` in each shader service. Before,
 a drag was a `hyprctl reload` for every integer crossed, twice over, because
