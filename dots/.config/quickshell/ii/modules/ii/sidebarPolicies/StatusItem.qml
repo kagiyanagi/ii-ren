@@ -19,7 +19,7 @@ MouseArea {
 
     RowLayout {
         id: rowLayout
-        spacing: 0
+        spacing: 4
 
         MaterialSymbol {
             text: root.icon

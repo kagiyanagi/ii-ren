@@ -39,23 +39,35 @@ RippleButton {
         onTriggered: root.shown = root.away
     }
 
+    // Rises out of the edge it is anchored to. Enter: scale fast spatial (a chip),
+    // fade effects;
+    // exit: both on the fast exit spec (2.5).
     opacity: root.shown ? 1 : 0
     scale: root.shown ? 1 : 0.7
+    transformOrigin: Item.Bottom
     visible: opacity > 0
     Behavior on opacity {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        NumberAnimation {
+            duration: root.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+        }
     }
     Behavior on scale {
-        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+        NumberAnimation {
+            duration: root.shown ? Appearance.animation.elementMoveSmall.duration : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.shown ? Appearance.animation.elementMoveSmall.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+        }
     }
 
-    implicitWidth: contentItem.implicitWidth + 8 * 2
-    implicitHeight: contentItem.implicitHeight + 4 * 2
+    implicitWidth: contentItem.implicitWidth + 12 * 2
+    implicitHeight: contentItem.implicitHeight + 6 * 2
 
     colBackground: Appearance.colors.colSecondary
     colBackgroundHover: Appearance.colors.colSecondaryHover
     colRipple: Appearance.colors.colSecondaryActive
-    buttonRadius: Appearance.rounding.verysmall
+    buttonRadius: Appearance.rounding.full
 
     downAction: () => {
         target.jumpToEnd();
@@ -63,7 +75,7 @@ RippleButton {
 
     contentItem: Row {
         id: contentItem
-        spacing: 4
+        spacing: 8
         MaterialSymbol {
             anchors.verticalCenter: parent.verticalCenter
             text: "arrow_downward"

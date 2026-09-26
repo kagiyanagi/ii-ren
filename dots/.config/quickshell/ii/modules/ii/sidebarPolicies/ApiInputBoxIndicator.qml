@@ -67,6 +67,15 @@ Item { // Model indicator
             acceptedButtons: root.clickAction ? Qt.LeftButton : Qt.NoButton
             onClicked: root.clickAction?.()
 
+            // A readout that opens something must look pressable (law 6).
+            StateOverlay {
+                anchors.fill: parent
+                visible: root.clickAction !== null
+                radius: Appearance.rounding.full
+                hover: mouseArea.containsMouse
+                press: mouseArea.pressed
+            }
+
             StyledToolTip {
                 id: toolTip
                 extraVisibleCondition: false

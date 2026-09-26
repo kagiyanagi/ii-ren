@@ -506,6 +506,15 @@ you touched; they are the only automated gate.
   this runs it against a fake `wl-paste` and `cliphist`: a live image wins, a live *text*
   selection comes back as a text paste (never swapped for an older image cliphist kept),
   and only an empty selection falls back to cliphist, by id for stash
+- `python3 tools/check-sidebar-policies.py` — the left sidebar opens the page each tab
+  names, and its page chrome keeps its bindings and states. Tabs and pages are two arrays that
+  must agree page for page; closet anime (`policies.weeb: 2`) has a page with no tab, and it
+  sat mid-list, so with Continuity or an extension enabled every later tab opened the page
+  before it. Both arrays are lifted out and evaluated under node for every policy combination.
+  It also pins the page mask to the card's own radius, Anime's NSFW switch to a row that owns
+  the state (a switch that toggles itself, or a row that writes its `checked`, breaks the
+  binding and zerochan kept reading "on"), Anime's send button to its own press, and the
+  detached window off the other component's `panelWindow` id
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

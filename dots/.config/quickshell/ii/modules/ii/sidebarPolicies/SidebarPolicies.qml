@@ -231,6 +231,9 @@ Scope { // Scope
                 Behavior on y {
                     animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                 }
+                Behavior on radius { // Pin: shape moves with the height it changes beside
+                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+                }
                 Behavior on width {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
@@ -350,15 +353,10 @@ Scope { // Scope
             property var contentParent: detachedSidebarBackground
             color: "transparent"
 
+            // No focus-grab registration: a floating window has no outside click to
+            // dismiss on, and `panelWindow` is the other window's id.
             visible: GlobalStates.sidebarLeftOpen
-            onVisibleChanged: {
-                if (visible) {
-                    if (!root.pin) GlobalFocusGrab.addDismissable(panelWindow);
-                } else {
-                    GlobalFocusGrab.removeDismissable(panelWindow);
-                }
-            }
-            
+
             Rectangle {
                 id: detachedSidebarBackground
                 anchors.fill: parent

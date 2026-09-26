@@ -121,8 +121,14 @@ Item {
     }
 
     property real pageKeyScrollAmount: booruResponseListView.height / 2
+    // Hermes's type-anywhere guard: a modifier's own key-down must not take focus
+    // from a selection the user is about to copy.
+    readonly property var modifierKeys: [Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta,
+                                         Qt.Key_AltGr, Qt.Key_CapsLock, Qt.Key_NumLock, Qt.Key_Super_L, Qt.Key_Super_R]
     Keys.onPressed: (event) => {
-        tagInputField.forceActiveFocus()
+        const bareKey = (event.modifiers & ~Qt.ShiftModifier & ~Qt.KeypadModifier) === 0;
+        if (bareKey && root.modifierKeys.indexOf(event.key) === -1)
+            tagInputField.forceActiveFocus()
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
                 if (booruResponseListView.atYBeginning) return;
@@ -136,6 +142,7 @@ Item {
         }
         if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_O) {
             Booru.clearResponses()
+            event.accepted = true
         }
     }
 
@@ -247,7 +254,7 @@ Item {
             visible: root.suggestionList.length > 0 && tagInputField.text.length > 0
             property int selectedIndex: 0
             Layout.fillWidth: true
-            spacing: 5
+            spacing: 4
 
             Repeater {
                 id: tagSuggestionRepeater
@@ -261,7 +268,7 @@ Item {
                     bounce: false
                     contentItem: RowLayout {
                         anchors.centerIn: parent
-                        spacing: 5
+                        spacing: 4
                         StyledText {
                             Layout.fillWidth: false
                             font.pixelSize: Appearance.font.pixelSize.small
@@ -313,7 +320,7 @@ Item {
 
         Rectangle { // Tag input area
             id: tagInputContainer
-            property real columnSpacing: 5
+            property real columnSpacing: 4
             Layout.fillWidth: true
             radius: Appearance.rounding.normal - root.padding
             color: Appearance.colors.colLayer2
@@ -331,7 +338,7 @@ Item {
                 anchors.top: parent.top
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.topMargin: 5
+                anchors.topMargin: 4
                 spacing: 0
 
                 StyledTextArea { // The actual TextArea
@@ -432,21 +439,19 @@ Item {
                 RippleButton { // Send button
                     id: sendButton
                     Layout.alignment: Qt.AlignTop
-                    Layout.rightMargin: 5
+                    Layout.rightMargin: 4
                     implicitWidth: 40
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.small
                     enabled: tagInputField.text.length > 0
                     toggled: enabled
 
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: sendButton.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: {
-                            const inputText = tagInputField.text
-                            root.handleInput(inputText)
-                            tagInputField.clear()
-                        }
+                    // Not a MouseArea over the button: that took the press, so the
+                    // ripple and the pressed state never showed.
+                    releaseAction: () => {
+                        const inputText = tagInputField.text
+                        root.handleInput(inputText)
+                        tagInputField.clear()
                     }
 
                     contentItem: MaterialSymbol {
@@ -464,10 +469,10 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 5
-                anchors.leftMargin: 5
-                anchors.rightMargin: 5
-                spacing: 5
+                anchors.bottomMargin: 4
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+                spacing: 4
 
                 property var commandsShown: [
                     {
@@ -488,49 +493,57 @@ Item {
                         .arg(root.commandPrefix)
                 }
 
-                StyledText {
-                    font.pixelSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer1
-                    text: "•"
-                }
-
                 MouseArea { // NSFW toggle
+                    id: nsfwRow
                     visible: width > 0
                     implicitWidth: switchesRow.implicitWidth
                     Layout.fillHeight: true
+                    Layout.leftMargin: 8
+                    // zerochan has no NSFW filter to set.
+                    enabled: Booru.currentProvider !== "zerochan"
+                    opacity: enabled ? 1 : 0.4
 
                     hoverEnabled: true
                     PointingHandInteraction {}
-                    onPressed: {
-                        nsfwSwitch.checked = !nsfwSwitch.checked
+                    // The row owns the state. Writing the switch's `checked` from here,
+                    // or letting the switch toggle itself, broke its binding, so zerochan
+                    // went on showing "on" after one click.
+                    function toggle() {
+                        Persistent.states.booru.allowNsfw = !Persistent.states.booru.allowNsfw
+                    }
+                    onClicked: toggle()
+
+                    StateOverlay {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.full
+                        hover: nsfwRow.containsMouse
+                        press: nsfwRow.pressed
                     }
 
                     RowLayout {
                         id: switchesRow
-                        spacing: 5
+                        spacing: 8
                         anchors.centerIn: parent
 
                         StyledText {
                             Layout.fillHeight: true
-                            Layout.leftMargin: 10
                             Layout.alignment: Qt.AlignVCenter
                             font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: nsfwSwitch.enabled ? Appearance.colors.colOnLayer1 : Appearance.m3colors.m3outline
+                            color: Appearance.colors.colOnLayer1
                             text: Translation.tr("Allow NSFW")
                         }
                         StyledSwitch {
                             id: nsfwSwitch
-                            enabled: Booru.currentProvider !== "zerochan"
                             sizeScale: 0.6
                             Layout.alignment: Qt.AlignVCenter
-                            checked: (Persistent.states.booru.allowNsfw && Booru.currentProvider !== "zerochan")
-                            onCheckedChanged: {
-                                if (!nsfwSwitch.enabled) return;
-                                Persistent.states.booru.allowNsfw = checked;
-                            }
+                            checkable: false
+                            checked: Persistent.states.booru.allowNsfw && nsfwRow.enabled
+                            down: nsfwRow.pressed
+                            focusPolicy: Qt.NoFocus
+                            opacity: 1 // the row already dims (3.1)
+                            onClicked: nsfwRow.toggle()
                         }
                     }
-
                 }
 
                 Item { Layout.fillWidth: true }

@@ -138,21 +138,26 @@ Item {
 
                 clip: true
                 layer.enabled: true
+                // The card's own arc, not a tighter one: a message card cut by the
+                // transcript's clip squares off at the 4px inset, outside a 17px arc.
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
                         width: swipeView.width
                         height: swipeView.height
-                        radius: Appearance.rounding.small
+                        radius: Appearance.rounding.normal
                     }
                 }
 
+                // Same order as tabButtonList, page for tab. The closet anime page has
+                // no tab, so it goes last, reached by swiping past the last tab.
                 contentChildren: [
                     ...(root.hermesEnabled ? [hermes.createObject()] : []),
                     ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...((!root.hermesEnabled && (root.extensionPages.length === 0 && root.tabButtonList.length === 0 || (!root.translatorEnabled && !root.continuityEnabled && root.animeCloset && root.extensionPages.length === 0))) ? [placeholder.createObject()] : []),
-                    ...(root.animeEnabled ? [anime.createObject()] : []),
+                    ...(root.tabButtonList.length === 0 ? [placeholder.createObject()] : []),
+                    ...((root.animeEnabled && !root.animeCloset) ? [anime.createObject()] : []),
                     ...(root.continuityEnabled ? [continuity.createObject()] : []),
-                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item)
+                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item),
+                    ...(root.animeCloset ? [anime.createObject()] : [])
                 ]
             }
         }
@@ -192,10 +197,11 @@ Item {
         Component {
             id: placeholder
             Item {
-                StyledText {
-                    anchors.centerIn: parent
-                    text: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Enjoy your empty sidebar...")
-                    color: Appearance.colors.colSubtext
+                PagePlaceholder {
+                    shown: true
+                    icon: "view_sidebar"
+                    title: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Enjoy your empty sidebar...")
+                    description: ""
                 }
             }
         }

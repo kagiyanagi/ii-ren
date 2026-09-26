@@ -403,8 +403,8 @@ Item {
                     top: parent.top
                     topMargin: 4
                 }
-                implicitWidth: (root.searchShown ? searchRowLayout.width : statusRowLayout.implicitWidth) + 10 * 2
-                implicitHeight: Math.max(root.searchShown ? searchRowLayout.implicitHeight : statusRowLayout.implicitHeight, 38)
+                implicitWidth: (root.searchShown ? searchRowLayout.width : statusRowLayout.implicitWidth) + 12 * 2
+                implicitHeight: Math.max(root.searchShown ? searchRowLayout.implicitHeight : statusRowLayout.implicitHeight, 40)
 
                 // One surface changing what it holds, so it resizes rather than
                 // one pill leaving and another arriving in the same spot.
@@ -424,7 +424,8 @@ Item {
                 RowLayout {
                     id: statusRowLayout
                     anchors.centerIn: parent
-                    spacing: 10
+                    // Whitespace, not dots, between the readings (DESIGN.md 5.5).
+                    spacing: 12
                     opacity: root.searchShown ? 0 : 1
                     visible: opacity > 0
 
@@ -437,14 +438,8 @@ Item {
                         statusText: ""
                         description: HermesService.missing ? Translation.tr("hermes-agent is not installed") : HermesService.ready ? Translation.tr("Connected to the Hermes agent") : Translation.tr("Starting the Hermes agent…")
                     }
-                    StatusSeparator {
-                        visible: HermesService.approvalMode.length > 0
-                    }
                     HermesApprovalModeMenu {
                         visible: HermesService.approvalMode.length > 0
-                    }
-                    StatusSeparator {
-                        visible: (HermesService.usage?.total ?? 0) > 0
                     }
                     StatusItem {
                         visible: (HermesService.usage?.total ?? 0) > 0
@@ -579,7 +574,9 @@ Item {
                 shown: HermesService.messageIDs.length === 0
                 description: HermesService.missing
                     ? Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab")
-                    : Translation.tr("Ask anything, or type %1 for commands\nStart a line with ! to run a shell command, or write @window to mean the window you were just in\nEnter sends · Shift+Enter is a new line · Ctrl+Enter hands the turn to a background agent").arg(root.commandPrefix)
+                    : Translation.tr("Ask anything, or type %1 for commands\nStart a line with ! to run a shell command, or write @window to mean the window you were just in").arg(root.commandPrefix)
+                // Under a centred title. The send keys live in the send button's tooltip.
+                descriptionHorizontalAlignment: Text.AlignHCenter
 
                 triggerAnimationOn: GlobalStates.policiesPanelOpen
                 rotateToRight: GlobalStates.policiesOnLeft

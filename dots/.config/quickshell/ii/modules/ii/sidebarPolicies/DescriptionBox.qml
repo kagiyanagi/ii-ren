@@ -19,7 +19,7 @@ Item { // Tag suggestion description
         color: Appearance.colors.colLayer2
         anchors.fill: parent
         radius: Appearance.rounding.verysmall
-        implicitHeight: descriptionRow.implicitHeight + 5 * 2
+        implicitHeight: descriptionRow.implicitHeight + 4 * 2
 
         RowLayout {
             id: descriptionRow
