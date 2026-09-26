@@ -41,19 +41,6 @@ Rectangle {
     Behavior on color { animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this) }
     Behavior on implicitHeight { animation: Appearance.animation.elementMove.numberAnimation.createObject(this) }
 
-    // A layer up from the card. The library default is layer 2, which is the
-    // card itself, so the pills had no container until the card was hovered.
-    component PeerAction: RippleButtonWithIcon {
-        id: action
-        implicitHeight: 32
-        buttonRadius: Appearance.rounding.full
-        colBackground: Appearance.colors.colLayer3
-        colBackgroundHover: Appearance.colors.colLayer3Hover
-        colRipple: Appearance.colors.colLayer3Active
-        colStateLayer: action.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3
-        colText: action.toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer3
-    }
-
     StateOverlay {
         anchors.fill: parent
         radius: root.radius
@@ -185,24 +172,24 @@ Rectangle {
                 }
             }
 
-            PeerAction {
+            CardAction {
                 materialIcon: "content_copy"
                 mainText: Translation.tr("Copy IP")
                 onClicked: Tailscale.copyIp(root.modelData.ip)
             }
-            PeerAction {
+            CardAction {
                 visible: root.online && (root.modelData?.ssh ?? false)
                 materialIcon: "terminal"
                 mainText: Translation.tr("SSH")
                 onClicked: Tailscale.ssh(root.modelData.fqdn !== "" ? root.modelData.fqdn : root.modelData.ip)
             }
-            PeerAction {
+            CardAction {
                 visible: root.modelData?.taildrop ?? false
                 materialIcon: "upload_file"
                 mainText: Translation.tr("Send")
                 onClicked: Tailscale.sendFiles(root.modelData.fqdn !== "" ? root.modelData.fqdn : root.modelData.ip)
             }
-            PeerAction {
+            CardAction {
                 visible: (root.modelData?.offersExit ?? false) && root.online
                 toggled: root.exitNode
                 materialIcon: "vpn_lock"

@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
+import Quickshell.Io
 
 /**
  * Continuity - everything that is "yours but not this machine" in one
@@ -78,6 +79,26 @@ Item {
     readonly property var phone: KdeConnectService.activeDevice
     readonly property list<var> audioDevices: Bluetooth.devices.values
         .filter(d => d.connected && d.batteryAvailable)
+
+    // Paired but not connected: one tap from being in use. Connected ones are
+    // left out so a stray tap cannot disconnect the keyboard being typed on.
+    readonly property list<var> savedDevices: BluetoothStatus.pairedButNotConnectedDevices
+
+    // Tailscale's name for this machine when there is one, since that is the
+    // name every other device sees; the kernel's otherwise.
+    FileView {
+        id: hostnameFile
+        path: "/etc/hostname"
+        // One line that never changes; read it before the binding asks.
+        blockLoading: true
+    }
+    readonly property string hostname: Tailscale.self?.name || hostnameFile.text().trim()
+    readonly property string selfStatus: {
+        const ip = Tailscale.self?.ip ?? "";
+        if (!Tailscale.running || ip === "") return Translation.tr("Not on a tailnet");
+        const exit = Tailscale.peers.find(p => p.exitNode);
+        return exit ? Translation.tr("%1 · via %2").arg(ip).arg(exit.name) : `${ip} · ${Tailscale.tailnet}`;
+    }
 
     readonly property bool canShowNotifications: KdeConnectService.activeReachable
         && KdeConnectService.hasPlugin("kdeconnect_notifications")
@@ -433,6 +454,38 @@ Item {
                 }
             }
 
+            PageSection { // Saved bluetooth devices
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                visible: !root.showingNotifications && BluetoothStatus.available
+                    && (!BluetoothStatus.enabled || root.savedDevices.length > 0)
+                spacing: 8
+
+                SectionHeader { icon: "bluetooth"; title: Translation.tr("Saved devices") }
+
+                RowLayout { // Off: the rows could not connect, so say why and offer the fix
+                    Layout.fillWidth: true
+                    visible: !BluetoothStatus.enabled
+                    spacing: 12
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("Bluetooth is off")
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                    }
+                    CardAction {
+                        materialIcon: "bluetooth"
+                        mainText: Translation.tr("Turn on")
+                        onClicked: BluetoothStatus.toggle()
+                    }
+                }
+
+                Repeater {
+                    model: ScriptModel { values: BluetoothStatus.enabled ? root.savedDevices : [] }
+                    SavedDeviceItem {}
+                }
+            }
+
             PageSection { // Tailnet
                 Layout.fillWidth: true
                 Layout.topMargin: 4
@@ -468,16 +521,48 @@ Item {
                 }
             }
 
+            PageSection { // This device
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                visible: !root.showingNotifications
+                spacing: 8
+
+                SectionHeader { icon: "computer"; title: Translation.tr("This device") }
+
+                DeviceCard {
+                    icon: Battery.available ? "laptop" : "computer"
+                    name: root.hostname
+                    status: root.selfStatus
+                    charge: Battery.available ? Math.round(Battery.percentage * 100) : -1
+                    charging: Battery.isCharging
+
+                    Flow {
+                        Layout.fillWidth: true
+                        visible: (Tailscale.self?.ip ?? "") !== ""
+                        spacing: 6
+                        CardAction {
+                            materialIcon: "content_copy"
+                            mainText: Translation.tr("Copy IP")
+                            onClicked: Tailscale.copyIp(Tailscale.self.ip)
+                        }
+                    }
+                }
+            }
+
             Item { // Fills whatever's left below the real cards.
+                id: filler
                 visible: !root.showingNotifications
                 opacity: root.pageOpacity
                 transform: Translate { y: root.pageShift }
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 120
 
                 ColumnLayout {
+                    id: fillerContent
                     anchors.centerIn: parent
+                    // Only on a quiet day: the page never scrolls to show a
+                    // line saying there is nothing more to scroll to.
+                    visible: filler.height >= fillerContent.implicitHeight + 32
                     spacing: 8
                     MaterialShape {
                         Layout.alignment: Qt.AlignHCenter

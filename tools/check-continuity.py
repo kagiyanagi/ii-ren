@@ -54,8 +54,22 @@ flow = peer[peer.find("id: actions"):]
 assert "visible: opacity > 0" in flow and "elementMoveExit" in flow, \
     "TailnetPeerItem: the actions must fade out on elementMoveExit before the height drops"
 assert not re.search(r"visible:\s*root\.expanded", peer), "TailnetPeerItem: the actions pop on `visible: expanded` again"
-action = peer[peer.find("component PeerAction"):peer.find("StateOverlay")]
+action = (P / "continuity/CardAction.qml").read_text()
 assert "colLayer2" not in action and "colBackground: Appearance.colors.colLayer3" in action, \
-    "TailnetPeerItem: the pills must sit a layer above the layer-2 card, or they have no container at rest"
+    "CardAction: the pills must sit a layer above the layer-2 card, or they have no container at rest"
+assert "RippleButtonWithIcon {" not in peer, "TailnetPeerItem: a pill skipped CardAction and sits on the card's own layer"
+
+# Saved devices: the card is a layout, the pill is the target, and only paired
+# devices that are *not* connected are offered, so no tap can drop a live one.
+saved = (P / "continuity/SavedDeviceItem.qml").read_text()
+assert "MouseArea" not in saved and "TapHandler" not in saved, \
+    "SavedDeviceItem: the Connect pill is the one target; a whole-card handler makes a stray click connect"
+assert "disconnect" not in saved, "SavedDeviceItem: a saved row must never disconnect anything"
+assert re.search(r"savedDevices:\s*BluetoothStatus\.pairedButNotConnectedDevices", host), \
+    "Continuity: saved devices must be the paired-but-not-connected list"
+
+# The quiet-day line must not make a full page scroll.
+assert not re.search(r"Layout\.minimumHeight:\s*[1-9]", host[host.find("id: filler"):]), \
+    "Continuity: the filler reserves height again, so a full page scrolls to show 'nothing more'"
 
 print("ok: continuity cards are keyed, fold on their own target, and keep their live controls live")

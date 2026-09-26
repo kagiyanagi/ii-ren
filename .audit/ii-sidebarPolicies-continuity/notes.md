@@ -28,12 +28,31 @@ charging, so these were not seen live: the accent card, the notifications swap a
 charging colour. The accent card's colours are unchanged from before apart from being keyed
 on `accent`.
 
+**Filling the page (second commit, asked for by the user).** The page used to end in a
+void with one placeholder line. Two sections of real content went in rather than
+decoration; a device-orbit hero was offered and declined.
+- *Saved devices*: `BluetoothStatus.pairedButNotConnectedDevices`, one `SavedDeviceItem` each.
+  The card is a layout and its Connect pill is the only target. Connected devices are left
+  out on purpose: a tap there would be a disconnect, and the keyboard being typed on is a
+  bluetooth device. With the adapter off, the section says so and offers Turn on.
+- *This device*: a plain `DeviceCard` with Tailscale's name for this machine
+  (`/etc/hostname` otherwise), its tailnet IP, the exit node it routes through, and the
+  laptop battery. Copy IP is a `CardAction`.
+- The placeholder no longer reserves 120px. It shows only when the leftover height fits it,
+  so a full page does not scroll to show "nothing more".
+- `CardAction.qml` is the layer-3 pill that both the peer and the saved row use.
+- Only one device is paired here and it is connected, so the saved row was seen in a
+  throwaway `qs -p` probe window, not on the page. Its Connect was never pressed.
+
 **For the root row.** Grouping the peers into one connected run (DESIGN.md 5.6: run ends
 `rounding.large`, seams `rounding.verysmall`) needs the host's spacing and each row's position
 in the run. `ActionPill` scales on hover. DESIGN.md 3.3 prefers the state layer for a filled
 button.
 
 **For the cohesion pass (motion).**
+- A saved device that connects leaves its section with no exit, and its Audio card
+  appears with no enter. Every section on this page pops the same way. A `ColumnLayout`
+  has no add/remove transitions, and changing that is the root row's call.
 - The peer's actions fade in on `elementMoveFast` and out on `elementMoveExit` before the
   height drops. They used to pop in on `visible` and paint over the next peer while the card
   grew.

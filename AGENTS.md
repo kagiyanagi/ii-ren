@@ -452,7 +452,9 @@ you touched; they are the only automated gate.
   and pressed film. The peer's actions fade out on `elementMoveExit` before the height drops,
   inside a clipped card, and its pills sit a layer above the card they are on (the library
   default is the card's own layer, invisible at rest). The phone card must not fade itself when
-  out of reach: that ghosted the one pill that fixes it. None of it shows in a still frame
+  out of reach: that ghosted the one pill that fixes it. A saved bluetooth row may only
+  connect, and only its pill may: connected devices never appear there, since a tap on one
+  would disconnect the keyboard being typed on. None of it shows in a still frame
 - `python3 tools/check-translator.py` — the sidebar translator says when a translation failed,
   swaps to a real language, and lets its language dialog leave. It runs `translateProc`'s exit
   handler under node: a failed or empty `trans` run must say so, and a run killed by the next
