@@ -1,8 +1,8 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Services.Pipewire
 import qs
 import qs.services
 import qs.modules.common
@@ -37,7 +37,7 @@ RowLayout {
         Layout.bottomMargin: 4
         Layout.alignment: Qt.AlignTop
         Layout.fillWidth: true
-        spacing: 1
+        spacing: 2
 
         // Name
         WText {
@@ -59,6 +59,7 @@ RowLayout {
         Layout.rightMargin: 12
         implicitWidth: switchRow.implicitWidth
         implicitHeight: switchRow.implicitHeight
+        cursorShape: Qt.PointingHandCursor
         onPressed: switchWidget.down = true
         onReleased: switchWidget.down = false
         onClicked: switchWidget.checked = !switchWidget.checked
@@ -72,10 +73,10 @@ RowLayout {
                 text: switchWidget.checked ? Translation.tr("On") : Translation.tr("Off")
                 font.pixelSize: Looks.font.pixelSize.large
             }
-            
+
             WSwitch {
                 id: switchWidget
-                Layout.alignment: Qt.AlignVCenter
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }

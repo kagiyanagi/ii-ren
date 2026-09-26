@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -9,13 +10,20 @@ import qs.modules.waffle.looks
 import qs.modules.waffle.actionCenter
 
 FooterRectangle {
+    id: root
 
-    // Battery button
+    // Battery button / indicator
     WBorderlessButton {
+        id: batteryButton
         visible: Battery.available
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
         anchors.leftMargin: 12
+
+        WToolTip {
+            extraVisibleCondition: batteryButton.shouldShowTooltip
+            text: Battery.isCharging ? Translation.tr("Charging") : Translation.tr("Battery")
+        }
 
         contentItem: Row {
             spacing: 4
@@ -37,9 +45,15 @@ FooterRectangle {
 
     // Settings button
     WBorderlessButton {
+        id: settingsButton
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
         anchors.rightMargin: 12
+
+        WToolTip {
+            extraVisibleCondition: settingsButton.shouldShowTooltip
+            text: Translation.tr("All settings")
+        }
 
         onClicked: {
             GlobalStates.sidebarLeftOpen = false;

@@ -23,9 +23,9 @@ Item {
     readonly property int pages: Math.ceil(toggles.length / itemsPerPage)
     property list<string> toggles: Config.options.waffles.actionCenter.toggles
 
-    property real padding: 22
+    property real padding: 20
     property real reducedBottomPadding: 12
-    implicitHeight: swipeView.implicitHeight + (padding - swipeView.padding) * 2 - reducedBottomPadding
+    implicitHeight: swipeView.implicitHeight + (root.padding - swipeView.padding) * 2 - root.reducedBottomPadding
 
     function togglesInPage(index) {
         var start = index * root.itemsPerPage;
@@ -56,7 +56,7 @@ Item {
         padding: 4
         leftPadding: root.padding
         rightPadding: root.padding
-        spacing: padding
+        spacing: swipeView.padding
 
         orientation: Qt.Vertical
         clip: true
@@ -69,8 +69,6 @@ Item {
             delegate: GridLayout {
                 id: grid
                 required property int index
-                // width: SwipeView.view.width - root.padding * 2
-                // height: SwipeView.view.height - root.padding * 2
 
                 columns: root.columns
                 rows: root.rows
@@ -91,12 +89,12 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
         anchors.rightMargin: 6
-        
+
         currentIndex: root.currentPage
         count: root.pages
         onClicked: (index) => root.currentPage = index
-        onIncreasePage: root.increasePage();
-        onDecreasePage: root.decreasePage();
+        onIncreasePage: root.increasePage()
+        onDecreasePage: root.decreasePage()
     }
 
     FocusedScrollMouseArea {
@@ -104,7 +102,7 @@ Item {
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
         hoverEnabled: false
-        onScrollUp: root.decreasePage();
-        onScrollDown: root.increasePage();
+        onScrollUp: root.decreasePage()
+        onScrollDown: root.increasePage()
     }
 }

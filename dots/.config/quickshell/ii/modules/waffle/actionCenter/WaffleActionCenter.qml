@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -56,7 +57,11 @@ Scope {
     }
 
     function toggleOpen() {
-        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+        if (GlobalStates.sidebarLeftOpen) {
+            content.close();
+        } else {
+            GlobalStates.sidebarLeftOpen = true;
+        }
     }
 
     IpcHandler {
@@ -78,7 +83,7 @@ Scope {
         target: "mediaControls"
 
         function toggle(): void {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
+            root.toggleOpen();
         }
     }
 
@@ -86,8 +91,6 @@ Scope {
         name: "mediaControlsToggle"
         description: "Toggles media controls on press"
 
-        onPressed: {
-            GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
-        }
+        onPressed: root.toggleOpen()
     }
 }

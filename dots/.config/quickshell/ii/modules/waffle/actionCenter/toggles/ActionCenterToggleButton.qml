@@ -43,6 +43,12 @@ ColumnLayout {
     spacing: 0
     property real wholeToggleWidth: 96
 
+    function openMenu() {
+        if (root.menu) {
+            ActionCenterContext.push(root.menu);
+        }
+    }
+
     AcrylicRectangle {
         Layout.fillWidth: true
         implicitWidth: root.wholeToggleWidth
@@ -55,25 +61,37 @@ ColumnLayout {
             spacing: 0
 
             ToggleFragment {
+                id: mainFragment
                 topLeftRadius: Looks.radius.medium
                 bottomLeftRadius: Looks.radius.medium
                 topRightRadius: root.hasMenu ? 0 : Looks.radius.medium
                 bottomRightRadius: root.hasMenu ? 0 : Looks.radius.medium
                 iconName: root.icon
                 onClicked: root.mainAction && root.mainAction()
+
+                WToolTip {
+                    extraVisibleCondition: mainFragment.shouldShowTooltip
+                    text: root.tooltipText || root.name
+                }
             }
             FadeLoader {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 shown: root.hasMenu
                 sourceComponent: ToggleFragment {
+                    id: menuFragment
                     topLeftRadius: 0
                     bottomLeftRadius: 0
                     topRightRadius: Looks.radius.medium
                     bottomRightRadius: Looks.radius.medium
                     iconName: "chevron-right"
                     onClicked: {
-                        ActionCenterContext.stackView.push(root.menu)
+                        ActionCenterContext.push(root.menu);
+                    }
+
+                    WToolTip {
+                        extraVisibleCondition: menuFragment.shouldShowTooltip
+                        text: Translation.tr("More options")
                     }
                 }
             }

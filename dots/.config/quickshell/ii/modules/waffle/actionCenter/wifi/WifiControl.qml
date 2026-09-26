@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -68,9 +69,6 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     animateAppearance: false
-
-                    contentHeight: contentLayout.implicitHeight
-                    contentWidth: width
                     clip: true
                     spacing: 4
 
@@ -96,15 +94,21 @@ Item {
                 }
                 text: Translation.tr("More Internet settings")
                 onClicked: {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "sidebarLeft", "toggle"]);
+                    GlobalStates.sidebarLeftOpen = false;
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.network]);
                 }
             }
             WBorderlessButton {
+                id: rescanButton
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 12
                 enabled: !Network.wifiScanning
+
+                WToolTip {
+                    extraVisibleCondition: rescanButton.shouldShowTooltip
+                    text: Translation.tr("Scan for networks")
+                }
 
                 onClicked: {
                     Network.rescanWifi();

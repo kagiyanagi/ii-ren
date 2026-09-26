@@ -6,18 +6,24 @@ import Quickshell
 
 Singleton {
     id: root
-    
+
     property StackView stackView
 
     function push(component) {
-        if (stackView) {
-            stackView.push(component)
+        if (root.stackView) {
+            root.stackView.push(component);
         }
     }
 
     function back() {
-        if (stackView && stackView.depth > 1) {
-            stackView.pop()
+        if (root.stackView && root.stackView.depth > 1) {
+            root.stackView.pop();
+        }
+    }
+
+    function reset() {
+        if (root.stackView && root.stackView.depth > 1) {
+            root.stackView.pop(null);
         }
     }
 }

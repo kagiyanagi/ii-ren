@@ -14,7 +14,23 @@ WBarAttachedPanelContent {
     id: root
 
     readonly property bool barAtBottom: Config.options.waffles.bar.bottom
-    
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) {
+            if (ActionCenterContext.stackView && ActionCenterContext.stackView.depth > 1) {
+                ActionCenterContext.back();
+                event.accepted = true;
+            } else {
+                root.close();
+                event.accepted = true;
+            }
+        }
+    }
+
+    onClosed: {
+        ActionCenterContext.reset();
+    }
+
     contentItem: ColumnLayout {
         // This somewhat sophisticated anchoring is needed to make opening anim not jump abruptly when stuff appear
         anchors {
@@ -28,7 +44,9 @@ WBarAttachedPanelContent {
         spacing: 12
 
         WPane {
-            opacity: (MprisController.activePlayer != null && MprisController.isRealPlayer(MprisController.activePlayer)) ? 1 : 0
+            readonly property bool hasMedia: MprisController.activePlayer != null && MprisController.isRealPlayer(MprisController.activePlayer)
+            visible: hasMedia
+            opacity: hasMedia ? 1 : 0
             Layout.fillWidth: true
             contentItem: MediaPaneContent {}
         }

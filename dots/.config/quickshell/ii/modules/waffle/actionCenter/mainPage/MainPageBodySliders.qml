@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -19,7 +20,8 @@ ColumnLayout {
         spacing: 4
 
         WPanelIconButton {
-            color: colBackground
+            id: sunIconButton
+            color: sunIconButton.colBackground
             property real animationValue: root.brightnessMonitor?.brightness ?? 0
             rotation: animationValue * 180
             scale: 0.8 + animationValue * 0.2
@@ -29,21 +31,22 @@ ColumnLayout {
                 animation: Looks.transition.longMovement.createObject(this)
             }
         }
-        
+
         WSlider {
             Layout.fillWidth: true
             value: root.brightnessMonitor?.brightness ?? 0
             scrollable: true
             onMoved: {
-                root.brightnessMonitor?.setBrightness(value)
+                root.brightnessMonitor?.setBrightness(value);
             }
         }
 
-        WPanelIconButton {
-            opacity: 0
+        Item {
+            implicitWidth: 40
+            implicitHeight: 40
         }
     }
-    
+
     RowLayout {
         spacing: 4
 
@@ -51,29 +54,32 @@ ColumnLayout {
             iconName: WIcons.volumeIcon
             onClicked: Audio.toggleMute();
         }
-        
+
         WSlider {
             Layout.fillWidth: true
-            value: Audio.sink.audio.volume
+            value: Audio.sink?.audio?.volume ?? 0
             scrollable: true
             onMoved: {
-                Audio.sink.audio.volume = value;
+                if (Audio.sink?.audio) {
+                    Audio.sink.audio.volume = value;
+                }
             }
         }
 
         WPanelIconButton {
+            id: volumeOptionsButton
             Component {
                 id: volumeControlComp
                 VolumeControl {}
             }
             onClicked: {
-                ActionCenterContext.push(volumeControlComp)
+                ActionCenterContext.push(volumeControlComp);
             }
             contentItem: Item {
                 anchors.centerIn: parent
                 Row {
                     anchors.centerIn: parent
-                    spacing: -1
+                    spacing: 0
                     FluentIcon {
                         anchors.verticalCenter: parent.verticalCenter
                         implicitSize: 18
@@ -88,5 +94,4 @@ ColumnLayout {
             }
         }
     }
-
 }

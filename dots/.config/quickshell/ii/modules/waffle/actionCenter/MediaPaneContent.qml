@@ -21,12 +21,12 @@ Rectangle {
     Column {
         anchors {
             fill: parent
-            leftMargin: 23
-            rightMargin: 23
+            leftMargin: 24
+            rightMargin: 24
             topMargin: 16
             bottomMargin: 20
         }
-        spacing: 25
+        spacing: 24
 
         AppInfoRow {
             anchors {
@@ -95,7 +95,7 @@ Rectangle {
 
         StyledImage {
             id: artImage
-            Layout.preferredWidth: 58
+            Layout.preferredWidth: 56
             Layout.preferredHeight: trackInfo.implicitHeight
             source: MprisController.activeTrack?.artUrl || ""
             fillMode: Image.PreserveAspectFit
@@ -117,7 +117,7 @@ Rectangle {
     }
 
     component ControlButtonsRow: RowLayout {
-        spacing: 26
+        spacing: 24
 
         MediaControlButton {
             iconName: "previous"

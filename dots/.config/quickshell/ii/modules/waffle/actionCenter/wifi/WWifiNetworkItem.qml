@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -20,16 +21,16 @@ ExpandableChoiceButton {
         spacing: 12
 
         FluentIcon { // Duotone hack
+            id: duotoneBase
             Layout.bottomMargin: 2
             Layout.alignment: Qt.AlignTop
-            property int strength: root.wifiNetwork?.strength ?? 0
+            readonly property int strength: root.wifiNetwork?.strength ?? 0
             icon: "wifi-1"
             implicitSize: 30
             color: Looks.colors.inactiveIcon
 
             FluentIcon { // Signal
-                property int strength: root.wifiNetwork?.strength ?? 0
-                icon: WIcons.wifiIconForStrength(strength)
+                icon: WIcons.wifiIconForStrength(duotoneBase.strength)
                 implicitSize: 30
 
                 FluentIcon { // Security
@@ -40,17 +41,17 @@ ExpandableChoiceButton {
                     visible: root?.wifiNetwork?.isSecure ?? false
                     icon: "lock-closed"
                     filled: true
-                    implicitSize: 14           
+                    implicitSize: 14
                 }
             }
         }
 
         ColumnLayout {
-            Layout.topMargin: statusText.visible ? 4 : 7
+            Layout.topMargin: statusText.visible ? 4 : 8
             Layout.bottomMargin: 4
             Layout.alignment: Qt.AlignTop
             Layout.fillWidth: true
-            spacing: 1
+            spacing: 2
 
             Behavior on Layout.topMargin {
                 animation: Looks.transition.move.createObject(this)
@@ -70,7 +71,8 @@ ExpandableChoiceButton {
                 text: root.wifiNetwork?.active ? Translation.tr("Connected") : root.wifiNetwork?.isSecure ? Translation.tr("Secured") : Translation.tr("Not secured")
                 font.pixelSize: Looks.font.pixelSize.large
                 color: Looks.colors.subfg
-                visible: root.wifiNetwork?.active || root.expanded
+                visible: opacity > 0
+                opacity: (root.wifiNetwork?.active || root.expanded) ? 1 : 0
                 Behavior on opacity {
                     animation: Looks.transition.opacity.createObject(this)
                 }
@@ -84,7 +86,7 @@ ExpandableChoiceButton {
                 colBackground: Looks.colors.bg2
                 colBackgroundHover: Looks.colors.bg2Hover
                 colBackgroundActive: Looks.colors.bg2Active
-                implicitHeight: 30
+                implicitHeight: 32
                 implicitWidth: 148
                 text: root.wifiNetwork?.active ? Translation.tr("Disconnect") : Translation.tr("Connect")
 

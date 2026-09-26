@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -17,10 +18,14 @@ Item {
     id: root
 
     Component.onCompleted: {
-        if (Bluetooth.defaultAdapter.enabled) Bluetooth.defaultAdapter.discovering = true;
+        if (Bluetooth.defaultAdapter?.enabled) {
+            Bluetooth.defaultAdapter.discovering = true;
+        }
     }
     Component.onDestruction: {
-        Bluetooth.defaultAdapter.discovering = false;
+        if (Bluetooth.defaultAdapter) {
+            Bluetooth.defaultAdapter.discovering = false;
+        }
     }
 
     WPanelPageColumn {
@@ -78,9 +83,6 @@ Item {
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     animateAppearance: false
-
-                    contentHeight: contentLayout.implicitHeight
-                    contentWidth: width
                     clip: true
                     spacing: 4
 
@@ -106,18 +108,26 @@ Item {
                 }
                 text: Translation.tr("More Bluetooth settings")
                 onClicked: {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "sidebarLeft", "toggle"]);
+                    GlobalStates.sidebarLeftOpen = false;
                     Quickshell.execDetached(["bash", "-c", Config.options.apps.bluetooth]);
                 }
             }
             WBorderlessButton {
+                id: rescanButton
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: 12
-                enabled: !Bluetooth.defaultAdapter?.discovering && Bluetooth.defaultAdapter?.enabled
+                enabled: !Bluetooth.defaultAdapter?.discovering && (Bluetooth.defaultAdapter?.enabled ?? false)
+
+                WToolTip {
+                    extraVisibleCondition: rescanButton.shouldShowTooltip
+                    text: Translation.tr("Search for devices")
+                }
 
                 onClicked: {
-                    Bluetooth.defaultAdapter.discovering = true;
+                    if (Bluetooth.defaultAdapter) {
+                        Bluetooth.defaultAdapter.discovering = true;
+                    }
                 }
 
                 contentItem: FluentIcon {

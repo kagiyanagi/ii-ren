@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -33,34 +34,34 @@ ExpandableChoiceButton {
             Layout.bottomMargin: 4
             Layout.alignment: Qt.AlignTop
             Layout.fillWidth: true
-            spacing: 0
+            spacing: 2
 
             WText {
-                // Network name
                 Layout.fillWidth: true
                 elide: Text.ElideRight
                 font.pixelSize: Looks.font.pixelSize.large
                 text: root.device?.name || Translation.tr("Unknown device")
                 textFormat: Text.PlainText
             }
-            WText { // Status
+            WText {
                 id: statusText
                 Layout.fillWidth: true
                 elide: Text.ElideRight
                 font.pixelSize: Looks.font.pixelSize.large
                 color: Looks.colors.subfg
-                visible: root.device?.connected || root.expanded
+                visible: opacity > 0
+                opacity: (root.device?.connected || root.expanded) ? 1 : 0
                 Behavior on opacity {
                     animation: Looks.transition.opacity.createObject(this)
                 }
                 text: {
                     if (!root.device?.paired)
                         return Translation.tr("Not connected");
-                    let statusText = root.device?.connected ? Translation.tr("Connected") : Translation.tr("Paired");
+                    let status = root.device?.connected ? Translation.tr("Connected") : Translation.tr("Paired");
                     if (!root.device?.batteryAvailable)
-                        return statusText;
-                    statusText += ` • ${Math.round(root.device?.battery * 100)}%`;
-                    return statusText;
+                        return status;
+                    status += ` • ${Math.round(root.device?.battery * 100)}%`;
+                    return status;
                 }
             }
 
@@ -72,15 +73,15 @@ ExpandableChoiceButton {
                 colBackground: Looks.colors.bg2
                 colBackgroundHover: Looks.colors.bg2Hover
                 colBackgroundActive: Looks.colors.bg2Active
-                implicitHeight: 30
+                implicitHeight: 32
                 implicitWidth: 148
                 text: root.device?.connected ? Translation.tr("Disconnect") : Translation.tr("Connect")
 
                 onClicked: {
                     if (root.device?.connected) {
-                        root.device.disconnect();
+                        root.device?.disconnect();
                     } else {
-                        root.device.connect();
+                        root.device?.connect();
                     }
                 }
             }

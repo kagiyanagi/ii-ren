@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Pipewire
@@ -7,48 +7,58 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
-import qs.modules.common.widgets
 import qs.modules.waffle.looks
 import qs.modules.waffle.actionCenter
 
 RowLayout {
     id: root
-    required property PwNode node
-    property alias icon: iconButton.iconName
-    property alias monochrome: iconButton.monochrome
-    monochrome: false
 
-    PwObjectTracker { // Necessary for useful info to be present in 'node'
-        objects: [root.node]
-    }
+    required property PwNode node
+    property string icon: ""
+    property bool monochrome: false
+    spacing: 4
 
     WPanelIconButton {
-        id: iconButton
-        iconName: WIcons.audioAppIcon(root.node)
-        onClicked: root.node.audio.muted = !root.node?.audio.muted
-
-        FluentIcon {
-            id: muteIcon
-            visible: root.node?.audio.muted ?? false
-            anchors {
-                bottom: parent.bottom
-                right: parent.right
-                margins: -1
+        id: muteButton
+        Layout.leftMargin: 8
+        iconName: {
+            if (root.icon.length > 0) return root.icon;
+            return WIcons.audioAppIcon(root.node);
+        }
+        monochrome: root.monochrome || (root.icon.length > 0)
+        onClicked: {
+            if (root.node?.audio) {
+                root.node.audio.muted = !root.node.audio.muted;
             }
-            implicitSize: 16
-            icon: "speaker-mute"
         }
 
         WToolTip {
-            extraVisibleCondition: iconButton.shouldShowTooltip
-            text: Audio.appNodeDisplayName(root.node)
+            extraVisibleCondition: muteButton.shouldShowTooltip
+            text: (root.node?.audio?.muted ?? false) ? Translation.tr("Unmute") : Translation.tr("Mute")
         }
     }
 
-    WSlider {
+    ColumnLayout {
         Layout.fillWidth: true
-        Layout.rightMargin: 10
-        value: root.node?.audio.volume ?? 0
-        onMoved: root.node.audio.volume = value
+        Layout.rightMargin: 12
+        spacing: 0
+
+        WText {
+            Layout.fillWidth: true
+            font.pixelSize: Looks.font.pixelSize.large
+            elide: Text.ElideRight
+            text: root.node?.description || Translation.tr("Unknown")
+        }
+
+        WSlider {
+            Layout.fillWidth: true
+            value: root.node?.audio?.volume ?? 0
+            scrollable: true
+            onMoved: {
+                if (root.node?.audio) {
+                    root.node.audio.volume = value;
+                }
+            }
+        }
     }
 }

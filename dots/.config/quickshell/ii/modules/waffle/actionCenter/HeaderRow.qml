@@ -1,6 +1,8 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import qs.services
 import qs.modules.waffle.looks
 import qs.modules.waffle.actionCenter
 
@@ -11,8 +13,14 @@ RowLayout {
     spacing: 4
 
     WPanelIconButton {
+        id: backButton
         iconName: "arrow-left"
         onClicked: ActionCenterContext.back()
+
+        WToolTip {
+            extraVisibleCondition: backButton.shouldShowTooltip
+            text: Translation.tr("Back")
+        }
     }
 
     WText {

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -22,16 +23,14 @@ BodyRectangle {
             Layout.fillWidth: true
         }
 
-        Rectangle {
-            implicitHeight: 1
-            Layout.fillWidth: true
+        WPanelSeparator {
             color: Looks.colors.bg1Border
         }
 
         MainPageBodySliders {
             Layout.margins: 12
-            Layout.topMargin: 18
-            Layout.bottomMargin: 14
+            Layout.topMargin: 16
+            Layout.bottomMargin: 12
         }
     }
 }
