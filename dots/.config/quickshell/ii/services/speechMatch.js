@@ -18,7 +18,7 @@ function normalize(s) {
     let prevSpace = true;
     for (let i = 0; i < s.length; i++) {
         const c = s[i];
-        if (c === " " || c === "\t" || c === "\n" || c === "\r") {
+        if (c === " " || c === "\t" || c === "\n" || c === "\r" || c === "\u00a0") {
             if (!prevSpace) {
                 chars.push(" ");
                 map.push(i);

@@ -528,6 +528,17 @@ you touched; they are the only automated gate.
   and History tabs share it. It also pins the sheets' `BottomRight` origin (the buttons
   that open them are at the right end of the composer row, below them), the history
   loading row, and the one `HermesIconButton`
+- `python3 tools/check-list-follow.py` — a list that follows its end (the Hermes transcript)
+  gets there without rebuilding every row, forever. `positionViewAtEnd()` on a last row the
+  view has not built makes Qt throw every row away and rebuild them around a guess, and a
+  turn is built short because its text wraps a frame later. The rebuilt row straddling the
+  top grew, pushed the end out of the view and the cache, and the follow pinned again: a
+  rebuild every other frame over a blank view until a scroll broke it off, usually at the
+  top. The Scroll to Bottom button was the way in. It pins `jumpToEnd` to call
+  `positionViewAtEnd()` only once the last row is built and to walk a page a frame
+  otherwise, the follow off `atYEnd` (Flickable emits `contentHeightChanged` before it
+  updates that, so the gate left growth at the end hanging below the view), the button on
+  `scrollToEnd` and the `scroll` spec, and Hermes off bare-`contentHeight` clamps
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

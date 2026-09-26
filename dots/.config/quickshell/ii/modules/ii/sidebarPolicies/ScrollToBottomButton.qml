@@ -69,9 +69,7 @@ RippleButton {
     colRipple: Appearance.colors.colSecondaryActive
     buttonRadius: Appearance.rounding.full
 
-    downAction: () => {
-        target.jumpToEnd();
-    }
+    downAction: () => target.scrollToEnd()
 
     contentItem: Row {
         id: contentItem

@@ -114,6 +114,51 @@ ColumnLayout {
         }).join("");
     }
 
+    /**
+     * Prepares markdown text with proper paragraph spacing and line breaks for Qt's
+     * Markdown importer.
+     *
+     * Qt's CommonMark parser collapses single newlines into spaces (soft breaks) and
+     * imports paragraphs with zero top/bottom margins, rendering markdown without
+     * line breaks or paragraph gaps. This:
+     * 1. Preserves fenced code blocks untouched.
+     * 2. Promotes single newlines around headings to paragraph breaks.
+     * 3. Preserves single line breaks within paragraphs as hard breaks by adding two
+     *    trailing spaces (GFM style).
+     * 4. Inserts a non-breaking space paragraph (&nbsp;) between paragraphs to create
+     *    a natural vertical paragraph gap.
+     */
+    function formatMarkdown(md: string): string {
+        if (!md)
+            return "";
+        const text = md.replace(/\r\n/g, "\n");
+        return text.split(/(```[\s\S]*?(?:```|$))/).map((part, idx) => {
+            if (idx % 2 === 1)
+                return part;
+
+            let p = part.replace(/([^\n])\n(#{1,6}\s+)/g, "$1\n\n$2");
+            p = p.replace(/(^#{1,6}\s+[^\n]+)\n([^\n#])/gm, "$1\n\n$2");
+
+            const paragraphs = p.split(/\n{2,}/);
+            const formatted = [];
+            for (let i = 0; i < paragraphs.length; i++) {
+                const para = paragraphs[i];
+                if (para.trim().length === 0)
+                    continue;
+
+                const lines = para.split("\n");
+                for (let j = 0; j < lines.length - 1; j++) {
+                    const line = lines[j];
+                    if (line.endsWith("  ") || line.endsWith("\\") || (/^\s*\|/.test(line) && /\|\s*$/.test(line)))
+                        continue;
+                    lines[j] = line + "  ";
+                }
+                formatted.push(lines.join("\n"));
+            }
+            return formatted.join("\n\n&nbsp;\n\n");
+        }).join("");
+    }
+
     function renderLatex() {
         // $...$, $$...$$, \[...\] and \(...\)
         let regex = /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
@@ -172,7 +217,7 @@ ColumnLayout {
         }
     }
 
-    spacing: 0
+    spacing: root.fadeChunkSplitting ? Appearance.font.pixelSize.small : 0
     Repeater {
         id: textLinesRepeater
         property list<real> textLineOpacities: []
@@ -183,8 +228,8 @@ ColumnLayout {
             // what made the cursor flicker while a reply came in.
             objectProp: "key"
             // Split by either double newlines or single newlines in a list
-            values: (root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}[-\*])/g).filter(line => line.trim() !== "") : [root.shownText])
-                .map((line, i) => ({ key: i, text: line }))
+            values: (root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}(?:[-\*]|\d+\.))/g).filter(line => line.trim() !== "") : [root.shownText])
+                .map((line, i) => ({ key: i, text: root.renderMarkdown && !root.editing ? root.formatMarkdown(line) : line }))
             onValuesChanged: {
                 while (textLinesRepeater.textLineOpacities.length < values.length) {
                     textLinesRepeater.textLineOpacities.push(root.messageData?.done ? 1 : 0);

@@ -158,10 +158,10 @@ Item {
         if (event.modifiers === Qt.NoModifier) {
             if (event.key === Qt.Key_PageUp) {
                 messageListView.followingEnd = false;
-                messageListView.contentY = Math.max(0, messageListView.contentY - messageListView.height / 2);
+                messageListView.contentY = Math.max(messageListView.originY - messageListView.topMargin, messageListView.contentY - messageListView.height / 2);
                 event.accepted = true;
             } else if (event.key === Qt.Key_PageDown) {
-                messageListView.contentY = Math.min(messageListView.contentHeight - messageListView.height / 2, messageListView.contentY + messageListView.height / 2);
+                messageListView.contentY = Math.min(messageListView.endY, messageListView.contentY + messageListView.height / 2);
                 event.accepted = true;
             }
         }
@@ -233,7 +233,7 @@ Item {
             HermesService.sendMessage(root.expandWindowToken(text));
 
         root.suggestionList = [];
-        messageListView.positionViewAtEnd();
+        messageListView.jumpToEnd();
     }
 
     /**

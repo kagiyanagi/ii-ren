@@ -16,10 +16,10 @@ import Quickshell
  * Content goes through the block splitter and the text/code/think blocks in
  * `aiChat/`, so markdown, LaTeX and code fences render there. Around them sit
  * the header (Hermes reports its own model per turn), the tool rows, and the
- * run time a finished reply carries.
+ * run time and action buttons at the bottom.
  *
- * Your own turns are a bubble that hugs its text at the right, under a control
- * row of their own; the agent's turns are the full-width card. That split is
+ * Your own turns are a bubble that hugs its text at the right, with a control
+ * row below it; the agent's turns are the full-width card. That split is
  * the one thing a transcript has to show at a glance.
  */
 Item {
@@ -234,9 +234,9 @@ Item {
         anchors.margins: root.isUser ? 0 : root.messagePadding
         spacing: root.contentSpacing
 
-        Item { // Header; on your turns, the control row above the bubble
-            Layout.fillWidth: !root.isUser
-            Layout.alignment: Qt.AlignRight
+        Item { // Header (agent turns only)
+            visible: !root.isUser
+            Layout.fillWidth: true
             implicitWidth: headerRowLayout.implicitWidth
             implicitHeight: headerRowLayout.implicitHeight
 
@@ -249,14 +249,7 @@ Item {
                 }
                 spacing: 8
 
-                // Your own turns are mirrored, so the time sits at the bubble's
-                // edge. layoutDirection reverses the row order only -- it does not
-                // touch how the children themselves render, the way LayoutMirroring
-                // would.
-                layoutDirection: root.isUser ? Qt.RightToLeft : Qt.LeftToRight
-
                 MaterialSymbol {
-                    visible: !root.isUser
                     Layout.alignment: Qt.AlignVCenter
                     iconSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
@@ -264,23 +257,12 @@ Item {
                 }
 
                 StyledText {
-                    visible: !root.isUser
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
                     text: root.isInterface ? Translation.tr("Hermes") : (root.messageData?.model ?? Translation.tr("Hermes"))
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    visible: root.isUser && text.length > 0
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                    font.family: Appearance.font.family.numbers
-                    color: Appearance.colors.colSubtext
-                    text: (root.messageData?.createdAt ?? 0) > 0
-                        ? Qt.formatDateTime(new Date(root.messageData.createdAt), "HH:mm") : ""
                 }
 
                 MaterialSymbol {
@@ -306,79 +288,6 @@ Item {
                         extraVisibleCondition: false
                         alternativeVisibleCondition: hiddenFromAgentHover.containsMouse
                         text: Translation.tr("Not visible to the agent")
-                    }
-                }
-
-                ButtonGroup {
-                    spacing: 4
-
-                    AiMessageControlButton {
-                        id: copyButton
-                        buttonIcon: activated ? "inventory" : "content_copy"
-                        onClicked: {
-                            Quickshell.clipboardText = root.messageData?.content ?? "";
-                            copyButton.activated = true;
-                            copyIconTimer.restart();
-                        }
-
-                        Timer {
-                            id: copyIconTimer
-                            interval: 1500
-                            onTriggered: copyButton.activated = false
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("Copy")
-                        }
-                    }
-
-                    AiMessageControlButton {
-                        id: speakButton
-                        // Nothing to read out of a user's own message, and the agent
-                        // has to have a working voice stack behind it.
-                        visible: !root.isUser
-
-                        readonly property bool speakingThis: HermesService.speakingMessageId === root.messageId
-
-                        activated: speakButton.speakingThis
-                        buttonIcon: speakButton.speakingThis ? "stop" : "graphic_eq"
-
-                        onClicked: {
-                            if (speakButton.speakingThis)
-                                HermesService.stopSpeaking();
-                            else
-                                HermesService.speakMessage(root.messageId);
-                        }
-
-                        StyledToolTip {
-                            text: speakButton.speakingThis ? Translation.tr("Stop reading") : Translation.tr("Read this out loud")
-                        }
-                    }
-
-                    AiMessageControlButton {
-                        visible: !root.isUser && !root.isInterface && root.isLastMessage
-                        enabled: !HermesService.busy
-                        buttonIcon: "refresh"
-                        onClicked: HermesService.regenerate()
-
-                        StyledToolTip {
-                            text: Translation.tr("Retry this reply")
-                        }
-                    }
-
-                    AiMessageControlButton {
-                        // Editing a sent turn IS rewinding to it: the agent drops
-                        // this turn and everything after, and hands its text back
-                        // to the composer. The gateway refuses a rewind mid-run,
-                        // so this greys out rather than failing on the click.
-                        visible: root.isUser
-                        enabled: !HermesService.busy
-                        buttonIcon: "edit"
-                        onClicked: HermesService.rewindTo(root.messageId, true)
-
-                        StyledToolTip {
-                            text: Translation.tr("Edit and send again from here")
-                        }
                     }
                 }
             }
@@ -556,15 +465,145 @@ Item {
                 }
             }
 
-            StyledText { // How long it took
+            RowLayout { // Bottom control row and elapsed time
+                id: assistantFooterRow
+                visible: !root.isUser
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                visible: !root.isUser && text.length > 0
-                elide: Text.ElideRight
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                font.family: Appearance.font.family.numbers
-                color: Appearance.colors.colSubtext
-                text: root.elapsedText
+                spacing: 8
+
+                ButtonGroup {
+                    spacing: 4
+
+                    AiMessageControlButton {
+                        id: copyButton
+                        buttonIcon: activated ? "inventory" : "content_copy"
+                        onClicked: {
+                            Quickshell.clipboardText = root.messageData?.content ?? "";
+                            copyButton.activated = true;
+                            copyIconTimer.restart();
+                        }
+
+                        Timer {
+                            id: copyIconTimer
+                            interval: 1500
+                            onTriggered: copyButton.activated = false
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Copy")
+                        }
+                    }
+
+                    AiMessageControlButton {
+                        id: speakButton
+                        // Nothing to read out of a user's own message, and the agent
+                        // has to have a working voice stack behind it.
+                        readonly property bool speakingThis: HermesService.speakingMessageId === root.messageId
+
+                        activated: speakButton.speakingThis
+                        buttonIcon: speakButton.speakingThis ? "stop" : "graphic_eq"
+
+                        onClicked: {
+                            if (speakButton.speakingThis)
+                                HermesService.stopSpeaking();
+                            else
+                                HermesService.speakMessage(root.messageId);
+                        }
+
+                        StyledToolTip {
+                            text: speakButton.speakingThis ? Translation.tr("Stop reading") : Translation.tr("Read this out loud")
+                        }
+                    }
+
+                    AiMessageControlButton {
+                        visible: !root.isInterface && root.isLastMessage
+                        enabled: !HermesService.busy
+                        buttonIcon: "refresh"
+                        onClicked: HermesService.regenerate()
+
+                        StyledToolTip {
+                            text: Translation.tr("Retry this reply")
+                        }
+                    }
+                }
+
+                Item { // Spacer
+                    Layout.fillWidth: true
+                }
+
+                StyledText { // How long it took
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: text.length > 0
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.family: Appearance.font.family.numbers
+                    color: Appearance.colors.colSubtext
+                    text: root.elapsedText
+                }
+            }
+        }
+
+        Item { // On your turns, the control row below the bubble
+            visible: root.isUser
+            Layout.alignment: Qt.AlignRight
+            implicitWidth: userFooterRowLayout.implicitWidth
+            implicitHeight: userFooterRowLayout.implicitHeight
+
+            RowLayout {
+                id: userFooterRowLayout
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    verticalCenter: parent.verticalCenter
+                }
+                spacing: 8
+
+                StyledText {
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: text.length > 0
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    font.family: Appearance.font.family.numbers
+                    color: Appearance.colors.colSubtext
+                    text: (root.messageData?.createdAt ?? 0) > 0
+                        ? Qt.formatDateTime(new Date(root.messageData.createdAt), "HH:mm") : ""
+                }
+
+                ButtonGroup {
+                    spacing: 4
+
+                    AiMessageControlButton {
+                        id: userCopyButton
+                        buttonIcon: activated ? "inventory" : "content_copy"
+                        onClicked: {
+                            Quickshell.clipboardText = root.messageData?.content ?? "";
+                            userCopyButton.activated = true;
+                            userCopyIconTimer.restart();
+                        }
+
+                        Timer {
+                            id: userCopyIconTimer
+                            interval: 1500
+                            onTriggered: userCopyButton.activated = false
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Copy")
+                        }
+                    }
+
+                    AiMessageControlButton {
+                        // Editing a sent turn IS rewinding to it: the agent drops
+                        // this turn and everything after, and hands its text back
+                        // to the composer. The gateway refuses a rewind mid-run,
+                        // so this greys out rather than failing on the click.
+                        enabled: !HermesService.busy
+                        buttonIcon: "edit"
+                        onClicked: HermesService.rewindTo(root.messageId, true)
+
+                        StyledToolTip {
+                            text: Translation.tr("Edit and send again from here")
+                        }
+                    }
+                }
             }
         }
     }
