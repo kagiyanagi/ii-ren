@@ -3,11 +3,18 @@ pragma ComponentBehavior: Bound
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 
-Item {
+/**
+ * A reasoning block: one colLayer3 card whose whole header is the button that
+ * folds the thought open, once there is a finished one to read.
+ *
+ * No layer or OpacityMask. A layered item is skipped by Qt's cursor walk while
+ * still receiving hover, so the header highlighted but never showed a pointing
+ * hand. The fold crops through Revealer's own clip.
+ */
+Rectangle {
     id: root
     // These are needed on the parent loader
     property bool editing: false
@@ -20,150 +27,107 @@ Item {
     property bool done: true
     property bool completed: false
 
-    property real thinkBlockBackgroundRounding: Appearance.rounding.small
-    property real thinkBlockHeaderPaddingVertical: 3
-    property real thinkBlockHeaderPaddingHorizontal: 10
-    property real thinkBlockComponentSpacing: 2
-
-    property var collapseAnimation: messageTextBlock.implicitHeight > 40 ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveFast
-    property bool collapsed: true /* should be root.completed but its kinda buggy rn so nope */
+    // Starts folded: the answer is what the turn is for, and the thought is kept
+    // behind one line until asked for.
+    property bool expanded: false
 
     Layout.fillWidth: true
-    implicitHeight: collapsed ? header.implicitHeight : columnLayout.implicitHeight
-    // No layer/OpacityMask. A layered item is skipped by Qt's cursor walk while
-    // still receiving hover, so the reveal header and expand button highlighted
-    // but never showed a pointing hand. The corners are rounded on the header
-    // and content rectangles themselves instead, like MessageCodeBlock, and the
-    // collapse crop was already done by `clip: true` on the content item.
+    implicitHeight: column.implicitHeight
+    radius: Appearance.rounding.small
+    color: Appearance.colors.colLayer3
 
-    Behavior on implicitHeight {
-        enabled: root.completed ?? false
-        NumberAnimation {
-            duration: collapseAnimation.duration
-            easing.type: collapseAnimation.type
-            easing.bezierCurve: collapseAnimation.bezierCurve
-        }
+    FontMetrics {
+        id: readingMetrics
+        font.family: Appearance.font.family.reading
+        font.pixelSize: Appearance.font.pixelSize.small
     }
 
     ColumnLayout {
-        id: columnLayout
+        id: column
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: parent.top
         spacing: 0
 
-        Rectangle { // Header background
+        RippleButton {
             id: header
-            color: Appearance.colors.colSurfaceContainerHighest
-            topLeftRadius: thinkBlockBackgroundRounding
-            topRightRadius: thinkBlockBackgroundRounding
-            bottomLeftRadius: Appearance.rounding.unsharpen
-            bottomRightRadius: Appearance.rounding.unsharpen
             Layout.fillWidth: true
-            implicitHeight: thinkBlockTitleBarRowLayout.implicitHeight + thinkBlockHeaderPaddingVertical * 2
+            implicitHeight: headerRow.implicitHeight + 8 * 2
+            enabled: root.completed
+            // Not disabled, just nothing to open yet: the 0.4 of a disabled
+            // control (DESIGN.md 3.1) would dim the indicator saying it is working.
+            opacity: 1
+            buttonRadius: root.radius
+            // Square under an open thought, so the film meets the body it opened.
+            bottomLeftRadius: root.expanded ? Appearance.rounding.unsharpen : root.radius
+            bottomRightRadius: root.expanded ? Appearance.rounding.unsharpen : root.radius
+            colBackground: "transparent"
+            colBackgroundHover: Appearance.colors.colLayer3Hover
+            colRipple: Appearance.colors.colLayer3Active
+            colStateLayer: Appearance.colors.colOnLayer3
+            onClicked: root.expanded = !root.expanded
 
-            MouseArea { // Click to reveal
-                id: headerMouseArea
-                enabled: root.completed
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                hoverEnabled: true
-                onClicked: {
-                    root.collapsed = !root.collapsed
-                }
-            }
-
-            RowLayout { // Header content
-                id: thinkBlockTitleBarRowLayout
+            RowLayout {
+                id: headerRow
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.leftMargin: thinkBlockHeaderPaddingHorizontal
-                anchors.rightMargin: thinkBlockHeaderPaddingHorizontal
-                spacing: 10
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                spacing: 8
 
+                // Stands in for the icon while the model is still thinking, so
+                // the label never has to fake motion with dots.
+                MaterialLoadingIndicator {
+                    visible: !root.completed
+                    implicitSize: 20
+                    loading: visible
+                }
                 MaterialSymbol {
-                    Layout.fillWidth: false
-                    Layout.topMargin: 7
-                    Layout.bottomMargin: 7
-                    Layout.leftMargin: 3
+                    visible: root.completed
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colOnLayer3
                     text: "linked_services"
                 }
                 StyledText {
-                    id: thinkBlockLanguage
-                    Layout.fillWidth: false
-                    Layout.alignment: Qt.AlignLeft
-                    text: root.completed ? Translation.tr("Thought") : (Translation.tr("Thinking") + ".".repeat(Math.random() * 4))
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    color: Appearance.colors.colOnLayer3
+                    text: root.completed ? Translation.tr("Thought") : Translation.tr("Thinking")
                 }
-                Item { Layout.fillWidth: true }
-                RippleButton { // Expand button
-                    id: expandButton
+                MaterialSymbol {
                     visible: root.completed
-                    implicitWidth: 22
-                    implicitHeight: 22
-                    colBackground: headerMouseArea.containsMouse ? Appearance.colors.colLayer3Hover
-                        : ColorUtils.transparentize(Appearance.colors.colLayer3, 1)
-                    colBackgroundHover: Appearance.colors.colLayer3Hover
-                    colRipple: Appearance.colors.colLayer3Active
-
-                    onClicked: { root.collapsed = !root.collapsed }
-                    
-                    contentItem: MaterialSymbol {
-                        anchors.centerIn: parent
-                        text: "keyboard_arrow_down"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        iconSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colOnLayer3
-                        rotation: root.collapsed ? 0 : 180
-                        Behavior on rotation {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                        }
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: Appearance.colors.colOnLayer3
+                    text: "keyboard_arrow_down"
+                    rotation: root.expanded ? 180 : 0
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
-
                 }
-                
             }
-
         }
 
-        Item {
-            id: content
+        Revealer {
             Layout.fillWidth: true
-            implicitHeight: collapsed ? 0 : contentBackground.implicitHeight + thinkBlockComponentSpacing
-            clip: true
+            vertical: true
+            reveal: root.expanded
 
-            Behavior on implicitHeight {
-                enabled: root.completed ?? false
-                NumberAnimation {
-                    duration: collapseAnimation.duration
-                    easing.type: collapseAnimation.type
-                    easing.bezierCurve: collapseAnimation.bezierCurve
-                }
-            }
+            // Set on the block itself, not as same-named properties on a wrapper:
+            // bindings inside MessageTextBlock.qml resolve in that file's own
+            // scope, so forwarding through a wrapper once ran the inner text with
+            // `messageData: {}` and logged a TypeError on every think block.
+            // A long thought stops at a dozen lines until asked for, so opening one
+            // does not push the answer a screen away.
+            ClampBox {
+                width: parent.width
+                height: implicitHeight + 8
+                maxHeight: readingMetrics.lineSpacing * 12
+                colBase: Appearance.colors.colLayer3
+                colHover: Appearance.colors.colLayer3Hover
+                colActive: Appearance.colors.colLayer3Active
 
-            Rectangle {
-                id: contentBackground
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                implicitHeight: messageTextBlock.implicitHeight
-                color: Appearance.colors.colLayer3
-                topLeftRadius: Appearance.rounding.unsharpen
-                topRightRadius: Appearance.rounding.unsharpen
-                bottomLeftRadius: thinkBlockBackgroundRounding
-                bottomRightRadius: thinkBlockBackgroundRounding
-
-                // Set on the block itself, not as same-named properties out here:
-                // bindings inside MessageTextBlock.qml resolve in that file's own
-                // scope, so declaring them on this Rectangle forwarded nothing and
-                // the inner text ran with `messageData: {}` -- which is what logged
-                // "Cannot read property 'done' of undefined" on every think block.
                 MessageTextBlock {
-                    id: messageTextBlock
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
+                    width: parent.width
                     segmentContent: root.segmentContent
                     editing: root.editing
                     renderMarkdown: root.renderMarkdown

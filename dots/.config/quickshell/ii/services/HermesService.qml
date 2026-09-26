@@ -420,6 +420,8 @@ Singleton {
                     toolName: entry.name ?? "tool",
                     toolInput: entry.context ?? "",
                     toolFullInput: root._formatToolArgs(entry.args ?? ({})),
+                    // The arguments themselves, which the row lays out and highlights.
+                    toolArgs: entry.args ?? null,
                     // session.resume returns a tool row as {role, name, context,
                     // args} -- the gateway does not persist what the tool returned,
                     // so a resumed chat can only ever show the call, not its output.
@@ -955,16 +957,39 @@ Singleton {
     }
 
     /** Attach whatever image is on the clipboard, through the agent's own reader. */
-    function attachClipboardImage(): void {
-        root.call("clipboard.paste", { session_id: root.sessionId }, (result, error) => {
-            if (error || !(result?.attached ?? false)) {
-                const note = result?.message ?? error?.message ?? "";
-                if (note.length > 0)
-                    root.addMessage(note, root.interfaceRole);
-                return;
+    /**
+     * Attach the image on the clipboard; `onText` runs instead when it holds text.
+     *
+     * Read in the shell, not through the gateway's clipboard.paste, which only
+     * asks the live selection: the composer decides from cliphist that an image
+     * was copied, the selection dies with the app that offered it, and the paste
+     * answered "No image found in clipboard" for an image cliphist still held.
+     * scripts/hermes/clipboard-image.sh says which source wins and why.
+     */
+    function attachClipboardImage(onText: var): void {
+        if (clipboardImageProc.running)
+            return;
+        clipboardImageProc.onText = onText ?? null;
+        clipboardImageProc.command = [root.clipboardImageScript, Directories.tempImages, Cliphist.cliphistBinary];
+        clipboardImageProc.running = true;
+    }
+
+    readonly property string clipboardImageScript: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/hermes/clipboard-image.sh"))
+
+    Process {
+        id: clipboardImageProc
+        property var onText: null
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const result = this.text.trim();
+                if (result === "text")
+                    clipboardImageProc.onText?.();
+                else if (result.length > 0)
+                    root.attachImage(result);
+                else
+                    root.addMessage(Translation.tr("No image found in clipboard"), root.interfaceRole);
             }
-            root.attachedImages = [...root.attachedImages, result.path ?? ""];
-        });
+        }
     }
 
     // ── Sending ──────────────────────────────────────────────────────────
@@ -1620,6 +1645,7 @@ Singleton {
             toolName: payload.name ?? "tool",
             toolInput: payload.context ?? payload.preview ?? "",
             toolFullInput: root._formatToolArgs(args),
+            toolArgs: args,
             toolResult: "",
             toolExitCode: null,
             duration: 0,
@@ -1664,6 +1690,10 @@ Singleton {
             return `${result.error}`;
         if (typeof result.output === "string")
             return result.output;
+        // read_file answers {content, total_lines, ...}; the content is what was read,
+        // and as JSON it was one escaped string.
+        if (typeof result.content === "string")
+            return result.content;
         try {
             return JSON.stringify(result, null, 2);
         } catch (e) {

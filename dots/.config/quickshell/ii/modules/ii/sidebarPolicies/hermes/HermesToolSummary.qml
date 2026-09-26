@@ -34,6 +34,12 @@ ColumnLayout {
                 .toLowerCase().includes(needle));
     }
     readonly property bool open: root.expanded || root.matchesSearch
+    // Rows are built the first time the group opens and kept, so a close
+    // collapses over them. Binding the model to `open` destroyed them on the frame
+    // the fold started closing, and the Revealer shrank over nothing.
+    property bool built: false
+    onOpenChanged: if (root.open) root.built = true
+    Component.onCompleted: if (root.open) root.built = true
 
     readonly property int total: root.toolCalls?.length ?? 0
     readonly property bool anyRunning: (root.toolCalls ?? []).some(call => call.toolRunning ?? false)
@@ -99,15 +105,14 @@ ColumnLayout {
 
                 rotation: root.open ? 180 : 0
                 Behavior on rotation {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
             }
         }
     }
 
-    // The calls themselves, once asked for. Revealed rather than shown: each row
-    // inside already animates its own height, and a group that appeared instantly
-    // around rows that slide is two motions for one press.
+    // The calls themselves, once asked for, revealed on the same recipe as each
+    // row's own details.
     Revealer {
         Layout.fillWidth: true
         vertical: true
@@ -120,7 +125,7 @@ ColumnLayout {
 
             Repeater {
                 model: ScriptModel {
-                    values: root.open ? (root.toolCalls ?? []) : []
+                    values: root.built ? (root.toolCalls ?? []) : []
                 }
 
                 delegate: ToolActivityRow {

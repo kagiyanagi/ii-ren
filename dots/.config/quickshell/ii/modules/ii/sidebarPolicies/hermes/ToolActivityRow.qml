@@ -7,6 +7,7 @@ import qs.services
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
+import org.kde.syntaxhighlighting
 
 /**
  * One tool invocation, rendered the way the CLI narrates its own work:
@@ -48,26 +49,83 @@ Item {
     readonly property bool hasFailed: root.part?.toolFailed ?? false
     readonly property bool canExpand: root.commandText.length > 0 || root.hasResult || root.isRunning
 
-    /*
-     * A command's output is the point of opening its row, so it is shown there
-     * rather than behind a second toggle -- but a single `pacman -Q` is sixteen
-     * hundred lines, which in a sidebar is the whole visible height and then
-     * some. Only the head is laid out until asked for, the way every agentic
-     * transcript handles a long return.
-     */
-    property bool outputExpanded: false
-    readonly property int previewLineCount: 12
     // Ceiling on what is ever handed to a Text at once: past this the line count
-    // stops being the thing that costs, and the characters start to.
+    // stops being the thing that costs, and the characters start to. Copy still
+    // takes the whole return.
     readonly property int maxShownChars: 8000
+    // How much of a long command or return shows before its Show more.
+    readonly property int previewLineCount: 12
 
     readonly property var resultLines: root.hasResult ? root.resultText.split("\n") : []
-    // Only when expanding would actually reveal something: one enormous single
-    // line reads the same either way, and says so with its own truncation mark.
-    readonly property bool resultClipped: root.resultLines.length > root.previewLineCount
     readonly property string shownResult: {
-        const body = root.outputExpanded ? root.resultText : root.resultLines.slice(0, root.previewLineCount).join("\n");
+        // read_file numbers every line as `12|`, which in front of a line breaks
+        // what the highlighter reads there (`#include`, a heredoc, indentation).
+        const body = root.resultLines.every(line => /^\s*\d+\|/.test(line))
+            ? root.resultLines.map(line => line.replace(/^\s*\d+\|/, "")).join("\n") : root.resultText;
         return body.length > root.maxShownChars ? `${body.slice(0, root.maxShownChars)}\n${Translation.tr("… truncated")}` : body;
+    }
+
+    /*
+     * The call's arguments, laid out to be read rather than printed as JSON.
+     *
+     * One argument is usually the call itself (the file a write puts down, the
+     * line a shell runs, the code it executes). It becomes the highlighted body, in
+     * the language its path or its tool says. The rest are one-line `key value`
+     * rows above it. As JSON, a written file was one escaped string wrapped across
+     * the whole sidebar.
+     */
+    readonly property var argLayout: root.layoutArgs(root.part?.toolArgs ?? null, root.part?.toolName ?? "", root.commandText)
+    readonly property string bodyLanguage: root.languageFor(root.argLayout.file, root.argLayout.kind)
+    readonly property string resultLanguage: {
+        if (root.hasFailed)
+            return "";
+        const path = root.argLayout.lines.find(line => root.pathKeys.includes(line.key))?.value ?? "";
+        if (path.length > 0 && root.fileReadTools.includes((root.part?.toolName ?? "").toLowerCase()))
+            return root.languageFor(path, "");
+        return /^\s*[\[{]/.test(root.shownResult) ? "JSON" : "";
+    }
+
+    readonly property var pathKeys: ["path", "file_path", "filepath", "filename", "file", "target_file"]
+    readonly property var fileReadTools: ["read_file", "view_file", "cat", "read_document"]
+
+    function languageFor(file: string, kind: string): string {
+        if (file.length === 0)
+            return kind;
+        const byName = Repository.definitionForFileName(file).name ?? "";
+        return byName.length > 0 ? byName : kind;
+    }
+
+    /**
+     * `{ lines: [{key, value}], body, file, kind }` for a call's arguments.
+     * `file` is the path whose language the body is written in, when it is a file's
+     * text; `kind` is the language the tool implies otherwise ("Bash", "Python").
+     * tools/check-hermes-thread.py runs this under node.
+     */
+    function layoutArgs(args, name, fallback) {
+        const tool = (name ?? "").toLowerCase();
+        const shell = ["terminal", "shell", "bash", "run_command", "execute_command", "command_execution"].includes(tool);
+        if (!args || typeof args !== "object" || Array.isArray(args)) {
+            const text = (fallback ?? "").trim();
+            return { lines: [], body: text, file: "", kind: shell ? "Bash" : /^[\[{]/.test(text) ? "JSON" : "" };
+        }
+        const keys = Object.keys(args);
+        const isText = key => typeof args[key] === "string" && args[key].length > 0;
+        const bodyKey = ["content", "code", "command", "new_string", "patch", "diff", "script", "text", "query"].find(isText)
+            ?? keys.filter(key => isText(key) && args[key].includes("\n")).sort((a, b) => args[b].length - args[a].length)[0]
+            ?? "";
+        const lines = keys.filter(key => key !== bodyKey && args[key] !== null && args[key] !== undefined && args[key] !== "")
+            .map(key => ({ key: key, value: typeof args[key] === "string" ? args[key] : JSON.stringify(args[key]) }));
+        const path = keys.find(key => ["path", "file_path", "filepath", "filename", "file", "target_file"].includes(key) && isText(key)) ?? "";
+        let kind = "";
+        if (bodyKey === "command" || (shell && bodyKey !== ""))
+            kind = "Bash";
+        else if (bodyKey === "code")
+            kind = typeof args.language === "string" && args.language.length > 0 ? args.language
+                : ["execute_code", "run_python", "python", "execute_python"].includes(tool) ? "Python" : "";
+        else if (bodyKey === "patch" || bodyKey === "diff")
+            kind = "Diff";
+        const fileBody = ["content", "new_string", "text", "script"].includes(bodyKey) || (bodyKey === "code" && kind === "");
+        return { lines: lines, body: bodyKey ? args[bodyKey] : "", file: fileBody && path ? args[path] : "", kind: kind };
     }
 
     // What the call cost, for the expanded header. A zero exit is the silent
@@ -174,15 +232,14 @@ Item {
         }
     }
 
+    // The details are built the first time the row opens and kept after, so a
+    // close collapses over them instead of over nothing.
+    property bool built: false
+    onOpenChanged: if (root.open) root.built = true
+    Component.onCompleted: if (root.open) root.built = true
+
     implicitHeight: layout.implicitHeight
     implicitWidth: layout.implicitWidth
-
-    // Expanding is a size change, so it runs on a spatial spec. It matters more now
-    // that rows sit between paragraphs rather than in one block above them: without
-    // this, opening a row snaps every word below it down the page.
-    Behavior on implicitHeight {
-        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-    }
 
     ColumnLayout {
         id: layout
@@ -276,16 +333,38 @@ Item {
 
                     rotation: root.open ? 180 : 0
                     Behavior on rotation {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
                 }
             }
         }
 
-        Rectangle { // Expanded command details & return value
-            id: detailsCard
+        // Opening is a size change between paragraphs, so it is revealed, clipped,
+        // on the spatial spec: shown outright, the card painted over the next
+        // paragraph while the height grew, and vanished on the first frame of a close.
+        Revealer {
             Layout.fillWidth: true
-            visible: root.open
+            vertical: true
+            reveal: root.open
+
+            Loader {
+                width: parent.width
+                active: root.built
+                sourceComponent: detailsComponent
+            }
+        }
+    }
+
+    FontMetrics {
+        id: monoMetrics
+        font.family: Appearance.font.family.monospace
+        font.pixelSize: Appearance.font.pixelSize.smaller
+    }
+
+    Component {
+        id: detailsComponent
+
+        Rectangle { // Expanded command details & return value
             implicitHeight: detailsColumn.implicitHeight + 16
             radius: Appearance.rounding.small
             color: Appearance.colors.colLayer3
@@ -315,7 +394,7 @@ Item {
                         text: root.toolLabel(root.part?.toolName) || Translation.tr("Command")
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnLayer4
+                        color: Appearance.colors.colOnLayer3
                     }
 
                     StyledText { // What the call cost
@@ -352,28 +431,66 @@ Item {
                     }
                 }
 
-                Rectangle {
+                Rectangle { // What was called with
+                    visible: root.argLayout.lines.length > 0 || root.argLayout.body.length > 0
                     Layout.fillWidth: true
-                    implicitHeight: commandDisplay.implicitHeight + 16
+                    implicitHeight: argsColumn.implicitHeight + 16
                     radius: Appearance.rounding.verysmall
                     color: Appearance.colors.colLayer4
 
-                    StyledText {
-                        id: commandDisplay
-                        anchors.fill: parent
+                    ColumnLayout {
+                        id: argsColumn
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
                         anchors.margins: 8
-                        wrapMode: Text.WrapAnywhere
-                        textFormat: Text.PlainText
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        font.family: Appearance.font.family.monospace
-                        color: Appearance.colors.colOnLayer4
-                        text: root.commandText
+                        spacing: 4
+
+                        Repeater {
+                            model: root.argLayout.lines
+
+                            RowLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                StyledText {
+                                    Layout.alignment: Qt.AlignTop
+                                    text: modelData.key
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    font.family: Appearance.font.family.monospace
+                                    color: Appearance.colors.colSubtext
+                                }
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: modelData.value
+                                    textFormat: Text.PlainText
+                                    elide: Text.ElideMiddle
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                    font.family: Appearance.font.family.monospace
+                                    color: Appearance.colors.colOnLayer4
+                                }
+                            }
+                        }
+
+                        ClampBox {
+                            visible: root.argLayout.body.length > 0
+                            maxHeight: monoMetrics.lineSpacing * root.previewLineCount
+
+                            ToolCode {
+                                width: parent.width
+                                text: root.argLayout.body.length > root.maxShownChars
+                                    ? `${root.argLayout.body.slice(0, root.maxShownChars)}\n${Translation.tr("… truncated")}` : root.argLayout.body
+                                language: root.bodyLanguage
+                            }
+                        }
                     }
                 }
 
                 // What the tool returned, under the command that produced it.
                 Rectangle {
-                    id: outputBox
                     visible: root.hasResult || root.isRunning
                     Layout.fillWidth: true
                     implicitHeight: outputColumn.implicitHeight + 16
@@ -440,22 +557,16 @@ Item {
                             }
                         }
 
-                        StyledText {
-                            id: resultDisplay
-                            Layout.fillWidth: true
-                            // Wrapped output is as wide as its longest line unless the
-                            // layout is told it may be narrower, and one `ls -l` line
-                            // is enough to widen the card past the sidebar.
-                            Layout.minimumWidth: 0
+                        ClampBox {
                             visible: root.hasResult
-                            // Breaks on spaces where it can and mid-token where it
-                            // cannot, so a long path wraps instead of overflowing.
-                            wrapMode: Text.Wrap
-                            textFormat: Text.PlainText
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            font.family: Appearance.font.family.monospace
-                            color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colOnLayer3
-                            text: root.shownResult
+                            maxHeight: monoMetrics.lineSpacing * root.previewLineCount
+
+                            ToolCode {
+                                width: parent.width
+                                text: root.shownResult
+                                language: root.resultLanguage
+                                color: root.hasFailed ? Appearance.colors.colError : Appearance.colors.colOnLayer4
+                            }
                         }
 
                         StyledText { // Nothing back yet
@@ -465,43 +576,6 @@ Item {
                             text: Translation.tr("Running…")
                             font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Appearance.colors.colSubtext
-                        }
-
-                        RippleButton { // The rest of a long return
-                            id: moreOutputButton
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            visible: root.resultClipped
-                            implicitHeight: 32
-                            buttonRadius: Appearance.rounding.verysmall
-                            colBackground: "transparent"
-                            colBackgroundHover: Appearance.colors.colLayer4Hover
-                            colRipple: Appearance.colors.colLayer4Active
-                            onClicked: root.outputExpanded = !root.outputExpanded
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-
-                                MaterialSymbol {
-                                    iconSize: Appearance.font.pixelSize.small
-                                    text: root.outputExpanded ? "expand_less" : "expand_more"
-                                    color: Appearance.colors.colSubtext
-                                }
-
-                                StyledText {
-                                    text: {
-                                        if (root.outputExpanded)
-                                            return Translation.tr("Show less");
-                                        const lines = root.resultLines.length;
-                                        return lines > root.previewLineCount
-                                            ? Translation.tr("Show all %1 lines").arg(lines)
-                                            : Translation.tr("Show more");
-                                    }
-                                    font.pixelSize: Appearance.font.pixelSize.smaller
-                                    color: Appearance.colors.colSubtext
-                                }
-                            }
                         }
                     }
                 }

@@ -17,8 +17,12 @@ import Quickshell
  * `aiChat/`, so markdown, LaTeX and code fences render there. Around them sit
  * the header (Hermes reports its own model per turn), the tool rows, and the
  * run time a finished reply carries.
+ *
+ * Your own turns are a bubble that hugs its text at the right, under a control
+ * row of their own; the agent's turns are the full-width card. That split is
+ * the one thing a transcript has to show at a glance.
  */
-Rectangle {
+Item {
     id: root
 
     required property var messageData
@@ -33,7 +37,6 @@ Rectangle {
     property real contentSpacing: 8
 
     property bool enableMouseSelection: true
-    property bool renderMarkdown: true
 
     readonly property bool isUser: root.messageData?.role === "user"
     readonly property bool isInterface: root.messageData?.role === "interface"
@@ -182,7 +185,16 @@ Rectangle {
 
     anchors.left: parent?.left
     anchors.right: parent?.right
-    implicitHeight: columnLayout.implicitHeight + root.messagePadding * 2
+    // A bubble carries its padding inside itself; the agent's card around everything.
+    implicitHeight: columnLayout.implicitHeight + (root.isUser ? 0 : root.messagePadding * 2)
+
+    /*
+     * The bubble's width: the text's own, capped at a share of the transcript.
+     * TextEdit reports its unwrapped width as implicitWidth, so a two-word prompt
+     * asks for two words and a long one asks for the cap and wraps inside it.
+     */
+    readonly property real bubbleMaxWidth: root.width * 0.85
+    readonly property real bubbleWidth: Math.min(root.bubbleMaxWidth, messageContentColumnLayout.implicitWidth + root.messagePadding * 2)
 
     /** How long the reply took, once it is finished. */
     readonly property real elapsedSeconds: {
@@ -204,8 +216,14 @@ Rectangle {
         return Translation.tr("%1m %2s").arg(Math.floor(seconds / 60)).arg(Math.round(seconds % 60));
     }
 
-    radius: Appearance.rounding.normal
-    color: Appearance.colors.colLayer2
+    Rectangle { // The turn's card, or your bubble
+        x: root.isUser ? root.width - width : 0
+        y: root.isUser ? body.y - root.messagePadding : 0
+        width: root.isUser ? root.bubbleWidth : root.width
+        height: root.isUser ? body.height + root.messagePadding * 2 : root.height
+        radius: Appearance.rounding.normal
+        color: Appearance.colors.colLayer2
+    }
 
     ColumnLayout {
         id: columnLayout
@@ -213,11 +231,13 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: root.messagePadding
+        anchors.margins: root.isUser ? 0 : root.messagePadding
         spacing: root.contentSpacing
 
-        Item { // Header
-            Layout.fillWidth: true
+        Item { // Header; on your turns, the control row above the bubble
+            Layout.fillWidth: !root.isUser
+            Layout.alignment: Qt.AlignRight
+            implicitWidth: headerRowLayout.implicitWidth
             implicitHeight: headerRowLayout.implicitHeight
 
             RowLayout {
@@ -229,29 +249,28 @@ Rectangle {
                 }
                 spacing: 8
 
-                // Your own turns are mirrored: controls on the left, identity on the
-                // right. layoutDirection reverses the row order only -- it does not
+                // Your own turns are mirrored, so the time sits at the bubble's
+                // edge. layoutDirection reverses the row order only -- it does not
                 // touch how the children themselves render, the way LayoutMirroring
                 // would.
                 layoutDirection: root.isUser ? Qt.RightToLeft : Qt.LeftToRight
 
                 MaterialSymbol {
+                    visible: !root.isUser
                     Layout.alignment: Qt.AlignVCenter
                     iconSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
-                    text: root.isUser ? "person" : root.isInterface ? "settings" : "auto_awesome"
+                    text: root.isInterface ? "settings" : "auto_awesome"
                 }
 
                 StyledText {
+                    visible: !root.isUser
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
-                    // Follows the row it sits in, so the name stays beside its icon
-                    // instead of drifting across to the buttons.
-                    horizontalAlignment: root.isUser ? Text.AlignRight : Text.AlignLeft
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
-                    text: root.isUser ? (SystemInfo.username.length > 0 ? SystemInfo.username : Translation.tr("You")) : root.isInterface ? Translation.tr("Hermes") : (root.messageData?.model ?? Translation.tr("Hermes"))
+                    text: root.isInterface ? Translation.tr("Hermes") : (root.messageData?.model ?? Translation.tr("Hermes"))
                 }
 
                 StyledText {
@@ -361,194 +380,192 @@ Rectangle {
                             text: Translation.tr("Edit and send again from here")
                         }
                     }
-
-                    AiMessageControlButton {
-                        activated: !root.renderMarkdown
-                        buttonIcon: "code"
-                        onClicked: root.renderMarkdown = !root.renderMarkdown
-
-                        StyledToolTip {
-                            text: Translation.tr("View Markdown source")
-                        }
-                    }
                 }
             }
         }
 
-        ColumnLayout { // Message content
-            id: messageContentColumnLayout
-            Layout.fillWidth: true
-            spacing: 0
+        ColumnLayout { // Everything under the header; on your turns, the bubble's inside
+            id: body
+            Layout.fillWidth: !root.isUser
+            Layout.alignment: Qt.AlignRight
+            Layout.preferredWidth: root.isUser ? root.bubbleWidth - root.messagePadding * 2 : -1
+            Layout.topMargin: root.isUser ? root.messagePadding : 0
+            Layout.bottomMargin: root.isUser ? root.messagePadding : 0
+            Layout.rightMargin: root.isUser ? root.messagePadding : 0
+            spacing: root.contentSpacing
 
-            Item {
+            ColumnLayout { // Message content
+                id: messageContentColumnLayout
                 Layout.fillWidth: true
-                implicitHeight: loadingIndicatorLoader.shown ? loadingIndicatorLoader.implicitHeight : 0
-                implicitWidth: loadingIndicatorLoader.implicitWidth
-                visible: implicitHeight > 0
+                spacing: 0
 
-                Behavior on implicitHeight {
-                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                }
-
-                FadeLoader {
-                    id: loadingIndicatorLoader
-                    anchors.centerIn: parent
-                    // The page's activity line already covers "started, nothing to
-                    // show yet", and says what it is doing rather than only that it
-                    // is doing something -- so this stands in only when that is off.
-                    shown: (root.messageBlocks.length < 1) && !(root.messageData?.done ?? true)
-                        && !(Config.options.hermes?.showStatusLine ?? true)
-                    sourceComponent: MaterialLoadingIndicator {
-                        loading: true
-                    }
-                }
-            }
-
-            Repeater {
-                model: ScriptModel {
-                    objectProp: "key"
-                    values: root.messageBlocks
-                }
-                delegate: DelegateChooser {
-                    role: "type"
-
-                    DelegateChoice {
-                        roleValue: "tool"
-                        ToolActivityRow {
-                            required property var modelData
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            Layout.bottomMargin: 4
-                            part: modelData.call
-                            searchQuery: root.searchQuery
-
-                            // Fades in where it lands, like the text lines around
-                            // it -- a row appearing mid-stream at full opacity reads
-                            // as a jump in a transcript that is otherwise settling.
-                            readonly property string entranceKey: modelData.call?.toolId ?? ""
-                            opacity: root.toolSeen(entranceKey) ? 1 : 0
-                            Component.onCompleted: {
-                                opacity = 1;
-                                root.markToolSeen(entranceKey);
-                            }
-                            Behavior on opacity {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
-                        }
-                    }
-                    DelegateChoice {
-                        roleValue: "tools"
-                        HermesToolSummary {
-                            required property var modelData
-                            Layout.fillWidth: true
-                            Layout.topMargin: 4
-                            Layout.bottomMargin: 4
-                            toolCalls: modelData.calls
-                            searchQuery: root.searchQuery
-
-                            readonly property string entranceKey: modelData.calls[0]?.toolId ?? ""
-                            opacity: root.toolSeen(entranceKey) ? 1 : 0
-                            Component.onCompleted: {
-                                opacity = 1;
-                                root.markToolSeen(entranceKey);
-                            }
-                            Behavior on opacity {
-                                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                            }
-                        }
-                    }
-                    DelegateChoice {
-                        roleValue: "code"
-                        MessageCodeBlock {
-                            required property var modelData
-                            renderMarkdown: root.renderMarkdown
-                            enableMouseSelection: root.enableMouseSelection
-                            segmentContent: modelData.content
-                            segmentLang: modelData.lang
-                            messageData: root.messageData
-                            // This page has the console a run would report into.
-                            enableRunActions: true
-                            searchQuery: root.searchQuery
-                            searchCurrent: root.searchCurrent
-                        }
-                    }
-                    DelegateChoice {
-                        roleValue: "think"
-                        MessageThinkBlock {
-                            required property var modelData
-                            renderMarkdown: root.renderMarkdown
-                            enableMouseSelection: root.enableMouseSelection
-                            segmentContent: modelData.content
-                            messageData: root.messageData
-                            done: root.messageData?.done ?? false
-                            completed: modelData.completed ?? false
-                        }
-                    }
-                    DelegateChoice {
-                        roleValue: "text"
-                        MessageTextBlock {
-                            required property var modelData
-                            renderMarkdown: root.renderMarkdown
-                            enableMouseSelection: root.enableMouseSelection
-                            segmentContent: modelData.content
-                            messageData: root.messageData
-                            done: root.messageData?.done ?? false
-                            searchQuery: root.searchQuery
-                            searchCurrent: root.searchCurrent
-                            speakingPhrase: root.speakingPhrase
-                            speakingProgress: root.speakingProgress
-                            speakingOffset: root.speakingOffset
-                            forceDisableChunkSplitting: root.messageData?.content.includes("```") ?? true
-                        }
-                    }
-                }
-            }
-        }
-
-        Rectangle { // Error
-            Layout.fillWidth: true
-            visible: (root.messageData?.error ?? "").length > 0
-            implicitHeight: errorRow.implicitHeight + 8 * 2
-            radius: Appearance.rounding.small
-            color: Appearance.m3colors.m3errorContainer
-
-            RowLayout {
-                id: errorRow
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                    margins: 8
-                }
-                spacing: 8
-
-                MaterialSymbol {
-                    Layout.alignment: Qt.AlignTop
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.m3colors.m3onErrorContainer
-                    text: "error"
-                }
-
-                StyledText {
+                Item {
                     Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.m3colors.m3onErrorContainer
-                    text: root.messageData?.error ?? ""
+                    implicitHeight: loadingIndicatorLoader.shown ? loadingIndicatorLoader.implicitHeight : 0
+                    implicitWidth: loadingIndicatorLoader.implicitWidth
+                    visible: implicitHeight > 0
+
+                    Behavior on implicitHeight {
+                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                    }
+
+                    FadeLoader {
+                        id: loadingIndicatorLoader
+                        anchors.centerIn: parent
+                        // The page's activity line already covers "started, nothing to
+                        // show yet", and says what it is doing rather than only that it
+                        // is doing something -- so this stands in only when that is off.
+                        shown: (root.messageBlocks.length < 1) && !(root.messageData?.done ?? true)
+                            && !(Config.options.hermes?.showStatusLine ?? true)
+                        sourceComponent: MaterialLoadingIndicator {
+                            loading: true
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: ScriptModel {
+                        objectProp: "key"
+                        values: root.messageBlocks
+                    }
+                    delegate: DelegateChooser {
+                        role: "type"
+
+                        DelegateChoice {
+                            roleValue: "tool"
+                            ToolActivityRow {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.topMargin: 4
+                                Layout.bottomMargin: 4
+                                part: modelData.call
+                                searchQuery: root.searchQuery
+
+                                // Fades in where it lands, like the text lines around
+                                // it -- a row appearing mid-stream at full opacity reads
+                                // as a jump in a transcript that is otherwise settling.
+                                readonly property string entranceKey: modelData.call?.toolId ?? ""
+                                opacity: root.toolSeen(entranceKey) ? 1 : 0
+                                Component.onCompleted: {
+                                    opacity = 1;
+                                    root.markToolSeen(entranceKey);
+                                }
+                                Behavior on opacity {
+                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                }
+                            }
+                        }
+                        DelegateChoice {
+                            roleValue: "tools"
+                            HermesToolSummary {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.topMargin: 4
+                                Layout.bottomMargin: 4
+                                toolCalls: modelData.calls
+                                searchQuery: root.searchQuery
+
+                                readonly property string entranceKey: modelData.calls[0]?.toolId ?? ""
+                                opacity: root.toolSeen(entranceKey) ? 1 : 0
+                                Component.onCompleted: {
+                                    opacity = 1;
+                                    root.markToolSeen(entranceKey);
+                                }
+                                Behavior on opacity {
+                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                }
+                            }
+                        }
+                        DelegateChoice {
+                            roleValue: "code"
+                            MessageCodeBlock {
+                                required property var modelData
+                                enableMouseSelection: root.enableMouseSelection
+                                segmentContent: modelData.content
+                                segmentLang: modelData.lang
+                                messageData: root.messageData
+                                // This page has the console a run would report into.
+                                enableRunActions: true
+                                searchQuery: root.searchQuery
+                                searchCurrent: root.searchCurrent
+                            }
+                        }
+                        DelegateChoice {
+                            roleValue: "think"
+                            MessageThinkBlock {
+                                required property var modelData
+                                enableMouseSelection: root.enableMouseSelection
+                                segmentContent: modelData.content
+                                messageData: root.messageData
+                                done: root.messageData?.done ?? false
+                                completed: modelData.completed ?? false
+                            }
+                        }
+                        DelegateChoice {
+                            roleValue: "text"
+                            MessageTextBlock {
+                                required property var modelData
+                                enableMouseSelection: root.enableMouseSelection
+                                segmentContent: modelData.content
+                                messageData: root.messageData
+                                done: root.messageData?.done ?? false
+                                searchQuery: root.searchQuery
+                                searchCurrent: root.searchCurrent
+                                speakingPhrase: root.speakingPhrase
+                                speakingProgress: root.speakingProgress
+                                speakingOffset: root.speakingOffset
+                                forceDisableChunkSplitting: root.messageData?.content.includes("```") ?? true
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        StyledText { // How long it took
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
-            visible: !root.isUser && text.length > 0
-            elide: Text.ElideRight
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            font.family: Appearance.font.family.numbers
-            color: Appearance.colors.colSubtext
-            text: root.elapsedText
+            Rectangle { // Error
+                Layout.fillWidth: true
+                visible: (root.messageData?.error ?? "").length > 0
+                implicitHeight: errorRow.implicitHeight + 8 * 2
+                radius: Appearance.rounding.small
+                color: Appearance.m3colors.m3errorContainer
+
+                RowLayout {
+                    id: errorRow
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        margins: 8
+                    }
+                    spacing: 8
+
+                    MaterialSymbol {
+                        Layout.alignment: Qt.AlignTop
+                        iconSize: Appearance.font.pixelSize.large
+                        color: Appearance.m3colors.m3onErrorContainer
+                        text: "error"
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: Appearance.m3colors.m3onErrorContainer
+                        text: root.messageData?.error ?? ""
+                    }
+                }
+            }
+
+            StyledText { // How long it took
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                visible: !root.isUser && text.length > 0
+                elide: Text.ElideRight
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                font.family: Appearance.font.family.numbers
+                color: Appearance.colors.colSubtext
+                text: root.elapsedText
+            }
         }
     }
 }

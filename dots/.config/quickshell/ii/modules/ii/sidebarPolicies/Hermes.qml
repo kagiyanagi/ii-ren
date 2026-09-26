@@ -954,12 +954,13 @@ Item {
                             } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
                                 if (event.modifiers & Qt.ShiftModifier)
                                     return; // Shift+Ctrl+V stays a plain text paste.
-                                // Only divert when the clipboard really holds an
-                                // image; clipboard.paste answers "nothing to attach"
-                                // otherwise, which would be noise on a text paste.
+                                // Only divert when cliphist saw an image copied. The
+                                // live clipboard can have moved on since (its cached
+                                // list refreshes on a text change), so the service
+                                // re-reads it and hands a text selection back here.
                                 const entry = Cliphist.entries[0] ?? "";
                                 if (/^\d+\t\[\[.*binary data.*\d+x\d+.*\]\]$/.test(entry)) {
-                                    HermesService.attachClipboardImage();
+                                    HermesService.attachClipboardImage(() => messageInputField.paste());
                                     event.accepted = true;
                                     return;
                                 }

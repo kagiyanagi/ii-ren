@@ -464,6 +464,29 @@ you touched; they are the only automated gate.
   had no exit), the two cards splitting the page's height with the text scrolling inside each,
   and the equal-width pills: sized by their text, the detected hint pushed the swap button out
   from under the pointer. It also runs `translator/test_refine.js`
+- `python3 tools/check-hermes-thread.py` — one Hermes turn: your own turns are a bubble,
+  and every fold goes through `Revealer`. The tool row showed its details with
+  `visible: open` and no clip under a height Behavior, so it painted over the next
+  paragraph on open and vanished on the first frame of a close. A tool group's rows were
+  bound to `open` and destroyed as the fold began closing, and the think block closed on
+  its enter spec. None of that shows in a still frame. It pins every fold to `Revealer`,
+  latched built and kept, with each chevron on `elementMove`. It holds the code block to
+  one `colLayer3` card whose line numbers are one text rather than a `Repeater` (a
+  1,600-line block laid out 1,600 items), and runs that text and the bubble's width under
+  node: capped at 85%, hugging its text below that, flush right, while the agent's card
+  spans the transcript. Long tool text and thoughts stop at a height behind `ClampBox`'s
+  Show more, and a call's arguments are laid out rather than printed as JSON, so a written
+  file is its own highlighted body. It runs that layout, the clamp rule and the stripping of
+  `read_file`'s `N|` gutter under node
+- `python3 tools/check-hermes-paste.py` — Ctrl+V in the Hermes composer attaches the
+  image that was copied. The composer decides from cliphist that an image was copied, and
+  it used to hand the attach to the gateway's `clipboard.paste`, which reads only the live
+  Wayland selection. That selection dies with the app that offered it, so an image copied
+  from a window that had since closed failed with "No image found in clipboard" while
+  cliphist still held it. `scripts/hermes/clipboard-image.sh` reads it in the shell, and
+  this runs it against a fake `wl-paste` and `cliphist`: a live image wins, a live *text*
+  selection comes back as a text paste (never swapped for an older image cliphist kept),
+  and only an empty selection falls back to cliphist, by id for stash
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
