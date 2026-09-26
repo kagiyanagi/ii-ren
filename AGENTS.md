@@ -477,7 +477,12 @@ you touched; they are the only automated gate.
   spans the transcript. Long tool text and thoughts stop at a height behind `ClampBox`'s
   Show more, and a call's arguments are laid out rather than printed as JSON, so a written
   file is its own highlighted body. It runs that layout, the clamp rule and the stripping of
-  `read_file`'s `N|` gutter under node
+  `read_file`'s `N|` gutter under node. Inline `` `code` `` is a pill Qt's rich text cannot
+  draw: the text is rewritten to escaped HTML bracketed with U+2063, and `InlineCode`
+  removes the brackets and paints behind them. The check runs the rewrite and the
+  bracket-to-range arithmetic, and holds the two runtime traps: the removals report their
+  `textChanged` late (unguarded, that cleared every pill), and `InlineCode` as the view's
+  `background:` segfaulted the shell on reload
 - `python3 tools/check-hermes-paste.py` — Ctrl+V in the Hermes composer attaches the
   image that was copied. The composer decides from cliphist that an image was copied, and
   it used to hand the attach to the gateway's `clipboard.paste`, which reads only the live

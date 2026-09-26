@@ -128,6 +128,51 @@ got = node(f"""const root = {{ resultLines: ["1|a", "plain"], resultText: "1|a\\
     console.log(JSON.stringify({strip}))""")
 assert got == "1|a\nplain", "ToolActivityRow: text that is not all gutter lines must be shown as it came"
 
+# Inline `code` is a pill: the text styled as HTML Qt's markdown import keeps, bracketed
+# for InlineCode to find, with letter-spacing as the room its padding sits in.
+text = (P / "aiChat/MessageTextBlock.qml").read_text()
+pills = (P / "aiChat/InlineCode.qml").read_text()
+m = re.search(r"(    function styleCodeSpans\(.*?\n    \})", text, re.S)
+assert m, "MessageTextBlock: styleCodeSpans is gone, so inline code is plain text in another face"
+style_fn = re.sub(r"\((md): string, (foreground): string, (family): string, (gap): real\): string",
+                  r"(\1, \2, \3, \4)", m.group(1))
+assert "root.styleCodeSpans(modelData.text" in text and "InlineCode {" in text, \
+    "MessageTextBlock: the text no longer goes through styleCodeSpans, or nothing draws the pills"
+
+
+def styled(md):
+    return node(f"{style_fn}\nconsole.log(JSON.stringify(styleCodeSpans({json.dumps(md)}, '#ff8080', 'Mono', 8)))")
+
+
+OPEN = "<span style=\"color:#ff8080; font-family:'Mono';\">\u2063"
+LS = '<span style="letter-spacing:8px;">'
+assert styled("saved to `/a/b.c`.") == f"saved t{LS}o</span> {OPEN}\\/a\\/b\\.{LS}c</span>\u2063</span>.", \
+    "styleCodeSpans: a path must be one bracketed span, escaped, spaced after its last character and the word before"
+assert styled("`a_b*c <T> & d`") == f"{OPEN}a\\_b\\*c &lt;T&gt; &amp; {LS}d</span>\u2063</span>", \
+    "styleCodeSpans: markdown inside must be escaped (`a_b_c` became 'abc'), and entities after, or their `;` is"
+assert styled("``x ` y``") == f"{OPEN}x \\` {LS}y</span>\u2063</span>", "styleCodeSpans: a double-backtick span holds a backtick"
+assert styled("not \\`code\\` here") == "not \\`code\\` here", "styleCodeSpans: an escaped backtick is not a span"
+assert styled("```\n`kept`\n```") == "```\n`kept`\n```", "styleCodeSpans: a fence is code already and must be left alone"
+assert styled("**b** `x`").startswith("**b** <span"), \
+    "styleCodeSpans: the `*` closing emphasis before a span must stay markdown, not be wrapped for spacing"
+
+strip = re.search(r"for \(let k = 0; k \+ 1 < marks\.length; k \+= 2\)\s*ranges\.push\((\[.+?\])\);", pills)
+assert strip, "InlineCode: the bracket-to-range arithmetic is gone"
+sample = "to \u2063/a\u2063 and \u2063b\u2063."
+got = node(f"""const text = {json.dumps(sample)}; const marks = [];
+    for (let at = text.indexOf("\\u2063"); at !== -1; at = text.indexOf("\\u2063", at + 1)) marks.push(at);
+    const plain = text.replace(/\\u2063/g, ""); const ranges = [];
+    for (let k = 0; k + 1 < marks.length; k += 2) ranges.push({strip.group(1)});
+    console.log(JSON.stringify(ranges.map(([a, b]) => plain.slice(a, b))))""")
+assert got == ["/a", "b"], f"InlineCode: brackets must map to their spans in the stripped text, got {got}"
+assert "view.remove(" in pills and "root.stripping" in pills, \
+    "InlineCode: the brackets must be removed from the document, or copying a command copies U+2063 into the shell"
+assert "background: InlineCode" not in text, \
+    "MessageTextBlock: as the view's background, InlineCode is built while the view is, and its Connections to that " \
+    "half-built view segfaulted the shell on reload"
+assert re.search(r"if \(text === root\.stripped\)\s*return;", pills) and "root.stripped = view.getText" in pills, \
+    "InlineCode: the removals report their textChanged late, with the brackets gone; unguarded, that cleared every pill"
+
 # Your turns: a bubble that hugs its text, at the right, capped.
 assert '"person"' not in msg and "SystemInfo.username" not in msg, \
     "HermesMessage: your turns carry the person icon and username again; the bubble says whose turn it is"

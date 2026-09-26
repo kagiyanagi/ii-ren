@@ -38,6 +38,40 @@ session also ran the shell and took the shots itself.
   which only that button ever changed. The brief listed it in your turns' control row. It is
   gone from every turn, and the blocks keep their own `renderMarkdown: true` default.
 
+## Inline code, at the user's request
+
+- Qt's rich text gives a span a background colour and nothing else: no padding, border
+  or radius. So an inline `` `code` `` span is two parts:
+  - `MessageTextBlock.styleCodeSpans` rewrites it to an HTML `<span>` in the mono face and
+    primary colour, bracketed with U+2063. It puts `gap` px of letter-spacing on the span's
+    last character and on the plain character before it, which is real room in the layout
+    for the pill's padding. Markdown inside is backslash-escaped, then `& < >` become
+    entities (the other order escapes the entities' `;`). The character before is only
+    spaced when it is plain text, because a `*`, `)` or `]` there is closing markdown.
+  - `InlineCode` (a `z: -1` child of each text view) reads the brackets, removes them from
+    the document and draws a rounded, bordered `colLayer4Base` pill (in `colOutlineVariant`)
+    behind each range, one per line a span wraps across.
+- Checked through PySide6's `QTextDocument.setMarkdown`: with the brackets removed, the
+  plain text matches the unstyled markdown for every case tried, so copy, selection,
+  search marks and read-aloud positions are unchanged. Bold and links next to a span
+  survive.
+- Three runtime findings, each now pinned in the check:
+  1. The removals' `textChanged` arrives *after* the re-entry guard is released, with the
+     brackets gone. Taken as new text, it cleared every pill in the same millisecond it was
+     made. Remembering the stripped text and ignoring that one change fixed it.
+  2. As the TextArea's `background:`, `InlineCode` is built while the TextArea is, and its
+     `Connections` to that half-built view **segfaulted the shell** during a reload
+     (SIGSEGV in `QQmlConnections::connectSignalsToMethods` under incubation; coredump at
+     13:04, and the shell restarted itself).
+  3. `sed -i` on `InlineCode.qml` stopped live reload for that file (known gotcha). Until
+     a manual restart, one test was run against stale code.
+- Colours tried live: a fill alone (layer 3, then layer 4) was barely visible. The
+  secondary-container tint read, but without a border it didn't look like a box. A
+  `colOutline` border was too heavy. What stayed: a `colLayer4Base` fill with a
+  `colOutlineVariant` border and `m3primary` text, the reference's look. Seen live on a
+  reply, on a path wrapping across two lines, on keys in a list of five, and in your
+  bubble. Known edge: after `**bold**` the gap before a pill is the plain space only.
+
 ## Long tool text and thoughts, at the user's request
 
 - `ClampBox` (new, `modules/common/widgets/`) holds content at `maxHeight` under a fade,

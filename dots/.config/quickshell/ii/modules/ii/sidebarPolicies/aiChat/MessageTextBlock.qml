@@ -36,6 +36,14 @@ ColumnLayout {
     /** Whether this block's turn is the one the search has stepped to. */
     property bool searchCurrent: false
 
+    /**
+     * The fill of an inline `code` pill. A neutral step up with an outline-variant
+     * border and primary text, as a chat sets a path apart: the fill alone (layer 3
+     * or 4) was measured barely visible on a card, and the border is what makes the
+     * box read, on the turn's card and inside a thought alike.
+     */
+    property color codeSpanColor: Appearance.colors.colLayer4Base
+
     property list<string> renderedLatexHashes: []
     property string renderedSegmentContent: ""
     property string shownText: ""
@@ -53,6 +61,57 @@ ColumnLayout {
                 handleRenderedLatex(hash, true);
             }
         }
+    }
+
+    /**
+     * Inline `code` set apart from the prose around it, as a chat sets a path or
+     * a command.
+     *
+     * Qt's markdown import gives a code span a fixed-pitch font and nothing else. So
+     * each span becomes an HTML span in the code face and colour, which the import
+     * keeps, bracketed with U+2063 for InlineCode to find and draw its pill behind,
+     * and with `gap` px of letter-spacing on its last character and on the plain
+     * character before it, which is the room the pill's padding sits in. Qt's rich
+     * text has no padding, border or radius to give a span.
+     *
+     * The import goes on parsing markdown *inside* the tags, so the text has its
+     * punctuation backslash-escaped, then `& < >` as entities (in that order, or the
+     * entities' own `;` is escaped): unescaped, `a_b_c` came out as "abc". The
+     * character before is only spaced when it is plain text, since a `*` or `)`
+     * there is closing emphasis or a link. Fences are left alone. With the brackets
+     * removed the plain text is the same as the unstyled markdown's, so copying,
+     * selection, search marks and read-aloud all still line up.
+     * tools/check-hermes-thread.py runs this under node.
+     */
+    function styleCodeSpans(md: string, foreground: string, family: string, gap: real): string {
+        const mark = "\u2063";
+        const escape = text => text.replace(/([!"#$%'()*+,\-./:;=?@\[\\\]^_`{|}~])/g, "\\$1")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const spaced = text => `<span style="letter-spacing:${gap}px;">${escape(text)}</span>`;
+        return (md ?? "").split(/(```[\s\S]*?(?:```|$))/).map((part, i) => {
+            if (i % 2 === 1)
+                return part;
+            const span = /(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g;
+            let out = "";
+            let last = 0;
+            let match;
+            while ((match = span.exec(part)) !== null) {
+                if (match.index > 0 && "\\`".includes(part[match.index - 1])) {
+                    span.lastIndex = match.index + 1;
+                    continue;
+                }
+                let text = match[2].replace(/\n/g, " ");
+                if (/^ [\s\S]* $/.test(text) && text.trim().length > 0)
+                    text = text.slice(1, -1);
+                let lead = part.slice(last, match.index);
+                const tail = /([A-Za-z0-9\u00C0-\uFFFF.,;:!?'"])(\s*)$/.exec(lead);
+                if (tail)
+                    lead = lead.slice(0, tail.index) + spaced(tail[1]) + tail[2];
+                out += `${lead}<span style="color:${foreground}; font-family:'${family}';">${mark}${escape(text.slice(0, -1))}${spaced(text.slice(-1))}${mark}</span>`;
+                last = span.lastIndex;
+            }
+            return out + part.slice(last);
+        }).join("");
     }
 
     function renderLatex() {
@@ -172,7 +231,9 @@ ColumnLayout {
             wrapMode: TextEdit.Wrap
             color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer2
             textFormat: renderMarkdown ? TextEdit.MarkdownText : TextEdit.PlainText
-            text: modelData.text
+            text: root.renderMarkdown && !root.editing
+                ? root.styleCodeSpans(modelData.text, Appearance.m3colors.m3primary, Appearance.font.family.monospace, codePills.gap)
+                : modelData.text
 
             onTextChanged: {
                 if (!root.editing) return
@@ -184,6 +245,12 @@ ColumnLayout {
             // split across many of them.
             onSelectedTextChanged: TextSelectionService.report(textArea)
             Component.onDestruction: TextSelectionService.release(textArea)
+
+            InlineCode {
+                id: codePills
+                target: textArea
+                fill: root.codeSpanColor
+            }
 
             SpeechHighlight {
                 target: textArea
