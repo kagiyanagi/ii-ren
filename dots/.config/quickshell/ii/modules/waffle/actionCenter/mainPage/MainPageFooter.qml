@@ -21,7 +21,6 @@ FooterRectangle {
         anchors.leftMargin: 12
 
         WToolTip {
-            extraVisibleCondition: batteryButton.shouldShowTooltip
             text: Battery.isCharging ? Translation.tr("Charging") : Translation.tr("Battery")
         }
 
@@ -51,7 +50,6 @@ FooterRectangle {
         anchors.rightMargin: 12
 
         WToolTip {
-            extraVisibleCondition: settingsButton.shouldShowTooltip
             text: Translation.tr("All settings")
         }
 

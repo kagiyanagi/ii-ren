@@ -77,12 +77,9 @@ Scope {
     }
 
     IpcHandler {
-        target: "search"
+        target: "taskView"
 
         function toggle() {
-            GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
-        }
-        function workspacesToggle() {
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
         function close() {
@@ -90,12 +87,6 @@ Scope {
         }
         function open() {
             GlobalStates.overviewOpen = true;
-        }
-        function toggleReleaseInterrupt() {
-            GlobalStates.superReleaseMightTrigger = false;
-        }
-        function clipboardToggle() {
-            overviewScope.toggleClipboard();
         }
     }
 

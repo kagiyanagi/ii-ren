@@ -15,8 +15,8 @@ WButton {
     id: root
     required property DesktopEntry desktopEntry
 
-    property bool pinnedStart: LauncherApps.isPinned(root.desktopEntry.id);
-    property bool pinnedTaskbar: TaskbarApps.isPinned(root.desktopEntry.id);
+    property bool pinnedStart: LauncherApps.isPinned(root.desktopEntry?.id ?? "")
+    property bool pinnedTaskbar: TaskbarApps.isPinned(root.desktopEntry?.id ?? "")
 
     implicitWidth: 96
     implicitHeight: 84
@@ -27,7 +27,7 @@ WButton {
         WAppIcon {
             Layout.topMargin: 12
             Layout.alignment: Qt.AlignHCenter
-            iconName: root.desktopEntry.icon
+            iconName: root.desktopEntry?.icon ?? ""
             implicitSize: 34
             tryCustomIcon: false
         }
@@ -36,7 +36,7 @@ WButton {
             Layout.fillWidth: true
             Layout.leftMargin: 8
             Layout.rightMargin: 8
-            text: root.desktopEntry.name
+            text: root.desktopEntry?.name ?? ""
             wrapMode: Text.Wrap
             elide: Text.ElideRight
             maximumLineCount: 2
@@ -45,7 +45,7 @@ WButton {
         }
     }
     WToolTip {
-        text: root.desktopEntry.name
+        text: root.desktopEntry?.name ?? ""
     }
 
     altAction: () => {
@@ -61,7 +61,8 @@ WButton {
             icon.name: "arrow-up-left"
             text: Translation.tr("Move to front")
             onTriggered: {
-                LauncherApps.moveToFront(root.desktopEntry.id);
+                if (root.desktopEntry?.id)
+                    LauncherApps.moveToFront(root.desktopEntry.id);
             }
         }
         WMenuItem {
@@ -69,7 +70,8 @@ WButton {
             icon.name: "arrow-left"
             text: Translation.tr("Move left")
             onTriggered: {
-                LauncherApps.moveLeft(root.desktopEntry.id);
+                if (root.desktopEntry?.id)
+                    LauncherApps.moveLeft(root.desktopEntry.id);
             }
         }
         WMenuItem {
@@ -77,21 +79,24 @@ WButton {
             icon.name: "arrow-right"
             text: Translation.tr("Move right")
             onTriggered: {
-                LauncherApps.moveRight(root.desktopEntry.id);
+                if (root.desktopEntry?.id)
+                    LauncherApps.moveRight(root.desktopEntry.id);
             }
         }
         WMenuItem {
             icon.name: root.pinnedStart ? "pin-off" : "pin"
             text: root.pinnedStart ? Translation.tr("Unpin from Start") : Translation.tr("Pin to Start")
             onTriggered: {
-                LauncherApps.togglePin(root.desktopEntry.id);
+                if (root.desktopEntry?.id)
+                    LauncherApps.togglePin(root.desktopEntry.id);
             }
         }
         WMenuItem {
             icon.name: root.pinnedTaskbar ? "pin-off" : "pin"
             text: root.pinnedTaskbar ? Translation.tr("Unpin from taskbar") : Translation.tr("Pin to taskbar")
             onTriggered: {
-                TaskbarApps.togglePin(root.desktopEntry.id);
+                if (root.desktopEntry?.id)
+                    TaskbarApps.togglePin(root.desktopEntry.id);
             }
         }
     }

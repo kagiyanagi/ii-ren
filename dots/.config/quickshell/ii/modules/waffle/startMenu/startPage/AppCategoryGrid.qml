@@ -76,11 +76,14 @@ Rectangle {
         id: categoryFolderPopup
         // I don't even know what the fuck is going on at this point
         // I hate point mapping
-        property point originPoint: categoryOpenButtonLoader.mapToItem(root, categoryOpenButtonLoader.width / 2, categoryOpenButtonLoader.height / 2)
+        property point originPoint: categoryOpenButtonLoader ? categoryOpenButtonLoader.mapToItem(root, categoryOpenButtonLoader.width / 2, categoryOpenButtonLoader.height / 2) : Qt.point(0, 0)
         property point windowCenterPoint: {
             const rootContentItem = root.windowRootItem;
+            const sectionItem = root.parent?.parent?.parent;
+            if (!rootContentItem || !sectionItem || !categoryOpenButtonLoader) {
+                return Qt.point(0, 0);
+            }
             const canvasPosInRoot = root.mapFromItem(rootContentItem, rootContentItem.width / 2, rootContentItem.height / 2);
-            const sectionItem = root.parent.parent.parent;
             const positionInSection = sectionItem.mapFromItem(categoryOpenButtonLoader, categoryOpenButtonLoader.x, categoryOpenButtonLoader.y);
             const targetY = Math.max(-positionInSection.y + 212, canvasPosInRoot.y);
             return Qt.point(canvasPosInRoot.x, targetY);
@@ -151,7 +154,7 @@ Rectangle {
             active: categoryFolderPopup.visible
             sourceComponent: WRectangularShadowThis {
                 CategoryFolderContent {
-                    title: root.aggregatedCategory.name
+                    title: root.aggregatedCategory?.name ?? ""
                     desktopEntries: root.desktopEntries
                 }
             }
@@ -262,7 +265,7 @@ Rectangle {
                     delegate: WAppIcon {
                         required property DesktopEntry modelData
                         tryCustomIcon: false
-                        iconName: modelData.icon
+                        iconName: modelData ? modelData.icon : ""
                         implicitSize: 16
                     }
                 }
@@ -274,12 +277,12 @@ Rectangle {
         id: smallGridAppButton
         property DesktopEntry desktopEntry
 
-        property bool pinnedStart: LauncherApps.isPinned(smallGridAppButton.desktopEntry.id);
-        property bool pinnedTaskbar: TaskbarApps.isPinned(smallGridAppButton.desktopEntry.id);
+        property bool pinnedStart: LauncherApps.isPinned(smallGridAppButton.desktopEntry?.id ?? "")
+        property bool pinnedTaskbar: TaskbarApps.isPinned(smallGridAppButton.desktopEntry?.id ?? "")
 
         onClicked: {
             GlobalStates.searchOpen = false;
-            desktopEntry.execute();
+            desktopEntry?.execute();
         }
 
         contentItem: Item {
@@ -293,13 +296,13 @@ Rectangle {
             WAppIcon {
                 anchors.centerIn: parent
                 tryCustomIcon: false
-                iconName: smallGridAppButton.desktopEntry.icon
+                iconName: smallGridAppButton.desktopEntry?.icon ?? ""
                 implicitSize: 34
             }
         }
 
         WToolTip {
-            text: smallGridAppButton.desktopEntry.name
+            text: smallGridAppButton.desktopEntry?.name ?? ""
         }
 
         altAction: () => {
@@ -314,14 +317,16 @@ Rectangle {
                 icon.name: smallGridAppButton.pinnedStart ? "pin-off" : "pin"
                 text: smallGridAppButton.pinnedStart ? Translation.tr("Unpin from Start") : Translation.tr("Pin to Start")
                 onTriggered: {
-                    LauncherApps.togglePin(smallGridAppButton.desktopEntry.id);
+                    if (smallGridAppButton.desktopEntry?.id)
+                        LauncherApps.togglePin(smallGridAppButton.desktopEntry.id);
                 }
             }
             WMenuItem {
                 icon.name: smallGridAppButton.pinnedTaskbar ? "pin-off" : "pin"
                 text: smallGridAppButton.pinnedTaskbar ? Translation.tr("Unpin from taskbar") : Translation.tr("Pin to taskbar")
                 onTriggered: {
-                    TaskbarApps.togglePin(smallGridAppButton.desktopEntry.id);
+                    if (smallGridAppButton.desktopEntry?.id)
+                        TaskbarApps.togglePin(smallGridAppButton.desktopEntry.id);
                 }
             }
         }

@@ -49,6 +49,7 @@ Button {
                 Layout.alignment: Qt.AlignVCenter
                 iconName: AppSearch.guessIcon(root.toplevel.appId)
                 implicitSize: 16
+                tryCustomIcon: false
             }
 
             Item {

@@ -36,11 +36,43 @@ ShellRoot {
         Autostart.load()
         Updates.load()
         HermesService.load()
+        if (Config.ready) {
+            familySwitchTimer.restart()
+        }
     }
 
 
     // Panel families
     property list<string> families: ["ii", "waffle"]
+    property string activeFamily: ""
+
+    Timer {
+        id: familySwitchTimer
+        interval: 15
+        onTriggered: {
+            if (Config.ready) {
+                root.activeFamily = Config.options.panelFamily
+            }
+        }
+    }
+
+    Connections {
+        target: Config
+        function onReadyChanged() {
+            if (Config.ready) {
+                familySwitchTimer.restart()
+            }
+        }
+    }
+
+    Connections {
+        target: Config.options
+        function onPanelFamilyChanged() {
+            root.activeFamily = ""
+            familySwitchTimer.restart()
+        }
+    }
+
     function cyclePanelFamily() {
         const currentIndex = families.indexOf(Config.options.panelFamily)
         const nextIndex = (currentIndex + 1) % families.length
@@ -50,7 +82,7 @@ ShellRoot {
     component PanelFamilyLoader: LazyLoader {
         required property string identifier
         property bool extraCondition: true
-        active: Config.ready && Config.options.panelFamily === identifier && extraCondition
+        active: root.activeFamily === identifier && extraCondition
     }
     
     PanelFamilyLoader {
@@ -80,4 +112,3 @@ ShellRoot {
         onPressed: root.cyclePanelFamily()
     }
 }
-

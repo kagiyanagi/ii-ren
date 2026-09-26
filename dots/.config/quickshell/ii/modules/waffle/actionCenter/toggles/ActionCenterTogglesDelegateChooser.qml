@@ -170,7 +170,7 @@ DelegateChooser {
         roleValue: "comfortView"
         ActionCenterToggleButton {
             toggleModel: ComfortViewToggle {}
-            icon: toggleModel.icon
+            icon: "eye"
             menu: Component {
                 NightLightControl {}
             }
@@ -181,7 +181,7 @@ DelegateChooser {
         roleValue: "readingMode"
         ActionCenterToggleButton {
             toggleModel: ReadingModeToggle {}
-            icon: toggleModel.icon
+            icon: "library"
             menu: Component {
                 NightLightControl {}
             }

@@ -56,10 +56,17 @@ Rectangle {
             return DesktopEntries.byId(desktopEntryString);
         }
 
-        FluentIcon {
+        WAppIcon {
+            visible: Boolean(appInfo.desktopEntry?.icon)
             implicitSize: 20
-            icon: appInfo.desktopEntry?.icon || "music-note-2"
-            monochrome: !appInfo.desktopEntry?.icon
+            iconName: appInfo.desktopEntry?.icon ?? ""
+            tryCustomIcon: false
+        }
+
+        FluentIcon {
+            visible: !appInfo.desktopEntry?.icon
+            implicitSize: 20
+            icon: "music-note-2"
         }
 
         WText {
@@ -127,7 +134,7 @@ Rectangle {
         MediaControlButton {
             readonly property bool playing: root.activePlayer?.isPlaying ?? false
             iconName: playing ? "pause" : "play"
-            enabled: (playing && root.activePlayer?.canPause) || (!playing && root.activePlayer?.canPlay)
+            enabled: Boolean((playing && root.activePlayer?.canPause) || (!playing && root.activePlayer?.canPlay))
             onClicked: root.activePlayer?.togglePlaying()
         }
         MediaControlButton {

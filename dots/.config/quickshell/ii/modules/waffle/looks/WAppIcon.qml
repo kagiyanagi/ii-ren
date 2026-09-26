@@ -16,7 +16,7 @@ Kirigami.Icon {
     animated: true
     roundToIconSize: false
     fallback: root.iconName
-    source: tryCustomIcon ? `${Looks.iconsPath}/${root.iconName}${!root.separateLightDark ? "" : Looks.dark ? "-dark" : "-light"}.svg` : fallback
+    source: (tryCustomIcon && !root.iconName.includes(".")) ? `${Looks.iconsPath}/${root.iconName}${!root.separateLightDark ? "" : Looks.dark ? "-dark" : "-light"}.svg` : fallback
 
     color: Looks.colors.fg
 }
