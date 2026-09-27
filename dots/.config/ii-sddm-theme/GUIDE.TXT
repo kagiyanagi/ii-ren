@@ -12,6 +12,13 @@ If you only want to apply the SDDM theme settings you can run the provided scrip
 sudo ~/.config/ii-sddm-theme/sddm-theme-apply.sh
 ```
 
+To have it re-applied on every wallpaper or light/dark change, the theme must be installed in
+`/usr/share/sddm/themes/ii-sddm-theme` and the script allowed without a password (`sudo visudo`):
+
+```
+youruser ALL=(ALL) NOPASSWD: /home/youruser/.config/ii-sddm-theme/sddm-theme-apply.sh
+```
+
 ### Additional ii-sddm-theme Configurations:
 
 For further customization, check the `ii-sddm.conf` file located in this directory. Remember that after making changes to this file, you'll still need to adjust your background or light/dark mode in the `ii` settings app to ensure the new configurations

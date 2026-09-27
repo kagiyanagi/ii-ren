@@ -36,7 +36,9 @@ output_path = '~/.local/state/quickshell/user/generated/wallpaper/path.txt'
 [templates.iisddmtheme]
 input_path = '~/.config/ii-sddm-theme/SddmColors.qml'
 output_path = '~/.config/ii-sddm-theme/Colors.qml'
-post_hook = 'python3 ~/.config/ii-sddm-theme/generate_settings.py && sudo ~/.config/ii-sddm-theme/sddm-theme-apply.sh &'
+# Opt-in (see GUIDE.TXT): skipped until the theme is installed, and sudo -n
+# so a missing NOPASSWD rule fails instead of leaving a password prompt behind.
+post_hook = '[ -d /usr/share/sddm/themes/ii-sddm-theme ] && python3 ~/.config/ii-sddm-theme/generate_settings.py && sudo -n ~/.config/ii-sddm-theme/sddm-theme-apply.sh &'
 
 [templates.btop]
 input_path = '~/.config/matugen/templates/btop/ryoku.theme'
