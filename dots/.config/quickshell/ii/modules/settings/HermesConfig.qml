@@ -12,8 +12,8 @@ import qs.modules.common.widgets
  */
 ContentPage {
     id: page
-    // TODO(integrator): set to this page's actual slot in settings.qml's
-    // `pages` array -- ContentSection's search registration keys off it.
+    // This page's slot in settings.qml's `pages`; search navigates by it.
+    // tools/check-settings-search.py keeps the two in step.
     readonly property int index: 11
     property bool register: parent.register ?? false
     forceWidth: true
@@ -87,7 +87,12 @@ ContentPage {
             text: (sourceRow.source.display_name ?? "").length > 0 ? sourceRow.source.display_name : (sourceRow.source.name ?? "")
             enabled: sourceRow.installed
             checked: sourceRow.source.enabled ?? false
-            onCheckedChanged: HermesService.setVaultSource(sourceRow.source.name, checked)
+            // The handler also fires while the row is built and on every vault
+            // refresh, which wrote each source's own state straight back.
+            onCheckedChanged: {
+                if (checked !== (sourceRow.source.enabled ?? false))
+                    HermesService.setVaultSource(sourceRow.source.name, checked);
+            }
         }
 
         StyledText {
@@ -505,28 +510,6 @@ ContentPage {
 
     ContentSection {
         visible: HermesService.ready
-        icon: "verified_user"
-        title: Translation.tr("Approvals")
-
-        StyledText {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            color: Appearance.colors.colOnLayer1
-            text: HermesService.approvalMode.length > 0
-                ? Translation.tr("Currently: %1").arg(HermesService.approvalMode)
-                : Translation.tr("Currently: unavailable")
-        }
-        StyledText {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: Appearance.colors.colSubtext
-            text: Translation.tr("Set from the sidebar's own approvals picker, not here.")
-        }
-    }
-
-    ContentSection {
-        visible: HermesService.ready
         icon: "view_agenda"
         title: Translation.tr("Display")
 
@@ -590,6 +573,20 @@ ContentPage {
         visible: HermesService.ready
         icon: "info"
         title: Translation.tr("Agent info")
+
+        // Read-only here, so a subsection of the agent's facts rather than a
+        // section of its own with nothing to operate.
+        ContentSubsection {
+            title: Translation.tr("Approvals")
+            tooltip: Translation.tr("Set from the sidebar's own approvals picker, not here.")
+
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: HermesService.approvalMode.length > 0 ? Appearance.colors.colOnLayer1 : Appearance.colors.colSubtext
+                text: HermesService.approvalMode.length > 0 ? HermesService.approvalMode : Translation.tr("Unavailable")
+            }
+        }
 
         ContentSubsection {
             title: Translation.tr("Profile home")
@@ -731,39 +728,47 @@ ContentPage {
         }
     }
 
-    // WindowDialog only collapses itself inside onShowChanged, so one that has
-    // never been opened keeps its content height -- visible, with its dismiss
-    // MouseArea covering the whole page and swallowing every click. Every other
-    // caller in this repo avoids that by living behind a Loader and being torn
-    // down on close. Reparented onto `page` (not left in ContentPage's own scrolling
+    // Latched: the Loader stays up until the dialog has finished collapsing.
+    // It used to be `active: removeTarget !== null`, which destroyed the dialog
+    // on the frame Cancel or Remove cleared the target, so it never played its
+    // exit. Reparented onto `page` (not left in ContentPage's own scrolling
     // column) so it overlays the whole viewport rather than becoming another
     // section row.
+    property bool removeDialogActive: false
+    onRemoveTargetChanged: if (page.removeTarget !== null) page.removeDialogActive = true
+
     Loader {
         id: removeVaultItemDialogLoader
         parent: page
         anchors.fill: parent
         z: 100
-        active: page.removeTarget !== null
+        active: page.removeDialogActive
 
         sourceComponent: WindowDialog {
-            show: true
+            id: removeDialog
+            // Label, else origin, else a neutral noun -- a vault row is allowed
+            // to carry none of them. Copied once, so the exit does not play on
+            // "this item" after the target is cleared.
+            property string itemName
+
+            // Created shut and opened a turn later, so onShowChanged runs and
+            // the dialog enters instead of appearing at full size.
+            show: false
+            Component.onCompleted: {
+                const target = page.removeTarget;
+                removeDialog.itemName = (target?.label ?? "").length > 0 ? target.label
+                    : (target?.origin ?? "").length > 0 ? target.origin
+                    : Translation.tr("this item");
+                removeDialog.show = Qt.binding(() => page.removeTarget !== null);
+                removeDialog.forceActiveFocus();
+            }
+            onVisibleChanged: if (!visible && !show) page.removeDialogActive = false
 
             WindowDialogTitle {
                 text: Translation.tr("Remove saved item?")
             }
             WindowDialogParagraph {
-                // Label, else origin, else a neutral noun -- a vault row is
-                // allowed to carry none of them.
-                readonly property string itemName: {
-                    const target = page.removeTarget;
-                    if ((target?.label ?? "").length > 0)
-                        return target.label;
-                    if ((target?.origin ?? "").length > 0)
-                        return target.origin;
-                    return Translation.tr("this item");
-                }
-
-                text: Translation.tr("“%1” will be removed from the vault. This cannot be undone.").arg(itemName)
+                text: Translation.tr("“%1” will be removed from the vault. This cannot be undone.").arg(removeDialog.itemName)
             }
             WindowDialogButtonRow {
                 DialogButton {
