@@ -6,14 +6,25 @@ import qs.modules.ii.bar as Bar
 
 MouseArea {
     id: root
-    implicitHeight: columnLayout.implicitHeight + 15
+    // Nothing switched on leaves no padded empty slot behind.
+    implicitHeight: columnLayout.implicitHeight > 0 ? columnLayout.implicitHeight + 16 : 0
     implicitWidth: columnLayout.implicitWidth
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
 
     ColumnLayout {
         id: columnLayout
-        spacing: 10
+        spacing: 8
         anchors.centerIn: parent
+
+        // bar/Resources.qml's order and switches. Temp, GPU and disk were
+        // missing, so turning them on did nothing on a vertical bar.
+        Resource {
+            Layout.alignment: Qt.AlignHCenter
+            iconName: "planner_review"
+            percentage: ResourceUsage.cpuUsage
+            shown: Config.options.bar.resources.showCpu ?? true
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold ?? 90
+        }
 
         Resource {
             Layout.alignment: Qt.AlignHCenter
@@ -21,6 +32,14 @@ MouseArea {
             percentage: ResourceUsage.memoryUsedPercentage
             shown: Config.options.bar.resources.showRam ?? true
             warningThreshold: Config.options.bar.resources.memoryWarningThreshold ?? 95
+        }
+
+        Resource {
+            Layout.alignment: Qt.AlignHCenter
+            iconName: "thermostat"
+            percentage: ResourceUsage.cpuTemp / 100
+            shown: Config.options.bar.resources.showTemp ?? true
+            warningThreshold: Config.options.bar.resources.tempWarningThreshold ?? 85
         }
 
         Resource {
@@ -33,12 +52,19 @@ MouseArea {
 
         Resource {
             Layout.alignment: Qt.AlignHCenter
-            iconName: "planner_review"
-            percentage: ResourceUsage.cpuUsage
-            shown: Config.options.bar.resources.showCpu ?? true
-            warningThreshold: Config.options.bar.resources.cpuWarningThreshold ?? 90
+            iconName: "videogame_asset"
+            percentage: ResourceUsage.gpuUsage
+            shown: Config.options.bar.resources.showGpu ?? false
+            warningThreshold: 90
         }
 
+        Resource {
+            Layout.alignment: Qt.AlignHCenter
+            iconName: "hard_drive"
+            percentage: ResourceUsage.diskUsedPercentage
+            shown: Config.options.bar.resources.showDisk ?? false
+            warningThreshold: 90
+        }
     }
 
     Bar.ResourcesPopup {

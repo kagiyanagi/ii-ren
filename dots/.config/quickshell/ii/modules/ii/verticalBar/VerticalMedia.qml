@@ -23,7 +23,7 @@ MouseArea {
         running: activePlayer?.playbackState == MprisPlaybackState.Playing
         interval: Config.options.resources.updateInterval
         repeat: true
-        onTriggered: activePlayer.positionChanged()
+        onTriggered: root.activePlayer?.positionChanged()
     }
 
     Component.onCompleted: {
@@ -55,11 +55,11 @@ MouseArea {
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
     onPressed: (event) => {
         if (event.button === Qt.MiddleButton) {
-            activePlayer.togglePlaying();
+            root.activePlayer?.togglePlaying();
         } else if (event.button === Qt.BackButton) {
-            activePlayer.previous();
+            root.activePlayer?.previous();
         } else if (event.button === Qt.ForwardButton || event.button === Qt.RightButton) {
-            activePlayer.next();
+            root.activePlayer?.next();
         } else if (event.button === Qt.LeftButton) {
             root.updatePopupRect();
             GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;

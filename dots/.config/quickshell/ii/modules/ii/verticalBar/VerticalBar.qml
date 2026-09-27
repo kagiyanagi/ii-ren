@@ -1,5 +1,6 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
-import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -8,15 +9,14 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 
 Scope {
     id: bar
 
     Variants {
-        id: barVariant
         // For each monitor
-        property var variantModel: {
+        id: barVariant
+        readonly property var variantModel: {
             const screens = Quickshell.screens;
             const list = Config.options.bar.screenList;
             if (!list || list.length === 0)
@@ -28,11 +28,10 @@ Scope {
             id: barLoader
             active: GlobalStates.barOpen && !GlobalStates.screenLocked
             required property ShellScreen modelData
-            property var monitorIndex: barVariant.variantModel.indexOf(barLoader.modelData)
+            property int monitorIndex: barVariant.variantModel.indexOf(modelData)
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
-                property var brightnessMonitor: Brightness.getMonitorForScreen(barLoader.modelData)
 
                 property int monitorIndex: barLoader.monitorIndex
                 property bool hasActiveWindows: false
@@ -76,7 +75,6 @@ Scope {
                 exclusiveZone: (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows)) ? 0 :
                     Appearance.sizes.baseVerticalBarWidth + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                 WlrLayershell.namespace: "quickshell:verticalBar"
-                // WlrLayershell.layer: WlrLayer.Overlay // TODO enable this when bar can hide when fullscreen
                 implicitWidth: Appearance.sizes.verticalBarWidth + Appearance.rounding.screenRounding
                 mask: Region {
                     item: hoverMaskRegion
@@ -117,19 +115,41 @@ Scope {
                         id: barContent
                         showBarBackground: barRoot.showBarBackground
                         implicitWidth: Appearance.sizes.verticalBarWidth
+
+                        // Bar.qml's reveal, turned 90 degrees: enter on the default
+                        // spatial spec, exit on the fast effects one, the spec picked
+                        // inside the binding that writes the margin (DESIGN.md 2.5,
+                        // 2.9). It ran on elementMoveFast both ways, and the right-hand
+                        // bar hid by barHeight -- the horizontal bar's thickness.
+                        readonly property bool revealed: !(Config?.options.bar.autoHide.enable) || barRoot.mustShow
+                        property AnimSpec revealSpec: Appearance.animation.elementMoveEnter
+                        readonly property real edgeOffset: {
+                            barContent.revealSpec = barContent.revealed ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                            return barContent.revealed ? 0 : -Appearance.sizes.verticalBarWidth;
+                        }
+
                         anchors {
                             top: parent.top
                             bottom: parent.bottom
                             left: parent.left
                             right: undefined
-                            leftMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.verticalBarWidth : 0
-                            rightMargin: 0
+                            leftMargin: barContent.edgeOffset
                         }
                         Behavior on anchors.leftMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            NumberAnimation {
+                                alwaysRunToEnd: false
+                                duration: barContent.revealSpec.duration
+                                easing.type: barContent.revealSpec.type
+                                easing.bezierCurve: barContent.revealSpec.bezierCurve
+                            }
                         }
                         Behavior on anchors.rightMargin {
-                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                            NumberAnimation {
+                                alwaysRunToEnd: false
+                                duration: barContent.revealSpec.duration
+                                easing.type: barContent.revealSpec.type
+                                easing.bezierCurve: barContent.revealSpec.bezierCurve
+                            }
                         }
 
                         states: State {
@@ -146,8 +166,8 @@ Scope {
                             }
                             PropertyChanges {
                                 target: barContent
-                                anchors.topMargin: 0
-                                anchors.rightMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.barHeight : 0
+                                anchors.leftMargin: 0
+                                anchors.rightMargin: barContent.edgeOffset
                             }
                         }
                     }
@@ -162,7 +182,7 @@ Scope {
                             right: undefined
                         }
                         width: Appearance.rounding.screenRounding
-                        active: showBarBackground && Config.options.bar.cornerStyle === 0 // Hug
+                        active: barRoot.showBarBackground && Config.options.bar.cornerStyle === 0 // Hug
 
                         states: State {
                             name: "right"
@@ -189,7 +209,7 @@ Scope {
                                 }
 
                                 implicitSize: Appearance.rounding.screenRounding
-                                color: showBarBackground ? Appearance.colors.colLayer0 : "transparent"
+                                color: barRoot.showBarBackground ? Appearance.colors.colLayer0 : "transparent"
 
                                 corner: RoundCorner.CornerEnum.TopLeft
                                 states: State {
@@ -208,7 +228,7 @@ Scope {
                                     right: Config.options.bar.bottom ? parent.right : undefined
                                 }
                                 implicitSize: Appearance.rounding.screenRounding
-                                color: showBarBackground ? Appearance.colors.colLayer0 : "transparent"
+                                color: barRoot.showBarBackground ? Appearance.colors.colLayer0 : "transparent"
 
                                 corner: RoundCorner.CornerEnum.BottomLeft
                                 states: State {
