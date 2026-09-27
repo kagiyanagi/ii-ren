@@ -21,122 +21,165 @@ LockScreen {
 
     property bool passwordView: false
 
-    lockSurface: Item {
-        id: lockSurfaceItem
+    lockSurface: Component {
+        Item {
+            id: lockSurfaceItem
 
-        Component.onCompleted: {
-            root.passwordView = false;
-            lockSurfaceItem.forceActiveFocus();
-        }
+            Component.onCompleted: {
+                root.passwordView = false;
+                HyprlandXkb.refreshLockKeys();
+                lockSurfaceItem.forceActiveFocus();
+            }
 
-        Keys.onPressed: {
-            interactables.switchToFocusedView();
-        }
-
-        StyledImage {
-            id: bg
-            z: 0
-            width: parent.width
-            height: parent.height
-            onStatusChanged: {
-                if (status === Image.Ready) {
-                    y = -lockSurfaceItem.height;
-                    openAnim.restart();
+            Timer {
+                id: returnToClockTimer
+                interval: 15000
+                running: root.passwordView && !root.context.unlockInProgress && root.context.currentText.length === 0
+                onTriggered: {
+                    root.passwordView = false;
+                    lockSurfaceItem.forceActiveFocus();
                 }
             }
-            source: Config.options.background.wallpaperPath
-            fillMode: Image.PreserveAspectCrop
 
-            PropertyAnimation {
-                id: openAnim
-                target: bg
-                property: "y"
-                to: 0
-                duration: 350
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
-            }
-        }
-
-        GaussianBlur {
-            z: 1
-            anchors.fill: bg
-            source: bg
-            radius: 100
-            samples: radius * 2 + 1
-            scale: root.passwordView ? 1.1 : 1
-            opacity: root.passwordView ? 1 : 0
-
-            Behavior on opacity {
-                animation: Looks.transition.opacity.createObject(this)
-            }
-
-            Behavior on scale {
-                NumberAnimation {
-                    duration: 400
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+            Keys.onPressed: event => {
+                if (!root.passwordView) {
+                    if (event.key === Qt.Key_Escape) return;
+                    if (event.key === Qt.Key_CapsLock) {
+                        if (!event.isAutoRepeat)
+                            HyprlandXkb.noteCapsLockPressed();
+                        return;
+                    }
+                    interactables.switchToFocusedView();
+                    if (event.text && event.text.length > 0 && event.text >= " ") {
+                        root.context.currentText = event.text;
+                    }
+                } else {
+                    if (event.key === Qt.Key_CapsLock) {
+                        if (!event.isAutoRepeat)
+                            HyprlandXkb.noteCapsLockPressed();
+                    } else if (event.key === Qt.Key_Escape) {
+                        if (root.context.currentText.length > 0) {
+                            root.context.clearText();
+                        } else {
+                            interactables.switchToUnfocusedView();
+                            lockSurfaceItem.forceActiveFocus();
+                        }
+                    }
                 }
             }
-        }
 
-        Interactables {
-            id: interactables
-            z: 2
-            anchors.fill: bg
+            StyledImage {
+                id: bg
+                z: 0
+                anchors.fill: parent
+                source: Config.options.background.wallpaperPath
+                fillMode: Image.PreserveAspectCrop
+            }
+
+            FastBlur {
+                id: blurredBg
+                z: 1
+                anchors.fill: bg
+                source: bg
+                radius: 64 // design-ok: FastBlur blur radius
+                scale: root.passwordView ? 1.05 : 1
+                opacity: root.passwordView ? 1 : 0
+                visible: opacity > 0
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMoveFast.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    }
+                }
+
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: Appearance.animation.elementMove.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                    }
+                }
+            }
+
+            Interactables {
+                id: interactables
+                z: 2
+                anchors.fill: parent
+            }
         }
     }
 
     component Interactables: Rectangle {
         id: interactablesComponent
-        color: ColorUtils.transparentize("#000000", 0.8)
+        color: ColorUtils.transparentize(Appearance.colors.m3scrim, 0.8)
 
         function switchToFocusedView() {
-            switchToPasswordViewAnim.restart();
+            root.passwordView = true;
         }
 
-        SequentialAnimation {
-            id: switchToPasswordViewAnim
-            PropertyAnimation {
-                target: unfocusedContent
-                property: "y"
-                from: 0
-                to: -height * 1.1
-                duration: 250
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
-            }
-            ScriptAction {
-                script: {
-                    root.passwordView = true;
-                }
-            }
+        function switchToUnfocusedView() {
+            root.passwordView = false;
         }
 
         Item {
             id: unfocusedContent
             width: parent.width
             height: parent.height
-            visible: !root.passwordView
+            visible: opacity > 0
+            opacity: root.passwordView ? 0 : 1
+            y: root.passwordView ? -height * 0.4 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                }
+            }
+            Behavior on y {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMove.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: interactablesComponent.switchToFocusedView()
+                onWheel: wheel => {
+                    if (wheel.angleDelta.y > 0 || wheel.pixelDelta.y > 0)
+                        interactablesComponent.switchToFocusedView();
+                }
+            }
+
             ClockTextGroup {
                 anchors {
                     horizontalCenter: parent.horizontalCenter
                     top: parent.top
-                    topMargin: interactablesComponent.height * 0.1
+                    topMargin: Math.round(interactablesComponent.height * 0.1)
                 }
             }
+
             RowLayout {
                 anchors {
                     bottom: parent.bottom
                     right: parent.right
-                    bottomMargin: 21
-                    rightMargin: 31
+                    bottomMargin: 24
+                    rightMargin: 32
                 }
+                spacing: 8
+
                 IconIndicator {
                     baseIcon: "wifi-1"
                     icon: WIcons.internetIcon
                 }
                 IconIndicator {
+                    visible: Battery.available
                     baseIcon: WIcons.batteryIcon
                     icon: WIcons.batteryLevelIcon
                 }
@@ -146,10 +189,26 @@ LockScreen {
         Item {
             id: focusedContent
             anchors.fill: parent
-            visible: root.passwordView
+            visible: opacity > 0
+            opacity: root.passwordView ? 1 : 0
+            y: root.passwordView ? 0 : 32
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMoveFast.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                }
+            }
+            Behavior on y {
+                NumberAnimation {
+                    duration: Appearance.animation.elementMove.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+                }
+            }
 
             PasswordGroup {
-                visible: root.passwordView
                 anchors {
                     horizontalCenter: parent.horizontalCenter
                     verticalCenter: parent.verticalCenter
@@ -157,12 +216,22 @@ LockScreen {
             }
 
             RowLayout {
-                visible: root.passwordView
                 anchors {
                     bottom: parent.bottom
                     right: parent.right
-                    bottomMargin: 21
-                    rightMargin: 31
+                    bottomMargin: 24
+                    rightMargin: 32
+                }
+                spacing: 8
+
+                IconIndicator {
+                    baseIcon: "wifi-1"
+                    icon: WIcons.internetIcon
+                }
+                IconIndicator {
+                    visible: Battery.available
+                    baseIcon: WIcons.batteryIcon
+                    icon: WIcons.batteryLevelIcon
                 }
                 SessionScreen.PowerButton {
                     id: powerButton
@@ -178,12 +247,14 @@ LockScreen {
         default property alias indicatorData: iconWidget.data
         implicitWidth: 40
         implicitHeight: 40
+
         FluentIcon {
             id: iconWidget
             anchors.centerIn: parent
             icon: iconIndicator.baseIcon
             color: Looks.darkColors.inactiveIcon
             implicitSize: 20
+
             FluentIcon {
                 anchors.fill: parent
                 icon: iconIndicator.icon
@@ -193,12 +264,12 @@ LockScreen {
 
     component ClockTextGroup: Column {
         id: clockTextGroup
-        spacing: -3
+        spacing: -4
 
         WText {
             anchors.horizontalCenter: parent.horizontalCenter
             color: Looks.darkColors.fg
-            font.pixelSize: 133
+            font.pixelSize: 132 // design-ok: Windows 11 lock screen display clock
             font.weight: Looks.font.weight.strong
             text: {
                 // Don't take am/pm
@@ -212,7 +283,7 @@ LockScreen {
             id: dateLabel
             color: Looks.darkColors.fg
             anchors.horizontalCenter: parent.horizontalCenter
-            font.pixelSize: 28
+            font.pixelSize: Appearance.font.pixelSize.hugeass // design-ok: Windows 11 lock screen date style
             font.weight: Looks.font.weight.strong
             text: DateTime.collapsedCalendarFormat
         }
@@ -220,10 +291,23 @@ LockScreen {
 
     component PasswordGroup: ColumnLayout {
         id: passwordGroup
-        spacing: 15
+        spacing: 16
+
+        readonly property string statusText: {
+            if (root.context.authMessage.length > 0)
+                return root.context.authMessage;
+            if (root.context.showFailure)
+                return Translation.tr("The password is incorrect. Please try again.");
+            if (HyprlandXkb.capsLock)
+                return Translation.tr("Caps Lock is on");
+            return "";
+        }
+        readonly property bool statusIsError: root.context.authMessage.length > 0 || root.context.showFailure
 
         WUserAvatar {
             Layout.alignment: Qt.AlignHCenter
+            implicitWidth: 144
+            implicitHeight: 144
             sourceSize: Qt.size(192, 192)
         }
 
@@ -231,21 +315,26 @@ LockScreen {
             Layout.alignment: Qt.AlignHCenter
             text: SystemInfo.username
             color: Looks.darkColors.fg
-            font.pixelSize: 26
+            font.pixelSize: Appearance.font.pixelSize.hugeass // design-ok: Windows 11 user header
             font.weight: Looks.font.weight.strong
         }
 
         Rectangle {
             id: passwordInputWrapper
-            Layout.topMargin: 10
+            Layout.topMargin: 12
             Layout.alignment: Qt.AlignHCenter
-            Layout.bottomMargin: 132
             color: "transparent"
             implicitWidth: 296
             implicitHeight: 36
             border.width: 2
             border.color: Looks.applyContentTransparency(Looks.darkColors.bg1Border)
             radius: Looks.radius.medium
+
+            ErrorShakeAnimation {
+                id: shakeAnim
+                target: passwordInputWrapper
+                distance: 12
+            }
 
             Rectangle {
                 id: passwordInputBackground
@@ -256,48 +345,86 @@ LockScreen {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 6
-                    spacing: 3
+                    anchors.margins: 4
+                    spacing: 4
 
                     WTextInput {
                         id: passwordInput
                         Layout.fillHeight: true
                         Layout.fillWidth: true
                         verticalAlignment: TextInput.AlignVCenter
-                        inputMethodHints: Qt.ImhSensitiveData
-                        echoMode: passwordVisibilityButton.pressed ? TextInput.Normal : TextInput.Password
+                        inputMethodHints: Qt.ImhSensitiveData | Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                        echoMode: passwordVisibilityButton.passwordVisible ? TextInput.Normal : TextInput.Password
                         color: Looks.darkColors.fg
+                        enabled: !root.context.unlockInProgress
+                        font.pixelSize: Appearance.font.pixelSize.smaller
 
-                        font.pixelSize: 12
                         WText {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             visible: passwordInput.text.length === 0
                             text: Translation.tr("Password")
-                            font.pixelSize: Looks.font.pixelSize.large
+                            font.pixelSize: Appearance.font.pixelSize.smaller
                             color: Looks.darkColors.fg
-                            opacity: 0.8
+                            opacity: 0.6
                         }
 
-                        onTextChanged: root.context.currentText = this.text
-                        onAccepted: {
-                            root.context.tryUnlock();
+                        onTextChanged: {
+                            if (root.context.currentText !== text)
+                                root.context.currentText = text;
                         }
+                        onAccepted: {
+                            if (!root.context.unlockInProgress && passwordInput.text.length > 0) {
+                                root.context.tryUnlock();
+                            }
+                        }
+
                         Connections {
                             target: root.context
                             function onCurrentTextChanged() {
-                                passwordInput.text = root.context.currentText;
+                                if (passwordInput.text !== root.context.currentText)
+                                    passwordInput.text = root.context.currentText;
+                            }
+                            function onShowFailureChanged() {
+                                if (root.context.showFailure) {
+                                    shakeAnim.restart();
+                                }
+                            }
+                            function onShouldReFocus() {
+                                if (root.passwordView) {
+                                    passwordInput.forceActiveFocus();
+                                }
+                            }
+                            function onUnlockInProgressChanged() {
+                                if (!root.context.unlockInProgress && root.passwordView) {
+                                    passwordInput.forceActiveFocus();
+                                }
                             }
                         }
+
                         Connections {
                             target: root
                             function onPasswordViewChanged() {
-                                passwordInput.forceActiveFocus();
+                                if (root.passwordView) {
+                                    passwordInput.forceActiveFocus();
+                                }
                             }
                         }
 
                         Keys.onPressed: event => {
                             root.context.resetClearTimer();
+                            if (event.key === Qt.Key_Escape) {
+                                event.accepted = true;
+                                if (passwordInput.text.length > 0) {
+                                    root.context.clearText();
+                                } else {
+                                    interactables.switchToUnfocusedView();
+                                }
+                            } else if (event.key === Qt.Key_CapsLock) {
+                                if (!event.isAutoRepeat) {
+                                    HyprlandXkb.noteCapsLockPressed();
+                                }
+                            }
                         }
 
                         MouseArea {
@@ -311,12 +438,15 @@ LockScreen {
                         id: passwordVisibilityButton
                         property bool passwordVisible: false
                         visible: passwordInput.text.length > 0
+                        enabled: !root.context.unlockInProgress
                         onPressed: passwordVisible = true
                         onReleased: passwordVisible = false
+                        onCanceled: passwordVisible = false
                         icon.name: passwordVisible ? "eye-off" : "eye"
                     }
 
                     PasswordBoxButton {
+                        enabled: !root.context.unlockInProgress && passwordInput.text.length > 0
                         onClicked: {
                             root.context.tryUnlock();
                         }
@@ -324,6 +454,7 @@ LockScreen {
                     }
                 }
             }
+
             Rectangle {
                 id: activeIndicatorLine
                 anchors {
@@ -332,33 +463,62 @@ LockScreen {
                     bottom: parent.bottom
                 }
                 implicitHeight: 2
+                bottomLeftRadius: passwordInputWrapper.radius
+                bottomRightRadius: passwordInputWrapper.radius
+                topLeftRadius: 0
+                topRightRadius: 0
                 color: passwordInput.focus ? Looks.colors.accent : Looks.applyContentTransparency(Looks.darkColors.bg2Border)
-            }
-
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: passwordInputWrapper.width
-                    height: passwordInputWrapper.height
-                    radius: passwordInputWrapper.radius
-                }
             }
         }
 
-        Item {}
+        // Status & feedback row
+        ColumnLayout {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 8
+            Layout.bottomMargin: 104
+            Layout.preferredWidth: passwordInputWrapper.implicitWidth
+            spacing: 4
+
+            WIndeterminateProgressBar {
+                Layout.fillWidth: true
+                visible: root.context.unlockInProgress
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 6
+                visible: passwordGroup.statusText.length > 0 && !root.context.unlockInProgress
+
+                FluentIcon {
+                    implicitSize: 14
+                    icon: passwordGroup.statusIsError ? "warning" : "info"
+                    color: passwordGroup.statusIsError ? Looks.colors.danger : Looks.darkColors.fg1
+                }
+
+                WText {
+                    id: statusLabel
+                    Layout.maximumWidth: passwordInputWrapper.implicitWidth - 24
+                    wrapMode: Text.Wrap
+                    horizontalAlignment: Text.AlignHCenter
+                    text: passwordGroup.statusText
+                    color: passwordGroup.statusIsError ? Looks.colors.danger : Looks.darkColors.fg1
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                }
+            }
+        }
     }
 
     component PasswordBoxButton: WButton {
         id: pwBoxBtn
         implicitWidth: 28
-        implicitHeight: 22
+        implicitHeight: 28
+        horizontalPadding: 0
+        verticalPadding: 0
 
-        property color colBackground: ColorUtils.transparentize(Looks.darkColors.bg1)
-        property color colBackgroundHover: ColorUtils.transparentize(Looks.darkColors.bg2Hover)
-        property color colBackgroundActive: ColorUtils.transparentize(Looks.darkColors.bg2Active)
-        fgColor: checked ? Looks.colors.accentFg : Looks.darkColors.fg
-
-        checked: hovered
+        colBackground: "transparent"
+        colBackgroundHover: Looks.applyContentTransparency(Looks.darkColors.bg2Hover)
+        colBackgroundActive: Looks.applyContentTransparency(Looks.darkColors.bg2Active)
+        fgColor: Looks.darkColors.fg
 
         contentItem: Item {
             FluentIcon {
