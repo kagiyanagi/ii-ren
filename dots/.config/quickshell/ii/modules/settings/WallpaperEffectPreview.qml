@@ -61,11 +61,13 @@ Item {
         preset: root.filter
     }
 
-    // Nothing to preview until a wallpaper is set.
-    StyledText {
+    // Nothing to preview until a wallpaper is set. This was a StyledText, so the
+    // ligature name was drawn as the word "wallpaper" rather than the icon.
+    MaterialSymbol {
         anchors.centerIn: parent
         visible: root.wallpaper.length === 0
         text: "wallpaper"
+        iconSize: Appearance.font.pixelSize.huge
         color: Appearance.colors.colSubtext
     }
 }
