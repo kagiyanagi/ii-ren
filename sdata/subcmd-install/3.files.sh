@@ -182,10 +182,12 @@ esac
 if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 
 # MISC (For dots/.config/* but not quickshell, not fish, not Hyprland, not fontconfig)
+# Nor illogical-impulse: setup-ii-ren.sh installs its config.json with the "~/"
+# paths expanded, and --delete would wipe the extensions and presets beside it.
 case "${SKIP_MISCCONF}" in
   true) sleep 0;;
   *)
-    for i in $(find dots/.config/ -mindepth 1 -maxdepth 1 ! -name 'quickshell' ! -name 'fish' ! -name 'hypr' ! -name 'fontconfig' -exec basename {} \;); do
+    for i in $(find dots/.config/ -mindepth 1 -maxdepth 1 ! -name 'quickshell' ! -name 'fish' ! -name 'hypr' ! -name 'fontconfig' ! -name 'illogical-impulse' -exec basename {} \;); do
       echo "[$0]: Found target: dots/.config/$i"
       if [ -d "dots/.config/$i" ];then install_dir__sync "dots/.config/$i" "$XDG_CONFIG_HOME/$i"
       elif [ -f "dots/.config/$i" ];then install_file "dots/.config/$i" "$XDG_CONFIG_HOME/$i"

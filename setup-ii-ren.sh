@@ -58,6 +58,20 @@ FULL_INSTALL=false
 NO_CONFIRM=false
 FRESH=false
 
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --no-pull          Skip git pull operation"
+    echo "  --no-backup        Skip backup of existing config"
+    echo "  --force-install    Skip illogical-impulse check"
+    echo "  --full-install     Install original dots first, then ii-ren"
+    echo "  --fresh            Clean machine: deps + base dots + shell + my settings, no prompts"
+    echo "  --no-confirm       Skip all confirmations and checks"
+    echo "  -v, --verbose      Enable verbose output"
+    echo "  -h, --help         Show this help"
+}
+
 for arg in "$@"; do
     case $arg in
         --no-pull)
@@ -89,18 +103,13 @@ for arg in "$@"; do
             FORCE_INSTALL=true
             DO_PULL=false
             ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
         *)
             echo -e "${RED}Unknown flag: $arg${NC}"
-            echo "Usage: $0 [OPTIONS]"
-            echo ""
-            echo "Options:"
-            echo "  --no-pull          Skip git pull operation"
-            echo "  --no-backup        Skip backup of existing config"
-            echo "  --force-install    Skip illogical-impulse check"
-            echo "  --full-install     Install original dots first, then ii-ren"
-            echo "  --fresh            Clean machine: deps + base dots + shell + my settings, no prompts"
-            echo "  --no-confirm       Skip all confirmations and checks"
-            echo "  -v, --verbose      Enable verbose output"
+            usage
             exit 1
             ;;
     esac
@@ -114,33 +123,20 @@ log_verbose() {
 
 setup_hyprland_overrides() {
     local OVERRIDES_DIR="$HOME/.config/hypr/hyprland/shellOverrides"
-    local OVERRIDES_FILE="$OVERRIDES_DIR/main.lua"
-    local REPO_DEFAULTS="$SCRIPT_DIR/dots/.config/hypr/hyprland/shellOverrides/repo-defaults.lua"
-    local HYPRSET="$SCRIPT_DIR/sdata/cli/lib/hyprset.lua"
+    local REPO_DIR="$SCRIPT_DIR/dots/.config/hypr/hyprland/shellOverrides"
 
-    echo -e "${NC}• Setting up Hyprland Lua overrides...${NC}"
-
-    if [ ! -d "$OVERRIDES_DIR" ]; then
-        mkdir -p "$OVERRIDES_DIR"
-    fi
-
-    if [ ! -f "$REPO_DEFAULTS" ]; then
-        echo -e "${RED}⚠ Error: Couldn't find repo defaults ($REPO_DEFAULTS), please report this bug!${NC}"
+    echo -e "${NC}• Merging repo defaults into the Hyprland overrides (keeping local changes)...${NC}"
+    # hyprland.lua requires main.lua, so it must exist even if the merge fails.
+    # Start from the repo's empty one, not repo-defaults.lua: a copy of that keeps
+    # its "-- @live" markers, which hyprset can't match, so updates duplicated them.
+    mkdir -p "$OVERRIDES_DIR"
+    [ -f "$OVERRIDES_DIR/main.lua" ] || cp "$REPO_DIR/main.lua" "$OVERRIDES_DIR/main.lua"
+    # --fresh has no live values worth keeping: the running Hyprland, if any,
+    # may still be on the config this install just replaced.
+    [ "$FRESH" = true ] && local HYPRLAND_INSTANCE_SIGNATURE=
+    if ! lua "$SCRIPT_DIR/sdata/cli/lib/hyprset.lua" merge "$REPO_DIR/repo-defaults.lua"; then
+        echo -e "${RED}✗ Couldn't merge the Hyprland overrides, is lua installed?${NC}"
         return 1
-    fi
-
-    if [ ! -f "$OVERRIDES_FILE" ]; then
-        cp "$REPO_DEFAULTS" "$OVERRIDES_FILE"
-        echo -e "${GREEN}✓ Fresh install: copied repo defaults to shellOverrides${NC}"
-    else
-        echo -e "${BLUE}• Merging repo defaults (preserving local changes)...${NC}"
-        if [ -f "$HYPRSET" ]; then
-            lua "$HYPRSET" merge "$REPO_DEFAULTS"
-            echo -e "${GREEN}✓ Merge complete${NC}"
-        else
-            echo -e "${YELLOW}⚠ hyprset.lua not found, falling back to cp${NC}"
-            cp "$REPO_DEFAULTS" "$OVERRIDES_FILE"
-        fi
     fi
 }
 
@@ -404,7 +400,9 @@ log_verbose "Source directory found"
 log_verbose "Creating parent directory: $(dirname "$TARGET_DIR")"
 mkdir -p "$(dirname "$TARGET_DIR")"
 
-if [ "$BACKUP" = true ]; then
+if [ "$FRESH" = true ]; then
+    log_verbose "Fresh install: the base install just put this copy here, nothing to back up"
+elif [ "$BACKUP" = true ]; then
     log_verbose "Checking for existing directory"
     if [ -d "$TARGET_DIR" ]; then
         BACKUP_DIR="${TARGET_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
@@ -456,35 +454,35 @@ else
 fi
 
 echo ""
-echo -e "${NC}• Restarting Hyprland & Quickshell...${NC}"
-sleep 0.5
-
-log_verbose "Killing Quickshell process"
-pkill -x qs
-
-log_verbose "Reloading Hyprland"
-hyprctl reload
-
-sleep 1.0
-
-log_verbose "Starting Quickshell with config: ii"
-nohup qs -c ii > /dev/null 2>&1 &
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Quickshell started${NC}"
-    echo ""
-    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${RED}         Setup completed!    ${NC}"
-    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo -e "${BLUE}Press SUPER+CTRL+R if your shell does not starts.${NC}"
-    echo ""
-    log_verbose "Script completed successfully"
-    echo -e "${BLUE}ii-ren: ${NC}https://github.com/kagiyanagi/ii-ren"
-    echo -e "${BLUE}Report issues: ${NC}https://github.com/kagiyanagi/ii-ren/issues"
-    echo -e "${BLUE}Built on ii-vynx by vaguesyntax - please star it: ${NC}https://github.com/vaguesyntax/ii-vynx"
-    echo ""
+# A fresh machine usually runs this from a TTY or another desktop. There is no
+# Hyprland to reload there, and qs would fail or draw this shell over that desktop.
+if [ -z "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+    echo -e "${BLUE}• Hyprland isn't running here. Log into a Hyprland session to start ii-ren.${NC}"
 else
-    echo -e "${RED}✗ An error occurred while starting Quickshell!${NC}"
-    exit 1
+    echo -e "${NC}• Restarting Hyprland & Quickshell...${NC}"
+    sleep 0.5
+
+    log_verbose "Killing Quickshell process"
+    pkill -x qs
+
+    log_verbose "Reloading Hyprland"
+    hyprctl reload
+
+    sleep 1.0
+
+    log_verbose "Starting Quickshell with config: ii"
+    nohup qs -c ii > /dev/null 2>&1 &
+    echo -e "${GREEN}✓ Quickshell started${NC}"
+    echo -e "${BLUE}Press SUPER+CTRL+R if your shell does not start.${NC}"
 fi
+
+echo ""
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${RED}         Setup completed!    ${NC}"
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+log_verbose "Script completed successfully"
+echo -e "${BLUE}ii-ren: ${NC}https://github.com/kagiyanagi/ii-ren"
+echo -e "${BLUE}Report issues: ${NC}https://github.com/kagiyanagi/ii-ren/issues"
+echo -e "${BLUE}Built on ii-vynx by vaguesyntax - please star it: ${NC}https://github.com/vaguesyntax/ii-vynx"
+echo ""
