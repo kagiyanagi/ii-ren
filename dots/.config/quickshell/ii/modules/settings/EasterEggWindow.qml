@@ -32,7 +32,6 @@ Window {
     property real warpSpeed: 0.5      // dp/frame, idle=0.5, max=16.0
     property real starVx: 100.0
     property real starVy:  60.0
-    property real lastTick: 0
 
     // dp scale (AOSP mDp = displayMetrics.density)
     readonly property real dp: Math.min(width, height) / 360.0
@@ -52,7 +51,6 @@ Window {
             warpSpeed = 0.5
             holding   = false
             holdMs    = 0
-            lastTick  = 0
 
             // stop everything
             wobbleAnim.stop()
@@ -81,16 +79,15 @@ Window {
     }
 
     // ---------------------------------------------------------------
-    // Frame tick – drives starfield and hold-time tracking at 60fps
-    Timer {
+    // Frame tick – drives starfield and hold-time tracking, once per vsync.
+    // It was a 16ms Timer, which beats against the display instead of following
+    // it: frames got two ticks or none, so the stars stuttered.
+    FrameAnimation {
         id: animTimer
-        interval: 16
-        repeat: true
         running: false
         onTriggered: {
             var now = Date.now()
-            var dt  = root.lastTick > 0 ? Math.min(now - root.lastTick, 100) : 16
-            root.lastTick = now
+            var dt  = Math.min(frameTime * 1000, 100)
 
             if (root.holding) {
                 root.holdMs = now - root.holdStartMs
@@ -327,13 +324,18 @@ Window {
         text:     "android"
         iconSize: Math.min(root.width, root.height) * 0.35
         fill:     1
-        color:    "#3DDC84"
+        // Fixed-dim is tone 80 in both themes, so the logo stays light on the
+        // black starfield whichever theme is active; the bare Android green hex
+        // it replaces took no theme at all.
+        color:    Appearance.m3colors.m3primaryFixedDim
         opacity:  0
         scale:    0
         transformOrigin: Item.Center
 
         transform: [
-            Rotation  { id: logoRotation; origin.x: logo.iconSize / 2; origin.y: logo.iconSize / 2 },
+            // The glyph's box, not iconSize: a text item is taller than its font
+            // size, so the wobble pivoted above the logo's centre.
+            Rotation  { id: logoRotation; origin.x: logo.width / 2; origin.y: logo.height / 2 },
             Translate { id: logoShake }
         ]
     }
@@ -351,7 +353,6 @@ Window {
             root.holding      = true
             root.holdStartMs  = Date.now()
             root.holdMs       = 0
-            root.lastTick     = Date.now()
 
             wobbleStartDelay.restart()
             launchTimer.restart()
