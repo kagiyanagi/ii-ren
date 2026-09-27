@@ -1,11 +1,7 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
-import Quickshell
-import qs
-import qs.services
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.waffle.looks
 
 WBarAttachedPanelContent {
@@ -14,10 +10,12 @@ WBarAttachedPanelContent {
     property real value
     property bool showNumber: true
 
-    property Timer timer: Timer {
+    property alias timer: autoCloseTimer
+
+    Timer {
         id: autoCloseTimer
         running: true
-        interval: Config.options.osd.timeout
+        interval: (Config.ready && Config.options.osd?.timeout) ? Config.options.osd.timeout : 3000
         repeat: false
         onTriggered: {
             root.close();
@@ -29,10 +27,8 @@ WBarAttachedPanelContent {
         borderColor: Looks.colors.ambientShadow
 
         contentItem: Item {
-            // color: Looks.colors.bg1Base
-            // radius: Looks.radius.medium
-            implicitWidth: root.showNumber ? 192 : 170
-            implicitHeight: 46
+            implicitWidth: root.showNumber ? 192 : 168
+            implicitHeight: 48
 
             RowLayout {
                 id: contentRow
@@ -44,7 +40,7 @@ WBarAttachedPanelContent {
                 FluentIcon {
                     Layout.alignment: Qt.AlignVCenter
                     icon: root.iconName
-                    implicitSize: 18
+                    implicitSize: 16
                 }
 
                 WProgressBar {
@@ -52,14 +48,13 @@ WBarAttachedPanelContent {
                     value: root.value
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.rightMargin: root.showNumber ? 0 : 3
+                    Layout.rightMargin: root.showNumber ? 0 : 4
                 }
 
                 WTextWithFixedWidth {
                     visible: root.showNumber
-                    text: Math.round(root.value * 100)
-                    // longestText: "100"
-                    implicitWidth: 16
+                    text: Math.round((root.value ?? 0) * 100)
+                    longestText: "100"
                     horizontalAlignment: Text.AlignHCenter
                 }
             }

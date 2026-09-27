@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -6,8 +7,8 @@ import qs.modules.waffle.looks
 
 OSDValue {
     id: root
-    property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name)
-    property var brightnessMonitor: Brightness.getMonitorForScreen(focusedScreen)
+    property var focusedScreen: Quickshell.screens.find(s => s.name === (Hyprland.focusedMonitor?.name ?? "")) ?? Quickshell.screens[0] ?? null
+    property var brightnessMonitor: Brightness.getMonitorForScreen(focusedScreen) ?? Brightness.getTargetMonitor()
     iconName: "weather-sunny"
     value: brightnessMonitor?.brightness ?? 0
     showNumber: false

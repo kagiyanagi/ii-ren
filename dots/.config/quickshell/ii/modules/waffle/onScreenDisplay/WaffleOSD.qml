@@ -1,46 +1,123 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
-import qs
 import qs.services
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.modules.waffle.looks
 
 Scope {
     id: root
 
-    property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name)
+    property var focusedScreen: Quickshell.screens.find(s => s.name === (Hyprland.focusedMonitor?.name ?? "")) ?? Quickshell.screens[0] ?? null
     property string currentIndicator: "volume"
+    property bool isStartup: true
+
+    readonly property bool hasFullscreenWindow: {
+        const mon = Hyprland.focusedMonitor;
+        if (!mon) return false;
+        const ws = Hyprland.workspaces.values.find(w => w.monitor && w.monitor.name === mon.name && w.active);
+        return ws ? ws.toplevels.values.some(window => window.wayland?.fullscreen) : false;
+    }
+
     property var indicators: [
         {
             id: "volume",
-            sourceUrl: "VolumeOSD.qml",
+            sourceUrl: Qt.resolvedUrl("VolumeOSD.qml"),
             globalStateValue: "osdVolumeOpen"
         },
         {
             id: "brightness",
-            sourceUrl: "BrightnessOSD.qml",
+            sourceUrl: Qt.resolvedUrl("BrightnessOSD.qml"),
             globalStateValue: "osdBrightnessOpen"
         },
     ]
 
+    function shouldShowIndicator(indicator: string): bool {
+        if (GlobalStates.screenLocked)
+            return false;
+        if (!Config.osdIndicatorEnabled(indicator))
+            return false;
+        if (Config.ready && Config.options.osd?.hideWhenFullscreen && root.hasFullscreenWindow)
+            return false;
+        return true;
+    }
+
     function triggerBrightnessOsd() {
+        if (!shouldShowIndicator("brightness")) return;
         root.currentIndicator = "brightness";
         GlobalStates.osdBrightnessOpen = true;
+        panelLoader.active = true;
+        const win = panelLoader.item;
+        const ind = win?.indicatorLoader?.item;
+        if (ind?.timer) {
+            ind.timer.restart();
+        }
     }
 
     function triggerVolumeOSD() {
+        if (!shouldShowIndicator("volume")) return;
         root.currentIndicator = "volume";
         GlobalStates.osdVolumeOpen = true;
+        panelLoader.active = true;
+        const win = panelLoader.item;
+        const ind = win?.indicatorLoader?.item;
+        if (ind?.timer) {
+            ind.timer.restart();
+        }
+    }
+
+    function trigger(indicator: string = "volume") {
+        const ind = indicator || root.currentIndicator || "volume";
+        if (ind === "brightness") {
+            triggerBrightnessOsd();
+        } else {
+            triggerVolumeOSD();
+        }
+    }
+
+    function toggle(indicator: string = "volume") {
+        if (panelLoader.active) {
+            root.close();
+        } else {
+            root.trigger(indicator);
+        }
+    }
+
+    function close() {
+        const win = panelLoader.item;
+        const ind = win?.indicatorLoader?.item;
+        if (ind && typeof ind.close === "function") {
+            ind.close();
+        } else {
+            root.closeImmediate();
+        }
+    }
+
+    function closeImmediate() {
+        panelLoader.active = false;
+        GlobalStates.osdBrightnessOpen = false;
+        GlobalStates.osdVolumeOpen = false;
+    }
+
+    Component.onCompleted: startupTimer.start()
+
+    Timer {
+        id: startupTimer
+        interval: 1000
+        repeat: false
+        onTriggered: {
+            root.isStartup = false;
+        }
     }
 
     // Listen to brightness changes
     Connections {
         target: Brightness
         function onBrightnessChanged() {
+            if (root.isStartup)
+                return;
             root.triggerBrightnessOsd();
         }
     }
@@ -49,26 +126,32 @@ Scope {
     Connections {
         target: Audio.sink?.audio ?? null
         function onVolumeChanged() {
-            if (Audio.ready)
-                root.triggerVolumeOSD();
+            if (!Audio.ready || root.isStartup)
+                return;
+            root.triggerVolumeOSD();
         }
         function onMutedChanged() {
-            if (Audio.ready)
-                root.triggerVolumeOSD();
+            if (!Audio.ready || root.isStartup)
+                return;
+            root.triggerVolumeOSD();
         }
     }
 
-    // Open when global state changes
+    // Open/close when global state changes
     Connections {
         target: GlobalStates
 
         function onOsdBrightnessOpenChanged() {
             if (GlobalStates.osdBrightnessOpen)
-                panelLoader.active = true;
+                root.triggerBrightnessOsd();
         }
         function onOsdVolumeOpenChanged() {
             if (GlobalStates.osdVolumeOpen)
-                panelLoader.active = true;
+                root.triggerVolumeOSD();
+        }
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked)
+                root.closeImmediate();
         }
     }
 
@@ -84,13 +167,9 @@ Scope {
         }
         sourceComponent: PanelWindow {
             id: panelWindow
+            screen: root.focusedScreen
 
-            Connections {
-                target: root
-                function onFocusedScreenChanged() {
-                    osdRoot.screen = root.focusedScreen;
-                }
-            }
+            property alias indicatorLoader: osdIndicatorLoader
 
             color: "transparent"
             exclusiveZone: 0
@@ -116,26 +195,9 @@ Scope {
                     target: osdIndicatorLoader.item
                     function onClosed() {
                         panelLoader.active = false;
-                        GlobalStates[root.indicators.find(i => i.id === root.currentIndicator)?.globalStateValue] = false;
-                    }
-                }
-
-                Behavior on source {
-                    id: switchBehavior
-
-                    SequentialAnimation {
-                        id: switchAnim
-                        // Animate close of current indicator
-                        ScriptAction {
-                            script: {
-                                osdIndicatorLoader.item.close();
-                            }
-                        }
-                        // Wait for close anim
-                        PauseAnimation {
-                            duration: osdIndicatorLoader.item.closeAnimDuration
-                        }
-                        PropertyAction {} // The source change happens here
+                        root.indicators.forEach(i => {
+                            GlobalStates[i.globalStateValue] = false;
+                        });
                     }
                 }
             }
@@ -145,8 +207,44 @@ Scope {
     IpcHandler {
         target: "osd"
 
+        function trigger(indicator: string = "volume") {
+            root.trigger(indicator);
+        }
+
+        function open(indicator: string = "volume") {
+            root.trigger(indicator);
+        }
+
+        function hide() {
+            root.close();
+        }
+
+        function close() {
+            root.close();
+        }
+
+        function toggle(indicator: string = "volume") {
+            root.toggle(indicator);
+        }
+    }
+
+    IpcHandler {
+        target: "osdVolume"
+
         function trigger() {
-            root.trigger();
+            root.triggerVolumeOSD();
+        }
+
+        function hide() {
+            root.close();
+        }
+
+        function close() {
+            root.close();
+        }
+
+        function toggle() {
+            root.toggle("volume");
         }
     }
 
@@ -155,5 +253,12 @@ Scope {
         description: "Triggers OSD display"
 
         onPressed: root.trigger()
+    }
+
+    GlobalShortcut {
+        name: "osdVolumeTrigger"
+        description: "Triggers volume OSD display"
+
+        onPressed: root.triggerVolumeOSD()
     }
 }
