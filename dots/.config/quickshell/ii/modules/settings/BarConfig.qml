@@ -32,7 +32,6 @@ ContentPage {
         page.contentY = item.y
     }
 
-
     ContentSection {
         icon: "mobile_layout"
         title: Translation.tr("Bar layout")
@@ -110,15 +109,12 @@ ContentPage {
 
                 ConfigSelectionArray {
                     currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
+                    // NetworkSpeed already draws icon mode on a vertical bar, so
+                    // this used to overwrite the user's horizontal mode for nothing:
+                    // back on a horizontal bar, their choice was gone.
                     onSelected: newValue => {
-                        const newVertical = (newValue & 2) !== 0;
-                        if (newVertical && !Config.options.bar.vertical) {
-                            if (Config.options.bar.networkSpeed.displayMode < 4) {
-                                Config.options.bar.networkSpeed.displayMode = 4;
-                            }
-                        }
                         Config.options.bar.bottom = (newValue & 1) !== 0;
-                        Config.options.bar.vertical = newVertical;
+                        Config.options.bar.vertical = (newValue & 2) !== 0;
                     }
                     options: [
                         {
@@ -251,17 +247,17 @@ ContentPage {
                 onSelected: newValue => {
                     Config.options.bar.barBackgroundStyle = newValue;
                 }
-                options: [ 
+                options: [
                     {
                         displayName: Translation.tr("Visible"),
                         icon: "visibility",
                         value: 1
-                    }, 
+                    },
                     {
                         displayName: Translation.tr("Adaptive"),
                         icon: "masked_transitions",
                         value: 2
-                    },        
+                    },
                     {
                         displayName: Translation.tr("Transparent"),
                         icon: "opacity",
@@ -271,7 +267,7 @@ ContentPage {
             }
         }
     }
-    
+
     ContentSection {
         id: clockSection
         icon: "schedule"
@@ -407,7 +403,7 @@ ContentPage {
                 onCheckedChanged: {
                     Config.options.bar.mediaPlayer.useFixedSize = checked;
                 }
-            }   
+            }
 
             ConfigSpinBox {
                 enabled: !Config.options.bar.vertical && Config.options.bar.mediaPlayer.useFixedSize
@@ -449,7 +445,7 @@ ContentPage {
                 }
             }
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Lyrics")
 
@@ -501,11 +497,8 @@ ContentPage {
                     Config.options.bar.mediaPlayer.lyrics.useGradientMask = checked;
                 }
             }
-            
         }
-
     }
-    
 
     ContentSection {
         icon: "notifications"
@@ -533,7 +526,7 @@ ContentPage {
                 Config.options.tray.invertPinnedItems = checked;
             }
         }
-        
+
         ConfigSwitch {
             buttonIcon: "colors"
             text: Translation.tr('Tint icons')
@@ -572,7 +565,7 @@ ContentPage {
                 }
             }
         }
-        
+
         ContentSubsection {
             title: Translation.tr("Record")
 
@@ -636,11 +629,12 @@ ContentPage {
         id: networkSpeed
         icon: "speed"
         title: Translation.tr("Network speed")
-        
+
         ContentSubsection {
             title: Translation.tr("Mode selector")
             ConfigSelectionArray {
-                currentValue: Config.options.bar.networkSpeed.displayMode
+                // What the bar draws: a vertical one is always icon mode.
+                currentValue: Config.options.bar.vertical ? 4 : Config.options.bar.networkSpeed.displayMode
                 onSelected: newValue => {
                     Config.options.bar.networkSpeed.displayMode = newValue;
                 }
@@ -654,59 +648,62 @@ ContentPage {
             }
         }
 
+        // The switches' disabled state dims them; the extra 0.5 on top of it
+        // put them at 0.2. Icon position was nested inside Icon settings, one
+        // indent deeper than its neighbours.
         ContentSubsection {
             title: Translation.tr("Icon settings")
-            
+
             ConfigSwitch {
                 buttonIcon: "vertical_align_center"
                 text: Translation.tr("Show speed indicators (↑↓)")
                 enabled: Config.options.bar.networkSpeed.displayMode !== 4
-                opacity: enabled ? 1.0 : 0.5
                 checked: Config.options.bar.networkSpeed.showIcons
                 onCheckedChanged: {
                     Config.options.bar.networkSpeed.showIcons = checked;
                 }
             }
+        }
 
-            ContentSubsection {
-                title: Translation.tr("Icon position")
-                enabled: Config.options.bar.networkSpeed.showIcons
-                opacity: enabled ? 1.0 : 0.5
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.networkSpeed.iconPosition
-                    onSelected: newValue => {
-                        Config.options.bar.networkSpeed.iconPosition = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Left"), icon: "align_horizontal_left", value: 0 },
-                        { displayName: Translation.tr("Right"), icon: "align_horizontal_right", value: 1 }
-                    ]
-                }
-            }
-            }
+        ContentSubsection {
+            title: Translation.tr("Icon position")
+            enabled: Config.options.bar.networkSpeed.showIcons
 
-            ContentSubsection {
-                title: Translation.tr("Performance & Layout")
-                ConfigSpinBox {
-                    icon: "timer"
-                    text: Translation.tr("Update interval (ms)")
-                    value: Config.options.bar.networkSpeed.updateInterval
-                    from: 100
-                    to: 5000
-                    stepSize: 100
-                    onValueChanged: {
-                        Config.options.bar.networkSpeed.updateInterval = value; 
-                    }
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.networkSpeed.iconPosition
+                onSelected: newValue => {
+                    Config.options.bar.networkSpeed.iconPosition = newValue;
                 }
-                ConfigSwitch {
-                    buttonIcon: "visibility_off"
-                    text: Translation.tr("Auto-hide when idle")
-                    checked: Config.options.bar.networkSpeed.autoHide
-                    onCheckedChanged: { 
-                        Config.options.bar.networkSpeed.autoHide = checked; 
-                    }
+                options: [
+                    { displayName: Translation.tr("Left"), icon: "align_horizontal_left", value: 0 },
+                    { displayName: Translation.tr("Right"), icon: "align_horizontal_right", value: 1 }
+                ]
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Performance & Layout")
+
+            ConfigSpinBox {
+                icon: "timer"
+                text: Translation.tr("Update interval (ms)")
+                value: Config.options.bar.networkSpeed.updateInterval
+                from: 100
+                to: 5000
+                stepSize: 100
+                onValueChanged: {
+                    Config.options.bar.networkSpeed.updateInterval = value;
                 }
             }
+            ConfigSwitch {
+                buttonIcon: "visibility_off"
+                text: Translation.tr("Auto-hide when idle")
+                checked: Config.options.bar.networkSpeed.autoHide
+                onCheckedChanged: {
+                    Config.options.bar.networkSpeed.autoHide = checked;
+                }
+            }
+        }
     }
 
     ContentSection {
@@ -714,11 +711,13 @@ ContentPage {
         icon: "battery_android_full"
         title: Translation.tr("Battery indicator")
 
+        // The same card the rows sit on. It was colLayer1 on a colLayer1 pane,
+        // so the preview floated with no card behind it at all.
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 64
-            radius: Appearance.rounding.small
-            color: Appearance.colors.colLayer1
+            radius: Appearance.rounding.large
+            color: Appearance.colors.colSurfaceContainerHigh
 
             RowLayout {
                 anchors.centerIn: parent
@@ -775,7 +774,6 @@ ContentPage {
         ContentSubsection {
             title: Translation.tr("Percentage display")
             enabled: Config.options.bar.battery.style !== "text"
-            opacity: enabled ? 1.0 : 0.5
             ConfigSelectionArray {
                 currentValue: Config.options.bar.battery.showPercentage ?? 1
                 onSelected: newValue => {
@@ -913,21 +911,21 @@ ContentPage {
                     text: Translation.tr("Displays unit symbols after numbers (e.g. 20%, 51°C, 3.8G)")
                 }
             }
+        }
 
-            ContentSubsection {
-                title: Translation.tr("RAM & Swap measurement unit")
+        ContentSubsection {
+            title: Translation.tr("RAM & Swap measurement unit")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.resources.ramUnit ?? "percent"
-                    onSelected: newValue => {
-                        Config.options.bar.resources.ramUnit = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Percentage (%)"), icon: "percent", value: "percent" },
-                        { displayName: Translation.tr("Gigabytes (GB)"), icon: "database", value: "gb" },
-                        { displayName: Translation.tr("Megabytes (MB)"), icon: "memory", value: "mb" }
-                    ]
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.resources.ramUnit ?? "percent"
+                onSelected: newValue => {
+                    Config.options.bar.resources.ramUnit = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Percentage (%)"), icon: "percent", value: "percent" },
+                    { displayName: Translation.tr("Gigabytes (GB)"), icon: "database", value: "gb" },
+                    { displayName: Translation.tr("Megabytes (MB)"), icon: "memory", value: "mb" }
+                ]
             }
         }
 
@@ -949,19 +947,20 @@ ContentPage {
                     text: Translation.tr("Speed corresponding to 100% network load on the progress ring")
                 }
             }
+        }
 
-            ContentSubsection {
-                title: Translation.tr("Display value")
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.resources.networkUnit ?? "percent"
-                    onSelected: newValue => {
-                        Config.options.bar.resources.networkUnit = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Load percentage (%)"), icon: "percent", value: "percent" },
-                        { displayName: Translation.tr("Speed value (e.g. 1.2M)"), icon: "speed", value: "speed" }
-                    ]
+        ContentSubsection {
+            title: Translation.tr("Display value")
+            visible: Config.options.bar.resources.showNetwork ?? false
+            ConfigSelectionArray {
+                currentValue: Config.options.bar.resources.networkUnit ?? "percent"
+                onSelected: newValue => {
+                    Config.options.bar.resources.networkUnit = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Load percentage (%)"), icon: "percent", value: "percent" },
+                    { displayName: Translation.tr("Speed value (e.g. 1.2M)"), icon: "speed", value: "speed" }
+                ]
             }
         }
 
@@ -1242,22 +1241,16 @@ ContentPage {
     ContentSection {
         icon: "tooltip"
         title: Translation.tr("Tooltips")
-        ConfigRow {
-            ConfigSwitch {
-                buttonIcon: "ads_click"
-                text: Translation.tr("Click to show")
-                Layout.fillWidth: true
-                checked: Config.options.bar.tooltips.clickToShow
-                onCheckedChanged: {
-                    Config.options.bar.tooltips.clickToShow = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("You will not be able to use the buttons on some popups if you enable this option.")
-                }
+        ConfigSwitch {
+            buttonIcon: "ads_click"
+            text: Translation.tr("Click to show")
+            checked: Config.options.bar.tooltips.clickToShow
+            onCheckedChanged: {
+                Config.options.bar.tooltips.clickToShow = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("You will not be able to use the buttons on some popups if you enable this option.")
             }
         }
-
     }
-
-    
 }
