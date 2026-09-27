@@ -18,7 +18,7 @@ says **declined**, the reason is the whole point of writing it down.
 | 4 | Perf never entered the audit — no pack facts, no brief heading, no gate | **Take the cheap half.** `pack.py` now emits an **Effect budget** (every `layer.enabled` / `MultiEffect` / `OpacityMask` / `ShaderEffect` / shadow / `Canvas` and every sub-100ms `Timer`, flagged when it sits inside something that repeats) and the brief template gained a `**Cost.**` line. No new gate: `check-effect-budget.py` already fails on a new nested effect | **done** |
 | 5 | `RippleButton`'s `StateOverlay` drives focus and press but not hover, so callers hand-mix a film — two ship 0.05 where the token is 0.08 | **Fix the two, not the base.** 261 files set a hover colour; making hover a film at the root is a redesign of the library's hover model and wants a measured before/after, not a default flip. `ToolbarTabButton`'s two alphas are now 0.08 / 0.10 | **done** + revisit queued |
 | 6 | `CustomBatteryMeter.isCritical` is wired end to end and read by nothing — critical and merely low render identically | **Use the error *container* for the track.** One existing token, no new recipe, no pulse (rule 8), and it reads as louder than low without inventing anything DESIGN.md cannot source | **done** |
-| 7 | Motion across the tranche is unverified — twelve families retimed animations and none could run the shell | **Verify once, in the cohesion pass**, against the list each row left in its `notes.md`, not per row. The standing list is below | **queued** (cohesion pass) |
+| 7 | Motion across the tranche is unverified — twelve families retimed animations and none could run the shell | **Verify once, in the cohesion pass**, against the list each row left in its `notes.md`, not per row. The standing list is below | **declined** by the owner on 2026-09-27: no animation changes wanted, so the list is a record, not a to-do |
 | 8 | `settings-widgets` (191 files / 35k lines) is still a tranche | **Split it the same way `common-widgets` was**, in its own session. It is the other half of "fix the shared base first" | **done** (ten `sw-*` rows) |
 | 9 | The vision pass was 2-for-13 | **Keep it, once per tranche, never per surface, and never unverified.** It found the one defect the whole checker suite is structurally blind to. `vision.md` is evidence, not a to-do list | **done** (recorded) |
 | 10 | Bar and dock paint separator bars (`Spacebar`, `SysTray`, `DockSeparator`/`SectionSeparator`) against law 11 | **Change what ships, keep what was chosen.** New spacers default to `empty`, the dock's `separatorStyle` defaults to `Empty`, `SysTray`'s dead `showSeparator` is gone. The styles stay for a config that explicitly picked one | **done** |
@@ -58,6 +58,8 @@ layout has to report both implicit dimensions, and nothing in the toolchain says
 row owns.
 
 ## What the cohesion pass has to watch at 60fps
+
+Not run: see 7. Kept as the record of what each row retimed.
 
 From the rows that retimed something and could not drive the shell:
 

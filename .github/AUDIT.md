@@ -13,7 +13,8 @@ Two hard constraints shape every choice below:
 
 Read this before starting or resuming audit work. The tooling is built and every queue
 row is done except `ii-background-widgets`, which is skipped (see **The re-port hazard**);
-what is left is the **Cohesion pass**.
+the **Cohesion pass** has run: the outliers it named are fixed, and its motion half was
+declined (`.audit/DECISIONS.md` 7).
 
 ## Why a process instead of just doing it
 
@@ -68,7 +69,7 @@ the pace is visible at a glance. Stop whenever; the next session starts from the
 | Who verifies | Scripts first, then Claude reading its own diff against the brief. |
 | agy | Vision, shell driving, and lane 2 implementation. See **The tiers**. |
 | Vendored trees | **Out, permanently.** See **The re-port hazard**. |
-| Motion verification | **Once, in the cohesion pass**, not per row. A row that retimes something names it in `notes.md`; the cohesion session runs the shell at 60fps against that list. Twelve parallel sessions could not each drive the shell, and one pass over a list costs less than twelve that each re-derive what to look at. |
+| Motion verification | **Once, in the cohesion pass**, not per row. A row that retimes something names it in `notes.md`; the cohesion session runs the shell at 60fps against that list. Twelve parallel sessions could not each drive the shell, and one pass over a list costs less than twelve that each re-derive what to look at. Declined by the owner on 2026-09-27, see DECISIONS 7. |
 
 ## The tiers, as actually measured
 
@@ -310,7 +311,8 @@ a single session. This is also where **motion** gets verified: every row that re
 something left the specific thing to watch in its `notes.md`, and a still frame proves
 none of it. The standing list so far is in `.audit/DECISIONS.md`. Naming the outliers is what makes a shell read as one person's work
 rather than 80 surfaces that are each fine alone. Cheapest session in the plan and the one
-that delivers the actual goal.
+that delivers the actual goal. It ran on 2026-09-27; `.audit/cohesion/notes.md` has the
+sheet, what it cannot show, and what it found.
 
 ## Pilot first
 
