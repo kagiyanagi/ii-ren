@@ -19,18 +19,20 @@ MouseArea {
     implicitWidth: contentLayout.implicitWidth
     implicitHeight: contentLayout.implicitHeight
 
+    ListView.delayRemove: removeAnimation.running
+
     function dismissAll() {
-        root.notifications.forEach(notif => {
-            Qt.callLater(() => {
-                Notifications.discardNotification(notif.notificationId);
-            });
-        });
         removeAnimation.start();
     }
 
     WNotificationDismissAnim {
         id: removeAnimation
         target: root
+        onDismissed: {
+            root.notifications.forEach(notif => {
+                Notifications.discardNotification(notif.notificationId);
+            });
+        }
     }
 
     property real dragDismissThreshold: 100
@@ -55,17 +57,18 @@ MouseArea {
         width: root.width
 
         Behavior on x {
+            enabled: !root.drag.active && !removeAnimation.running
             animation: Looks.transition.enter.createObject(this)
         }
 
         GroupHeader {
             id: notifHeader
             Layout.fillWidth: true
-            Layout.margins: 11
+            Layout.margins: 12
         }
 
         WListView {
-            Layout.leftMargin: -Math.min(35, contentLayout.x)
+            Layout.leftMargin: -Math.min(36, contentLayout.x)
             Layout.rightMargin: -Layout.leftMargin
             Layout.fillWidth: true
             implicitWidth: notifHeader.implicitWidth
@@ -85,11 +88,11 @@ MouseArea {
                 notification: modelData
 
                 groupExpandControlMessage: {
-                    if (root.notifications.length <= 1)
+                    if ((root.notifications?.length ?? 0) <= 1)
                         return "";
                     if (!root.expanded)
-                        return Translation.tr("+%1 notifications").arg(root.notifications.length - 1);
-                    if (index === root.notifications.length - 1)
+                        return Translation.tr("+%1 notifications").arg((root.notifications?.length ?? 1) - 1);
+                    if (index === (root.notifications?.length ?? 0) - 1)
                         return Translation.tr("See fewer");
                     return "";
                 }
@@ -111,7 +114,7 @@ MouseArea {
         RowLayout {
             id: appHeader
             anchors.fill: parent
-            spacing: 7
+            spacing: 8
 
             WNotificationAppIcon {
                 Layout.alignment: Qt.AlignVCenter
@@ -127,7 +130,7 @@ MouseArea {
 
             NotificationHeaderButton {
                 visible: headerMouseArea.containsMouse
-                Layout.rightMargin: 3
+                Layout.rightMargin: 4
                 icon.name: "dismiss"
                 onClicked: {
                     root.dismissAll();

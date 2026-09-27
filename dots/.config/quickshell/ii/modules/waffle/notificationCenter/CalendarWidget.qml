@@ -32,14 +32,14 @@ BodyRectangle {
         id: contentColumn
         spacing: 12
         CalendarHeader {
-            Layout.topMargin: 10
+            Layout.topMargin: 8
             Layout.fillWidth: true
         }
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            spacing: 1
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            spacing: 2
             DayOfWeekRow {
                 Layout.fillWidth: true
                 locale: root.locale
@@ -66,9 +66,9 @@ BodyRectangle {
                 id: calendarView
                 locale: root.locale
                 verticalPadding: 2
-                buttonSize: 41 // ???
-                buttonSpacing: 6
-                buttonVerticalSpacing: 1
+                buttonSize: 40
+                buttonSpacing: 4
+                buttonVerticalSpacing: 2
                 Layout.fillWidth: true
                 delegate: DayButton {}
             }
@@ -103,7 +103,7 @@ BodyRectangle {
 
         WBorderlessButton {
             Layout.fillWidth: true
-            implicitHeight: 34
+            implicitHeight: 32
             contentItem: Item {
                 WText {
                     anchors.fill: parent
@@ -131,7 +131,7 @@ BodyRectangle {
             calendarView.scrollMonthsAndSnap(scrollDown ? 1 : -1);
         }
         implicitWidth: 32
-        implicitHeight: 34
+        implicitHeight: 32
 
         contentItem: FluentIcon {
             filled: true

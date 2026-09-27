@@ -27,12 +27,12 @@ FooterRectangle {
         SmallBorderedIconButton {
             visible: !TimerService.pomodoroRunning
             icon.name: "subtract"
-            onClicked: Config.options.time.pomodoro.focus -= 300 // 5 mins
+            onClicked: Config.options.time.pomodoro.focus = Math.max(300, Config.options.time.pomodoro.focus - 300)
         }
 
         WTextWithFixedWidth {
             visible: !TimerService.pomodoroRunning
-            implicitWidth: 81
+            implicitWidth: 80
             horizontalAlignment: Text.AlignHCenter
             color: Looks.colors.subfg
             text: Translation.tr("%1 mins").arg(`<font color="${Looks.colors.fg.toString()}">${TimerService.focusTime / 60}</font>`)
@@ -64,7 +64,7 @@ FooterRectangle {
                     TimerService.resetPomodoro();
                 } else {
                     TimerService.togglePomodoro();
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath(""), "ipc", "call", "sidebarRight", "toggle"]);
+                    GlobalStates.sidebarRightOpen = false;
                 }
             }
         }

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -15,18 +16,26 @@ Scope {
         target: GlobalStates
 
         function onSidebarRightOpenChanged() {
-            if (GlobalStates.sidebarRightOpen) panelLoader.active = true;
+            if (GlobalStates.sidebarRightOpen) {
+                panelLoader.active = true;
+            }
+        }
+
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked && GlobalStates.sidebarRightOpen) {
+                GlobalStates.sidebarRightOpen = false;
+            }
         }
     }
 
     Loader {
         id: panelLoader
-        active: GlobalStates.sidebarRightOpen
+        active: false
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
             WlrLayershell.namespace: "quickshell:wNotificationCenter"
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+            WlrLayershell.keyboardFocus: GlobalStates.sidebarRightOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -40,7 +49,7 @@ Scope {
 
             HyprlandFocusGrab {
                 id: focusGrab
-                active: true
+                active: GlobalStates.sidebarRightOpen && !GlobalStates.screenLocked
                 windows: [panelWindow]
                 onCleared: content.close();
             }
@@ -65,7 +74,11 @@ Scope {
     }
 
     function toggleOpen() {
-        GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
+        if (GlobalStates.sidebarRightOpen) {
+            GlobalStates.sidebarRightOpen = false;
+        } else {
+            GlobalStates.sidebarRightOpen = true;
+        }
     }
 
     IpcHandler {
@@ -73,6 +86,14 @@ Scope {
 
         function toggle() {
             root.toggleOpen();
+        }
+
+        function close() {
+            GlobalStates.sidebarRightOpen = false;
+        }
+
+        function open() {
+            GlobalStates.sidebarRightOpen = true;
         }
     }
 

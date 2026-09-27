@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs
 import qs.services
@@ -32,7 +33,7 @@ AcrylicButton {
             visible: root.iconVisible
             icon: root.iconName
             filled: root.iconFilled
-            implicitSize: 14
+            implicitSize: 16
             anchors.verticalCenter: parent.verticalCenter
         }
         WText {

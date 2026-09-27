@@ -13,7 +13,7 @@ MouseArea {
     id: root
 
     required property var notification
-    property bool expanded: notification.actions.length > 0
+    property bool expanded: (notification?.actions?.length ?? 0) > 0
     property string groupExpandControlMessage: ""
 
     readonly property bool isPopup: notification?.popup ?? false
@@ -21,16 +21,20 @@ MouseArea {
     signal groupExpandToggle
     hoverEnabled: true
 
+    ListView.delayRemove: removeAnimation.running
+
     function dismiss() {
-        Qt.callLater(() => {
-            Notifications.discardNotification(root.notification?.notificationId);
-        });
         removeAnimation.start();
     }
 
     WNotificationDismissAnim {
         id: removeAnimation
-        target: root
+        target: contentItem
+        onDismissed: {
+            if (root.notification?.notificationId !== undefined) {
+                Notifications.discardNotification(root.notification.notificationId);
+            }
+        }
     }
 
     implicitHeight: contentItem.implicitHeight
@@ -68,6 +72,7 @@ MouseArea {
         border.color: root.isPopup ? Looks.colors.bg2Border : Looks.colors.bgPanelSeparator
 
         Behavior on x {
+            enabled: !root.drag.active && !removeAnimation.running
             animation: Looks.transition.enter.createObject(this)
         }
 
@@ -75,7 +80,7 @@ MouseArea {
             id: notificationContent
             anchors.fill: parent
             anchors.margins: contentItem.padding
-            spacing: 19
+            spacing: 16
 
             // Header
             SingleNotificationHeader {
@@ -97,12 +102,12 @@ MouseArea {
                         top: parent.top
                         left: parent.left
                     }
-                    active: root.notification.image != ""
+                    active: Boolean(root.notification?.image)
                     sourceComponent: StyledImage {
                         readonly property int size: 48
                         width: size
                         height: size
-                        source: root.notification.image
+                        source: root.notification?.image ?? ""
                         fillMode: Image.PreserveAspectFit
                     }
                 }
@@ -114,7 +119,7 @@ MouseArea {
                         left: parent.left
                         right: parent.right
                     }
-                    spacing: 3
+                    spacing: 4
 
                     SummaryText {
                         id: summaryText
@@ -150,18 +155,19 @@ MouseArea {
         NotificationHeaderButton {
             Layout.rightMargin: 4
             opacity: (root.containsMouse || root.isPopup) ? 1 : 0
+            visible: opacity > 0
             icon.name: "dismiss"
-            implicitSize: 14
+            implicitSize: 16
             onClicked: root.dismiss()
         }
     }
 
     component ActionsRow: RowLayout {
-        visible: root.expanded && root.notification.actions.length > 0
+        visible: root.expanded && (root.notification?.actions?.length ?? 0) > 0
         uniformCellSizes: true
         Repeater {
             id: actionRepeater
-            model: root.notification.actions
+            model: root.notification?.actions ?? []
             delegate: WBorderedButton {
                 id: actionButton
                 Layout.fillHeight: true
@@ -171,6 +177,9 @@ MouseArea {
                 horizontalPadding: 12
                 text: modelData.text
                 implicitHeight: actionButtonText.implicitHeight + verticalPadding * 2
+                onClicked: {
+                    Notifications.attemptInvokeAction(root.notification?.notificationId, actionButton.modelData.identifier);
+                }
                 contentItem: WText {
                     id: actionButtonText
                     text: actionButton.text
@@ -197,9 +206,11 @@ MouseArea {
         wrapMode: Text.Wrap
         maximumLineCount: root.expanded ? 100 : 1
         text: {
+            const body = root.notification?.body ?? "";
+            const appName = root.notification?.appName || root.notification?.summary || "";
             if (root.expanded)
-                return `<style>img{max-width:${summaryText.width}px; align: right}</style>` + `${NotificationUtils.processNotificationBody(root.notification.body, root.notification.appName || root.notification.summary).replace(/\n/g, "<br/>")}`;
-            return NotificationUtils.processNotificationBody(root.notification.body, root.notification.appName || root.notification.summary).replace(/\n/g, "<br/>");
+                return `<style>img{max-width:${summaryText.width}px; align: right}</style>` + `${NotificationUtils.processNotificationBody(body, appName).replace(/\n/g, "<br/>")}`;
+            return NotificationUtils.processNotificationBody(body, appName).replace(/\n/g, "<br/>");
         }
         color: Looks.colors.subfg
         textFormat: root.expanded ? Text.RichText : Text.StyledText
@@ -229,7 +240,7 @@ MouseArea {
                 FluentIcon {
                     Layout.rightMargin: 12
                     icon: "chevron-down"
-                    implicitSize: 18
+                    implicitSize: 16
                     rotation: root.expanded ? -180 : 0
                     color: expandButton.colForeground
                     Behavior on rotation {
@@ -243,7 +254,7 @@ MouseArea {
     component GroupExpandButton: AcrylicButton {
         id: groupExpandButton
         visible: root.groupExpandControlMessage !== ""
-        horizontalPadding: 10
+        horizontalPadding: 12
         implicitHeight: 24
         implicitWidth: expandButtonText.implicitWidth + horizontalPadding * 2
         onClicked: root.groupExpandToggle()

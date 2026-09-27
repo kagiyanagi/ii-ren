@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -7,9 +8,9 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.waffle.looks
 
-FooterRectangle {
+Item {
     id: root
-    anchors.fill: parent
+    implicitWidth: 360
     implicitHeight: 230
 
     ColumnLayout {
@@ -44,7 +45,7 @@ FooterRectangle {
             }
 
             SmallBorderedIconAndTextButton {
-                visible: Notifications.list.length > 0
+                visible: (Notifications.list?.length ?? 0) > 0
                 iconVisible: false
                 text: Translation.tr("Clear all")
                 onClicked: {
@@ -63,11 +64,11 @@ FooterRectangle {
                 required property int index
                 required property var modelData
                 width: ListView.view.width
-                notificationGroup: Notifications.groupsByAppName[modelData]
+                notificationGroup: Notifications.groupsByAppName?.[modelData] ?? null
             }
 
             EmptyPlaceholder {
-                visible: Notifications.list.length === 0
+                visible: (Notifications.list?.length ?? 0) === 0
                 anchors.centerIn: parent
             }
         }

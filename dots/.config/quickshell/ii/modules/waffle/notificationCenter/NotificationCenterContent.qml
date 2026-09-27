@@ -43,8 +43,8 @@ WBarAttachedPanelContent {
                 contentItem: NotificationPaneContent {
                     implicitWidth: calendarColumnLayout.implicitWidth
                     implicitHeight: {
-                        if (Notifications.list.length > 0) {
-                            return ((contentLayout.height - calendarPane.height - contentLayout.spacing) - notificationPane.borderWidth * 2)
+                        if ((Notifications.list?.length ?? 0) > 0) {
+                            return Math.max(230, ((contentLayout.height - calendarPane.height - contentLayout.spacing) - notificationPane.borderWidth * 2));
                         }
                         return 230;
                     }
