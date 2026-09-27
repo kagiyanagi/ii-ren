@@ -7,12 +7,19 @@ import QtQuick.Controls
 GroupButton {
     id: button
 
-    signal textChanged(string text)
+    // Not `textChanged`: the button already has a `text` property, so that name
+    // is its change signal and the declaration was an invalid override Qt warned
+    // about on every load.
+    signal textEdited(string text)
     signal accepted()
 
     property string buttonIcon: ""
     property string buttonText: ""
+    // Written back into the field, so a caller can clear it by assigning "".
+    // It used to be read-only in practice: installFromUrl cleared this and the
+    // URL stayed in the box.
     property string textFieldText: ""
+    onTextFieldTextChanged: if (searchField.text !== textFieldText) searchField.text = textFieldText
 
     baseHeight: 44
     baseWidth: content.implicitWidth + 280
@@ -72,7 +79,7 @@ GroupButton {
 
                 onTextChanged: {
                     button.textFieldText = searchField.text
-                    button.textChanged(searchField.text)
+                    button.textEdited(searchField.text)
                 }
                 onAccepted: {
                     button.accepted()

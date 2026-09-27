@@ -38,7 +38,10 @@ ContentPage {
         customUrlField.textFieldText = ""
     }
 
-    Component.onCompleted: {
+    // Fetches what the lists need. Run on open, and again when the switch turns
+    // extensions on: until then nothing ever fetched the browse list, so it
+    // stayed empty until the page was left and reopened.
+    function activate() {
         if (!ExtensionManager.ready) return
         if (!Config.options.extensions.enable) { page.filter(); return }
         if (ExtensionSearch.availableExtensions.length === 0) {
@@ -47,6 +50,8 @@ ContentPage {
         ExtensionManager.checkAllUpdates()
         page.filter()
     }
+
+    Component.onCompleted: page.activate()
 
     Connections {
         target: ExtensionManager
@@ -93,9 +98,27 @@ ContentPage {
         icon: "extension"
         title: Translation.tr("Extensions (beta)")
 
+        ConfigSwitch {
+            buttonIcon: "extension"
+            text: Translation.tr("Enable extensions")
+            checked: Config.options.extensions.enable
+            onCheckedChanged: {
+                if (Config.options.extensions.enable === checked) return
+                Config.options.extensions.enable = checked
+                page.activate()
+            }
+        }
+
+        NoticeBox {
+            Layout.fillWidth: true
+            text: Translation.tr("Extension system is in early beta stage. Please be cautious when installing extensions from untrusted sources and report any issues you encounter.")
+        }
+
+        // With extensions off there is nothing to search, refresh or install
+        // into, so the toolbar goes rather than sitting greyed out above the
+        // switch that would enable it.
         ButtonGroup {
-            enabled: Config.options.extensions.enable
-            Layout.topMargin: 10
+            visible: Config.options.extensions.enable
             Layout.fillWidth: true
 
             GroupButtonWithIcon {
@@ -119,15 +142,14 @@ ContentPage {
                 buttonIcon: "search"
                 buttonText: Translation.tr("Search extensions...")
                 Layout.fillWidth: true
-                
-                onTextChanged: text => {
+
+                onTextEdited: text => {
                     page.searchText = text
                     Qt.callLater(() => page.filter())
                 }
             }
 
             GroupButtonWithIcon {
-                Layout.fillWidth: true
                 baseHeight: 44
                 extraWidth: 26
                 buttonIcon: ExtensionManager.loading ? "hourglass_bottom" : "refresh"
@@ -137,47 +159,36 @@ ContentPage {
             }
         }
 
-        ButtonGroup {
-            id: urlInputLayout
-            enabled: Config.options.extensions.enable
-            clip: true
+        // A size change, so it opens on the spatial spec; the field it used to
+        // collapse to zero height also stayed reachable by Tab.
+        Revealer {
             Layout.fillWidth: true
-            implicitHeight: page.showCustomUrlInput ? 44 : 0
-            Behavior on implicitHeight { 
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-            }
+            vertical: true
+            reveal: page.showCustomUrlInput && Config.options.extensions.enable
 
-            GroupButtonWithTextField {
-                id: customUrlField
-                buttonIcon: "add"
-                buttonText: Translation.tr("GitHub URL or local path")
-                Layout.fillWidth: true
-                
-                onAccepted: page.installFromUrl()
-            }
+            ButtonGroup {
+                width: parent.width
 
-            GroupButtonWithIcon {
-                Layout.fillWidth: true
-                baseHeight: 44
-                extraWidth: 26
-                buttonIcon: "download"
-                onClicked: page.installFromUrl()
-                StyledToolTip { text: Translation.tr("Install a custom extension") }
-            }
-        }
+                GroupButtonWithTextField {
+                    id: customUrlField
+                    buttonIcon: "add"
+                    buttonText: Translation.tr("GitHub URL or local path")
+                    Layout.fillWidth: true
 
-        NoticeBox {
-            Layout.fillWidth: true
-            text: Translation.tr("Extension system is in early beta stage. Please be cautious when installing extensions from untrusted sources and report any issues you encounter.")
-            ConfigSwitch {
-                checked: Config.options.extensions.enable
-                onClicked: Config.options.extensions.enable = !Config.options.extensions.enable
-                StyledToolTip { text: Translation.tr("Enable/Disable extensions") }
+                    onAccepted: page.installFromUrl()
+                }
+
+                GroupButtonWithIcon {
+                    baseHeight: 44
+                    extraWidth: 26
+                    buttonIcon: "download"
+                    onClicked: page.installFromUrl()
+                    StyledToolTip { text: Translation.tr("Install a custom extension") }
+                }
             }
         }
 
         StyledText {
-            Layout.alignment: Qt.AlignHCenter
             Layout.fillWidth: true
             visible: ExtensionManager.error.length > 0
             text: ExtensionManager.error

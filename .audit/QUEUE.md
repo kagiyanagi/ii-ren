@@ -138,7 +138,7 @@ fenced the same way the twelve `cw-*` rows were.
 | `settings-BackgroundConfig` | `modules/settings/BackgroundConfig.qml` | settings | 2 | 1 | 1156 | ? | todo | |
 | `settings-BarConfig` | `modules/settings/BarConfig.qml` | settings | 2 | 1 | 1273 | ? | todo | |
 | `settings-EasterEggWindow` | `modules/settings/EasterEggWindow.qml` | settings | 2 | 1 | 376 | ? | todo | |
-| `settings-ExtensionsConfig` | `modules/settings/ExtensionsConfig.qml` | settings | 2 | 1 | 207 | ? | todo | |
+| `settings-ExtensionsConfig` | `modules/settings/ExtensionsConfig.qml` | settings | 1 | 1 | 207 | `II_SETTINGS_PAGE=extensions qs -p ~/.config/quickshell/ii/settings.qml` | done | 2026-09-27 | ran lane 1. The enable switch is a carded row first; it was inside the beta notice, under a greyed toolbar. The toolbar shows only while on. Turning on now fetches the list, which before stayed empty until the page was reopened. The URL row is a `Revealer`. `GroupButtonWithTextField`: `textChanged` was an invalid override (renamed `textEdited`), and clearing it never cleared the field. Search index was 8. **See `notes.md`** for the sandbox 
 | `settings-GeneralConfig` | `modules/settings/GeneralConfig.qml` | settings | 2 | 1 | 765 | ? | todo | |
 | `settings-HermesConfig` | `modules/settings/HermesConfig.qml` | settings | 2 | 1 | 792 | ? | todo | |
 | `settings-HyprlandConfig` | `modules/settings/HyprlandConfig.qml` | settings | 2 | 1 | 422 | ? | todo | |
@@ -146,5 +146,5 @@ fenced the same way the twelve `cw-*` rows were.
 | `settings-LockConfig` | `modules/settings/LockConfig.qml` | settings | 1 | 1 | 188 | `II_SETTINGS_PAGE=lock qs -p ~/.config/quickshell/ii/settings.qml` | done | 2026-09-27 | ran lane 1. The three switches that style the built-in lock surface are their own section and disable while Hyprlock is on. Fingerprint is the new shared `ConfigNavRow` and carded, where before it sat bare under the run. Search index was 12 (About) |
 | `settings-QuickConfig` | `modules/settings/QuickConfig.qml` | settings | 2 | 1 | 659 | ? | todo | |
 | `settings-ServicesConfig` | `modules/settings/ServicesConfig.qml` | settings | 2 | 1 | 1043 | ? | todo | |
-| `settings-WallpaperEffectPreview` | `modules/settings/WallpaperEffectPreview.qml` | settings | 2 | 1 | 72 | ? | todo | |
+| `settings-WallpaperEffectPreview` | `modules/settings/WallpaperEffectPreview.qml` | settings | 1 | 1 | 72 | Background → Wallpaper effects | done | 2026-09-27 | The empty state was a `StyledText` drawing the word "wallpaper"; it is the icon now. Three passes per card × 18 cards is kept and costed in the brief 
 | `settings-WidgetsConfig` | `modules/settings/WidgetsConfig.qml` | settings | 2 | 1 | 1091 | ? | todo | |

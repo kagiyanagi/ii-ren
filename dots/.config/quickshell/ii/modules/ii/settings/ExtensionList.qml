@@ -20,7 +20,7 @@ ColumnLayout {
         }
     }
 
-    // With extensions off the notice above already holds the switch, and
+    // With extensions off the switch above says so already, and
     // "click refresh" pointed at a button that was disabled.
     StyledText {
         Layout.fillWidth: true
