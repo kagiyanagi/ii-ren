@@ -3,13 +3,40 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 
 ContentPage {
+    id: page
     forceWidth: true
+
+    // Lifted and run under node by tools/check-about.py.
+    function cpuName(model) {
+        if (!model || model === "--") return Translation.tr("Unknown")
+        return model.replace(/\((R|TM)\)/gi, "").replace(/\s*@.*$/, "").replace(/\s+(CPU|\d+-Core Processor)\b/gi, "").replace(/\s+/g, " ").trim()
+    }
+    function gpuName(model) {
+        if (!model || model === "--") return Translation.tr("Unknown")
+        const m = model.replace(/\s*\(rev \w+\)/i, "")
+        const vendor = /nvidia/i.test(m) ? "NVIDIA" : /intel/i.test(m) ? "Intel" : /advanced micro|amd|\bati\b/i.test(m) ? "AMD" : ""
+        const brackets = (m.match(/\[[^\]]+\]/g) ?? []).map(b => b.slice(1, -1)).filter(b => b !== "AMD/ATI")
+        const name = (brackets.length ? brackets[brackets.length - 1] : m.replace(/^.*?(Corporation|Inc\.)\s*(\[AMD\/ATI\])?\s*/i, "")).trim()
+        return name.toLowerCase().startsWith(vendor.toLowerCase()) ? name : `${vendor} ${name}`.trim()
+    }
+    function bytes(n) {
+        const gb = n / 1024 ** 3
+        if (gb >= 1000) return `${(gb / 1024).toFixed(1)} TB`
+        return `${gb.toFixed(gb >= 100 ? 0 : 1)} GB`
+    }
+
+    // Read once: none of these change while the page is open.
+    FileView { id: hostnameFile; path: "/proc/sys/kernel/hostname"; blockLoading: true }
+    FileView { id: kernelFile; path: "/proc/sys/kernel/osrelease"; blockLoading: true }
+    FileView { id: cpuinfoFile; path: "/proc/cpuinfo"; blockLoading: true }
+    readonly property int threads: (cpuinfoFile.text().match(/^processor\s*:/gm) ?? []).length
 
     EasterEggWindow {
         id: easterEggWindow
@@ -21,8 +48,11 @@ ContentPage {
         id: project
         readonly property bool wantsCard: true
         property string name
+        property int nameSize: Appearance.font.pixelSize.title
         property string byline
+        property string detail
         property string url
+        property int logoSize: 80
         // [icon, label, url, filled]. os-release fields are optional, so a link
         // with no url is dropped rather than drawn as a chip that opens nothing.
         property var links: []
@@ -49,8 +79,8 @@ ContentPage {
 
                 Item {
                     id: logoSlot
-                    implicitWidth: 80
-                    implicitHeight: 80
+                    implicitWidth: project.logoSize
+                    implicitHeight: project.logoSize
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -60,12 +90,19 @@ ContentPage {
                     StyledText {
                         Layout.fillWidth: true
                         text: project.name
-                        font.pixelSize: Appearance.font.pixelSize.title
+                        font.pixelSize: project.nameSize
                     }
                     StyledText {
                         Layout.fillWidth: true
                         visible: project.byline !== ""
                         text: project.byline
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: project.detail !== ""
+                        text: project.detail
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Appearance.colors.colSubtext
                     }
@@ -98,6 +135,156 @@ ContentPage {
                         colRipple: Appearance.colors.colSurfaceContainerHighestActive
                         onClicked: Qt.openUrlExternally(modelData[2])
                     }
+                }
+            }
+        }
+    }
+
+    // One tile of the hardware grid. `corner` is its place in the 2x2 grid
+    // (0 top-left .. 3 bottom-right): the grid's outside corners take the large
+    // radius and its seams the small one, as ContentGroup rounds a list.
+    component Spec: Rectangle {
+        id: spec
+        property int corner
+        property string icon
+        property string label
+        property string value
+        property string detail
+        property real usage: -1 // 0..1 draws a bar under the value
+
+        readonly property real outer: Appearance.rounding.large
+        readonly property real inner: Appearance.rounding.verysmall
+
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        implicitHeight: specBody.implicitHeight + 32
+        color: Appearance.colors.colSurfaceContainerHigh
+        topLeftRadius: corner === 0 ? outer : inner
+        topRightRadius: corner === 1 ? outer : inner
+        bottomLeftRadius: corner === 2 ? outer : inner
+        bottomRightRadius: corner === 3 ? outer : inner
+
+        ColumnLayout {
+            id: specBody
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 4
+
+            RowLayout {
+                spacing: 8
+                MaterialSymbol {
+                    text: spec.icon
+                    iconSize: Appearance.font.pixelSize.larger
+                    fill: 1
+                    color: Appearance.colors.colPrimary
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: spec.label
+                    font.pixelSize: Appearance.font.pixelSize.smaller
+                    color: Appearance.colors.colSubtext
+                }
+            }
+            StyledText {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                text: spec.value
+                font.pixelSize: Appearance.font.pixelSize.large
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+            }
+            Item { Layout.fillHeight: true }
+            StyledProgressBar {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                visible: spec.usage >= 0
+                value: Math.max(0, spec.usage)
+                valueBarHeight: 8
+            }
+            StyledText {
+                Layout.fillWidth: true
+                visible: spec.detail !== ""
+                text: spec.detail
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+            }
+        }
+    }
+
+    // The machine itself, the way About phone opens on the device.
+    ContentGroup {
+        Project {
+            name: hostnameFile.text().trim() || SystemInfo.username
+            nameSize: Appearance.font.pixelSize.hugeass
+            logoSize: 96
+            byline: SystemInfo.distroName
+            detail: [`Linux ${kernelFile.text().trim()}`, Translation.tr("Up %1").arg(DateTime.uptime)].join("  ·  ")
+            links: [
+                ["language", Translation.tr("Website"), SystemInfo.homeUrl],
+                ["auto_stories", Translation.tr("Documentation"), SystemInfo.documentationUrl],
+                ["support", Translation.tr("Help & Support"), SystemInfo.supportUrl],
+                ["bug_report", Translation.tr("Report a Bug"), SystemInfo.bugReportUrl],
+                ["policy", Translation.tr("Privacy Policy"), SystemInfo.privacyPolicyUrl, false]
+            ]
+
+            IconImage {
+                anchors.fill: parent
+                source: Quickshell.iconPath(SystemInfo.logo)
+            }
+        }
+    }
+
+    ContentSection {
+        icon: "memory"
+        title: Translation.tr("Hardware")
+
+        // The tiles paint their own cards, so they bleed as ContentGroup's do
+        // and meet the same edges as the cards above and below.
+        Item {
+            Layout.fillWidth: true
+            implicitHeight: specs.implicitHeight
+
+            GridLayout {
+                id: specs
+                x: -8
+                width: parent.width + 16
+                columns: 2
+                rowSpacing: 4
+                columnSpacing: 4
+                uniformCellWidths: true
+
+                Spec {
+                    corner: 0
+                    icon: "memory"
+                    label: Translation.tr("Processor")
+                    value: page.cpuName(ResourceUsage.cpuModel)
+                    detail: [page.threads > 0 ? Translation.tr("%1 threads").arg(page.threads) : "",
+                        ResourceUsage.maxAvailableCpuString !== "--" ? Translation.tr("up to %1").arg(ResourceUsage.maxAvailableCpuString) : ""]
+                        .filter(s => s).join("  ·  ")
+                }
+                Spec {
+                    corner: 1
+                    icon: "developer_board"
+                    label: Translation.tr("Graphics")
+                    value: page.gpuName(ResourceUsage.gpuModel)
+                    // Physical pixels: a screen's width is logical under fractional scaling.
+                    detail: Quickshell.screens.map(s => `${Math.round(s.width * s.devicePixelRatio)} × ${Math.round(s.height * s.devicePixelRatio)}`).join(", ")
+                }
+                Spec {
+                    corner: 2
+                    icon: "memory_alt"
+                    label: Translation.tr("Memory")
+                    value: page.bytes(ResourceUsage.memoryTotal * 1024)
+                    usage: ResourceUsage.memoryUsedPercentage
+                    detail: Translation.tr("%1 in use").arg(page.bytes(ResourceUsage.memoryUsed * 1024))
+                }
+                Spec {
+                    corner: 3
+                    icon: "hard_drive"
+                    label: Translation.tr("Storage")
+                    value: page.bytes(ResourceUsage.diskTotal)
+                    usage: ResourceUsage.diskUsedPercentage
+                    detail: Translation.tr("%1 used on %2").arg(page.bytes(ResourceUsage.diskUsed)).arg(Config.options?.resources?.diskMount ?? "/")
                 }
             }
         }
@@ -181,27 +368,6 @@ ContentPage {
             IconImage {
                 anchors.fill: parent
                 source: Quickshell.iconPath("illogical-impulse")
-            }
-        }
-    }
-
-    ContentSection {
-        icon: "box"
-        title: Translation.tr("System")
-
-        Project {
-            name: SystemInfo.distroName
-            url: SystemInfo.homeUrl
-            links: [
-                ["auto_stories", Translation.tr("Documentation"), SystemInfo.documentationUrl],
-                ["support", Translation.tr("Help & Support"), SystemInfo.supportUrl],
-                ["bug_report", Translation.tr("Report a Bug"), SystemInfo.bugReportUrl],
-                ["policy", Translation.tr("Privacy Policy"), SystemInfo.privacyPolicyUrl, false]
-            ]
-
-            IconImage {
-                anchors.fill: parent
-                source: Quickshell.iconPath(SystemInfo.logo)
             }
         }
     }

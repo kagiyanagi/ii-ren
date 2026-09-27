@@ -1,16 +1,25 @@
 # settings-About — brief
 
-**Purpose.** Say what this shell is, what it is built on and what it runs on, and get the
-user to the right place to ask for help about each.
+**Purpose.** Say what this machine is and what is in it, what shell it runs and what that
+is built on, and get the user to the right place to ask for help about each.
+
+*Revised after the first build:* the user wanted the machine's specs on the page, not only
+the lineage. The distro card became the device hero, and a hardware grid went under it.
 
 **Primary action.** None dominant: the page is read, not operated. The one thing that
 asks for attention is the link row of whichever project the user has a problem with.
 
 **Hierarchy.** Nearest first, the way Android's About phone puts the device on top and the
 build details under it:
-1. **This shell** — ii-ren, with the easter egg logo.
-2. **Built on** — ii-vynx, then illogical-impulse: nearest ancestor first, one grouped run.
-3. **System** — the distro from `/etc/os-release`.
+1. **Device hero**, with no header. It shows the distro logo, the hostname at `hugeass`, the
+   distro name and `Linux <kernel> · Up <uptime>`. The distro's os-release links are its chips.
+2. **Hardware** — a 2x2 grid of tiles: Processor (threads, max clock), Graphics
+   (resolution of each screen in physical pixels), Memory and Storage (a
+   `StyledProgressBar` of use, with the amount used). The grid's outer corners take
+   `rounding.large` and its seams `rounding.verysmall`, which is how `ContentGroup` rounds a
+   list. The tiles bleed 8 so they meet the edges of the cards above and below.
+3. **This shell** — ii-ren, with the easter egg logo.
+4. **Built on** — ii-vynx, then illogical-impulse: nearest ancestor first, one grouped run.
 
 It used to be the reverse: distro, then "Parent-Dots", then "Preset-Dots", with the shell
 actually running last and below the fold. Those two headers were jargon.
@@ -35,7 +44,8 @@ line, and a chip whose URL is empty is not drawn. It used to be drawn and open n
 The distro card always has a name ("Unknown" at worst) and a logo (`SystemInfo` falls back
 to `distroIcon`).
 
-**Cost.** No effects of its own. Twelve chips at most, each a `RippleButton` with its own mask.
+**Cost.** No effects of its own. The specs come from `ResourceUsage`, which polls on its
+own timer while the settings app is open, and from three `/proc` files read once. Twelve chips at most, each a `RippleButton` with its own mask.
 There were thirteen.
 
 **Delete.** The four copy-pasted blocks, which become one in-file `Project` component. The

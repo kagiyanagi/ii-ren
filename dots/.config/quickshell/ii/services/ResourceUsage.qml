@@ -230,7 +230,10 @@ Singleton {
         stdout: StdioCollector {
             id: outputCollector
             onStreamFinished: {
-                root.maxAvailableCpuString = (parseFloat(outputCollector.text) / 1000).toFixed(0) + " GHz"
+                // A VM or an ARM board prints no max MHz; keep "--" rather than "NaN GHz".
+                // One decimal: 4800 MHz is 4.8 GHz, not 5.
+                const mhz = parseFloat(outputCollector.text)
+                if (mhz > 0) root.maxAvailableCpuString = (mhz / 1000).toFixed(1) + " GHz"
             }
         }
     }

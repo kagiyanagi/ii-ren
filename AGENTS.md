@@ -550,6 +550,11 @@ you touched; they are the only automated gate.
   log blames the widget that received it. `Appearance.colors.m3scrim` (it is on `m3colors`)
   and `Appearance.animation.fadeFast` (never existed) shipped that way, and three waffle checks
   asserted the broken names were present
+- `python3 tools/check-about.py` — Settings → About names the hardware it reads. The CPU and
+  GPU names come from `/proc/cpuinfo` and lspci or nvidia-smi strings, which differ by vendor.
+  A wrong regex only shows as a tile that reads oddly on someone else's machine, so the
+  cleaners and the byte formatter are lifted out of `About.qml` and run under node against
+  real strings from each vendor
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
