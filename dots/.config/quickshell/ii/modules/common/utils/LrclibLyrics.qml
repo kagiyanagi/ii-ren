@@ -15,7 +15,7 @@ Item {
     id: root
     visible: false
 
-    property bool enabled: false
+    enabled: false
     property string title: ""
     property string artist: ""
     property real duration: 0

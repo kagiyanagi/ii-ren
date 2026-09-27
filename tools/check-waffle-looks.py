@@ -95,7 +95,7 @@ def main():
     if "panelLayerTransparency: transparencyEnabled ?" not in looks_text:
         print("FAIL: Looks.qml panelLayerTransparency not gated on transparencyEnabled")
         failed = True
-    if "Appearance.animation.fadeFast.duration" not in looks_text:
+    if looks_text.count("Appearance.animation.elementMoveExit.duration") < 2:
         print("FAIL: Looks.qml transition.color does not use Appearance.animation token")
         failed = True
     if "Appearance.animation.elementMoveExit.duration" not in looks_text:

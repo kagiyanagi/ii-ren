@@ -1,8 +1,10 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.waffle.looks
@@ -68,7 +70,7 @@ Scope {
         }
     }
 
-    function trigger(indicator: string = "volume") {
+    function trigger(indicator: string) {
         const ind = indicator || root.currentIndicator || "volume";
         if (ind === "brightness") {
             triggerBrightnessOsd();
@@ -77,7 +79,7 @@ Scope {
         }
     }
 
-    function toggle(indicator: string = "volume") {
+    function toggle(indicator: string) {
         if (panelLoader.active) {
             root.close();
         } else {
@@ -207,11 +209,11 @@ Scope {
     IpcHandler {
         target: "osd"
 
-        function trigger(indicator: string = "volume") {
+        function trigger(indicator: string) {
             root.trigger(indicator);
         }
 
-        function open(indicator: string = "volume") {
+        function open(indicator: string) {
             root.trigger(indicator);
         }
 
@@ -223,7 +225,7 @@ Scope {
             root.close();
         }
 
-        function toggle(indicator: string = "volume") {
+        function toggle(indicator: string) {
             root.toggle(indicator);
         }
     }

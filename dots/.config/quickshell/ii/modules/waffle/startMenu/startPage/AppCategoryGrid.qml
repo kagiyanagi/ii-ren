@@ -98,7 +98,7 @@ Rectangle {
                 property: "x"
                 from: categoryFolderPopup.originPoint.x - categoryOpenButtonLoader.width * 5 / 2
                 to: categoryFolderPopup.windowCenterPoint.x - categoryFolderPopup.width / 2
-                duration: Appearance.animation.elementMoveNormal.duration
+                duration: Appearance.animation.elementMove.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }
@@ -107,7 +107,7 @@ Rectangle {
                 property: "y"
                 from: categoryFolderPopup.originPoint.y - categoryOpenButtonLoader.height * 3 / 2
                 to: categoryFolderPopup.windowCenterPoint.y - categoryFolderPopup.height / 2
-                duration: Appearance.animation.elementMoveNormal.duration
+                duration: Appearance.animation.elementMove.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }
@@ -116,7 +116,7 @@ Rectangle {
                 property: "scale"
                 from: 0
                 to: 1
-                duration: Appearance.animation.elementMoveNormal.duration
+                duration: Appearance.animation.elementMove.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }

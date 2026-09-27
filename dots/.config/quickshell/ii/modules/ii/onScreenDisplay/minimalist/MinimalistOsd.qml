@@ -131,8 +131,8 @@ Scope {
 
     Connections {
         target: KeyboardBacklight
-        function onPercentageChanged() {
-            if (KeyboardBacklight.suppressOsd)
+        function onCurrentValueChanged() {
+            if (root.isStartup)
                 return;
             root.currentIndicator = "keyboardBrightness";
             root.triggerOsd();

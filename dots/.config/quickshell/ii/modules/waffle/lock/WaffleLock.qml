@@ -113,7 +113,7 @@ LockScreen {
 
     component Interactables: Rectangle {
         id: interactablesComponent
-        color: ColorUtils.transparentize(Appearance.colors.m3scrim, 0.8)
+        color: ColorUtils.transparentize(Appearance.m3colors.m3scrim, 0.8)
 
         function switchToFocusedView() {
             root.passwordView = true;

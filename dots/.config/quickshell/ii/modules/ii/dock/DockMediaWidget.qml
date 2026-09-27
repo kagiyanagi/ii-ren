@@ -58,7 +58,7 @@ Item {
     Process {
         id: artDownloader
         command: ["bash", "-c", `[ -f '${root.artFilePath}' ] || (curl -4 -sSL '${root.artUrl}' -o '${root.artFilePath}.tmp' && mv '${root.artFilePath}.tmp' '${root.artFilePath}')`]
-        onExited: root.artDownloaded = true
+        onExited: exitCode => root.artDownloaded = exitCode === 0
     }
 
     ColorQuantizer {

@@ -30,8 +30,10 @@ MouseArea {
 
     property var apiImages: {
         let allImages = [];
-        for (let i = 0; i < ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").responses.length; i++) {
-            let resp = ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").responses[i];
+        // null while the wallpaper browser extension is not installed
+        const responses = ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService")?.responses ?? [];
+        for (let i = 0; i < responses.length; i++) {
+            let resp = responses[i];
             if (resp.images) {
                 for (let j = 0; j < resp.images.length; j++) {
                     let img = resp.images[j];

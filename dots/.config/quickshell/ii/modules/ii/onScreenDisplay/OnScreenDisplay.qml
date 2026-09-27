@@ -181,12 +181,8 @@ Scope {
     Connections {
         target: KeyboardBacklight
         function onCurrentValueChanged() {
-            if (root.isStartup || GlobalStates.dashboardPanelOpen || KeyboardBacklight.suppressOsd)
+            if (root.isStartup || GlobalStates.dashboardPanelOpen)
                 return;
-            if (!KeyboardBacklight.initialValueLoaded) {
-                KeyboardBacklight.initialValueLoaded = true;
-                return;
-            }
             root.protectionMessage = "";
             root.currentIndicator = "keyboardBrightness";
             root.triggerOsd();

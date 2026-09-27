@@ -341,7 +341,7 @@ Item {
                 items.push({
                     icon: "play_arrow",
                     tooltip: "Start container",
-                    color: Appearance.colors.colSuccess,
+                    color: Appearance.colors.colPrimary,
                     execute: () => {
                         DockerService.containerAction(card.containerData.id, "start");
                     }

@@ -26,7 +26,7 @@ Verifies:
    - WIndeterminateProgressBar displays during PAM verification.
    - DragHandler allows repositioning dialog by header.
 6. Scrim and 4dp grid design compliance:
-   - Fullscreen scrim uses Appearance.colors.m3scrim (no raw hex literal, no wallpaper takeover).
+   - Fullscreen scrim uses Appearance.m3colors.m3scrim (no raw hex literal, no wallpaper takeover).
    - Metrics (440px width, 16px/24px/32px/80px spacings and dimensions) adhere to 4dp grid.
 """
 
@@ -126,8 +126,8 @@ def main():
         failed = True
 
     # 6. Scrim and 4dp grid design compliance
-    if "Appearance.colors.m3scrim" not in content_text:
-        print("FAIL: WPolkitContent.qml must use Appearance.colors.m3scrim for scrim")
+    if "Appearance.m3colors.m3scrim" not in content_text:
+        print("FAIL: WPolkitContent.qml must use Appearance.m3colors.m3scrim for scrim")
         failed = True
     if '"#000000"' in content_text:
         print("FAIL: WPolkitContent.qml still contains raw hex '#000000'")

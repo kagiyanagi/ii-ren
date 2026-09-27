@@ -71,7 +71,7 @@ AbstractBackgroundWidget {
     readonly property color colProgressHighlight: useDynamicColors ? blendedColors.colPrimary : WidgetColorScheme.accentColor
     readonly property color colProgressTrack: useDynamicColors ? ColorUtils.transparentize(blendedColors.colOnSecondaryContainer, 0.6) : ColorUtils.transparentize(WidgetColorScheme.textColorOnPillFill, 0.6)
     readonly property color colBtnSecondary: useDynamicColors ? blendedColors.colTertiaryContainer : WidgetColorScheme.pillBgColor
-    readonly property color colBtnSecondary_hover: useDynamicColors ? ColorUtils.mix(blendedColors.colTertiaryContainer, blendedColors.colPrimary, 0.15) : ColorUtils.mix(WidgetColorScheme.pillBgColor, WidgetColorScheme.accentColor, 0.15)
+    readonly property color colBtnSecondaryHover: useDynamicColors ? ColorUtils.mix(blendedColors.colTertiaryContainer, blendedColors.colPrimary, 0.15) : ColorUtils.mix(WidgetColorScheme.pillBgColor, WidgetColorScheme.accentColor, 0.15)
     readonly property color colBtnSecondaryActive: useDynamicColors ? ColorUtils.mix(blendedColors.colTertiaryContainer, blendedColors.colPrimary, 0.25) : ColorUtils.mix(WidgetColorScheme.pillBgColor, WidgetColorScheme.accentColor, 0.25)
     readonly property color colBtnPlayBg: useDynamicColors ? blendedColors.colPrimary : WidgetColorScheme.accentColor
     readonly property color colBtnPlayRipple: useDynamicColors ? ColorUtils.mix(blendedColors.colPrimary, blendedColors.colOnPrimary, 0.2) : ColorUtils.mix(WidgetColorScheme.accentColor, WidgetColorScheme.onAccentColor, 0.2)
@@ -163,8 +163,8 @@ AbstractBackgroundWidget {
         property string artFilePath: root.artFilePath
         property string artTempPath: root.artFilePath + ".tmp"
         command: ["bash", "-c", `[ -f ${artFilePath} ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-        onExited: {
-            artDownloaded = true;
+        onExited: exitCode => {
+            artDownloaded = exitCode === 0;
         }
     }
 
@@ -331,7 +331,7 @@ AbstractBackgroundWidget {
                                 text: StringUtils.friendlyTimeForSeconds(root.player?.length ?? 0)
                                 color: root.colTimeSub
                                 font.pixelSize: root.timerSecondarySize
-                                font.weight: Font.Regular
+                                font.weight: Font.Normal
                                 Layout.alignment: Qt.AlignTop
                                 Layout.topMargin: 4
                             }
@@ -341,7 +341,7 @@ AbstractBackgroundWidget {
                                 text: root.trackArtist
                                 color: root.colTimeSub
                                 font.pixelSize: root.timerSecondarySize
-                                font.weight: Font.Regular
+                                font.weight: Font.Normal
                                 Layout.maximumWidth: 150
                                 elide: Text.ElideRight
                                 horizontalAlignment: Text.AlignLeft
@@ -387,7 +387,7 @@ AbstractBackgroundWidget {
                                 }
                                 active: !(root.player?.canSeek ?? false)
                                 sourceComponent: StyledProgressBar {
-                                    wavy: root.player?.isPlaying
+                                    wavy: root.player?.isPlaying ?? false
                                     highlightColor: root.colProgressHighlight
                                     trackColor: root.colProgressTrack
                                     value: (root.player?.length ?? 0) > 0 ? Math.min(1, Math.max(0, root.player.position / root.player.length)) : 0

@@ -320,13 +320,6 @@ AbstractBackgroundWidget {
                     });
                 }
 
-                Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Escape) {
-                        root.notesWindowOpen = false;
-                        event.accepted = true;
-                    }
-                }
-
                 // Backdrop click to dismiss
                 MouseArea {
                     anchors.fill: parent
@@ -336,6 +329,12 @@ AbstractBackgroundWidget {
                 // Dialog card container
                 Rectangle {
                     id: dialogCard
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            root.notesWindowOpen = false;
+                            event.accepted = true;
+                        }
+                    }
                     anchors.centerIn: parent
                     width: Math.min(680, parent.width * 0.9)
                     height: Math.min(560, parent.height * 0.85)

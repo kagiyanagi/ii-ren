@@ -56,7 +56,7 @@ AbstractBackgroundWidget {
         property string artFilePath: root.artFilePath
         property string artTempPath: root.artFilePath + ".tmp"
         command: ["bash", "-c", `[ -f ${artFilePath} ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-        onExited: { artDownloaded = true; }
+        onExited: exitCode => { artDownloaded = exitCode === 0; }
     }
 
     ColorQuantizer {

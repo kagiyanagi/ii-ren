@@ -53,6 +53,11 @@ Item {
         }
     }
 
+    // Clamped here and written back only on a real move: writing the clamp itself
+    // back from a change handler re-entered this binding (a binding loop) and
+    // overwrote the saved tab whenever a policy hid the page it named.
+    readonly property int currentTab: Math.min(Persistent.states.sidebar.policies.tab, Math.max(0, root.tabButtonList.length - 1))
+
     property var tabButtonList: [
         ...(root.hermesEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Hermes")}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
@@ -116,8 +121,8 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 tabButtonList: root.tabButtonList
                 maxTextTabs: root._maxTextTabs
-                currentIndex: Math.min(Persistent.states.sidebar.policies.tab, Math.max(0, root.tabButtonList.length - 1))
-                onCurrentIndexChanged: Persistent.states.sidebar.policies.tab = currentIndex
+                currentIndex: root.currentTab
+                onCurrentIndexChanged: if (currentIndex !== root.currentTab) Persistent.states.sidebar.policies.tab = currentIndex
             }
         }
 
@@ -133,8 +138,8 @@ Item {
                 id: swipeView
                 anchors.fill: parent
                 spacing: 10
-                currentIndex: Math.min(Persistent.states.sidebar.policies.tab, Math.max(0, swipeView.count - 1))
-                onCurrentIndexChanged: Persistent.states.sidebar.policies.tab = currentIndex
+                currentIndex: root.currentTab
+                onCurrentIndexChanged: if (currentIndex !== root.currentTab) Persistent.states.sidebar.policies.tab = currentIndex
 
                 clip: true
                 layer.enabled: true

@@ -298,12 +298,16 @@ Singleton {
         // the whole shell, so our discovery reference cannot be told apart from
         // the Bluetooth dialog's. Both cases where this stops scanning (pairing,
         // and a device connecting) are reasons to stop anyway.
-        root.adapter.discovering = root.shouldScan;
+        if (root.adapter.discovering !== root.shouldScan)
+            root.adapter.discovering = root.shouldScan;
     }
 
-    onShouldScanChanged: root.applyScanState()
-    onAdapterChanged: root.applyScanState()
-    Component.onCompleted: root.applyScanState()
+    // callLater, and the guard above: all three fire in one tick at startup, and
+    // BlueZ answers a second StartDiscovery before the first lands with
+    // "Operation already in progress".
+    onShouldScanChanged: Qt.callLater(root.applyScanState)
+    onAdapterChanged: Qt.callLater(root.applyScanState)
+    Component.onCompleted: Qt.callLater(root.applyScanState)
 
     // Quickshell's discovering setter is fire-and-forget, and BlueZ answers
     // "Resource Not Ready" while the adapter is still coming up, so one bad

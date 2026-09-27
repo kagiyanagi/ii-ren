@@ -40,7 +40,7 @@ RowLayout {
                 if (modelData.prefix != "") {
                     return LauncherSearch.query.startsWith(modelData.prefix);
                 } else {
-                    return !((tagListView.model as var[])?.some(i => (i.prefix != "" && LauncherSearch.query.startsWith(i.prefix))));
+                    return !(tagListView.model?.some(i => (i.prefix != "" && LauncherSearch.query.startsWith(i.prefix))));
                 }
             }
             contentItem: Item {

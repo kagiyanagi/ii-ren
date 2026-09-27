@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -52,8 +53,8 @@ GridLayout {
             Accessible.checked: positionChoice.selected
             onClicked: {
                 Config.options.osd.position = positionChoice.modelData.value;
-                GlobalStates.osdVolumeOpen = true;
-                GlobalStates.osdInteraction();
+                // Settings is its own process; the shell's GlobalStates is not in it.
+                Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "osdVolume", "trigger"]);
             }
 
             contentItem: Item {

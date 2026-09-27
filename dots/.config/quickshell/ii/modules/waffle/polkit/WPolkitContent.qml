@@ -131,7 +131,7 @@ Item {
     Rectangle {
         id: scrim
         anchors.fill: parent
-        color: Appearance.colors.m3scrim
+        color: Appearance.m3colors.m3scrim
 
         MouseArea {
             anchors.fill: parent

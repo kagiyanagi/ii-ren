@@ -7,7 +7,7 @@ Verifies:
    Loader active: root.rendered, no raw active: GlobalStates.sessionOpen binding).
 3. PanelWindow has color: "transparent" and anchors all four edges.
 4. SessionScreenContent.qml defines closed() signal and animates enter/exit transitions.
-5. Scrim uses Appearance.colors.m3scrim with click-to-dismiss and WheelHandler absorption.
+5. Scrim uses Appearance.m3colors.m3scrim with click-to-dismiss and WheelHandler absorption.
 6. Guarded action runner prevents double-activation during exit animations.
 7. Key navigation up from taskManagerButton points to changePasswordButton (not signOutButton).
 8. PowerButton.qml gates actions on SessionWarnings capabilities (CanSuspend, CanPowerOff, CanReboot).
@@ -83,7 +83,7 @@ def main() -> int:
         print("FAIL: SessionScreenContent.qml missing 'signal closed()'")
         failed = True
 
-    if "Appearance.colors.m3scrim" not in ssc_text and "Appearance.colors.colScrim" not in ssc_text:
+    if "Appearance.m3colors.m3scrim" not in ssc_text and "Appearance.colors.colScrim" not in ssc_text:
         print("FAIL: SessionScreenContent.qml scrim missing tokenized scrim color")
         failed = True
 

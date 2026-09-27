@@ -545,6 +545,11 @@ you touched; they are the only automated gate.
   otherwise, the follow off `atYEnd` (Flickable emits `contentHeightChanged` before it
   updates that, so the gate left growth at the end hanging below the view), the button on
   `scrollToEnd` and the `scroll` spec, and Hermes off bare-`contentHeight` clamps
+- `python3 tools/check-appearance-refs.py` — every `Appearance.<group>.<name>` names a token
+  `Appearance.qml` declares. A wrong one is not an error in QML: it reads `undefined`, and the
+  log blames the widget that received it. `Appearance.colors.m3scrim` (it is on `m3colors`)
+  and `Appearance.animation.fadeFast` (never existed) shipped that way, and three waffle checks
+  asserted the broken names were present
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

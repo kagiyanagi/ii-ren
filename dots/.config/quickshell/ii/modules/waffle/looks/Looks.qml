@@ -138,7 +138,7 @@ Singleton {
         property color accentHover: Appearance.colors.colPrimaryHover
         property color accentActive: Appearance.colors.colPrimaryActive
         property color accentUnfocused: root.dark ? root.darkColors.accentUnfocused : root.lightColors.accentUnfocused
-        property color accentFg: ColorUtils.isDark(accent) ? Appearance.colors.m3onPrimary : Appearance.colors.m3onPrimaryFixed
+        property color accentFg: ColorUtils.isDark(accent) ? Appearance.m3colors.m3onPrimary : Appearance.m3colors.m3onPrimaryFixed
         property color selection: Appearance.colors.colPrimaryContainer
         property color selectionFg: Appearance.colors.colOnPrimaryContainer
     }
@@ -193,7 +193,7 @@ Singleton {
         property Component color: Component {
             ColorAnimation {
                 // design-ok: Fluent color animation duration
-                duration: Appearance.animation.fadeFast.duration
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }

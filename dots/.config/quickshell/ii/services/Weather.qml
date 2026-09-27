@@ -495,8 +495,9 @@ Singleton {
 
         onPositionChanged: {
             if (position.latitudeValid && position.longitudeValid) {
+                // No stop(): update() is one-shot and has already ended by the
+                // time the fix arrives, so GeoClue answers "Already stopped".
                 fallbackTimer.stop();
-                root.stopPositionFix();
                 root.location.lat = position.coordinate.latitude;
                 root.location.lon = position.coordinate.longitude;
                 root.location.valid = true;

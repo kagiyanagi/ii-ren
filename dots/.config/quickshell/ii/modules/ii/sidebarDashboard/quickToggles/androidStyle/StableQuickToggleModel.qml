@@ -114,7 +114,9 @@ ListModel {
             if (existingIndex !== desiredIndex)
                 root.move(existingIndex, desiredIndex, 1);
             if (!root.samePayload(root.get(desiredIndex).modelData, wanted.modelData))
-                root.setProperty(desiredIndex, "modelData", wanted.modelData);
+                // set(), not setProperty(): insert() stored the object as a List
+                // role and setProperty() writes a VariantMap, which ListModel refuses.
+                root.set(desiredIndex, { modelData: wanted.modelData });
         }
 
         root.syncing = false;
