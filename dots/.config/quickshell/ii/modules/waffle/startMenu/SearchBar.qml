@@ -20,6 +20,7 @@ FooterRectangle {
     implicitHeight: outline.implicitHeight + verticalPadding * 2
 
     signal accepted()
+    signal closeRequested()
 
     Component.onCompleted: forceFocus()
     function forceFocus() {
@@ -46,28 +47,20 @@ FooterRectangle {
             verticalCenter: parent.verticalCenter
         }
         implicitHeight: 32
-        color: "transparent"
-        radius: height / 2
-        border.width: 1
-        border.color: Looks.colors.bg2Border
-    }
-
-    Rectangle {
-        id: searchInputBg
-        anchors.fill: outline
-        anchors.margins: 1
         radius: height / 2
         color: Looks.colors.inputBg
+        border.width: 1
+        border.color: Looks.colors.bg2Border
 
         RowLayout {
             anchors.fill: parent
-            spacing: 11
+            spacing: 12
 
             WAppIcon {
-                Layout.leftMargin: 14
+                Layout.leftMargin: 12
                 iconName: "system-search-checked"
                 separateLightDark: true
-                implicitSize: 18
+                implicitSize: 16
             }
 
             WTextInput {
@@ -81,9 +74,21 @@ FooterRectangle {
                         verticalCenter: parent.verticalCenter
                     }
                     color: Looks.colors.accentUnfocused
-                    text: Translation.tr("Search for apps") // should also have "", settings, and documents" but we don't have those
+                    text: Translation.tr("Search for apps")
                     visible: searchInput.text.length === 0
                     font.pixelSize: Looks.font.pixelSize.large
+                }
+
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Escape) {
+                        if (searchInput.text.length > 0) {
+                            searchInput.text = "";
+                            LauncherSearch.query = "";
+                        } else {
+                            root.closeRequested();
+                        }
+                        event.accepted = true;
+                    }
                 }
 
                 onAccepted: {
@@ -97,6 +102,7 @@ FooterRectangle {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.IBeamCursor
-        acceptedButtons: Qt.NoButton
+        acceptedButtons: Qt.LeftButton
+        onClicked: root.forceFocus()
     }
 }

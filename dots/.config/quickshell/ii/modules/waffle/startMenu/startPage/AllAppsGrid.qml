@@ -19,19 +19,19 @@ GridLayout {
         AggregatedAppCategoryModel {}
     }
     property list<AggregatedAppCategoryModel> aggregatedCategories: [
-        aggAppCatComp.createObject(null, {
+        aggAppCatComp.createObject(root, {
             name: Translation.tr("Productivity"),
             categories: ["Development", "Education", "Network", "Office"]
-        }), aggAppCatComp.createObject(null, {
+        }), aggAppCatComp.createObject(root, {
             name: Translation.tr("Utilities & Tools"),
             categories: ["Utility", "Science"]
-        }), aggAppCatComp.createObject(null, {
+        }), aggAppCatComp.createObject(root, {
             name: Translation.tr("Creativity"),
             categories: ["AudioVideo", "Graphics"]
-        }), aggAppCatComp.createObject(null, {
+        }), aggAppCatComp.createObject(root, {
             name: Translation.tr("System"),
             categories: ["Settings", "System"]
-        }), aggAppCatComp.createObject(null, {
+        }), aggAppCatComp.createObject(root, {
             name: Translation.tr("Other"),
             categories: ["Game"]
         }), 
@@ -41,11 +41,11 @@ GridLayout {
         model: root.aggregatedCategories
         delegate: AppCategory {
             required property var modelData
-            aggregatedCategory: modelData
+            aggregatedCategory: modelData as AggregatedAppCategoryModel
         }
     }
 
-    columnSpacing: 27
+    columnSpacing: 28
     rowSpacing: 12
     component AppCategory: Item {
         id: categoryItem
@@ -73,7 +73,7 @@ GridLayout {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
                     elide: Text.ElideRight
-                    text: categoryItem.aggregatedCategory.name
+                    text: categoryItem.aggregatedCategory?.name ?? ""
                 }
                 onClicked: {
                     categoryGrid.openCategoryFolder();

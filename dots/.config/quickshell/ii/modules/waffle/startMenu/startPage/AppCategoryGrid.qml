@@ -15,36 +15,41 @@ Rectangle {
     property AggregatedAppCategoryModel aggregatedCategory
     property list<DesktopEntry> desktopEntries: [...DesktopEntries.applications.values.filter(app => {
         const appCategories = app.categories;
-        const gridCategories = root.aggregatedCategory.categories;
+        const gridCategories = root.aggregatedCategory?.categories ?? [];
         return appCategories.some(cat => gridCategories.indexOf(cat) !== -1);
     })].sort((a, b) => a.name.localeCompare(b.name));
 
     property Item windowRootItem: {
         var item = root;
-        // print("FINDING ROOT")
-        while (item.parent != null) {
-            if (item.parent.toString().includes("ProxyWindow"))
-                break;
+        while (item && item.parent != null) {
             item = item.parent;
         }
-        // print(item.width, item.height)
         return item;
     }
     function openCategoryFolder() {
         categoryFolderPopup.open();
     }
 
+    Connections {
+        target: GlobalStates
+        function onSearchOpenChanged() {
+            if (!GlobalStates.searchOpen && categoryFolderPopup.opened) {
+                categoryFolderPopup.close();
+            }
+        }
+    }
+
     radius: Looks.radius.large
     color: Looks.colors.bg1
     border.width: 1
     border.color: ColorUtils.transparentize(Looks.colors.ambientShadow, 0.7)
-    implicitWidth: 156
-    implicitHeight: 156
+    implicitWidth: 152
+    implicitHeight: 152
 
     GridLayout {
         id: categoryAppsGrid
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.margins: 8
         columns: 2
         rows: 2
         columnSpacing: 0
@@ -74,8 +79,6 @@ Rectangle {
 
     Popup {
         id: categoryFolderPopup
-        // I don't even know what the fuck is going on at this point
-        // I hate point mapping
         property point originPoint: categoryOpenButtonLoader ? categoryOpenButtonLoader.mapToItem(root, categoryOpenButtonLoader.width / 2, categoryOpenButtonLoader.height / 2) : Qt.point(0, 0)
         property point windowCenterPoint: {
             const rootContentItem = root.windowRootItem;
@@ -95,7 +98,7 @@ Rectangle {
                 property: "x"
                 from: categoryFolderPopup.originPoint.x - categoryOpenButtonLoader.width * 5 / 2
                 to: categoryFolderPopup.windowCenterPoint.x - categoryFolderPopup.width / 2
-                duration: 300
+                duration: Appearance.animation.elementMoveNormal.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }
@@ -104,7 +107,7 @@ Rectangle {
                 property: "y"
                 from: categoryFolderPopup.originPoint.y - categoryOpenButtonLoader.height * 3 / 2
                 to: categoryFolderPopup.windowCenterPoint.y - categoryFolderPopup.height / 2
-                duration: 300
+                duration: Appearance.animation.elementMoveNormal.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }
@@ -113,7 +116,7 @@ Rectangle {
                 property: "scale"
                 from: 0
                 to: 1
-                duration: 300
+                duration: Appearance.animation.elementMoveNormal.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
             }
@@ -124,7 +127,7 @@ Rectangle {
                 target: categoryFolderPopup
                 property: "x"
                 to: categoryFolderPopup.originPoint.x - categoryOpenButtonLoader.width * 5 / 2
-                duration: 200
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
             }
@@ -132,7 +135,7 @@ Rectangle {
                 target: categoryFolderPopup
                 property: "y"
                 to: categoryFolderPopup.originPoint.y - categoryOpenButtonLoader.height * 3 / 2
-                duration: 200
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
             }
@@ -141,7 +144,7 @@ Rectangle {
                 property: "scale"
                 from: 1
                 to: 0
-                duration: 200
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
             }
@@ -211,7 +214,6 @@ Rectangle {
                                         left: parent.left
                                     }
                                     columns: 4
-                                    rows: 3
                                     desktopEntries: root.desktopEntries.slice(folderPage.index * 12, (folderPage.index + 1) * 12)
                                 }
                             }
@@ -220,7 +222,7 @@ Rectangle {
                     VerticalPageIndicator {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.right: categoryFolderSwipeView.right
-                        anchors.rightMargin: -19
+                        anchors.rightMargin: -20
 
                         showArrows: false
                         currentIndex: categoryFolderSwipeView.currentIndex
@@ -248,7 +250,8 @@ Rectangle {
         contentItem: Item {
             Behavior on scale {
                 NumberAnimation {
-                    id: scaleAnim
+                    id: openScaleAnim
+                    duration: Appearance.animation.elementMoveFast.duration
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
@@ -288,7 +291,8 @@ Rectangle {
         contentItem: Item {
             Behavior on scale {
                 NumberAnimation {
-                    id: scaleAnim
+                    id: appScaleAnim
+                    duration: Appearance.animation.elementMoveFast.duration
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
@@ -297,7 +301,7 @@ Rectangle {
                 anchors.centerIn: parent
                 tryCustomIcon: false
                 iconName: smallGridAppButton.desktopEntry?.icon ?? ""
-                implicitSize: 34
+                implicitSize: 32
             }
         }
 
@@ -333,14 +337,14 @@ Rectangle {
     }
 
     component SmallGridButton: WButton {
-        id: root
+        id: buttonRoot
         implicitWidth: 68
         implicitHeight: 68
 
         property real pressedScale: 5 / 6
 
         onDownChanged: {
-            contentItem.scale = root.down ? root.pressedScale : 1; // If/When we do dragging, the scale is 1.25
+            contentItem.scale = buttonRoot.down ? buttonRoot.pressedScale : 1; // If/When we do dragging, the scale is 1.25
         }
     }
 }

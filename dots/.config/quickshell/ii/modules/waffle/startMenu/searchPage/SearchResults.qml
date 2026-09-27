@@ -22,10 +22,14 @@ RowLayout {
         forceCurrentIndex(currentIndex);
     }
     function focusFirstItem() {
-        forceCurrentIndex(0);
+        if (resultList.count > 0) {
+            forceCurrentIndex(0);
+        }
     }
     function forceCurrentIndex(index) {
         context.currentIndex = index;
+        if (resultList.count <= 0)
+            return;
         // Somehow this hack is needed
         if (index === 0) {
             resultList.incrementCurrentIndex();
@@ -39,7 +43,12 @@ RowLayout {
     Connections {
         target: context
         function onAccepted() {
-            resultList.currentItem?.execute();
+            if (resultList.currentItem && typeof resultList.currentItem.execute === "function") {
+                resultList.currentItem.execute();
+            } else if (resultList.model && resultList.model.length > 0) {
+                GlobalStates.searchOpen = false;
+                resultList.model[0]?.execute?.();
+            }
         }
     }
 
@@ -49,10 +58,14 @@ RowLayout {
         Layout.fillWidth: true
     }
     ResultPreview {
-        Layout.preferredWidth: 386
-        Layout.leftMargin: 1
-        Layout.rightMargin: 1
-        entry: resultList.model[resultList.currentIndex] ?? searchResultComp.createObject()
+        id: resultPreview
+        Layout.preferredWidth: 384
+        Layout.leftMargin: 0
+        Layout.rightMargin: 0
+        visible: Boolean(resultList.model && resultList.model.length > 0 && resultPreview.entry && resultPreview.entry.name)
+        entry: (resultList.model && resultList.model.length > resultList.currentIndex && resultList.currentIndex >= 0)
+            ? resultList.model[resultList.currentIndex]
+            : null
     }
 
     component ResultList: WListView {
@@ -73,7 +86,7 @@ RowLayout {
                         right: parent.right
                         top: parent.top
                     }
-                    implicitHeight: 38
+                    implicitHeight: 40
                     contentItem: WText {
                         text: sectionButton.section
                         font.pixelSize: Looks.font.pixelSize.large
@@ -111,7 +124,7 @@ RowLayout {
                             break;
                         }
                         const entry = allResults[i];
-                        const tweakedEntry = searchResultComp.createObject(null, Object.assign({}, entry));
+                        const tweakedEntry = searchResultComp.createObject(resultListView, Object.assign({}, entry));
                         tweakedEntry.category = categorizedResults.length === 0 ? Translation.tr("Best match") : entry.type;
 
                         categorizedResults.push(tweakedEntry); // Section header
@@ -127,7 +140,6 @@ RowLayout {
                 }
             }
             
-            // print(JSON.stringify(categorizedResults, null, 2));
             return categorizedResults;
         }
         onModelChanged: {
@@ -147,8 +159,6 @@ RowLayout {
     }
 
     component ResultPreview: Rectangle {
-        id: resultPreview
-
         property var entry // LauncherSearchResult
 
         Layout.fillHeight: true
@@ -157,15 +167,15 @@ RowLayout {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 22
-            spacing: 13
+            anchors.margins: 24
+            spacing: 12
 
             ColumnLayout {
                 id: mainInfoColumn
                 Layout.alignment: Qt.AlignHCenter
                 SearchEntryIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.topMargin: 10
+                    Layout.topMargin: 12
                     Layout.bottomMargin: 12
                     entry: resultPreview.entry
                     iconSize: 64
@@ -198,23 +208,25 @@ RowLayout {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 clip: true
-                spacing: 2
+                spacing: 4
                 model: {
+                    if (!resultPreview.entry || !resultPreview.entry.name)
+                        return [];
                     const isAppEntry = resultPreview.entry.type === Translation.tr("App");
                     const appId = isAppEntry ? resultPreview.entry.id : "";
                     const pinned = isAppEntry ? (Config.options.dock.pinnedApps.includes(appId)) : false;
                     const startPinned = isAppEntry ? (Config.options.launcher.pinnedApps.includes(appId)) : false;
                     var result = [
-                        searchResultComp.createObject(null, {
+                        searchResultComp.createObject(actionsColumn, {
                             name: resultPreview.entry.verb,
                             iconName: isAppEntry ? "open_in_new" : "keyboard_return",
                             iconType: LauncherSearchResult.IconType.Material,
                             execute: () => {
-                                resultPreview.entry.execute();
+                                resultPreview.entry?.execute?.();
                             }
                         }),
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(null, {
+                            searchResultComp.createObject(actionsColumn, {
                                 name: startPinned ? Translation.tr("Unpin from Start") : Translation.tr("Pin to Start"),
                                 iconName: startPinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,
@@ -224,7 +236,7 @@ RowLayout {
                             })
                         ] : []),
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(null, {
+                            searchResultComp.createObject(actionsColumn, {
                                 name: pinned ? Translation.tr("Unpin from taskbar") : Translation.tr("Pin to taskbar"),
                                 iconName: pinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,
@@ -234,7 +246,9 @@ RowLayout {
                             })
                         ] : []),
                     ];
-                    result = result.concat(resultPreview.entry.actions);
+                    if (resultPreview.entry.actions) {
+                        result = result.concat(resultPreview.entry.actions);
+                    }
                     return result;
                 }
                 delegate: WButton {
@@ -246,7 +260,7 @@ RowLayout {
                     onClicked: modelData.execute();
 
                     contentItem: RowLayout {
-                        spacing: 11
+                        spacing: 12
                         SearchEntryIcon {
                             entry: actionButton.modelData
                             iconSize: 16

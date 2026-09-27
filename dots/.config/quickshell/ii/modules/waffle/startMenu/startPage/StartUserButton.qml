@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs
 import qs.services
@@ -42,15 +41,24 @@ WBorderlessButton {
 
     Popup {
         id: userMenu
-        x: -51
-        y: -userMenu.implicitHeight + userButton.implicitHeight / 2 - 10
+        x: -52
+        y: -userMenu.implicitHeight + userButton.implicitHeight / 2 - 8
 
         background: null
+
+        Connections {
+            target: GlobalStates
+            function onSearchOpenChanged() {
+                if (!GlobalStates.searchOpen && userMenu.opened) {
+                    userMenu.close();
+                }
+            }
+        }
         
         WToolTipContent {
             id: popupContent
-            horizontalPadding: 10
-            verticalPadding: 7
+            horizontalPadding: 12
+            verticalPadding: 8
             radius: Looks.radius.large
             realContentItem: Item {
                 implicitWidth: userMenuContentLayout.implicitWidth
@@ -65,14 +73,14 @@ WBorderlessButton {
                         topMargin: popupContent.verticalPadding
                         bottomMargin: popupContent.verticalPadding
                     }
-                    spacing: 5
+                    spacing: 4
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.leftMargin: 6
+                        Layout.leftMargin: 8
                         FluentIcon {
                             Layout.alignment: Qt.AlignVCenter
-                            implicitSize: 22
+                            implicitSize: 20
                             icon: "corporation"
                             monochrome: false
                         }
@@ -86,30 +94,33 @@ WBorderlessButton {
                         WBorderlessButton {
                             Layout.alignment: Qt.AlignVCenter
                             implicitHeight: 36
-                            implicitWidth: textItem.implicitWidth + 10 * 2
+                            implicitWidth: textItem.implicitWidth + 12 * 2
                             contentItem: WText {
                                 id: textItem
                                 text: Translation.tr("Sign out")
                                 font.pixelSize: Looks.font.pixelSize.large
                             }
-                            onClicked: Session.logout()
+                            onClicked: {
+                                GlobalStates.searchOpen = false;
+                                Session.logout();
+                            }
                         }
                     }
                     Item { // Force min width 360 (using min on the item somehow doesn't work)
-                        implicitWidth: 334
+                        implicitWidth: 336
                     }
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.bottomMargin: 7
-                        Layout.leftMargin: 6
+                        Layout.bottomMargin: 8
+                        Layout.leftMargin: 8
                         spacing: 12
                         WUserAvatar {
-                            sourceSize: Qt.size(58, 58)
+                            sourceSize: Qt.size(56, 56)
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignVCenter
-                            spacing: 2
+                            spacing: 4
                             WText {
                                 text: SystemInfo.username
                                 font.pixelSize: Looks.font.pixelSize.larger
@@ -126,7 +137,7 @@ WBorderlessButton {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser])
+                                        Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser]);
                                         GlobalStates.searchOpen = false;
                                     }
                                 }

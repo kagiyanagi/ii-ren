@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs
 import qs.services
@@ -23,12 +22,12 @@ WButton {
     horizontalPadding: 0
     verticalPadding: 0
     contentItem: ColumnLayout {
-        spacing: 3
+        spacing: 4
         WAppIcon {
             Layout.topMargin: 12
             Layout.alignment: Qt.AlignHCenter
             iconName: root.desktopEntry?.icon ?? ""
-            implicitSize: 34
+            implicitSize: 32
             tryCustomIcon: false
         }
         WText {

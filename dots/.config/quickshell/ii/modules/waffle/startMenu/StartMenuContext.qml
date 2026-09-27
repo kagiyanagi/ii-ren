@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -11,13 +12,13 @@ Scope {
     signal accepted
 
     property int currentIndex: 0
-    function setCurrentIndex(index) {
-        if (index == currentIndex)
+    function setCurrentIndex(index: int): void {
+        if (index === currentIndex)
             return;
         currentIndex = index;
     }
 
-    function selectCategory(category) {
+    function selectCategory(category: string): void {
         for (let i = 0; i < root.categories.length; i++) {
             const thisCategoryName = root.categories[i].name;
             if (thisCategoryName.startsWith(category) || category.startsWith(thisCategoryName)) {
@@ -60,5 +61,4 @@ Scope {
             prefix: Config.options.search.prefix.webSearch
         },
     ]
-
 }
