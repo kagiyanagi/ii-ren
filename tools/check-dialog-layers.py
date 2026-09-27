@@ -101,7 +101,11 @@ BASE_OF = {n: token(n) for n in (
 DIALOG_CARD = "colLayer2Base"
 card_name = one(appearance, rf"property color {DIALOG_CARD}: m3colors\.(\w+)", f"the {DIALOG_CARD} definition")
 
-for path in ("modules/common/widgets/WindowDialog.qml", "modules/common/widgets/SelectionDialog.qml"):
+# SelectionDialog is a WindowDialog, so it paints this same card.
+assert re.search(r"(?m)^WindowDialog \{", (ROOT / "modules/common/widgets/SelectionDialog.qml").read_text()), \
+    "SelectionDialog is no longer rooted on WindowDialog -- check its own card fill here"
+
+for path in ("modules/common/widgets/WindowDialog.qml",):
     src = (ROOT / path).read_text()
     fill = one(src, r"(?m)^\s*color: (Appearance\.\S+)$\n(?=\s*(?:radius|property real targetY))",
                f"{path}'s dialog surface fill")

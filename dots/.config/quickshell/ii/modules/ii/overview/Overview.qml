@@ -188,6 +188,10 @@ Scope {
                     id: contentItem
                     anchors.fill: parent
 
+                    // Here, not on the PanelWindow: Keys only attaches to an Item.
+                    // SearchWidget lets Escape through to this one.
+                    Keys.onEscapePressed: GlobalStates.overviewOpen = false
+
                     Rectangle { // Pushes everything behind the launcher back
                         anchors.fill: parent
                         // The scrolling overview paints its own backdrop; this

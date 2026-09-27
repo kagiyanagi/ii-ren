@@ -36,38 +36,36 @@ ShellRoot {
         Autostart.load()
         Updates.load()
         HermesService.load()
-        if (Config.ready) {
-            familySwitchTimer.restart()
-        }
+        if (Config.ready) root.activeFamily = Config.options.panelFamily
     }
 
 
     // Panel families
     property list<string> families: ["ii", "waffle"]
+    // Loaders read only this latch, never panelFamily itself: on a switch the
+    // outgoing family must unload before the incoming one loads, since both
+    // declare IpcHandlers on the same targets. A binding on panelFamily and a
+    // handler on its change signal run in no defined order.
     property string activeFamily: ""
 
     Timer {
         id: familySwitchTimer
-        interval: 15
-        onTriggered: {
-            if (Config.ready) {
-                root.activeFamily = Config.options.panelFamily
-            }
-        }
+        interval: Config.options.hacks.arbitraryRaceConditionDelay
+        onTriggered: root.activeFamily = Config.options.panelFamily
     }
 
     Connections {
         target: Config
         function onReadyChanged() {
-            if (Config.ready) {
-                familySwitchTimer.restart()
-            }
+            if (Config.ready) root.activeFamily = Config.options.panelFamily
         }
     }
 
     Connections {
         target: Config.options
         function onPanelFamilyChanged() {
+            // Not loaded yet, or the load itself notifying: nothing to switch.
+            if (root.activeFamily === "" || root.activeFamily === Config.options.panelFamily) return
             root.activeFamily = ""
             familySwitchTimer.restart()
         }
