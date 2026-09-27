@@ -56,16 +56,6 @@ Item {
         return categories;
     }
 
-    readonly property var clockWidgets: widgetCategories.Clock
-    readonly property var mediaWidgets: widgetCategories.Media
-    readonly property var weatherWidgets: widgetCategories.Weather
-    readonly property var dateWidgets: widgetCategories.Date
-    readonly property var photoWidgets: widgetCategories.Photo
-    readonly property var bluetoothWidgets: widgetCategories.Bluetooth
-    readonly property var utilityWidgets: widgetCategories.Utility
-    readonly property var resourceWidgets: widgetCategories.Resources
-    readonly property var systemWidgets: widgetCategories.System
-
     readonly property var categoriesList: [
         { id: "clock", title: Translation.tr("Clocks"), icon: "schedule", widgets: widgetCategories.Clock },
         { id: "media", title: Translation.tr("Media Players"), icon: "play_circle", widgets: widgetCategories.Media },
@@ -114,17 +104,6 @@ Item {
         }
         return count;
     }
-
-    // Backward compatibility getters
-    property bool clockExpanded: expandedCategories["clock"] ?? false
-    property bool mediaExpanded: expandedCategories["media"] ?? false
-    property bool weatherExpanded: expandedCategories["weather"] ?? false
-    property bool dateExpanded: expandedCategories["date"] ?? false
-    property bool photoExpanded: expandedCategories["photo"] ?? false
-    property bool bluetoothExpanded: expandedCategories["bluetooth"] ?? false
-    property bool utilityExpanded: expandedCategories["utility"] ?? false
-    property bool resourceExpanded: expandedCategories["resource"] ?? false
-    property bool systemExpanded: expandedCategories["system"] ?? false
 
     // Rich catalog sections are opt-in. This keeps the first page pass limited
     // to the small Desktop Widgets controls and avoids starting network work.
@@ -199,7 +178,6 @@ Item {
         ContentSection {
             title: Translation.tr("Desktop Widgets")
             icon: "widgets"
-
 
             ConfigSwitch {
                 buttonIcon: "grid_on"
@@ -306,9 +284,9 @@ Item {
                                     colRipple: toggled ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colLayer2Active
 
                                     buttonRadius: Appearance.rounding.small
-                                    
+
                                     onClicked: Config.options.background.widgets.colorScheme = modelData
-                                    
+
                                     StyledToolTip {
                                         text: WidgetColorScheme.schemes[modelData] ? WidgetColorScheme.schemes[modelData].name : modelData
                                     }
@@ -324,6 +302,10 @@ Item {
                                             implicitWidth: parent.height - 16
                                             implicitHeight: parent.height - 16
                                             antialiasing: true
+                                            // Painted once, so a rounding-style change left
+                                            // the swatches in the old shape.
+                                            readonly property bool sharp: sharpMode
+                                            onSharpChanged: requestPaint()
 
                                             onPaint: {
                                                 var ctx = getContext("2d");
@@ -411,7 +393,7 @@ Item {
             }
 
             Connections {
-                target: extensionsContentLoader.item
+                target: extensionsContentLoader.item ?? null
                 function onExtensionConfigRequested(extId) {
                     widgetsConfigRoot.extensionConfigExtId = extId;
                 }
@@ -535,32 +517,32 @@ Item {
                             iconSize: Appearance.font.pixelSize.large
                             color: Appearance.colors.colOnLayer1
                             rotation: catCard.isExpanded ? 180 : 0
+                            // A rotation is spatial: elementMove, like every other
+                            // chevron in the shell. It was on the fast effects spec.
                             Behavior on rotation {
-                                NumberAnimation {
-                                    duration: Appearance.animation.elementMoveFast.duration
-                                    easing.type: Appearance.animation.elementMoveFast.type
-                                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                                }
+                                animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                             }
                         }
                     }
                 }
 
-                Item {
+                // It snapped open and shut. Revealer grows it on the spatial spec
+                // and collapses it on the exit one; the Loader stays up until the
+                // collapse has finished, or it would empty the card first.
+                Revealer {
+                    id: catReveal
                     Layout.fillWidth: true
-                    implicitHeight: catCard.isExpanded && catLoader.item ? catLoader.item.implicitHeight + 16 : 0
-                    visible: implicitHeight > 0
-                    clip: true
+                    vertical: true
+                    reveal: catCard.isExpanded && catLoader.status === Loader.Ready
 
                     Loader {
                         id: catLoader
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: parent.top
-                            margins: 12
-                        }
-                        active: catCard.isExpanded
+                        x: 12
+                        y: 12
+                        width: catReveal.width - 24
+                        // 12 above and 4 below, which is what the card had.
+                        height: (item?.implicitHeight ?? 0) + 4
+                        active: catCard.isExpanded || catReveal.visible
                         asynchronous: true
                         sourceComponent: Flow {
                             id: flowContainer
@@ -944,13 +926,21 @@ Item {
                 overlayActive = true;
         }
 
-        x: isOpen ? 0 : extConfigOverlay.width
+        // Same motion as ConfigSubPageHost, which this is a second copy of: in
+        // on the spatial spec, out on the exit one. It left on the enter's
+        // curve. The spec is picked inside the x binding for the reason that
+        // file gives (DESIGN.md 2.9).
+        property AnimSpec slideSpec: Appearance.animation.elementMove
+        x: {
+            extConfigOverlay.slideSpec = isOpen ? Appearance.animation.elementMove : Appearance.animation.elementMoveExit;
+            return isOpen ? 0 : extConfigOverlay.width;
+        }
 
         Behavior on x {
             NumberAnimation {
-                duration: Appearance.animation.elementMove.duration
-                easing.type: Appearance.animation.elementMove.type
-                easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+                duration: extConfigOverlay.slideSpec.duration
+                easing.type: extConfigOverlay.slideSpec.type
+                easing.bezierCurve: extConfigOverlay.slideSpec.bezierCurve
             }
         }
 
@@ -961,6 +951,14 @@ Item {
             anchors.fill: parent
             color: Appearance.colors.colLayer0
             visible: extConfigOverlay.overlayActive
+
+            // An opaque Rectangle still lets the pointer through, so hover and
+            // clicks reached the gallery underneath the open settings.
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.AllButtons
+            }
 
             ColumnLayout {
                 anchors {
@@ -980,10 +978,7 @@ Item {
                     RippleButton {
                         implicitWidth: implicitHeight
                         implicitHeight: 40
-                        topLeftRadius: Appearance.rounding.full
-                        topRightRadius: Appearance.rounding.full
-                        bottomLeftRadius: Appearance.rounding.full
-                        bottomRightRadius: Appearance.rounding.full
+                        buttonRadius: Appearance.rounding.full
                         colBackground: Appearance.colors.colSecondaryContainer
                         colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                         colRipple: Appearance.colors.colSecondaryContainerActive

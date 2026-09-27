@@ -693,6 +693,12 @@ Variants {
             WidgetCanvas {
                 id: widgetCanvas
                 gridOverlayEnabled: Config.options.background.widgets.enableGrid ?? false
+                // Settings → Widgets → "Show widgets only in one monitor". The
+                // switch and its picker wrote these two keys for as long as they
+                // existed and nothing read them. No monitor picked yet means the
+                // first screen, which is also the one a single-monitor setup has.
+                visible: !(Config.options.background.widgets.showOnlyOnSingleMonitor ?? false)
+                    || bgRoot.screen.name === ((Config.options.background.widgets.targetMonitor ?? "") || (Quickshell.screens[0]?.name ?? ""))
                 scale: 1 - (defaultRatio - 1)
                 Behavior on scale {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
