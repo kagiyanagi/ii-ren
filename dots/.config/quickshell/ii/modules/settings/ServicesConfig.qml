@@ -6,97 +6,10 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 ContentPage {
-    id: page;
+    id: page
     readonly property int index: 6
     property bool register: parent.register ?? false
     forceWidth: true
-
-    ContentSection {
-        icon: "auto_awesome"
-        title: Translation.tr("Hermes")
-
-        ConfigSwitch {
-            buttonIcon: "check"
-            text: Translation.tr("Show Hermes in the sidebar")
-            checked: Config.options.hermes.enable
-            onCheckedChanged: {
-                Config.options.hermes.enable = checked;
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "construction"
-            text: Translation.tr("Show what tools the agent runs")
-            checked: Config.options.hermes.showToolCalls
-            onCheckedChanged: {
-                Config.options.hermes.showToolCalls = checked;
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "pending"
-            text: Translation.tr("Show what it is doing while it works")
-            checked: Config.options.hermes.showStatusLine
-            onCheckedChanged: {
-                Config.options.hermes.showStatusLine = checked;
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "notifications"
-            text: Translation.tr("Notify when a reply lands and the tab isn't visible")
-            checked: Config.options.hermes.notifyWhenAway
-            onCheckedChanged: {
-                Config.options.hermes.notifyWhenAway = checked;
-            }
-        }
-        StyledText {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            color: Appearance.colors.colSubtext
-            text: Translation.tr("Models, providers, tools and approvals belong to the agent itself — set them with the picker in the sidebar or Hermes' own slash commands.")
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Dictate with")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.hermes.sttEngine
-                onSelected: newValue => {
-                    Config.options.hermes.sttEngine = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Hermes' provider"), value: "hermes" },
-                    { displayName: Translation.tr("This machine"), value: "local" }
-                ]
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                wrapMode: Text.Wrap
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                text: Config.options.hermes.sttEngine === "local"
-                    ? Translation.tr("Transcribed here with whisper.cpp. Nothing is uploaded.")
-                    : Translation.tr("Transcribed by whichever provider Hermes is set to — its `stt.provider`, shared with the agent's own voice mode. Falls back to this machine when Hermes isn't installed.")
-            }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Dictation accuracy on this machine")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.hermes.sttQuality
-                onSelected: newValue => {
-                    Config.options.hermes.sttQuality = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Fast"), value: "fast" },
-                    { displayName: Translation.tr("Balanced"), value: "balanced" },
-                    { displayName: Translation.tr("Accurate"), value: "accurate" },
-                    { displayName: Translation.tr("Best"), value: "best" }
-                ]
-            }
-        }
-    }
 
     ContentSection {
         icon: "calendar_month"
@@ -107,10 +20,8 @@ ContentPage {
             placeholderText: Translation.tr("iCal feed URLs, one per line (Google Calendar → Settings → Secret address in iCal format)")
             text: (Config.options.calendar.icsUrls || []).join("\n")
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Qt.callLater(() => {
-                    Config.options.calendar.icsUrls = text.split("\n").map(s => s.trim()).filter(s => s.length > 0);
-                });
+            onEditingFinished: {
+                Config.options.calendar.icsUrls = text.split("\n").map(s => s.trim()).filter(s => s.length > 0);
             }
         }
     }
@@ -218,8 +129,9 @@ ContentPage {
                 placeholderText: Translation.tr("Desktop entry name (e.g. spotify, google-chrome)")
                 text: Config.options.media.priorityPlayer
                 wrapMode: TextEdit.NoWrap
-                onTextChanged: {
-                    Config.options.media.priorityPlayer = text;
+                onEditingFinished: {
+                    if (Config.options.media.priorityPlayer !== text)
+                        Config.options.media.priorityPlayer = text;
                 }
             }
         }
@@ -235,7 +147,6 @@ ContentPage {
                 text: Translation.tr("Attempt to remove dupes (the aggregator playerctl one and browsers' native ones when there's plasma browser integration)")
             }
         }
-
     }
 
     ContentSection {
@@ -287,8 +198,9 @@ ContentPage {
             placeholderText: Translation.tr("User agent (for services that require it)")
             text: Config.options.networking.userAgent
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Config.options.networking.userAgent = text;
+            onEditingFinished: {
+                if (Config.options.networking.userAgent !== text)
+                    Config.options.networking.userAgent = text;
             }
         }
     }
@@ -308,9 +220,7 @@ ContentPage {
                 Config.options.resources.updateInterval = value;
             }
         }
-        
     }
-
 
     ContentSection {
         icon: "lyrics"
@@ -327,7 +237,6 @@ ContentPage {
                 text: Translation.tr("Disabling this will prevent the API from being called, but already cached lyrics will still be available.")
             }
         }
-
 
         ConfigRow {
             uniform: true
@@ -546,8 +455,9 @@ ContentPage {
                 placeholderText: Translation.tr("Extra wf-recorder arguments")
                 text: Config.options.screenRecord.extraArgs
                 wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.screenRecord.extraArgs = text;
+                onEditingFinished: {
+                    if (Config.options.screenRecord.extraArgs !== text)
+                        Config.options.screenRecord.extraArgs = text;
                 }
             }
 
@@ -724,25 +634,27 @@ ContentPage {
     ContentSection {
         icon: "file_open"
         title: Translation.tr("Save paths")
-        
+
         MaterialTextArea {
             id: recordingPathField
             Layout.fillWidth: true
             placeholderText: Translation.tr("Video Recording Path")
             text: Config.options.screenRecord.savePath
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Config.options.screenRecord.savePath = text;
+            onEditingFinished: {
+                if (Config.options.screenRecord.savePath !== text)
+                    Config.options.screenRecord.savePath = text;
             }
         }
-        
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("Screenshot Path (leave empty to just copy)")
             text: Config.options.screenSnip.savePath
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Config.options.screenSnip.savePath = text;
+            onEditingFinished: {
+                if (Config.options.screenSnip.savePath !== text)
+                    Config.options.screenSnip.savePath = text;
             }
         }
 
@@ -751,8 +663,9 @@ ContentPage {
             placeholderText: Translation.tr("To-do list file (Markdown checklist)")
             text: Config.options.todo.filePath
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Config.options.todo.filePath = text;
+            onEditingFinished: {
+                if (Config.options.todo.filePath !== text)
+                    Config.options.todo.filePath = text;
             }
             StyledToolTip {
                 text: Translation.tr("Point this at a note in a vault to edit the same list there.\nOnly \"- [ ]\" lines are touched; the rest of the note is left alone.")
@@ -840,8 +753,9 @@ ContentPage {
             text: Config.options.localsend.downloadPath
             wrapMode: TextEdit.Wrap
             enabled: LocalSend.available
-            onTextChanged: {
-                Config.options.localsend.downloadPath = text;
+            onEditingFinished: {
+                if (Config.options.localsend.downloadPath !== text)
+                    Config.options.localsend.downloadPath = text;
             }
         }
     }
@@ -859,8 +773,9 @@ ContentPage {
                     placeholderText: Translation.tr("Action")
                     text: Config.options.search.prefix.action
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.action = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.action !== text)
+                            Config.options.search.prefix.action = text;
                     }
                 }
                 MaterialTextArea {
@@ -868,8 +783,9 @@ ContentPage {
                     placeholderText: Translation.tr("Clipboard")
                     text: Config.options.search.prefix.clipboard
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.clipboard = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.clipboard !== text)
+                            Config.options.search.prefix.clipboard = text;
                     }
                 }
                 MaterialTextArea {
@@ -877,8 +793,9 @@ ContentPage {
                     placeholderText: Translation.tr("Emojis")
                     text: Config.options.search.prefix.emojis
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.emojis = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.emojis !== text)
+                            Config.options.search.prefix.emojis = text;
                     }
                 }
             }
@@ -890,8 +807,9 @@ ContentPage {
                     placeholderText: Translation.tr("Math")
                     text: Config.options.search.prefix.math
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.math = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.math !== text)
+                            Config.options.search.prefix.math = text;
                     }
                 }
                 MaterialTextArea {
@@ -899,8 +817,9 @@ ContentPage {
                     placeholderText: Translation.tr("Shell command")
                     text: Config.options.search.prefix.shellCommand
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.shellCommand = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.shellCommand !== text)
+                            Config.options.search.prefix.shellCommand = text;
                     }
                 }
                 MaterialTextArea {
@@ -908,8 +827,9 @@ ContentPage {
                     placeholderText: Translation.tr("Web search")
                     text: Config.options.search.prefix.webSearch
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.webSearch = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.webSearch !== text)
+                            Config.options.search.prefix.webSearch = text;
                     }
                 }
                 MaterialTextArea {
@@ -917,8 +837,9 @@ ContentPage {
                     placeholderText: Translation.tr("File search")
                     text: Config.options.search.prefix.fileSearch
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.search.prefix.fileSearch = text;
+                    onEditingFinished: {
+                        if (Config.options.search.prefix.fileSearch !== text)
+                            Config.options.search.prefix.fileSearch = text;
                     }
                 }
             }
@@ -930,8 +851,9 @@ ContentPage {
                 placeholderText: Translation.tr("Base URL")
                 text: Config.options.search.engineBaseUrl
                 wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.search.engineBaseUrl = text;
+                onEditingFinished: {
+                    if (Config.options.search.engineBaseUrl !== text)
+                        Config.options.search.engineBaseUrl = text;
                 }
             }
         }
@@ -943,8 +865,9 @@ ContentPage {
                 placeholderText: Translation.tr("Search directory")
                 text: Config.options.search.fileSearchDirectory
                 wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.search.fileSearchDirectory = text;
+                onEditingFinished: {
+                    if (Config.options.search.fileSearchDirectory !== text)
+                        Config.options.search.fileSearchDirectory = text;
                 }
             }
 
@@ -956,35 +879,8 @@ ContentPage {
                     Config.options.search.blurFileSearchResultPreviews = checked;
                 }
             }
-
         }
     }
-
-    // There's no update indicator in ii for now so we shouldn't show this yet
-    // ContentSection {
-    //     icon: "deployed_code_update"
-    //     title: Translation.tr("System updates (Arch only)")
-
-    //     ConfigSwitch {
-    //         text: Translation.tr("Enable update checks")
-    //         checked: Config.options.updates.enableCheck
-    //         onCheckedChanged: {
-    //             Config.options.updates.enableCheck = checked;
-    //         }
-    //     }
-
-    //     ConfigSpinBox {
-    //         icon: "av_timer"
-    //         text: Translation.tr("Check interval (mins)")
-    //         value: Config.options.updates.checkInterval
-    //         from: 60
-    //         to: 1440
-    //         stepSize: 60
-    //         onValueChanged: {
-    //             Config.options.updates.checkInterval = value;
-    //         }
-    //     }
-    // }
 
     ContentSection {
         icon: "weather_mix"
@@ -1010,27 +906,26 @@ ContentPage {
                 }
             }
         }
-        ConfigRow {
-            ConfigSwitch {
-                buttonIcon: "image"
-                text: Translation.tr("Dynamic weather icon")
-                checked: Config.options.bar.weather.dynamicIcon ?? true
-                onCheckedChanged: {
-                    Config.options.bar.weather.dynamicIcon = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Show condition icon in top bar")
-                }
+        ConfigSwitch {
+            buttonIcon: "image"
+            text: Translation.tr("Dynamic weather icon")
+            checked: Config.options.bar.weather.dynamicIcon ?? true
+            onCheckedChanged: {
+                Config.options.bar.weather.dynamicIcon = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Show condition icon in top bar")
             }
         }
-        
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("City name")
             text: Config.options.bar.weather.city
             wrapMode: TextEdit.Wrap
-            onTextChanged: {
-                Config.options.bar.weather.city = text;
+            onEditingFinished: {
+                if (Config.options.bar.weather.city !== text)
+                    Config.options.bar.weather.city = text;
             }
         }
         ConfigSpinBox {

@@ -5,10 +5,10 @@ import qs.modules.common
 import qs.modules.common.widgets
 
 /**
- * Settings for Hermes the agent itself -- ~/.hermes/config.yaml, reached
- * through the gateway's config.get/config.set RPC. This is deliberately not
- * Config.options.hermes (that's the shell's own block, edited in Services).
- * Until now these lived only in hand-edited YAML.
+ * Settings for Hermes: first the shell's own block (Config.options.hermes),
+ * then the agent itself -- ~/.hermes/config.yaml, reached through the
+ * gateway's config.get/config.set RPC. The two stay separate stores; they
+ * share a page so the user has one place to look.
  */
 ContentPage {
     id: page
@@ -373,6 +373,98 @@ ContentPage {
         function onReadyChanged() {
             if (HermesService.ready && !page.loaded)
                 page.refreshAll();
+        }
+    }
+
+    // The shell's own Hermes options (Config.options.hermes). They used to be a
+    // "Hermes" section on Services, so Settings had two places by that name;
+    // they come first and stay up while the gateway is down, since none of
+    // them needs it.
+    ContentSection {
+        icon: "auto_awesome"
+        title: Translation.tr("In the sidebar")
+
+        ConfigSwitch {
+            buttonIcon: "check"
+            text: Translation.tr("Show Hermes in the sidebar")
+            checked: Config.options.hermes.enable
+            onCheckedChanged: {
+                Config.options.hermes.enable = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "construction"
+            text: Translation.tr("Show what tools the agent runs")
+            checked: Config.options.hermes.showToolCalls
+            onCheckedChanged: {
+                Config.options.hermes.showToolCalls = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "pending"
+            text: Translation.tr("Show what it is doing while it works")
+            checked: Config.options.hermes.showStatusLine
+            onCheckedChanged: {
+                Config.options.hermes.showStatusLine = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "notifications"
+            text: Translation.tr("Notify when a reply lands and the tab isn't visible")
+            checked: Config.options.hermes.notifyWhenAway
+            onCheckedChanged: {
+                Config.options.hermes.notifyWhenAway = checked;
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Dictate with")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.hermes.sttEngine
+                onSelected: newValue => {
+                    Config.options.hermes.sttEngine = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Hermes' provider"), value: "hermes" },
+                    { displayName: Translation.tr("This machine"), value: "local" }
+                ]
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                text: Config.options.hermes.sttEngine === "local"
+                    ? Translation.tr("Transcribed here with whisper.cpp. Nothing is uploaded.")
+                    : Translation.tr("Transcribed by whichever provider Hermes is set to — its `stt.provider`, shared with the agent's own voice mode. Falls back to this machine when Hermes isn't installed.")
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Dictation accuracy on this machine")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.hermes.sttQuality
+                onSelected: newValue => {
+                    Config.options.hermes.sttQuality = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Fast"), value: "fast" },
+                    { displayName: Translation.tr("Balanced"), value: "balanced" },
+                    { displayName: Translation.tr("Accurate"), value: "accurate" },
+                    { displayName: Translation.tr("Best"), value: "best" }
+                ]
+            }
+        }
+
+        StyledText {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            color: Appearance.colors.colSubtext
+            text: Translation.tr("Everything below this section belongs to the agent itself and is read from it. Models, providers, tools and approvals are set with the picker in the sidebar or Hermes' own slash commands.")
         }
     }
 
