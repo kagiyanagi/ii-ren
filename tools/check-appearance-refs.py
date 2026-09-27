@@ -26,16 +26,32 @@ def group_members(src):
                 groups.setdefault(stack[-2], set()).add(m.group(1))
             continue
         p = re.match(r"^(?:readonly )?property [\w<>.]+ (\w+)", s)
-        if p and stack:
-            groups[stack[-1]].add(p.group(1))
-        stack = stack[: max(0, len(stack) - (s.count("}") - s.count("{")))] if s.count("}") > s.count("{") else stack
+        owners = [g for g in stack if g is not None]
+        if p and owners:
+            groups[owners[-1]].add(p.group(1))
+        # A value that opens braces of its own (`property var main: ({`) is not a
+        # group, but its closing brace still pops: track it, or the group it sits
+        # in is popped instead and every later member lands one level up.
+        opened, closed = s.count("{"), s.count("}")
+        if opened > closed:
+            stack += [None] * (opened - closed)
+        elif closed > opened:
+            stack = stack[: max(0, len(stack) - (closed - opened))]
     return groups
 
 
 GROUPS = group_members(APPEARANCE)
 CHECKED = ("colors", "m3colors", "animation", "animationCurves", "rounding", "sizes")
-for g in CHECKED:
+for g in CHECKED + ("variableAxes", "pixelSize", "family"):
     assert GROUPS.get(g), f"Appearance.qml has no `{g}` group any more -- this check is stale"
+
+# Vendored from ii-p3drovfx and rsynced over by tools/p3-widget-port, so a fix here is
+# reverted by the next re-port (AUDIT.md, "the re-port hazard"). Named rather than
+# skipped wholesale, so a new one in that tree still fails.
+KNOWN = {
+    "modules/ii/background/widgets/clock/concentric/ConcentricHourDisplay.qml: Appearance.font.family.display",
+    "modules/ii/background/widgets/clock/concentric/ConcentricMinutePill.qml: Appearance.font.family.display",
+}
 
 bad = []
 for f in sorted(ROOT.rglob("*.qml")):
@@ -48,6 +64,12 @@ for f in sorted(ROOT.rglob("*.qml")):
         for g, name in re.findall(r"\bAppearance\.(\w+)\.(\w+)", code):
             if g in CHECKED and name not in GROUPS[g]:
                 bad.append(f"{f.relative_to(ROOT)}:{n}: Appearance.{g}.{name} is not declared")
+        # One level further for the font groups. `font.variableAxes.titleRounded`
+        # never existed, and a QVariantMap assigned undefined only says so as a
+        # runtime warning naming the widget, not the token.
+        for g, name in re.findall(r"\bAppearance\.font\.(variableAxes|pixelSize|family)\.(\w+)", code):
+            if name not in GROUPS[g] and f"{f.relative_to(ROOT)}: Appearance.font.{g}.{name}" not in KNOWN:
+                bad.append(f"{f.relative_to(ROOT)}:{n}: Appearance.font.{g}.{name} is not declared")
 
 assert not bad, "\n".join(bad)
 print("check-appearance-refs: ok")

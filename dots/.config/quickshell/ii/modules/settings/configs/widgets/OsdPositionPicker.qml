@@ -85,7 +85,7 @@ GridLayout {
                             text: positionChoice.modelData.label
                             font.pixelSize: Appearance.font.pixelSize.huge
                             font.weight: Font.DemiBold
-                            font.variableAxes: Appearance.font.variableAxes.titleRounded
+                            font.variableAxes: Appearance.font.variableAxes.title
                             color: positionChoice.selected
                                 ? Appearance.colors.colOnPrimaryContainer
                                 : Appearance.colors.colOnLayer2

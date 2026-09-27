@@ -69,7 +69,6 @@ Item {
                         };
                     })
                 }
-
             }
 
             ConfigSwitch {
@@ -83,7 +82,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("e.g. 󰘴  for Ctrl, 󰘵  for Alt, 󰘶  for Shift, etc")
                 }
-
             }
 
             ConfigSwitch {
@@ -97,7 +95,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("e.g. 󱊫 for F1, 󱊶  for F12")
                 }
-
             }
 
             ConfigSwitch {
@@ -111,7 +108,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("Replace 󱕐   for \"Scroll ↓\", 󱕑   \"Scroll ↑\", L󰍽   \"LMB\", R󰍽   \"RMB\", 󱕒   \"Scroll ↑/↓\" and ⇞/⇟ for \"Page_↑/↓\"")
                 }
-
             }
 
             ConfigSwitch {
@@ -125,7 +121,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("Display modifiers and keys in multiple keycap (e.g., \"Ctrl + A\" instead of \"Ctrl A\" or \"󰘴 + A\" instead of \"󰘴 A\")")
                 }
-
             }
 
             ConfigSpinBox {
@@ -149,7 +144,6 @@ Item {
                     Config.options.cheatsheet.fontSize.comment = value;
                 }
             }
-
         }
 
         ContentSection {
@@ -182,7 +176,6 @@ Item {
                     Config.options.altTab.currentWorkspaceOnly = checked;
                 }
             }
-
         }
 
         ContentSection {
@@ -236,7 +229,6 @@ Item {
                         Config.options.dock.pinnedOnStartup = checked;
                     }
                 }
-
             }
 
             ConfigRow {
@@ -263,9 +255,7 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Greyscale icons for pinned apps that are not running.\nDisabled when 'Tint app icons' is active.")
                     }
-
                 }
-
             }
 
             ConfigRow {
@@ -292,9 +282,7 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Show the media controls when hovering the widget.\nOff: click the widget to toggle them.")
                     }
-
                 }
-
             }
 
             ConfigSwitch {
@@ -309,7 +297,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("The desktop's own media widget is visible there anyway.")
                 }
-
             }
 
             ConfigSwitch {
@@ -324,7 +311,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("The wave behind the dock's media widget.\nCava feeds it 60 updates a second and each one repaints the dock,\nso turning it off is the biggest saving the dock can make.")
                 }
-
             }
 
             ConfigSpinBox {
@@ -380,7 +366,6 @@ Item {
                         Config.options.dock.sectionSpacing = value;
                     }
                 }
-
             }
 
             ConfigRow {
@@ -409,7 +394,6 @@ Item {
                         Config.options.dock.paddingVertical = value;
                     }
                 }
-
             }
 
             ContentSubsection {
@@ -434,7 +418,6 @@ Item {
                         "value": "Empty"
                     }]
                 }
-
             }
 
             ConfigRow {
@@ -451,7 +434,6 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("The button that keeps the dock open.\nWithout it, 'Pinned on startup' decides whether the dock stays out.")
                     }
-
                 }
 
                 ConfigSwitch {
@@ -462,7 +444,6 @@ Item {
                         Config.options.dock.showAppsButton = checked;
                     }
                 }
-
             }
 
             ConfigRow {
@@ -479,7 +460,6 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
                     }
-
                 }
 
                 ConfigSwitch {
@@ -493,7 +473,6 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Flare the corners touching the edge outward, like the bar's hug style.")
                     }
-
                 }
 
                 ConfigSwitch {
@@ -507,9 +486,7 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Show a filled background on the apps button.")
                     }
-
                 }
-
             }
 
             ConfigRow {
@@ -543,9 +520,7 @@ Item {
                             "value": "right"
                         }]
                     }
-
                 }
-
             }
 
             ContentSubsection {
@@ -564,7 +539,6 @@ Item {
                         };
                     })
                 }
-
             }
 
             ContentSubsection {
@@ -584,9 +558,7 @@ Item {
                     })
                 }
             }
-
         }
-
 
         ContentSection {
             icon: "content_paste"
@@ -603,7 +575,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("Android's clipboard overlay: a preview of what was copied slides into the bottom-left corner, with a link and send-to-phone action when they apply. Click it to open the clipboard history.")
                 }
-
             }
 
             ContentSubsection {
@@ -648,11 +619,8 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("0 keeps the card up until it is clicked")
                     }
-
                 }
-
             }
-
         }
 
         ContentSection {
@@ -697,60 +665,12 @@ Item {
                 }
             }
 
-            // Metrics copied from ConfigSwitch so this sits flush with the
-            // rows above it instead of reading as a different kind of control.
-            RippleButton {
-                id: historyEntry
-
-                Layout.fillWidth: true
-                leftPadding: 8
-                rightPadding: 8
-                implicitHeight: contentItem.implicitHeight + 12 * 2
-                buttonRadius: Appearance.rounding.verysmall
-                colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
-
+            ConfigNavRow {
+                buttonIcon: "manage_history"
+                text: Translation.tr("Browse notification history")
+                searchString: Translation.tr("Notification history")
+                summary: Config.options.notifications.history.enable ? Translation.tr("Recording") : Translation.tr("Off — nothing new is saved")
                 onClicked: interfaceConfigRoot.activeSubPage = Qt.resolvedUrl("widgets/NotificationHistoryConfig.qml")
-
-                SearchHandler {
-                    searchString: Translation.tr("Notification history")
-                }
-
-                contentItem: RowLayout {
-                    spacing: 10
-
-                    MaterialSymbol {
-                        text: "manage_history"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: Appearance.colors.colOnSecondaryContainer
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            text: Translation.tr("Browse notification history")
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            color: Appearance.colors.colOnSecondaryContainer
-                        }
-
-                        StyledText {
-                            Layout.fillWidth: true
-                            elide: Text.ElideRight
-                            text: Config.options.notifications.history.enable ? Translation.tr("Recording") : Translation.tr("Off — nothing new is saved")
-                            font.pixelSize: Appearance.font.pixelSize.smaller
-                            color: Appearance.colors.colSubtext
-                        }
-                    }
-
-                    MaterialSymbol {
-                        text: "chevron_right"
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: Appearance.colors.colSubtext
-                    }
-                }
             }
 
             ConfigSwitch {
@@ -764,7 +684,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("If you have multiple monitors and want notifications to only show on one of them, enable this and enter the monitor name below (e.g., eDP-1)")
                 }
-
             }
 
             ConfigRow {
@@ -775,13 +694,12 @@ Item {
                     placeholderText: Translation.tr("Monitor name to show notifications on (e.g., eDP-1)")
                     text: Config.options.notifications.monitor.name
                     wrapMode: TextEdit.Wrap
-                    onTextChanged: {
-                        Config.options.notifications.monitor.name = text;
+                    onEditingFinished: {
+                        if (Config.options.notifications.monitor.name !== text)
+                            Config.options.notifications.monitor.name = text;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -805,7 +723,6 @@ Item {
                     Config.options.overlay.darkenScreen = checked;
                 }
             }
-
         }
 
         ContentSection {
@@ -817,8 +734,9 @@ Item {
                 placeholderText: Translation.tr("Crosshair code (in Valorant's format)")
                 text: Config.options.crosshair.code
                 wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.crosshair.code = text;
+                onEditingFinished: {
+                    if (Config.options.crosshair.code !== text)
+                        Config.options.crosshair.code = text;
                 }
             }
 
@@ -847,11 +765,8 @@ Item {
                     StyledToolTip {
                         text: "www.vcrdb.net"
                     }
-
                 }
-
             }
-
         }
 
         ContentSection {
@@ -863,11 +778,11 @@ Item {
                 placeholderText: Translation.tr("Image source")
                 text: Config.options.overlay.floatingImage.imageSource
                 wrapMode: TextEdit.Wrap
-                onTextChanged: {
-                    Config.options.overlay.floatingImage.imageSource = text;
+                onEditingFinished: {
+                    if (Config.options.overlay.floatingImage.imageSource !== text)
+                        Config.options.overlay.floatingImage.imageSource = text;
                 }
             }
-
         }
 
         ContentSection {
@@ -895,9 +810,7 @@ Item {
                         Config.options.overlay.notes.allowEditingIcon = checked;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -948,9 +861,7 @@ Item {
                         Config.options.overlay.media.lyricSize = value;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1019,9 +930,7 @@ Item {
                         Config.options.media.immersive.lyricSize = value;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1070,11 +979,8 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Could be images or parts of the screen that have some containment.\nMight not always be accurate.\nThis is done with an image processing algorithm run locally and no AI is used.")
                         }
-
                     }
-
                 }
-
             }
 
             ContentSubsection {
@@ -1095,7 +1001,6 @@ Item {
                         "displayName": Translation.tr("Circle to Search")
                     }]
                 }
-
             }
 
             ContentSubsection {
@@ -1109,7 +1014,6 @@ Item {
                         Config.options.regionSelector.rect.showAimLines = checked;
                     }
                 }
-
             }
 
             ContentSubsection {
@@ -1138,9 +1042,7 @@ Item {
                         Config.options.regionSelector.circle.padding = value;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1151,14 +1053,14 @@ Item {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Uptime pill icon (empty = your user avatar)")
                 text: Config.options.sidebar.uptimeIcon
-                onTextChanged: {
-                    Config.options.sidebar.uptimeIcon = text;
+                onEditingFinished: {
+                    if (Config.options.sidebar.uptimeIcon !== text)
+                        Config.options.sidebar.uptimeIcon = text;
                 }
 
                 StyledToolTip {
                     text: Translation.tr("Path to an image shown next to the uptime in the right sidebar.\nLeave empty to use your user avatar, which falls back to the distro logo.")
                 }
-
             }
 
             ConfigSwitch {
@@ -1172,7 +1074,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help")
                 }
-
             }
 
             ConfigSwitch {
@@ -1186,7 +1087,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("Same trade for the left sidebar. Off: its pages are built on the first open and thrown away when it closes.\nConversations and chat state live in the services, so nothing is lost either way")
                 }
-
             }
 
             ConfigRow {
@@ -1216,9 +1116,7 @@ Item {
                             "value": "right"
                         }]
                     }
-
                 }
-
             }
 
             ContentSubsection {
@@ -1266,9 +1164,7 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Draw the power profile toggle as a three-position slider when it is two cells wide")
                     }
-
                 }
-
             }
 
             ContentSubsection {
@@ -1322,7 +1218,6 @@ Item {
                         Config.options.sidebar.quickSliders.showMic = checked;
                     }
                 }
-
             }
 
             ContentSubsection {
@@ -1340,7 +1235,6 @@ Item {
                             Config.options.sidebar.cornerOpen.enable = checked;
                         }
                     }
-
                 }
 
                 ConfigSwitch {
@@ -1354,7 +1248,6 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("When this is off you'll have to click")
                     }
-
                 }
 
                 Row {
@@ -1369,7 +1262,6 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll")
                         }
-
                     }
 
                     ConfigSpinBox {
@@ -1383,7 +1275,6 @@ Item {
                             Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset = value;
                         }
                     }
-
                 }
 
                 ConfigRow {
@@ -1400,7 +1291,6 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Place the corners to trigger at the bottom")
                         }
-
                     }
 
                     ConfigSwitch {
@@ -1414,9 +1304,7 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Brightness and volume")
                         }
-
                     }
-
                 }
 
                 ConfigSwitch {
@@ -1452,11 +1340,8 @@ Item {
                             Config.options.sidebar.cornerOpen.cornerRegionHeight = value;
                         }
                     }
-
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1589,9 +1474,7 @@ Item {
                         Config.options.languageSwitcher.enable = checked;
                     }
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1607,7 +1490,6 @@ Item {
                         Config.options.overview.enable = checked;
                     }
                 }
-
             }
 
             ConfigRow {
@@ -1631,7 +1513,6 @@ Item {
                         Config.options.overview.centerIcons = checked;
                     }
                 }
-
             }
 
             ConfigSwitch {
@@ -1645,7 +1526,6 @@ Item {
                 StyledToolTip {
                     text: Translation.tr("Only for multi-monitor setups, you must edit the workspace map manually in config.json\n Refer to the repo wiki for more information")
                 }
-
             }
 
             ConfigSpinBox {
@@ -1672,7 +1552,6 @@ Item {
                     StyledToolTip {
                         text: Translation.tr("Using zoom-in style zoomes the wallpaper in default state, may look pixelated on crisp wallpapers")
                     }
-
                 }
 
                 Item {
@@ -1696,7 +1575,6 @@ Item {
                         "value": "out"
                     }]
                 }
-
             }
 
             ContentSubsection {
@@ -1728,7 +1606,6 @@ Item {
                             Config.options.overview.columns = value;
                         }
                     }
-
                 }
 
                 ConfigRow {
@@ -1751,7 +1628,6 @@ Item {
                     }
 
                     ConfigSelectionArray {
-                        Layout.leftMargin: 50
                         currentValue: Config.options.overview.orderBottomUp
                         onSelected: (newValue) => {
                             Config.options.overview.orderBottomUp = newValue;
@@ -1766,9 +1642,7 @@ Item {
                             "value": 1
                         }]
                     }
-
                 }
-
             }
 
             ConfigSpinBox {
@@ -1806,9 +1680,7 @@ Item {
                         "value": "transparent"
                     }]
                 }
-
             }
-
         }
 
         ContentSection {
@@ -1823,9 +1695,7 @@ Item {
                     Config.options.wallpaperSelector.useSystemFileDialog = checked;
                 }
             }
-
         }
-
     }
 
     ConfigSubPageHost {

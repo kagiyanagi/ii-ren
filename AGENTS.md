@@ -549,7 +549,8 @@ you touched; they are the only automated gate.
   `Appearance.qml` declares. A wrong one is not an error in QML: it reads `undefined`, and the
   log blames the widget that received it. `Appearance.colors.m3scrim` (it is on `m3colors`)
   and `Appearance.animation.fadeFast` (never existed) shipped that way, and three waffle checks
-  asserted the broken names were present
+  asserted the broken names were present. It reads one level further for `font.variableAxes`,
+  `font.pixelSize` and `font.family`: `variableAxes.titleRounded` never existed either
 - `python3 tools/check-about.py` — Settings → About names the hardware it reads. The CPU and
   GPU names come from `/proc/cpuinfo` and lspci or nvidia-smi strings, which differ by vendor.
   A wrong regex only shows as a tile that reads oddly on someone else's machine, so the
