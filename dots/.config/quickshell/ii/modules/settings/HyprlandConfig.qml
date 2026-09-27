@@ -83,14 +83,18 @@ ContentPage {
             monitorConfig: monitors
         }
 
+        // One level of subsection: nested ones indented each row by another 8,
+        // so the switch, the combo and the scale sat on three different edges.
         ContentSubsection {
             title: [page.selectedMonitor?.name, page.selectedMonitor?.description].filter(s => s).join(" · ")
 
+            // Turning off the only display leaves nothing to turn it back on
+            // with, so with one display there is no switch at all rather than
+            // a greyed one that reads as broken.
             ConfigSwitch {
+                visible: monitors.monitors.length > 1
                 buttonIcon: "tv_off"
                 text: Translation.tr("Enabled")
-                // Turning off the only display leaves nothing to turn it back on with.
-                enabled: monitors.monitors.length > 1
                 checked: !(page.selectedMonitor?.disabled ?? false)
                 onCheckedChanged: {
                     if (!page.selectedMonitor || checked === !page.selectedMonitor.disabled)
@@ -99,39 +103,20 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Resolution & refresh rate")
-
-                StyledComboBox {
-                    buttonIcon: "aspect_ratio"
-                    model: page.selectedMonitor?.availableModes ?? []
-                    currentIndex: Math.max(0, model.indexOf(page.selectedMonitor?.currentMode ?? ""))
-                    onActivated: index => {
-                        const mode = model[index];
-                        const parts = mode.match(/(\d+)x(\d+)@([\d.]+)Hz/);
-                        if (!parts) return;
-                        page.updateSelected({
-                            currentMode: mode,
-                            width: parseInt(parts[1]),
-                            height: parseInt(parts[2]),
-                            refreshRate: parseFloat(parts[3])
-                        });
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Orientation")
-
-                ConfigSelectionArray {
-                    currentValue: page.selectedMonitor?.transform ?? 0
-                    onSelected: newValue => page.updateSelected({ transform: newValue })
-                    options: [
-                        { displayName: Translation.tr("Normal"), icon: "screen_rotation_alt", value: 0 },
-                        { displayName: "90°", icon: "rotate_90_degrees_cw", value: 1 },
-                        { displayName: "180°", icon: "screen_rotation", value: 2 },
-                        { displayName: "270°", icon: "rotate_90_degrees_ccw", value: 3 }
-                    ]
+            StyledComboBox {
+                buttonIcon: "aspect_ratio"
+                model: page.selectedMonitor?.availableModes ?? []
+                currentIndex: Math.max(0, model.indexOf(page.selectedMonitor?.currentMode ?? ""))
+                onActivated: index => {
+                    const mode = model[index];
+                    const parts = mode.match(/(\d+)x(\d+)@([\d.]+)Hz/);
+                    if (!parts) return;
+                    page.updateSelected({
+                        currentMode: mode,
+                        width: parseInt(parts[1]),
+                        height: parseInt(parts[2]),
+                        refreshRate: parseFloat(parts[3])
+                    });
                 }
             }
 
@@ -148,6 +133,21 @@ ContentPage {
                         return;
                     page.updateSelected({ scale: scale });
                 }
+            }
+        }
+
+        ContentSubsection {
+            title: Translation.tr("Orientation")
+
+            ConfigSelectionArray {
+                currentValue: page.selectedMonitor?.transform ?? 0
+                onSelected: newValue => page.updateSelected({ transform: newValue })
+                options: [
+                    { displayName: Translation.tr("Normal"), icon: "screen_rotation_alt", value: 0 },
+                    { displayName: "90°", icon: "rotate_90_degrees_cw", value: 1 },
+                    { displayName: "180°", icon: "screen_rotation", value: 2 },
+                    { displayName: "270°", icon: "rotate_90_degrees_ccw", value: 3 }
+                ]
             }
         }
     }
@@ -175,12 +175,6 @@ ContentPage {
     ContentSection {
         icon: "deblur"
         title: Translation.tr("Appearance")
-
-        NoticeBox {
-            Layout.fillWidth: true
-            materialIcon: "battery_alert"
-            text: Translation.tr("Large blur sizes and extra passes cost GPU time every frame, which shows up as battery drain on a laptop.")
-        }
 
         ConfigSlider {
             buttonIcon: "rounded_corner"
@@ -251,6 +245,14 @@ ContentPage {
             onMoved: value => page.put(optBlurPasses, Math.round(value))
         }
 
+        // Under the two controls it is about, not at the top of the section.
+        NoticeBox {
+            Layout.fillWidth: true
+            visible: optBlurEnabled.value === true
+            materialIcon: "battery_alert"
+            text: Translation.tr("Large blur sizes and extra passes cost GPU time every frame, which shows up as battery drain on a laptop.")
+        }
+
         ConfigSpinBox {
             icon: "opacity"
             text: Translation.tr("Active window opacity (%)")
@@ -269,6 +271,13 @@ ContentPage {
             stepSize: 5
             value: Math.round(optInactiveOpacity.numericValue * 100)
             onValueChanged: page.put(optInactiveOpacity, value / 100)
+        }
+
+        ConfigSwitch {
+            buttonIcon: "animation"
+            text: Translation.tr("Window animations")
+            checked: optAnimations.value === true
+            onCheckedChanged: page.put(optAnimations, checked)
         }
     }
 
@@ -404,18 +413,6 @@ ContentPage {
                 value: Math.round(optScrollFactor.numericValue * 100)
                 onValueChanged: page.put(optScrollFactor, value / 100)
             }
-        }
-    }
-
-    ContentSection {
-        icon: "animation"
-        title: Translation.tr("Animations")
-
-        ConfigSwitch {
-            buttonIcon: "animation"
-            text: Translation.tr("Enable animations")
-            checked: optAnimations.value === true
-            onCheckedChanged: page.put(optAnimations, checked)
         }
     }
 }
