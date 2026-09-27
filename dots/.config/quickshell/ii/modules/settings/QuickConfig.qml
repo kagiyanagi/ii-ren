@@ -161,39 +161,23 @@ ContentPage {
                 }
 
                 Timer {
-                    // The text below is visible even if the favouritesCarousel is not empty, so we add a little delay before making it visible
+                    // The model fills a moment after the page opens, so the placeholder
+                    // waits rather than flashing over a carousel about to appear.
                     interval: 200
                     running: true
-                    onTriggered: {
-                        emptyFavouritesColumn.canBeVisible = true
-                    }
+                    onTriggered: emptyFavourites.canBeVisible = true
                 }
 
-                ColumnLayout {
-                    id: emptyFavouritesColumn
+                // The wallpaper selector's own empty favourites, so the same empty
+                // list reads the same in both places.
+                PagePlaceholder {
+                    id: emptyFavourites
                     property bool canBeVisible: false
-                    opacity: page.favouritesCarouselModel.count === 0 && canBeVisible ? 1 : 0
-                    Behavior on opacity {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        verticalCenter: parent.verticalCenter
-                        verticalCenterOffset: -10
-                    }
-                    MaterialSymbol {
-                        iconSize: 30
-                        text: "star"
-                        fill: 1
-                        color: Appearance.colors.colOnLayer3
-                        Layout.alignment: Qt.AlignHCenter
-                    }
-                    StyledText {
-                        text: Translation.tr("No favourites yet\nAdd some from wallpaper selector")
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        color: Appearance.colors.colOnLayer3
-                        horizontalAlignment: Text.AlignHCenter
-                    }
+                    shown: page.favouritesCarouselModel.count === 0 && canBeVisible
+                    icon: "favorite"
+                    title: Translation.tr("No favourites yet")
+                    description: Translation.tr("Right-click one in the wallpaper selector and tap the heart")
+                    descriptionHorizontalAlignment: Text.AlignHCenter
                 }
             }
 
