@@ -10,7 +10,7 @@ Toolbar {
     id: extraOptions
     z: 1
 
-    property string text: filterField.text
+    property alias field: filterField
 
     IconToolbarButton {
         implicitWidth: height
@@ -31,25 +31,19 @@ Toolbar {
 
     IconToolbarButton {
         implicitWidth: height
-            onClicked: {
-                if (wallpaperSelectorContent.browserMode) {
-                    if (wallpaperSelectorContent.apiImages.length > 0) {
-                        const randomImg = wallpaperSelectorContent.apiImages[Math.floor(Math.random() * wallpaperSelectorContent.apiImages.length)];
-                        wallpaperSelectorContent.selectWallpaperPath(randomImg.actualPath || randomImg.filePath);
-                    }
-                } else if (wallpaperSelectorContent.favMode) {
-                    const favs = Persistent.states.wallpaper.favourites;
-                    if (favs.length > 0) {
-                        const randomPath = favs[Math.floor(Math.random() * favs.length)];
-                        wallpaperSelectorContent.selectWallpaperPath(randomPath);
-                    }
-                } else {
-                    Wallpapers.randomFromCurrentFolder();
-                }
+        onClicked: {
+            if (wallpaperSelectorContent.viewMode === "folder" && !wallpaperSelectorContent.activeColorFilter) {
+                Wallpapers.randomFromCurrentFolder(wallpaperSelectorContent.useDarkMode);
+                return;
             }
+            // Whatever the grid is showing: favourites, a colour, the browser.
+            const entries = grid.model;
+            if (entries.length > 0)
+                wallpaperSelectorContent.activate(entries[Math.floor(Math.random() * entries.length)]);
+        }
         text: "ifl"
         StyledToolTip {
-            text: Translation.tr("Pick random from this folder")
+            text: Translation.tr("Pick one at random")
         }
     }
 
@@ -57,12 +51,10 @@ Toolbar {
         implicitWidth: height
         onClicked: {
             if (!toggled) wallpaperSelectorContent.updateColorCache();
-            colorFilterToolbar.visible = !colorFilterToolbar.visible
-            if (!colorFilterToolbar.visible) {
-                wallpaperSelectorContent.activeColorFilter = ""
-            }
+            colorFilterToolbar.shown = !colorFilterToolbar.shown;
+            if (!colorFilterToolbar.shown) wallpaperSelectorContent.activeColorFilter = "";
         }
-        toggled: colorFilterToolbar.visible
+        toggled: colorFilterToolbar.shown
         text: "palette"
         StyledToolTip {
             text: colorCacheProc.running ? Translation.tr("Updating color cache...") : Translation.tr("Filter by color")
@@ -71,8 +63,8 @@ Toolbar {
 
     IconToolbarButton {
         implicitWidth: height
-            onClicked: wallpaperSelectorContent.useDarkMode = !wallpaperSelectorContent.useDarkMode
-            text: wallpaperSelectorContent.useDarkMode ? "dark_mode" : "light_mode"
+        onClicked: wallpaperSelectorContent.useDarkMode = !wallpaperSelectorContent.useDarkMode
+        text: wallpaperSelectorContent.useDarkMode ? "dark_mode" : "light_mode"
         StyledToolTip {
             text: Translation.tr("Click to toggle light/dark mode\n(applied when wallpaper is chosen)")
         }
@@ -91,24 +83,22 @@ Toolbar {
 
         // Search
         onTextChanged: {
-            if (!wallpaperSelectorContent.browserMode) {
-                Wallpapers.searchQuery = text;
-                if (wallpaperSelectorContent.favMode) {
-                    wallpaperSelectorContent.refreshFavourites();
-                }
-            }
+            if (!wallpaperSelectorContent.browserMode) Wallpapers.searchQuery = text;
         }
 
+        // The field holds focus from the moment the surface opens, and a TextField
+        // eats Return, so Enter picks the focused tile from here too.
         onAccepted: {
-            if (wallpaperSelectorContent.browserMode && text.trim().length > 0) {
-                const newTags = text.trim().split(/\s+/);
-                const allTags = [...newTags];
-                wallpaperSelectorContent.moreOptionsModelData = null
-                ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").clearResponses();
-                ExtensionServices.get("vynx-wallpaper-browser", "wallpaperBrowserService").makeRequest(allTags, 20, 1);
-                grid.currentIndex = 0;
-                text = "";
+            if (!wallpaperSelectorContent.browserMode) {
+                grid.activateCurrent();
+                return;
             }
+            if (text.trim().length === 0) return;
+            wallpaperSelectorContent.moreOptionsModelData = null;
+            wallpaperSelectorContent.browserService.clearResponses();
+            wallpaperSelectorContent.browserService.makeRequest(text.trim().split(/\s+/), 20, 1);
+            grid.currentIndex = 0;
+            text = "";
         }
 
         Keys.onPressed: event => {
@@ -142,5 +132,5 @@ Toolbar {
         StyledToolTip {
             text: Translation.tr("Cancel wallpaper selection")
         }
-    }                 
+    }
 }

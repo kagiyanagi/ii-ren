@@ -92,6 +92,7 @@ hl.layer_rule({ match = { namespace = "anyrun" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "indicator.*" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "osk" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:altTab" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:wallpaperSelector" }, no_anim = true}) -- slides from under the bar in QML
 hl.layer_rule({ match = { namespace = "hyprpicker" }, no_anim = true})
 
 hl.layer_rule({ match = { namespace = "noanim" }, no_anim = true})
@@ -133,6 +134,7 @@ hl.layer_rule({ match = { namespace = "osk[0-9]*" }, ignore_alpha = 0.6})
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur_popups = true})
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, blur = true})
 hl.layer_rule({ match = { namespace = "quickshell:.*" }, ignore_alpha = 0.79})
+hl.layer_rule({ match = { namespace = "quickshell:wallpaperSelector" }, blur = false}) -- opaque; re-blurring 1200x690 behind it each frame of the slide is pure cost
 hl.layer_rule({ match = { namespace = "quickshell:bar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:actionCenter" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:cheatsheet" }, animation = "slide bottom"})

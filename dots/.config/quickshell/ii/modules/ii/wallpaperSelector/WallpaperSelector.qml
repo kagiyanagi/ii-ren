@@ -13,9 +13,26 @@ import Quickshell.Hyprland
 Scope {
     id: root
 
+    // Intent and mapping are separate: `Loader.active` on the open flag destroyed the
+    // window on the frame it cleared, so no exit ever rendered. The content clears
+    // `rendered` when its exit lands (the cheatsheet's shape).
+    property bool rendered: false
+    Connections {
+        target: GlobalStates
+        function onWallpaperSelectorOpenChanged() {
+            if (GlobalStates.wallpaperSelectorOpen) root.rendered = true;
+        }
+    }
+
+    // Built on first open and then kept: rebuilding the window, the grid and every
+    // thumbnail on each open landed on the frames of the slide and made it stutter.
+    // Closing only hides it.
+    property bool built: false
+    onRenderedChanged: if (rendered) built = true
+
     Loader {
         id: wallpaperSelectorLoader
-        active: GlobalStates.wallpaperSelectorOpen
+        active: root.built
 
         sourceComponent: PanelWindow {
             id: panelWindow
@@ -40,12 +57,11 @@ Scope {
             implicitHeight: Appearance.sizes.wallpaperSelectorHeight
             implicitWidth: Appearance.sizes.wallpaperSelectorWidth
 
-            Component.onCompleted: {
-                GlobalFocusGrab.addDismissable(panelWindow);
-            }
-            Component.onDestruction: {
-                GlobalFocusGrab.removeDismissable(panelWindow);
-            }
+            visible: root.rendered
+            // In the focus grab only while shown, or a hidden window holds it.
+            onVisibleChanged: visible ? GlobalFocusGrab.addDismissable(panelWindow) : GlobalFocusGrab.removeDismissable(panelWindow)
+            Component.onCompleted: GlobalFocusGrab.addDismissable(panelWindow)
+            Component.onDestruction: GlobalFocusGrab.removeDismissable(panelWindow)
             Connections {
                 target: GlobalFocusGrab
                 function onDismissed() {
@@ -55,9 +71,8 @@ Scope {
 
             WallpaperSelectorContent {
                 id: content
-                anchors {
-                    fill: parent
-                }
+                anchors.fill: parent
+                onClosed: root.rendered = false
             }
         }
     }

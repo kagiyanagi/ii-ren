@@ -103,20 +103,21 @@ Singleton {
         function setDirectoryIfValid(path) {
             validateDirProc.nicePath = FileUtils.trimFileProtocol(path).replace(/\/+$/, "")
             if (/^\/*$/.test(validateDirProc.nicePath)) validateDirProc.nicePath = "/";
+            // The path is an argument, never part of the script: it comes from the
+            // address bar and the clipboard.
             validateDirProc.exec([
                 "bash", "-c",
-                `if [ -d "${validateDirProc.nicePath}" ]; then echo dir; elif [ -f "${validateDirProc.nicePath}" ]; then echo file; else echo invalid; fi`
+                'if [ -d "$1" ]; then echo dir; elif [ -f "$1" ]; then echo file; fi',
+                "_", validateDirProc.nicePath
             ])
         }
         stdout: StdioCollector {
             onStreamFinished: {
-                    root.directory = Qt.resolvedUrl(validateDirProc.nicePath)
                 const result = text.trim()
                 if (result === "dir") {
+                    root.directory = Qt.resolvedUrl(validateDirProc.nicePath)
                 } else if (result === "file") {
                     root.directory = Qt.resolvedUrl(FileUtils.parentDirectory(validateDirProc.nicePath))
-                } else {
-                    // Ignore
                 }
             }
         }
@@ -127,7 +128,13 @@ Singleton {
     // Folder model
     FolderListModelWithHistory {
         id: folderModel
-        folder: Qt.resolvedUrl(root.defaultFolder)
+        // Opens where the applied wallpaper is: `defaultFolder` need not exist, and
+        // given a folder that does not, FolderListModel lists the shell's working
+        // directory instead. Navigation assigns `folder`, which ends this binding.
+        folder: {
+            const current = Config.options.background.wallpaperPath;
+            return current.startsWith("/") ? Qt.resolvedUrl(FileUtils.parentDirectory(current)) : root.defaultFolder;
+        }
         caseSensitive: false
         nameFilters: root.extensions.map(ext => `*${searchQuery.split(" ").filter(s => s.length > 0).map(s => `*${s}*`)}*.${ext}`)
         showDirs: true
@@ -136,11 +143,13 @@ Singleton {
         sortField: FolderListModel.Time
         sortReversed: false
         onCountChanged: {
-            root.wallpapers = []
+            // Built locally and assigned once: a push on the property notifies per item.
+            const paths = []
             for (let i = 0; i < folderModel.count; i++) {
                 const path = folderModel.get(i, "filePath") || FileUtils.trimFileProtocol(folderModel.get(i, "fileURL"))
-                if (path && path.length) root.wallpapers.push(path)
+                if (path && path.length) paths.push(path)
             }
+            root.wallpapers = paths
         }
     }
 
@@ -151,7 +160,8 @@ Singleton {
         thumbgenProc.running = false
         thumbgenProc.command = [
             "bash", "-c",
-            `${thumbgenScriptPath} --size ${size} --machine_progress -d ${FileUtils.trimFileProtocol(root.directory)} || ${generateThumbnailsMagickScriptPath} --size ${size} -d ${FileUtils.trimFileProtocol(root.directory)}`,
+            '"$1" --size "$3" --machine_progress -d "$4" || "$2" --size "$3" -d "$4"',
+            "_", thumbgenScriptPath, generateThumbnailsMagickScriptPath, size, FileUtils.trimFileProtocol(root.directory)
         ]
         // console.log("[Wallpapers] Updating thumbnails with command ", thumbgenProc.command.join(" "))
         root.thumbnailGenerationProgress = 0

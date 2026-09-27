@@ -6,14 +6,31 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Toolbar {
-    id: extraOptions
+    id: colorToolbar
     z: 1
-    implicitWidth: 196 // magic numbers are needed to make the toolbar make 2 rows
-    implicitHeight: 90
+    // Two rows of four, sized from the swatches themselves: a fixed 196x90 held
+    // three a row and cut the third row off.
+    implicitHeight: swatches.implicitHeight + padding * 2
     radius: Appearance.rounding.large
-    visible: false
+
+    // Opened by the palette button, to its right: it grows out of that side, on
+    // the ArrowPopup recipe (DESIGN.md 2.6).
+    property bool shown: false
+    transformOrigin: Item.BottomRight
+    scale: Appearance.animationCurves.arrowPopupScale
+    opacity: 0
+    visible: opacity > 0
+    onShownChanged: shown ? motion.open() : motion.close()
+    ArrowPopupMotion {
+        id: motion
+        target: colorToolbar
+    }
 
     ConfigSelectionArray {
+        id: swatches
+        readonly property real swatchWidth: children[0]?.width ?? 0
+        // ceil: fractional widths wrap a row early
+        Layout.preferredWidth: leftPadding + rightPadding + Math.ceil(swatchWidth) * 4 + spacing * 3
         currentValue: wallpaperSelectorContent.activeColorFilter
         onSelected: newValue => {
             wallpaperSelectorContent.activeColorFilter = newValue
