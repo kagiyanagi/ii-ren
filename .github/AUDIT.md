@@ -11,8 +11,9 @@ Two hard constraints shape every choice below:
   steady, to be stopped after any surface at zero cost, and to be resumed weeks later
   without re-reading anything.
 
-Read this before starting or resuming audit work. The tooling is built and 31 of the
-106 queue rows are done; what is left to build is in **Not built yet**.
+Read this before starting or resuming audit work. The tooling is built and every queue
+row is done except `ii-background-widgets`, which is skipped (see **The re-port hazard**);
+what is left is the **Cohesion pass**.
 
 ## Why a process instead of just doing it
 
@@ -319,7 +320,8 @@ actually costs, which is the number the cadence depends on.
 
 ## Not built yet
 
-- `/audit` command that reads the queue and starts the next surface under this protocol
+Nothing. An `/audit` command that started the next queue row was planned, and is moot now
+that the queue is finished.
 
 Built since, and in use: `.audit/QUEUE.md` (hand-edited, generated once), `tools/audit/pack.py`
 (now including the effect budget) and `tools/audit/smoke.sh`.
