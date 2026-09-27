@@ -6,12 +6,13 @@ import qs.modules.waffle.looks
 WTextButton {
     id: root
 
-    implicitWidth: 135
+    implicitWidth: Math.max(160, contentItem.implicitWidth + horizontalPadding * 2)
     implicitHeight: 40
-    horizontalPadding: 5
+    horizontalPadding: 8
 
     property bool keyboardDown: false
     property alias focusRingRadius: focusRing.radius
+    focusRingRadius: Looks.radius.medium + 4
     fgColor: (root.pressed || root.keyboardDown) ? Looks.darkColors.fg1 : Looks.darkColors.fg
 
     Keys.onPressed: event => {
@@ -31,10 +32,11 @@ WTextButton {
     contentItem: Item {
         id: contentItem
         implicitWidth: buttonText.implicitWidth
+        implicitHeight: buttonText.implicitHeight
 
         WText {
             id: buttonText
-            anchors.fill: parent
+            anchors.centerIn: parent
             color: root.fgColor
             text: root.text
             font.pixelSize: Looks.font.pixelSize.large
@@ -50,6 +52,6 @@ WTextButton {
         }
         color: "transparent"
         border.width: 2
-        border.color: "#ffffff"
+        border.color: Looks.darkColors.fg
     }
 }
