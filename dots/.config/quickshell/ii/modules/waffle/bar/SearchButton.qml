@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -14,7 +16,7 @@ AppButton {
 
     checked: GlobalStates.searchOpen && LauncherSearch.query !== ""
     onClicked: {
-        GlobalStates.searchOpen = !GlobalStates.searchOpen; // For now...
+        GlobalStates.searchOpen = !GlobalStates.searchOpen;
     }
 
     BarToolTip {

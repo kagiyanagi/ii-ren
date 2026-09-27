@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -10,12 +12,20 @@ import qs.modules.common.widgets
 
 Scope {
     id: root
-    
+
+    readonly property var screenList: {
+        const screens = Quickshell.screens;
+        const list = Config.options?.bar?.screenList;
+        if (!list || list.length === 0)
+            return screens;
+        return screens.filter(screen => list.includes(screen.name));
+    }
+
     LazyLoader {
         id: barLoader
-        active: GlobalStates.barOpen
+        active: GlobalStates.barOpen && !GlobalStates.screenLocked
         component: Variants {
-            model: Quickshell.screens
+            model: root.screenList
             delegate: PanelWindow { // Bar window
                 id: barRoot
                 required property var modelData
@@ -35,6 +45,13 @@ Scope {
                 implicitHeight: content.implicitHeight
                 implicitWidth: content.implicitWidth
 
+                Component.onCompleted: {
+                    GlobalFocusGrab.addPersistent(barRoot);
+                }
+                Component.onDestruction: {
+                    GlobalFocusGrab.removePersistent(barRoot);
+                }
+
                 WaffleBarContent {
                     id: content
                     anchors.fill: parent
@@ -47,15 +64,15 @@ Scope {
         target: "bar"
 
         function toggle(): void {
-            GlobalStates.barOpen = !GlobalStates.barOpen
+            GlobalStates.barOpen = !GlobalStates.barOpen;
         }
 
         function close(): void {
-            GlobalStates.barOpen = false
+            GlobalStates.barOpen = false;
         }
 
         function open(): void {
-            GlobalStates.barOpen = true
+            GlobalStates.barOpen = true;
         }
     }
 

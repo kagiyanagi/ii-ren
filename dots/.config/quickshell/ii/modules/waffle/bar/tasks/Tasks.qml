@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -32,17 +34,17 @@ MouseArea {
         implicitWidth: contentWidth
         clip: true
         interactive: false
-        // TODO: Include only apps (and windows) in current workspace only | wait, does that even make sense in a Hyprland workflow?
         model: ScriptModel {
             objectProp: "appId"
-            values: TaskbarApps.apps.filter(app => app.appId !== "SEPARATOR")
+            values: (TaskbarApps.apps ?? []).filter(app => app?.appId !== "SEPARATOR")
         }
         delegate: TaskAppButton {
+            id: taskButton
             required property var modelData
             appEntry: modelData
 
             onHoverPreviewRequested: {
-                root.showPreviewPopup(appEntry, this);
+                root.showPreviewPopup(taskButton.appEntry, taskButton);
             }
             onHoverPreviewDismissed: {
                 previewPopup.close();

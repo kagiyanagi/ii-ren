@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import qs
@@ -16,10 +18,10 @@ BarButton {
 
     contentItem: Item {
         anchors.fill: parent
-        implicitHeight: column.implicitHeight
-        implicitWidth: column.implicitWidth
+        implicitHeight: systemButtonsRow.implicitHeight
+        implicitWidth: systemButtonsRow.implicitWidth
         Row {
-            id: column
+            id: systemButtonsRow
             anchors {
                 top: parent.top
                 bottom: parent.bottom
@@ -47,7 +49,7 @@ BarButton {
                     anchors.verticalCenter: parent.verticalCenter
                     icon: "speaker"
                     color: Looks.colors.inactiveIcon
-                    
+
                     FluentIcon {
                         anchors.fill: parent
                         icon: WIcons.volumeIcon
@@ -90,18 +92,18 @@ BarButton {
 
     BarToolTip {
         extraVisibleCondition: root.shouldShowTooltip && internetHoverArea.containsMouse
-        text: Translation.tr("%1\nInternet access").arg(Network.ethernet ? Translation.tr("Network") : Network.networkName)
+        text: Translation.tr("%1\nInternet access").arg(Network.ethernet ? Translation.tr("Network") : (Network.networkName || Translation.tr("Disconnected")))
     }
     BarToolTip {
         extraVisibleCondition: root.shouldShowTooltip && volumeHoverArea.containsMouse
-        text: Translation.tr("Speakers (%1): %2") //
-            .arg(Audio.sink?.nickname || Audio.sink?.description || Translation.tr("Unknown")) //
-            .arg(Audio.sink?.audio.muted ? Translation.tr("Muted") : `${Math.round(Audio.sink?.audio.volume * 100) || 0}%`) //
+        text: Translation.tr("Speakers (%1): %2")
+            .arg(Audio.sink?.nickname || Audio.sink?.description || Translation.tr("Unknown"))
+            .arg(Audio.sink?.audio?.muted ? Translation.tr("Muted") : `${Math.round((Audio.sink?.audio?.volume ?? 0) * 100)}%`)
     }
     BarToolTip {
         extraVisibleCondition: root.shouldShowTooltip && batteryHoverArea.containsMouse
-        text: Translation.tr("Battery: %1%2") //
-            .arg(`${Math.round(Battery.percentage * 100) || 0}%`) //
+        text: Translation.tr("Battery: %1%2")
+            .arg(`${Math.round((Battery.percentage ?? 0) * 100)}%`)
             .arg(Battery.isPluggedIn ? (" " + Translation.tr("(Plugged in)")) : "")
     }
 }

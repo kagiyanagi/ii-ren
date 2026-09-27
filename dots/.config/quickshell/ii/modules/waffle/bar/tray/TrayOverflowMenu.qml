@@ -15,7 +15,7 @@ BarPopup {
 
     closeOnFocusLost: false
     onFocusCleared: {
-        const hasMenuOpen = contentItem.children.some(c => (c.menuOpen));
+        const hasMenuOpen = (contentItem.children ?? []).some(c => c?.menuOpen);
         if (!hasMenuOpen)
             root.close();
         else
@@ -30,14 +30,15 @@ BarPopup {
         GridLayout {
             id: contentGrid
             anchors.centerIn: parent
-            rows: Math.floor(Math.sqrt(TrayService.unpinnedItems.length))
-            columns: Math.ceil(TrayService.unpinnedItems.length / rows)
+            readonly property int unpinnedCount: TrayService.unpinnedItems?.length ?? 0
+            rows: Math.max(1, Math.floor(Math.sqrt(Math.max(1, contentGrid.unpinnedCount))))
+            columns: Math.max(1, Math.ceil(contentGrid.unpinnedCount / Math.max(1, contentGrid.rows)))
             columnSpacing: 0
             rowSpacing: 0
 
             Repeater {
                 model: ScriptModel {
-                    values: TrayService.unpinnedItems
+                    values: TrayService.unpinnedItems ?? []
                     onValuesChanged: {
                         root.updateAnchor();
                         if (values.length === 0) {
@@ -60,10 +61,6 @@ BarPopup {
                     colBackgroundActive: Looks.colors.bg2Active
 
                     onMenuOpenChanged: {
-                        // The overflow menu should only be closed when the user clicks outside
-                        // However the focus grab refuses to reactivate, so we can't have that
-                        // But most of the time the user dismisses the menu by clicking outside anyway,
-                        // so this is acceptable.
                         if (!menuOpen) {
                             root.close();
                         }
@@ -97,7 +94,6 @@ BarPopup {
                                 trayButton.click();
                             } else {
                                 if (!unpinDropArea.containsDrag && unpinDropArea.willUnpin) {
-                                    // Quickshell would crash if we don't hide this item first. Took me fucking 3 hours to figure out...
                                     trayButton.visible = false;
                                     TrayService.togglePin(trayButton.item.id);
                                     unpinDropArea.willUnpin = false;

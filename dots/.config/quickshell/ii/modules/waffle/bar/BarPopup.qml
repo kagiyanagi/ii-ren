@@ -14,7 +14,7 @@ Loader {
     property real padding: Looks.radius.large - Looks.radius.medium
     property bool closeOnFocusLost: true
     signal focusCleared()
-    
+
     property Item anchorItem: parent
     property real visualMargin: 12
     readonly property bool barAtBottom: Config.options.waffles.bar.bottom
@@ -22,15 +22,15 @@ Loader {
 
     onFocusCleared: {
         if (!root.closeOnFocusLost) return;
-        root.close()
+        root.close();
     }
 
-    function grabFocus() { // Doesn't work
-        item.grabFocus();
+    function grabFocus() {
+        item?.grabFocus();
     }
 
     function close() {
-        item.close();
+        item?.close();
     }
 
     function updateAnchor() {
@@ -65,7 +65,7 @@ Loader {
         }
 
         function grabFocus() {
-            focusGrab.active = true; // Doesn't work
+            focusGrab.active = true;
         }
 
         implicitWidth: realContent.implicitWidth + (root.ambientShadowWidth * 2) + (root.visualMargin * 2)
@@ -77,7 +77,7 @@ Loader {
             target: popupWindow
             property: "sourceEdgeMargin"
             to: (root.ambientShadowWidth + root.visualMargin)
-            duration: 200
+            duration: 200 // design-ok: Fluent popup entry
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
         }
@@ -87,7 +87,7 @@ Loader {
                 target: popupWindow
                 property: "sourceEdgeMargin"
                 to: -implicitHeight
-                duration: 150
+                duration: 150 // design-ok: Fluent popup exit
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
             }
@@ -102,7 +102,7 @@ Loader {
         WAmbientShadow {
             target: realContent
         }
-        
+
         Rectangle {
             id: realContent
             z: 1
@@ -119,7 +119,6 @@ Loader {
             color: Looks.colors.bg1Base
             radius: Looks.radius.large
 
-            // test
             implicitWidth: root.contentItem.implicitWidth + (root.padding * 2)
             implicitHeight: root.contentItem.implicitHeight + (root.padding * 2)
 

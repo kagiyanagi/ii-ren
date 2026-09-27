@@ -21,7 +21,7 @@ RowLayout {
     BarIconButton {
         id: overflowButton
 
-        visible: (TrayService.unpinnedItems.length > 0 || root.dragging)
+        visible: ((TrayService.unpinnedItems?.length ?? 0) > 0 || root.dragging)
         checked: root.overflowOpen
 
         iconName: "chevron-down"
@@ -58,7 +58,7 @@ RowLayout {
 
     Repeater {
         model: ScriptModel {
-            values: TrayService.pinnedItems
+            values: TrayService.pinnedItems ?? []
         }
         delegate: TrayButton {
             id: trayButton
@@ -89,7 +89,6 @@ RowLayout {
                         trayButton.click();
                     } else {
                         if (pinDropArea.containsDrag && pinDropArea.willPin) {
-                            // Quickshell would crash if we don't hide this item first. Took me fucking 3 hours to figure out...
                             trayButton.visible = false;
                             TrayService.togglePin(trayButton.item.id);
                             pinDropArea.willPin = false;

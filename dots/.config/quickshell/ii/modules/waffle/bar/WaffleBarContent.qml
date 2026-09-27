@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
@@ -11,7 +13,7 @@ Rectangle {
 
     color: Looks.colors.bg0
     implicitHeight: 48
-    
+
     Rectangle {
         id: border
         anchors {
@@ -67,7 +69,9 @@ Rectangle {
         FadeLoader {
             Layout.fillHeight: true
             shown: Config.options.waffles.bar.leftAlignApps
-            sourceComponent: WidgetsButton {}
+            sourceComponent: Component {
+                WidgetsButton {}
+            }
         }
         Tray {}
         UpdatesButton {}

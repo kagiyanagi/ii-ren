@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import Quickshell
 import qs
@@ -24,7 +26,7 @@ BarIconButton {
         anchors {
             right: parent.right
             bottom: parent.bottom
-            margins: 1
+            margins: 2
         }
         implicitWidth: 8
         implicitHeight: implicitWidth

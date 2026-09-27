@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
@@ -19,12 +21,6 @@ BarButton {
 
     property real pressedScale: 5/6
 
-    onDownChanged: {
-        scaleAnim.duration = root.down ? 150 : 200
-        scaleAnim.easing.bezierCurve = root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
-        contentItem.scale = root.down ? root.pressedScale : 1 // If/When we do dragging, the scale is 1.25
-    }
-
     background: Item {
         id: background
         BackgroundAcrylicRectangle {
@@ -38,7 +34,7 @@ BarButton {
                     height: mainBgRect.height
                     Rectangle {
                         anchors.fill: parent
-                        anchors.rightMargin: 3
+                        anchors.rightMargin: 4
                         radius: mainBgRect.radius
                     }
                 }
@@ -46,7 +42,7 @@ BarButton {
         }
         Loader {
             anchors.fill: parent
-            anchors.rightMargin: 5
+            anchors.rightMargin: 4
             active: root.multiple
             sourceComponent: BackgroundAcrylicRectangle {}
         }
@@ -57,11 +53,14 @@ BarButton {
 
         implicitHeight: iconWidget.implicitHeight
         implicitWidth: iconWidget.implicitWidth
+        scale: root.down ? root.pressedScale : 1
 
         Behavior on scale {
             NumberAnimation {
                 id: scaleAnim
+                duration: root.down ? 150 : 200 // design-ok: Fluent button press micro-interaction
                 easing.type: Easing.BezierSpline
+                easing.bezierCurve: root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
             }
         }
 

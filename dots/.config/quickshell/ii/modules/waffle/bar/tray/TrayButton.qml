@@ -15,28 +15,26 @@ BarIconButton {
     required property SystemTrayItem item
     property alias menuOpen: menu.visible
     readonly property bool barAtBottom: Config.options.waffles.bar.bottom
-    iconSource: item.icon
+    iconSource: root.item?.icon ?? ""
     iconScale: 0
     Component.onCompleted: {
-        root.iconScale = 1
+        root.iconScale = 1;
     }
     Behavior on iconScale {
         animation: Looks.transition.enter.createObject(this)
     }
 
     onClicked: {
-        item.activate();
+        root.item?.activate();
     }
 
     altAction: () => {
-        if (item.hasMenu) menu.open()
+        if (root.item?.hasMenu) menu.open();
     }
 
-    // This is lazy, but it's not like tray menus on Windoes are consistent...
-    // TODO: Figure out how to do cascading menus then use a custom menu
     QsMenuAnchor {
         id: menu
-        menu: root.item.menu
+        menu: root.item?.menu ?? null
         anchor {
             adjustment: PopupAdjustment.ResizeY | PopupAdjustment.SlideX
             item: root
@@ -47,6 +45,6 @@ BarIconButton {
 
     BarToolTip {
         extraVisibleCondition: root.shouldShowTooltip && !root.Drag.active
-        text: TrayService.getTooltipForItem(root.item)
+        text: root.item ? TrayService.getTooltipForItem(root.item) : ""
     }
 }

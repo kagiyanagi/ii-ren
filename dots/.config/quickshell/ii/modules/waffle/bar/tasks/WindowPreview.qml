@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -16,11 +18,11 @@ Button {
     required property var toplevel
     property real previewWidthConstraint: 200
     property real previewHeightConstraint: 110
-    padding: 5
+    padding: 4
     Layout.fillHeight: true
 
     onClicked: {
-        root.toplevel.activate(); // TODO: make this work with those who disable focus on activate because telegram is abusive
+        root.toplevel?.activate?.();
     }
 
     background: Rectangle {
@@ -36,7 +38,7 @@ Button {
         id: contentItem
         anchors.fill: parent
         anchors.margins: root.padding
-        spacing: 5
+        spacing: 4
 
         RowLayout {
             Layout.fillWidth: true
@@ -47,7 +49,7 @@ Button {
                 id: appIcon
                 Layout.leftMargin: Looks.radius.large - root.padding + 2
                 Layout.alignment: Qt.AlignVCenter
-                iconName: AppSearch.guessIcon(root.toplevel.appId)
+                iconName: AppSearch.guessIcon(root.toplevel?.appId ?? "")
                 implicitSize: 16
                 tryCustomIcon: false
             }
@@ -56,11 +58,11 @@ Button {
                 id: appTitleContainer
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                implicitHeight: closeButton.implicitHeight // Enforce height, because closeButton doesn't contribute when it's invisible
+                implicitHeight: closeButton.implicitHeight
                 WText {
                     id: appTitleText
                     anchors.fill: parent
-                    text: root.toplevel.title
+                    text: root.toplevel?.title ?? ""
                     elide: Text.ElideRight
                     font.pixelSize: Looks.font.pixelSize.large
                     font.weight: Looks.font.weight.thin
@@ -95,11 +97,11 @@ Button {
     component WindowCloseButton: CloseButton {
         visible: root.hovered
         Layout.leftMargin: 4
-        implicitHeight: 30
-        implicitWidth: 30
+        implicitHeight: 28
+        implicitWidth: 28
         radius: Looks.radius.large - root.padding
         onClicked: {
-            root.toplevel.close();
+            root.toplevel?.close?.();
         }
     }
 }

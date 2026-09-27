@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,12 +11,11 @@ import qs.modules.waffle.looks
 
 BarPopup {
     id: root
-    default property var menuData
     property var model: [
-        { iconName: "start-here", text: "Start", action: () => {print("hello")} },
-        { type : "separator" },
+        { iconName: "start-here", text: "Start", action: () => { print("hello"); } },
+        { type: "separator" },
     ]
-    readonly property bool hasIcons: model.some(item => item.iconName !== undefined && item.iconName !== "")
+    readonly property bool hasIcons: (root.model ?? []).some(item => item?.iconName !== undefined && item?.iconName !== "")
     padding: 2
 
     contentItem: ColumnLayout {
@@ -44,12 +45,12 @@ BarPopup {
 
                         required property var modelData
                         forceShowIcon: root.hasIcons
-                        icon.name: modelData.iconName ? modelData.iconName : ""
-                        monochromeIcon: modelData.monochromeIcon ?? true
-                        text: modelData.text ? modelData.text : ""
+                        icon.name: btn.modelData?.iconName ? btn.modelData.iconName : ""
+                        monochromeIcon: btn.modelData?.monochromeIcon ?? true
+                        text: btn.modelData?.text ? btn.modelData.text : ""
 
                         onClicked: {
-                            if (modelData.action) modelData.action();
+                            if (btn.modelData?.action) btn.modelData.action();
                             root.close();
                         }
                     }

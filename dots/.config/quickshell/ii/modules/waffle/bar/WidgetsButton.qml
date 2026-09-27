@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -16,19 +18,14 @@ AppButton {
 
     checked: GlobalStates.sidebarLeftOpen
     onClicked: {
-        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen
-    }
-    onDownChanged: {
-        scaleAnim.duration = root.down ? 150 : 200
-        scaleAnim.easing.bezierCurve = root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
-        iconWidget.scale = root.down ? 5/6 : 1 // If/When we do dragging, the scale is 1.25
+        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
     }
 
     contentItem: Item {
         anchors {
             verticalCenter: parent.verticalCenter
             left: root.expandedForm ? parent.left : undefined
-            horizontalCenter: root.expandedForm ? undefined : background.horizontalCenter
+            horizontalCenter: root.expandedForm ? undefined : root.background.horizontalCenter
         }
         implicitHeight: row.implicitHeight
         implicitWidth: row.implicitWidth
@@ -40,17 +37,20 @@ AppButton {
                 horizontalCenter: root.expandedForm ? undefined : parent.horizontalCenter
                 margins: 8
             }
-            spacing: 6
+            spacing: 8
 
             WAppIcon {
                 id: iconWidget
                 anchors.verticalCenter: parent.verticalCenter
                 iconName: root.iconName
+                scale: root.down ? (5 / 6) : 1
 
                 Behavior on scale {
                     NumberAnimation {
                         id: scaleAnim
+                        duration: root.down ? 150 : 200 // design-ok: Fluent button press micro-interaction
                         easing.type: Easing.BezierSpline
+                        easing.bezierCurve: root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
                     }
                 }
             }

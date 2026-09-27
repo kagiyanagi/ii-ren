@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import qs
@@ -8,9 +10,9 @@ import qs.modules.waffle.looks
 BarButton {
     id: root
 
-    rightInset: 12 // For now this is the rightmost button. Desktop peek is useless. (for now)
+    rightInset: 12
     leftPadding: 12
-    rightPadding: 22
+    rightPadding: 20
 
     checked: GlobalStates.sidebarRightOpen
     onClicked: {
@@ -18,14 +20,13 @@ BarButton {
     }
 
     contentItem: Item {
-        // anchors.centerIn: parent
         implicitHeight: contentLayout.implicitHeight
         implicitWidth: contentLayout.implicitWidth
         Row {
             id: contentLayout
             anchors.centerIn: parent
-            spacing: 7
-            
+            spacing: 8
+
             Column {
                 anchors.verticalCenter: parent.verticalCenter
                 WText {

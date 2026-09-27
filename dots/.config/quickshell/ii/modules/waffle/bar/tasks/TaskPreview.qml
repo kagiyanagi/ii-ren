@@ -1,6 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
@@ -16,14 +17,17 @@ PopupWindow {
     property Item anchorItem
 
     //////////////////// Functions ////////////////////
-    function close() { // Closing doesn't animate, not sure if they're just lazy or it's intentional
-        marginBehavior.enabled = false;
-        root.visible = false;
+    function close() {
+        if (!root.visible) return;
+        openAnim.stop();
+        closeAnim.restart();
     }
 
     function open() {
-        marginBehavior.enabled = true;
+        closeAnim.stop();
+        contentItem.sourceEdgeMargin = -root.implicitHeight;
         root.visible = true;
+        openAnim.restart();
     }
 
     function show(appEntry: var, button: Item) {
@@ -57,6 +61,33 @@ PopupWindow {
         }
     }
 
+    PropertyAnimation {
+        id: openAnim
+        target: contentItem
+        property: "sourceEdgeMargin"
+        to: (root.ambientShadowWidth + root.visualMargin)
+        duration: 200 // design-ok: Fluent popup entry
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+    }
+
+    SequentialAnimation {
+        id: closeAnim
+        PropertyAnimation {
+            target: contentItem
+            property: "sourceEdgeMargin"
+            to: -root.implicitHeight
+            duration: 150 // design-ok: Fluent popup exit
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
+        }
+        ScriptAction {
+            script: {
+                root.visible = false;
+            }
+        }
+    }
+
     // Content
     MouseArea {
         id: hoverChecker
@@ -70,11 +101,9 @@ PopupWindow {
 
         Rectangle {
             id: contentItem
-            property real sourceEdgeMargin: root.visible ? (root.ambientShadowWidth + root.visualMargin) : -root.implicitHeight
-            Behavior on sourceEdgeMargin {
-                id: marginBehavior
-                animation: Looks.transition.enter.createObject(this)
-            }
+            property real sourceEdgeMargin: -root.implicitHeight
+            clip: true
+
             anchors {
                 left: parent.left
                 right: parent.right
@@ -88,17 +117,7 @@ PopupWindow {
             color: Looks.colors.bg1Base
             radius: Looks.radius.large
 
-            layer.enabled: true
-            layer.effect: OpacityMask {
-                maskSource: Rectangle {
-                    width: contentItem.width
-                    height: contentItem.height
-                    radius: contentItem.radius
-                }
-            }
-
-            // Testing
-            implicitHeight: Math.min(158, windowsRow.implicitHeight)
+            implicitHeight: Math.min(160, windowsRow.implicitHeight)
             implicitWidth: windowsRow.implicitWidth
 
             RowLayout {
