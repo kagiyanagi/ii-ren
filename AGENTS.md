@@ -699,6 +699,13 @@ and spacing scales, effect budget and per-component recipes, with every number
 traced to its AOSP source. Do not ask whether Android-style motion is wanted —
 it is the default. New widgets get it on the first pass.
 
+**Before designing a feature, restructuring a surface or auditing a UI — anything
+asked for as "make it better" — read `.github/TASTE.md` as well.** `DESIGN.md` says
+how things move and which numbers to use. `TASTE.md` says what a surface should be,
+what does not belong on it, how it behaves when it is empty or wrong, and which
+calls the owner has already made. It ends with the questions that every brief and
+every UI audit answers.
+
 The condensed version, so nothing is missed even without opening that file:
 
 1. **Reuse first.** ~140 widgets live in `modules/common/widgets/`. A button is

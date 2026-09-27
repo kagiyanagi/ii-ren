@@ -6,7 +6,9 @@ far apart things sit. It applies to **every** change that draws, moves, or
 responds to input — not only when someone asks for "Android animations".
 
 Read this before writing QML. Cited numbers are transcribed from AOSP; the
-"Sources" section says how to re-fetch each one.
+"Sources" section says how to re-fetch each one. What a surface should *be* (its one
+primary action, what to delete, its edge states, the owner's recorded calls) is in
+`.github/TASTE.md`. Read both before designing anything.
 
 ---
 

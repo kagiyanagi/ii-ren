@@ -31,7 +31,8 @@ output to that path yourself.
 
 ## Step 2 — the half a script cannot see
 
-Read `.github/DESIGN.md` first if it is not already in context. Then read the
+Read `.github/DESIGN.md` and `.github/TASTE.md` first if they are not already in
+context. Then read the
 actual changed QML and judge these, which no regex can:
 
 1. **Spatial vs effects.** Position/size/shape on a spatial spec, opacity/colour
@@ -64,6 +65,10 @@ actual changed QML and judge these, which no regex can:
 15. **No separator bars / dividers.** Check that sections and headers are separated
     by whitespace on the 4dp grid and tonal layers rather than hairline divider
     lines of any kind, and that no negative margins are used to compensate.
+16. **Taste.** For anything the diff adds or restructures, answer `TASTE.md` §11's
+    questions: one primary action and one loud thing, nothing bound to nothing, state
+    that tells the truth, nothing moving under the pointer, every edge state designed,
+    and none of the owner's recorded calls (§9) undone.
 
 ## Step 3 — report
 
