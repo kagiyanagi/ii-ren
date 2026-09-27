@@ -1,4 +1,6 @@
 import qs.modules.common
+import qs.modules.common.functions
+import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
@@ -8,6 +10,9 @@ MouseArea {
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    // Click-to-show owns the click for the popup.
+    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.launchTaskManager()
+    cursorShape: Qt.PointingHandCursor
 
     readonly property bool showCpu: Config.options.bar.resources.showCpu ?? true
     readonly property bool showRam: Config.options.bar.resources.showRam ?? true
@@ -95,13 +100,24 @@ MouseArea {
         if (showNetwork) NetworkUsage.activeInstances = Math.max(0, NetworkUsage.activeInstances - 1);
     }
 
+    StateOverlay {
+        anchors.fill: parent
+        // Inside the BarGroup, which is inset 4 from the bar edge.
+        anchors.topMargin: 4
+        anchors.bottomMargin: 4
+        radius: Appearance.rounding.full
+        contentColor: Appearance.colors.colOnLayer1
+        hover: root.containsMouse
+        press: root.pressed
+    }
+
     RowLayout {
         id: rowLayout
 
         spacing: 0
         anchors.fill: parent
-        anchors.leftMargin: 4
-        anchors.rightMargin: 4
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
 
         Resource {
             iconName: "planner_review"

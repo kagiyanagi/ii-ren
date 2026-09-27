@@ -23,7 +23,7 @@ MouseArea {
     // even when the glyph inside it is small (DESIGN.md 3.4: 32px floor on a
     // pointer-driven shell). The padding is on the 4dp grid; 25 was not.
     implicitWidth: Math.max(32, rowLayout.implicitWidth + 20)
-    implicitHeight: Math.max(32, rowLayout.implicitHeight + 20)
+    implicitHeight: Math.max(32, rowLayout.implicitHeight + (root.vertical ? 20 : 12))
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     hoverEnabled: !Config.options.bar.tooltips.clickToShow

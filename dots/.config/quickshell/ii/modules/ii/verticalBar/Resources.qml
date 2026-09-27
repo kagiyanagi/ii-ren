@@ -1,5 +1,7 @@
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
+import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.ii.bar as Bar
@@ -10,6 +12,19 @@ MouseArea {
     implicitHeight: columnLayout.implicitHeight > 0 ? columnLayout.implicitHeight + 16 : 0
     implicitWidth: columnLayout.implicitWidth
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    // Click-to-show owns the click for the popup.
+    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.launchTaskManager()
+    cursorShape: Qt.PointingHandCursor
+
+    StateOverlay {
+        anchors.centerIn: parent
+        width: parent.width + 16
+        height: parent.height
+        radius: Appearance.rounding.full
+        contentColor: Appearance.colors.colOnLayer1
+        hover: root.containsMouse
+        press: root.pressed
+    }
 
     ColumnLayout {
         id: columnLayout
