@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
@@ -19,15 +21,15 @@ WMouseAreaButton {
     property bool droppable: false
 
     readonly property bool isActiveWorkspace: HyprlandData.activeWorkspace?.id === root.workspace
-    readonly property real screenWidth: QsWindow.window?.width ?? 0
-    readonly property real screenHeight: QsWindow.window?.height ?? 0
-    readonly property real screenAspectRatio: screenWidth / screenHeight
-    readonly property real windowScale: wallpaperHeight / screenHeight
+    readonly property real screenWidth: QsWindow.window?.width ?? 1920
+    readonly property real screenHeight: QsWindow.window?.height ?? 1080
+    readonly property real screenAspectRatio: screenHeight > 0 ? (screenWidth / screenHeight) : (16 / 9)
+    readonly property real windowScale: screenHeight > 0 ? (wallpaperHeight / screenHeight) : 0.1
 
     property real wallpaperHeight: 124
 
-    height: ListView.view?.height ?? 100
-    implicitWidth: 244 // for now
+    height: ListView.view?.height ?? 160
+    implicitWidth: 244
 
     colBackground: ColorUtils.transparentize(Looks.colors.bg2, (isActiveWorkspace || droppable) ? 0 : 1)
     Behavior on color {
@@ -38,8 +40,9 @@ WMouseAreaButton {
     Behavior on scale {
         NumberAnimation {
             id: scaleAnim
-            duration: 300
-            easing.type: Easing.OutExpo
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
         }
     }
 
@@ -50,7 +53,7 @@ WMouseAreaButton {
             fill: parent
             leftMargin: 12
             rightMargin: 12
-            topMargin: 9
+            topMargin: 8
             bottomMargin: 8
         }
         spacing: 8
@@ -90,17 +93,17 @@ WMouseAreaButton {
 
                     Repeater {
                         model: ScriptModel {
-                            values: HyprlandData.toplevelsForWorkspace(root.workspace)
+                            values: HyprlandData.toplevelsForWorkspace(root.workspace) ?? []
                         }
                         delegate: ScreencopyView {
                             required property var modelData
                             readonly property var hyprlandWindowData: HyprlandData.windowByAddress[`0x${modelData.HyprlandToplevel?.address}`]
                             captureSource: modelData
-                            live: true
-                            width: hyprlandWindowData?.size[0] * root.windowScale
-                            height: hyprlandWindowData?.size[1] * root.windowScale
-                            x: hyprlandWindowData?.at[0] * root.windowScale
-                            y: hyprlandWindowData?.at[1] * root.windowScale
+                            live: GlobalStates.overviewOpen
+                            width: (hyprlandWindowData?.size?.[0] ?? 0) * root.windowScale
+                            height: (hyprlandWindowData?.size?.[1] ?? 0) * root.windowScale
+                            x: (hyprlandWindowData?.at?.[0] ?? 0) * root.windowScale
+                            y: (hyprlandWindowData?.at?.[1] ?? 0) * root.windowScale
                         }
                     }
                 }
@@ -136,7 +139,7 @@ WMouseAreaButton {
         sourceComponent: Rectangle {
             id: activeIndicator
             implicitWidth: 32
-            implicitHeight: 3
+            implicitHeight: 4
             color: Looks.colors.accent
             radius: height / 2
         }
