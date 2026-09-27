@@ -1,14 +1,15 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.waffle.looks
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import Quickshell
-import Quickshell.Io
 
 WSessionScreenTextButton {
     id: root
@@ -42,7 +43,17 @@ WSessionScreenTextButton {
     }
 
     onClicked: {
-        powerMenu.visible = !powerMenu.visible;
+        if (powerMenu.visible) {
+            powerMenu.close();
+        } else {
+            powerMenu.open();
+        }
+    }
+
+    function triggerAction(action) {
+        if (GlobalStates.sessionOpen)
+            GlobalStates.sessionOpen = false;
+        action();
     }
 
     WMenu {
@@ -52,7 +63,9 @@ WSessionScreenTextButton {
 
         color: Looks.darkColors.bg1Base
         Component.onCompleted: {
-            powerMenu.backgroundPane.borderColor = Looks.applyContentTransparency(Looks.darkColors.bg2Border);
+            if (powerMenu.backgroundPane) {
+                powerMenu.backgroundPane.borderColor = Looks.applyContentTransparency(Looks.darkColors.bg2Border);
+            }
         }
         delegate: WMenuItem {
             id: menuItemDelegate
@@ -63,14 +76,22 @@ WSessionScreenTextButton {
         }
 
         Action {
+            icon.name: "weather-moon"
+            text: Translation.tr("Sleep")
+            enabled: SessionWarnings.can("CanSuspend")
+            onTriggered: root.triggerAction(() => Session.suspend())
+        }
+        Action {
             icon.name: "power"
             text: Translation.tr("Shut down")
-            onTriggered: Session.poweroff()
+            enabled: SessionWarnings.can("CanPowerOff")
+            onTriggered: root.triggerAction(() => Session.poweroff())
         }
         Action {
             icon.name: "arrow-counterclockwise"
             text: Translation.tr("Restart")
-            onTriggered: Session.reboot()
+            enabled: SessionWarnings.can("CanReboot")
+            onTriggered: root.triggerAction(() => Session.reboot())
         }
     }
 }

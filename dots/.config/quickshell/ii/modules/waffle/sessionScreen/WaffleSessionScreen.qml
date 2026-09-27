@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs
 import qs.services
 import qs.modules.common
@@ -15,38 +16,44 @@ Scope {
     id: root
     property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name)
 
-    Loader {
-        id: sessionLoader
-        active: GlobalStates.sessionOpen
-        onActiveChanged: {
-            if (sessionLoader.active) SessionWarnings.refresh();
-        }
+    // Latch the surface so exit transitions play to completion before unmapping.
+    property bool rendered: false
 
-        Connections {
-            target: GlobalStates
-            function onScreenLockedChanged() {
-                if (GlobalStates.screenLocked) {
-                    GlobalStates.sessionOpen = false;
-                }
+    function release() {
+        if (!GlobalStates.sessionOpen)
+            root.rendered = false;
+    }
+
+    Component.onCompleted: root.rendered = GlobalStates.sessionOpen
+
+    Connections {
+        target: GlobalStates
+        function onSessionOpenChanged() {
+            if (GlobalStates.sessionOpen) {
+                root.rendered = true;
+                SessionWarnings.refresh();
             }
         }
-
-        sourceComponent: PanelWindow { // Session menu
-            id: sessionRoot
-            visible: sessionLoader.active
-            property string subtitle
-            
-            function hide() {
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked) {
                 GlobalStates.sessionOpen = false;
             }
+        }
+    }
+
+    Loader {
+        id: sessionLoader
+        active: root.rendered
+
+        sourceComponent: PanelWindow {
+            id: sessionRoot
+            screen: root.focusedScreen ?? null
 
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.namespace: "quickshell:session"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-            // This is a big surface so we needa carefully choose the transparency,
-            // or we'll get a large scary rgb blob
-            color: "#000000"
+            color: "transparent"
 
             anchors {
                 top: true
@@ -59,12 +66,14 @@ Scope {
                 anchors.fill: parent
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Escape) {
-                        sessionRoot.hide();
+                        event.accepted = true;
+                        GlobalStates.sessionOpen = false;
                     }
                 }
 
                 SessionScreenContent {
                     anchors.fill: parent
+                    onClosed: root.release()
                 }
             }
         }
@@ -78,11 +87,11 @@ Scope {
         }
 
         function close(): void {
-            GlobalStates.sessionOpen = false
+            GlobalStates.sessionOpen = false;
         }
 
         function open(): void {
-            GlobalStates.sessionOpen = true
+            GlobalStates.sessionOpen = true;
         }
     }
 
@@ -100,7 +109,7 @@ Scope {
         description: "Opens session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = true
+            GlobalStates.sessionOpen = true;
         }
     }
 
@@ -109,8 +118,7 @@ Scope {
         description: "Closes session screen on press"
 
         onPressed: {
-            GlobalStates.sessionOpen = false
+            GlobalStates.sessionOpen = false;
         }
     }
-
 }

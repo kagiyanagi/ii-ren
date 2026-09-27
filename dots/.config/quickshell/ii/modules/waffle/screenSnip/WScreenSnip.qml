@@ -1,18 +1,14 @@
 pragma ComponentBehavior: Bound
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
 import qs
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
-import QtQuick
-import QtQuick.Controls
-import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
-import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
-import Quickshell.Widgets
-import Quickshell.Hyprland
+import qs.modules.waffle.screenSnip
 
 Scope {
     id: root
@@ -21,47 +17,92 @@ Scope {
         GlobalStates.regionSelectorOpen = false;
     }
 
-    Loader {
-        id: regionSelectorLoader
-        active: GlobalStates.regionSelectorOpen
+    property var mediaType: WRegionSelectionPanel.MediaType.Image
+    property var imageAction: WRegionSelectionPanel.ImageAction.Copy
+    property var videoAction: WRegionSelectionPanel.VideoAction.Record
+    property var selectionMode: WRegionSelectionPanel.SelectionMode.Rect
 
-        sourceComponent: WRegionSelectionPanel {
-            onClosed: root.dismiss()
+    Variants {
+        model: Quickshell.screens
+
+        delegate: Loader {
+            id: regionSelectorLoader
+            required property var modelData
+
+            readonly property HyprlandMonitor monitor: Hyprland.monitorFor(regionSelectorLoader.modelData)
+            property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
+            readonly property bool wanted: GlobalStates.regionSelectorOpen && (!Config.options.regionSelector.showOnlyOnFocusedMonitor || monitorIsFocused)
+
+            property bool rendered: false
+            onWantedChanged: {
+                if (!regionSelectorLoader.wanted)
+                    return;
+                regionSelectorLoader.rendered = false;
+                regionSelectorLoader.rendered = true;
+            }
+            active: regionSelectorLoader.rendered
+
+            sourceComponent: WRegionSelectionPanel {
+                screen: regionSelectorLoader.modelData
+                open: regionSelectorLoader.wanted
+                onFadedOut: regionSelectorLoader.rendered = false
+                onDismiss: root.dismiss()
+
+                mediaType: root.mediaType
+                imageAction: root.imageAction
+                videoAction: root.videoAction
+                selectionMode: root.selectionMode
+
+                onMediaTypeChanged: root.mediaType = mediaType
+                onImageActionChanged: root.imageAction = imageAction
+                onVideoActionChanged: root.videoAction = videoAction
+                onSelectionModeChanged: root.selectionMode = selectionMode
+            }
         }
     }
 
     function screenshot() {
+        root.mediaType = WRegionSelectionPanel.MediaType.Image;
+        root.imageAction = WRegionSelectionPanel.ImageAction.Copy;
         GlobalStates.regionSelectorOpen = true;
     }
 
     function ocr() {
+        root.mediaType = WRegionSelectionPanel.MediaType.Image;
+        root.imageAction = WRegionSelectionPanel.ImageAction.CharRecognition;
         GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.CharRecognition;
     }
 
     function qrScan() {
+        root.mediaType = WRegionSelectionPanel.MediaType.Image;
+        root.imageAction = WRegionSelectionPanel.ImageAction.QrScan;
         GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.QrScan;
     }
 
     function record() {
+        if (Persistent.states.screenRecord.active) {
+            Quickshell.execDetached([Directories.recordScriptPath, "--stop"]);
+            return;
+        }
+        root.mediaType = WRegionSelectionPanel.MediaType.Video;
+        root.videoAction = WRegionSelectionPanel.VideoAction.Record;
         GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Video;
-        regionSelectorLoader.item.videoAction = WRegionSelectionPanel.VideoAction.Record;
     }
 
     function recordWithSound() {
+        if (Persistent.states.screenRecord.active) {
+            Quickshell.execDetached([Directories.recordScriptPath, "--stop"]);
+            return;
+        }
+        root.mediaType = WRegionSelectionPanel.MediaType.Video;
+        root.videoAction = WRegionSelectionPanel.VideoAction.RecordWithSound;
         GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Video;
-        regionSelectorLoader.item.videoAction = WRegionSelectionPanel.VideoAction.RecordWithSound;
     }
 
     function search() {
+        root.mediaType = WRegionSelectionPanel.MediaType.Image;
+        root.imageAction = WRegionSelectionPanel.ImageAction.Search;
         GlobalStates.regionSelectorOpen = true;
-        regionSelectorLoader.item.mediaType = WRegionSelectionPanel.MediaType.Image;
-        regionSelectorLoader.item.imageAction = WRegionSelectionPanel.ImageAction.Search;
     }
 
     IpcHandler {

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.common
 import qs.modules.common.functions
@@ -13,15 +14,8 @@ Item {
     required property int regionHeight
 
     property bool dashed: true
-    property color borderColor: "#ffffff"
-    property color overlayColor: ColorUtils.transparentize("#000000", 1)
-    Component.onCompleted: overlayColor = ColorUtils.transparentize("#000000", 0.4)
-    Behavior on overlayColor {
-        ColorAnimation {
-            duration: 150
-            easing.type: Easing.InOutQuad
-        }
-    }
+    property color borderColor: Looks.colors.accent
+    property color overlayColor: Appearance.colors.colScrim
 
     // Overlay to darken screen
     // Base dark overlay around region
@@ -31,32 +25,31 @@ Item {
         anchors {
             left: parent.left
             top: parent.top
-            leftMargin: root.regionX - darkenOverlay.border.width
-            topMargin: root.regionY - darkenOverlay.border.width
+            leftMargin: root.regionX - border.width
+            topMargin: root.regionY - border.width
         }
-        width: root.regionWidth + darkenOverlay.border.width * 2
-        height: root.regionHeight + darkenOverlay.border.width * 2
+        width: root.regionWidth + border.width * 2
+        height: root.regionHeight + border.width * 2
         color: "transparent"
         border.color: root.overlayColor
         border.width: Math.max(root.width, root.height)
     }
 
     // Selection border
-    DashedBorder {
-        id: border
+    Rectangle {
+        id: selectionBorder
         z: 2
         visible: root.regionWidth > 0 && root.regionHeight > 0
         anchors {
             left: parent.left
             top: parent.top
-            leftMargin: Math.round(root.regionX - borderWidth)
-            topMargin: Math.round(root.regionY - borderWidth)
+            leftMargin: Math.round(root.regionX - border.width)
+            topMargin: Math.round(root.regionY - border.width)
         }
-        width: Math.round(root.regionWidth + borderWidth * 2)
-        height: Math.round(root.regionHeight + borderWidth * 2)
-        color: root.borderColor
-        dashLength: 4
-        gapLength: root.dashed ? 3 : 0
-        borderWidth: 1
+        width: Math.round(root.regionWidth + border.width * 2)
+        height: Math.round(root.regionHeight + border.width * 2)
+        color: "transparent"
+        border.color: root.borderColor
+        border.width: 1
     }
 }

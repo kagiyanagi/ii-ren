@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -15,17 +17,24 @@ import "window-layout.js" as WindowLayout
 Rectangle {
     id: root
 
-    color: ColorUtils.transparentize(Looks.colors.bg1Base, 0.5)
+    color: ColorUtils.transparentize(Looks.colors.bg1Base, 1 - 0.5 * root.openProgress)
     property bool draggingWindow: false
     property real openProgress: 0
     property Item hoveredWorkspace: null
     signal closed
 
-    Component.onCompleted: {
+    function open() {
+        closeAnim.stop();
         openAnim.start();
     }
+
     function close() {
+        openAnim.stop();
         closeAnim.start();
+    }
+
+    Component.onCompleted: {
+        root.open();
     }
 
     PropertyAnimation {
@@ -33,10 +42,11 @@ Rectangle {
         target: root
         property: "openProgress"
         to: 1
-        duration: 250
+        duration: Appearance.animation.elementMoveEnter.duration
         easing.type: Easing.BezierSpline
         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     }
+
     SequentialAnimation {
         id: closeAnim
 
@@ -44,9 +54,9 @@ Rectangle {
             target: root
             property: "openProgress"
             to: 0
-            duration: 250
+            duration: Appearance.animation.elementMoveExit.duration
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
         }
         ScriptAction {
             script: {
@@ -56,13 +66,13 @@ Rectangle {
     }
 
     // Windows
-    property real maxWindowHeight: 290
-    property real maxWindowWidth: 738
+    property real maxWindowHeight: 288
+    property real maxWindowWidth: 736
     property real padding: 52
-    property real spacing: 25
-    readonly property list<var> toplevels: ToplevelManager.toplevels.values.filter(t => {
+    property real spacing: 24
+    readonly property list<var> toplevels: (ToplevelManager.toplevels?.values ?? []).filter(t => {
         const client = HyprlandData.clientForToplevel(t);
-        return client && client.workspace.id === HyprlandData.activeWorkspace?.id;
+        return client && HyprlandData.activeWorkspace && client.workspace?.id === HyprlandData.activeWorkspace.id;
     })
     readonly property list<var> arrangedToplevels: {
         const maxRowWidth = width - padding * 2;
@@ -106,12 +116,12 @@ Rectangle {
     // Windows
     WListView {
         id: windowListView
-        z: root.openProgress == 1 ? 2 : 1
+        z: root.openProgress === 1 ? 2 : 1
         anchors {
             left: parent.left
             right: parent.right
             top: parent.top
-            topMargin: (root.height - (wsBorder.height + 16) - height) / 2
+            topMargin: Math.round((root.height - (wsBorder.height + 16) - height) / 2)
         }
         spacing: root.spacing
         topMargin: root.padding
@@ -146,30 +156,26 @@ Rectangle {
                     TaskViewWindow {
                         id: windowItem
                         z: Drag.active ? 2 : 1
-                        opacity: openAnim.running ? root.openProgress : 1
+                        opacity: root.openProgress
 
                         property int mappedX: {
-                            // print("AAAWAWAAWAWWA: ", -(clientRow.x + clientGridArea.x + root.padding));
                             var rootPosToThis = -(clientRow.x + clientGridArea.x + root.padding);
-                            return rootPosToThis + hyprlandClient.at[0];
+                            return rootPosToThis + (hyprlandClient?.at?.[0] ?? 0);
                         }
                         property int mappedY: {
-                            // print("AAAWAWAAWAWWA YYYY YUIUSDFOIU: ", clientRow.y + windowListView.y + root.padding + windowItem.titleBarImplicitHeight)
                             var rootPosToThis = -(clientRow.y + windowListView.y + root.padding + windowItem.titleBarImplicitHeight);
-                            return rootPosToThis + hyprlandClient.at[1];
+                            return rootPosToThis + (hyprlandClient?.at?.[1] ?? 0);
                         }
                         property int openedX: 0
                         property int openedY: 0
-                        // property int openedX: Drag.active ? (dragHandler.xAxis.activeValue) : 0
-                        // property int openedY: Drag.active ? (dragHandler.yAxis.activeValue) : 0
-                        scaleSize: (root.openProgress > 0 && !closeAnim.running)
+                        scaleSize: true
                         x: mappedX + (openedX - mappedX) * root.openProgress
                         y: mappedY + (openedY - mappedY) * root.openProgress
 
                         droppable: root.hoveredWorkspace !== null
                         Drag.active: dragHandler.active
-                        Drag.hotSpot.x: mouseX
-                        Drag.hotSpot.y: mouseY
+                        Drag.hotSpot.x: width / 2
+                        Drag.hotSpot.y: height / 2
 
                         DragHandler {
                             id: dragHandler
@@ -185,12 +191,13 @@ Rectangle {
                                     root.draggingWindow = true;
                                 } else {
                                     root.draggingWindow = false;
-                                    if (root.hoveredWorkspace !== null && root.hoveredWorkspace.workspace !== windowItem.hyprlandClient.workspace.id) {
-                                        Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${root.hoveredWorkspace.workspace}, follow = false, window = "address:${windowItem.hyprlandClient.address}" })`)
-                                    } else {
-                                        windowItem.openedX = 0;
-                                        windowItem.openedY = 0;
+                                    const targetWs = root.hoveredWorkspace;
+                                    const client = windowItem.hyprlandClient;
+                                    if (targetWs && client && client.address && targetWs.workspace !== client.workspace?.id) {
+                                        Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${targetWs.workspace}, follow = false, window = "address:${client.address}" })`);
                                     }
+                                    windowItem.openedX = 0;
+                                    windowItem.openedY = 0;
                                 }
                             }
                         }
@@ -208,7 +215,7 @@ Rectangle {
     // Workspaces
     Rectangle {
         id: wsBorder
-        z: root.openProgress == 1 ? 1 : 2
+        z: root.openProgress === 1 ? 1 : 2
         property real sourceEdgeMargin: -(height + 8) + root.openProgress * (height + 16)
         anchors {
             left: parent.left
@@ -216,84 +223,72 @@ Rectangle {
             bottom: parent.bottom
             leftMargin: 8
             rightMargin: 8
-            topMargin: sourceEdgeMargin
             bottomMargin: sourceEdgeMargin
         }
         border.color: Looks.colors.bg2Border
         border.width: 1
         radius: Looks.radius.large
-        color: "transparent"
+        color: Looks.colors.bgPanelFooterBackground
+        implicitHeight: 176
 
-        implicitHeight: wsBg.implicitHeight + border.width * 2
+        WListView {
+            id: workspaceListView
+            anchors {
+                fill: parent
+                topMargin: 4
+                bottomMargin: 4
+                leftMargin: 4
+                rightMargin: 4
+            }
+            flickableDirection: Flickable.HorizontalFlick
+            orientation: ListView.Horizontal
+            interactive: width === parent.width
+            width: Math.min(contentWidth + leftMargin + rightMargin, parent.width)
+            clip: true
+            spacing: 4
 
-        Rectangle {
-            id: wsBg
-            anchors.fill: parent
-            anchors.margins: wsBorder.border.width
-            radius: wsBorder.radius - wsBorder.border.width
-            color: Looks.colors.bgPanelFooterBackground
+            function reposition() {
+                if (!HyprlandData.activeWorkspace) return;
+                positionViewAtIndex(Math.max(0, HyprlandData.activeWorkspace.id - 1), ListView.Contain);
+            }
 
-            implicitHeight: 174
-
-            WListView {
-                id: workspaceListView
-                anchors {
-                    top: parent.top
-                    bottom: parent.bottom
-                    horizontalCenter: parent.horizontalCenter
-                    topMargin: 5
-                    bottomMargin: 5
+            Connections {
+                target: HyprlandData
+                function onActiveWorkspaceChanged() {
+                    workspaceListView.reposition();
                 }
-                flickableDirection: Flickable.HorizontalFlick
-                orientation: ListView.Horizontal
-                interactive: width == parent.width
-                width: Math.min(contentWidth + leftMargin + rightMargin, parent.width)
-                leftMargin: 5
-                rightMargin: 5
-                clip: true
-                spacing: 4
-
-                function reposition() {
-                    positionViewAtIndex(HyprlandData.activeWorkspace.id - 1, ListView.Contain);
+            }
+            model: IndexModel {
+                id: workspaceIndexModel
+                count: {
+                    if (!HyprlandData.workspaces || HyprlandData.workspaces.length === 0) return 2;
+                    const ids = HyprlandData.workspaces.map(ws => (ws && ws.id) || 1);
+                    const maxWorkspaceId = Math.max(...ids);
+                    return Math.max(maxWorkspaceId, 1) + 1;
                 }
+            }
+            delegate: TaskViewWorkspace {
+                id: workspaceItem
+                required property int index
+                workspace: index + 1
+                newWorkspace: index === workspaceIndexModel.count - 1
 
-                Connections {
-                    target: HyprlandData
-                    function onActiveWorkspaceChanged() {
-                        workspaceListView.reposition();
+                droppable: root.hoveredWorkspace === workspaceItem
+                DropArea {
+                    anchors.fill: parent
+                    onEntered: drag => {
+                        root.hoveredWorkspace = workspaceItem;
                     }
-                }
-                model: IndexModel {
-                    id: workspaceIndexModel
-                    count: {
-                        const maxWorkspaceId = Math.max.apply(null, HyprlandData.workspaces.map(ws => ws.id));
-                        return Math.max(maxWorkspaceId, 1) + 1;
-                    }
-                }
-                delegate: TaskViewWorkspace {
-                    id: workspaceItem
-                    required property int index
-                    workspace: index + 1
-                    newWorkspace: index == workspaceIndexModel.count - 1
-
-                    droppable: root.hoveredWorkspace === workspaceItem
-                    DropArea {
-                        anchors.fill: parent
-                        onEntered: drag => {
-                            root.hoveredWorkspace = workspaceItem;
-                        }
-                        onExited: {
-                            if (root.hoveredWorkspace === workspaceItem) {
-                                root.hoveredWorkspace = null;
-                            }
+                    onExited: {
+                        if (root.hoveredWorkspace === workspaceItem) {
+                            root.hoveredWorkspace = null;
                         }
                     }
+                }
 
-                    onClicked: {
-                        GlobalStates.overviewOpen = false;
-                        root.closed(); // Close immediately to avoid weird animations
-                        Hyprland.dispatch(`hl.dsp.focus({workspace = ${workspaceItem.workspace}})`);
-                    }
+                onClicked: {
+                    GlobalStates.overviewOpen = false;
+                    Hyprland.dispatch(`hl.dsp.focus({workspace = ${workspaceItem.workspace}})`);
                 }
             }
         }

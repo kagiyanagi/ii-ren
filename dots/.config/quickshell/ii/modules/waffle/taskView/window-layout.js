@@ -1,11 +1,20 @@
 function scaleWindow(hyprlandClient, maxWindowWidth, maxWindowHeight) {
-    const [width, height] = hyprlandClient.size;
-    const [xScale, yScale] = [maxWindowWidth / width, maxWindowHeight / height];
+    if (!hyprlandClient || !hyprlandClient.size || hyprlandClient.size.length < 2) {
+        return Qt.size(maxWindowWidth || 200, maxWindowHeight || 150);
+    }
+    const width = hyprlandClient.size[0];
+    const height = hyprlandClient.size[1];
+    if (width <= 0 || height <= 0) {
+        return Qt.size(maxWindowWidth || 200, maxWindowHeight || 150);
+    }
+    const xScale = maxWindowWidth / width;
+    const yScale = maxWindowHeight / height;
     const scale = Math.min(xScale, yScale);
-    return Qt.size(width * scale, height * scale)
+    return Qt.size(Math.round(width * scale), Math.round(height * scale));
 }
 
 function arrangedClients(hyprlandClients, maxRowWidth, maxWindowWidth, maxWindowHeight) {
+    if (!hyprlandClients || !Array.isArray(hyprlandClients)) return [];
     const count = hyprlandClients.length;
     const resultLayout = [];
 
@@ -27,7 +36,7 @@ function arrangedClients(hyprlandClients, maxRowWidth, maxWindowWidth, maxWindow
                 break;
             }
         }
-        
+
         resultLayout.push(row);
         i = j;
     }

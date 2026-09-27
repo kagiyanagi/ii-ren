@@ -14,7 +14,6 @@ import Quickshell.Hyprland
 
 Scope {
     id: overviewScope
-    property bool dontAutoCancelSearch: false
 
     Variants {
         id: overviewVariants
@@ -23,24 +22,32 @@ Scope {
         Loader {
             id: panelLoader
             required property var modelData
-            active: false
+            property bool shouldBeActive: false
+            active: shouldBeActive
+
             Connections {
                 target: GlobalStates
                 function onOverviewOpenChanged() {
-                    if (GlobalStates.overviewOpen)
-                        panelLoader.active = true;
+                    if (GlobalStates.overviewOpen && !GlobalStates.screenLocked) {
+                        panelLoader.shouldBeActive = true;
+                    }
+                }
+                function onScreenLockedChanged() {
+                    if (GlobalStates.screenLocked && GlobalStates.overviewOpen) {
+                        GlobalStates.overviewOpen = false;
+                    }
                 }
             }
+
             sourceComponent: PanelWindow {
                 id: root
-                property string searchingText: ""
                 readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.screen)
-                property bool monitorIsFocused: (Hyprland.focusedMonitor?.id == monitor?.id)
+                readonly property bool monitorIsFocused: Boolean(Hyprland.focusedMonitor && monitor && Hyprland.focusedMonitor.id === monitor.id)
                 screen: panelLoader.modelData
 
                 WlrLayershell.namespace: "quickshell:wTaskView"
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+                WlrLayershell.keyboardFocus: (GlobalStates.overviewOpen && !GlobalStates.screenLocked) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
                 color: "transparent"
 
                 anchors {
@@ -48,6 +55,17 @@ Scope {
                     bottom: true
                     left: true
                     right: true
+                }
+
+                HyprlandFocusGrab {
+                    id: focusGrab
+                    active: GlobalStates.overviewOpen && root.monitorIsFocused
+                    windows: [root]
+                    onCleared: {
+                        if (active) {
+                            GlobalStates.overviewOpen = false;
+                        }
+                    }
                 }
 
                 TaskViewContent {
@@ -66,11 +84,14 @@ Scope {
                     Connections {
                         target: GlobalStates
                         function onOverviewOpenChanged() {
-                            if (!GlobalStates.overviewOpen)
+                            if (GlobalStates.overviewOpen) {
+                                taskViewContent.open();
+                            } else {
                                 taskViewContent.close();
+                            }
                         }
                     }
-                    onClosed: panelLoader.active = false
+                    onClosed: panelLoader.shouldBeActive = false
                 }
             }
         }
@@ -80,13 +101,18 @@ Scope {
         target: "taskView"
 
         function toggle() {
+            if (GlobalStates.screenLocked) return;
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
         function close() {
             GlobalStates.overviewOpen = false;
         }
         function open() {
+            if (GlobalStates.screenLocked) return;
             GlobalStates.overviewOpen = true;
+        }
+        function workspacesToggle() {
+            toggle();
         }
     }
 
@@ -95,6 +121,7 @@ Scope {
         description: "Toggles overview on press"
 
         onPressed: {
+            if (GlobalStates.screenLocked) return;
             GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
         }
     }

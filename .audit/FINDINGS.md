@@ -164,7 +164,7 @@ claims from these rows were driven rather than reasoned about.
 | where | issue | owner |
 |---|---|---|
 | `modules/common/widgets/Toolbar.qml` | The `colSurfaceContainer` pill barely separates from a scrim-dimmed backdrop, and its shadow is invisible on one. Reading the region selector's after-shot, agy vision could not find the pill's edge and called the paired FAB "flush with the tabs" (8px apart). Every caller that floats over a scrim or a wallpaper shares it: the region selector, the screen translator, the lock islands. A rule-9 call, since the fix is the widget's own container role. | a `cw-navigation` revisit |
-| `modules/common/widgets/DashedBorder.qml` | A `Canvas`: every `width`/`height` change clears, strokes and re-uploads a texture the size of the item. Harmless on a static border, expensive when it is resized per pointer move. The region selector's live selection outline was that case and is a `Rectangle` border now. `ScreenTranslatorPanel` and `WRectangularSelection` still use it for a live selection. | `ii-screenTranslator`, `waffle-screenSnip` |
+| `modules/common/widgets/DashedBorder.qml` | A `Canvas`: every `width`/`height` change clears, strokes and re-uploads a texture the size of the item. Harmless on a static border, expensive when it is resized per pointer move. The region selector's live selection outline was that case and is a `Rectangle` border now. `WRectangularSelection` migrated to `Rectangle` border in `waffle-screenSnip`. | `ii-screenTranslator` |
 | `modules/ii/screenTranslator/ScreenTranslatorPanel.qml:136-142` | Copies the region selector's old toolbar placement: `bottomMargin: -height`, pushed to `8` from a `Connections` on `visible`. So it sits on the frozen dock, and its enter is imperative. `RegionSelection.qml` has the replacement: bound to `visible`, 8 above Hyprland's `reserved` bottom band. | `ii-screenTranslator` |
 
 ## From auditing `ii-sessionScreen`, 2026-09-24
@@ -197,3 +197,10 @@ claims from these rows were driven rather than reasoned about.
 | where | issue | owner |
 |---|---|---|
 | `modules/common/widgets/RippleButton.qml:186` | **Every `RippleButton` keeps `layer.enabled` + `OpacityMask` whether or not a ripple is playing.** It exists to clip the ripple and the `StateOverlay` film to the corners. The calendar grid put 49 of them in one repeater, and it was moved off the widget for that reason. The same cost sits in any list built from `RippleButton` rows. Turning the layer on only while `ripple.visible`, and giving `StateOverlay` the button's radii so the film clips natively, would make the resting cost zero. But rule 9 applies to 155 files, and any caller whose content relies on the clip has to be found first. | a `cw-buttons` revisit |
+
+
+## From auditing `waffle-screenSnip`, 2026-09-27
+
+| where | issue | owner |
+|---|---|---|
+| `modules/waffle/screenSnip/WRectangularSelection.qml` (`ii-regionSelector` table, `DashedBorder` row) | **Fixed here**: Replaced `DashedBorder` (Canvas) with GPU-accelerated `Rectangle` border, removing the last live selection Canvas texture re-upload in the codebase. | done |
