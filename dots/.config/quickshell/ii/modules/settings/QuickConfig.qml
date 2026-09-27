@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
-import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -16,15 +14,14 @@ ContentPage {
 
     property bool allowHeavyLoad: false
     property ListModel favouritesCarouselModel: ListModel {}
-    property int currentIndex: -1
 
     function refreshFavouritesCarousel() {
         favouritesCarouselModel.clear()
-        
+
         let favs = [...Persistent.states.wallpaper.favourites]
         const currentWallpaper = Config.options.background.wallpaperPath
         const currentIndex = favs.indexOf(currentWallpaper)
-        
+
         if (favs.length === 0) return
         if (currentIndex !== -1) {
             const elementsBefore = favs.slice(0, currentIndex)
@@ -33,11 +30,11 @@ ContentPage {
         } else if (currentWallpaper !== "") {
             favs.unshift(currentWallpaper)
         }
-        
+
         for (let i = 0; i < favs.length; i++) {
             const path = favs[i]
             const fileName = path.split('/').pop()
-            
+
             const name = (path === currentWallpaper && currentIndex === -1) ? "current-wallpaper" : fileName
             favouritesCarouselModel.append({ filePath: path, fileName: name })
         }
@@ -55,23 +52,11 @@ ContentPage {
         }
     }
 
-    Process {
-        id: randomWallProc
-        property string status: ""
-        property string scriptPath: `${Directories.scriptPath}/colors/random/random_konachan_wall.sh`
-        command: ["bash", "-c", FileUtils.trimFileProtocol(randomWallProc.scriptPath)]
-        stdout: SplitParser {
-            onRead: data => {
-                randomWallProc.status = data.trim();
-            }
-        }
-    }
-
     component SmallLightDarkPreferenceButton: RippleButton {
         id: smallLightDarkPreferenceButton
         required property bool dark
         property color colText: enabled ? toggled ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer2 : Appearance.colors.colOnLayer3
-        padding: 5
+        padding: 4
         Layout.fillWidth: true
         toggled: Appearance.m3colors.darkmode === dark
         colBackground: Appearance.colors.colLayer2
@@ -117,38 +102,27 @@ ContentPage {
 
             Item {
                 id: carouselWrapper
-                implicitWidth: 360
+                // Widens while a card is held, so the pressed wallpaper has room.
+                // A size, so the spatial spec; it was two hand-timed 450ms
+                // OutCubic animations started from the carousel's handlers.
+                property bool widened: false
+                implicitWidth: widened ? 450 : 360
                 implicitHeight: 220
-                
+
                 readonly property bool expanded: implicitWidth > 400
 
-                PropertyAnimation {
-                    id: expandAnimation
-                    target: carouselWrapper
-                    property: "implicitWidth"
-                    to: 450
-                    duration: 450
-                    easing.type: Easing.OutCubic
+                Behavior on implicitWidth {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
-                PropertyAnimation {
-                    id: shrinkAnimation
-                    target: carouselWrapper
-                    property: "implicitWidth"
-                    to: 360
-                    duration: 450
-                    easing.type: Easing.OutCubic
-                }
-
-                
 
                 Carousel {
                     id: favouritesCarousel
                     implicitWidth: parent.implicitWidth
                     implicitHeight: parent.implicitHeight
-                    
+
                     showBadges: true
                     showOpenningAnimation: true
-                    
+
                     leftPadding: 0
                     rightPadding: 0
                     topPadding: 0
@@ -157,14 +131,14 @@ ContentPage {
                     model: page.favouritesCarouselModel
                     visible: page.favouritesCarouselModel.count > 0
                     onItemClicked: (index, modelData) => {
-                        shrinkAnimation.running = true
+                        carouselWrapper.widened = false
                         favouritesCarousel.currentIndex = 0
                         favouritesCarousel.snapToIndex(0)
                         Wallpapers.select(modelData.filePath)
                     }
 
                     onPressedAny: () => {
-                        expandAnimation.running = true
+                        carouselWrapper.widened = true
                     }
 
                     delegate: Item {
@@ -178,13 +152,14 @@ ContentPage {
                             fillMode: Image.PreserveAspectCrop
                             generateThumbnail: true
 
-                            // fix for resolution
+                            // fix for resolution. Was `(512,512)`, the JS comma
+                            // operator: that is 512, which QSize refuses.
                             thumbnailSizeName: Images.thumbnailSizeNameForDimensions(512, 512)
-                            sourceSize: (512,512)
+                            sourceSize: Qt.size(512, 512)
                         }
                     }
                 }
-                
+
                 Timer {
                     // The text below is visible even if the favouritesCarousel is not empty, so we add a little delay before making it visible
                     interval: 200
@@ -220,7 +195,6 @@ ContentPage {
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
-                
             }
 
             ColumnLayout {
@@ -244,15 +218,13 @@ ContentPage {
                         enabled: Config.options.appearance.palette.type.startsWith("scheme")
                     }
                 }
-                
-                
 
                 Item {
                     id: colorGridItem
                     z: 1
                     Layout.fillHeight: true
                     Layout.fillWidth: true
-                    
+
                     StyledFlickable {
                         id: flickable
                         anchors.fill: parent
@@ -270,19 +242,16 @@ ContentPage {
                                     { customTheme: false, builtInTheme: true },
                                     { customTheme: true, builtInTheme: false }
                                 ]
-                                
+
                                 delegate: ColorPreviewGrid {
                                     columns: carouselWrapper.expanded ? 2 : 3
                                     customTheme: modelData.customTheme
                                     builtInTheme: modelData.builtInTheme
                                 }
                             }
-
                         }
                     }
                 }
-
-                
             }
         }
 
@@ -296,122 +265,132 @@ ContentPage {
         }
     }
 
-    ContentSection {
-        icon: "routine"
-        title: Translation.tr("Night schedule")
-        tooltip: Translation.tr("Times are 24-hour, HH:mm")
-        Layout.topMargin: -25
-
-        ConfigSwitch {
-            buttonIcon: "nightlight"
-            text: Translation.tr("Automatic night light")
-            checked: Config.options.light.night.automatic
-            onCheckedChanged: {
-                Config.options.light.night.automatic = checked;
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "night_sight_auto"
-            text: Translation.tr("Automatic dark mode")
-            checked: Config.options.light.night.automaticDarkMode
-            onCheckedChanged: {
-                Config.options.light.night.automaticDarkMode = checked;
-            }
-        }
-        ConfigRow {
-            MaterialTextField {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("From (HH:mm)")
-                text: Config.options.light.night.from
-                onEditingFinished: {
-                    if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
-                        Config.options.light.night.from = text.trim();
-                }
-            }
-            MaterialTextField {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("Until (HH:mm)")
-                text: Config.options.light.night.to
-                onEditingFinished: {
-                    if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
-                        Config.options.light.night.to = text.trim();
-                }
-            }
-        }
-    }
-
+    // One section, named after the sidebar dialog that holds the same three
+    // effects. They were three sections pulled together with -25 margins.
     ContentSection {
         icon: "visibility"
-        title: Translation.tr("Comfort View")
-        tooltip: Translation.tr("Soften screen colors, reduce OLED saturation and glare")
-        Layout.topMargin: -25
+        title: Translation.tr("Eye protection")
 
-        ConfigSwitch {
-            buttonIcon: "visibility"
-            text: Translation.tr("Enable Comfort View")
-            checked: HyprlandComfortView.manualEnable
-            onCheckedChanged: {
-                HyprlandComfortView.toggleManual(checked);
-            }
-        }
-        ConfigSwitch {
-            buttonIcon: "auto_mode"
-            text: Translation.tr("Dynamic automatic mode")
-            checked: HyprlandComfortView.automatic
-            onCheckedChanged: {
-                HyprlandComfortView.toggleAutomatic(checked);
-            }
-        }
-        ConfigSpinBox {
-            text: Translation.tr("Effect intensity (%)")
-            value: HyprlandComfortView.intensity
-            from: 0
-            to: 100
-            stepSize: 5
-            onValueChanged: {
-                HyprlandComfortView.setIntensity(value);
-            }
-        }
-    }
+        ContentSubsection {
+            title: Translation.tr("Night light")
+            tooltip: Translation.tr("Times are 24-hour, HH:mm")
 
-    ContentSection {
-        icon: "menu_book"
-        title: Translation.tr("Reading Mode")
-        tooltip: Translation.tr("Grayscale monochrome display mode for long-term reading comfort")
-        Layout.topMargin: -25
+            ConfigSwitch {
+                buttonIcon: "nightlight"
+                text: Translation.tr("Automatic night light")
+                checked: Config.options.light.night.automatic
+                onCheckedChanged: {
+                    Config.options.light.night.automatic = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "night_sight_auto"
+                text: Translation.tr("Automatic dark mode")
+                checked: Config.options.light.night.automaticDarkMode
+                onCheckedChanged: {
+                    Config.options.light.night.automaticDarkMode = checked;
+                }
+            }
+            ConfigRow {
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("From (HH:mm)")
+                    text: Config.options.light.night.from
+                    onEditingFinished: {
+                        if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                            Config.options.light.night.from = text.trim();
+                    }
+                }
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Until (HH:mm)")
+                    text: Config.options.light.night.to
+                    onEditingFinished: {
+                        if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                            Config.options.light.night.to = text.trim();
+                    }
+                }
+            }
+        }
 
-        ConfigSwitch {
-            buttonIcon: "menu_book"
-            text: Translation.tr("Enable Reading Mode")
-            checked: HyprlandReadingMode.manualEnable
-            onCheckedChanged: {
-                HyprlandReadingMode.toggleManual(checked);
+        ContentSubsection {
+            title: Translation.tr("Comfort View")
+            tooltip: Translation.tr("Soften screen colors, reduce OLED saturation and glare")
+
+            ConfigSwitch {
+                buttonIcon: "visibility"
+                text: Translation.tr("Enable Comfort View")
+                checked: HyprlandComfortView.manualEnable
+                onCheckedChanged: {
+                    if (checked !== HyprlandComfortView.manualEnable)
+                        HyprlandComfortView.toggleManual(checked);
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "auto_mode"
+                text: Translation.tr("Dynamic automatic mode")
+                checked: HyprlandComfortView.automatic
+                onCheckedChanged: {
+                    if (checked !== HyprlandComfortView.automatic)
+                        HyprlandComfortView.toggleAutomatic(checked);
+                }
+            }
+            ConfigSpinBox {
+                icon: "tune"
+                text: Translation.tr("Effect intensity (%)")
+                value: HyprlandComfortView.intensity
+                from: 0
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    if (value !== HyprlandComfortView.intensity)
+                        HyprlandComfortView.setIntensity(value);
+                }
             }
         }
-        ConfigSwitch {
-            buttonIcon: "auto_mode"
-            text: Translation.tr("Dynamic automatic mode")
-            checked: HyprlandReadingMode.automatic
-            onCheckedChanged: {
-                HyprlandReadingMode.toggleAutomatic(checked);
+
+        ContentSubsection {
+            title: Translation.tr("Reading Mode")
+            tooltip: Translation.tr("Grayscale monochrome display mode for long-term reading comfort")
+
+            ConfigSwitch {
+                buttonIcon: "menu_book"
+                text: Translation.tr("Enable Reading Mode")
+                checked: HyprlandReadingMode.manualEnable
+                onCheckedChanged: {
+                    if (checked !== HyprlandReadingMode.manualEnable)
+                        HyprlandReadingMode.toggleManual(checked);
+                }
             }
-        }
-        ConfigSwitch {
-            buttonIcon: "history_edu"
-            text: Translation.tr("Paper warmth tone")
-            checked: HyprlandReadingMode.paperTone
-            onCheckedChanged: {
-                HyprlandReadingMode.togglePaperTone(checked);
+            ConfigSwitch {
+                buttonIcon: "auto_mode"
+                text: Translation.tr("Dynamic automatic mode")
+                checked: HyprlandReadingMode.automatic
+                onCheckedChanged: {
+                    if (checked !== HyprlandReadingMode.automatic)
+                        HyprlandReadingMode.toggleAutomatic(checked);
+                }
             }
-        }
-        ConfigSpinBox {
-            text: Translation.tr("Grayscale intensity (%)")
-            value: HyprlandReadingMode.intensity
-            from: 0
-            to: 100
-            stepSize: 5
-            onValueChanged: {
-                HyprlandReadingMode.setIntensity(value);
+            ConfigSwitch {
+                buttonIcon: "history_edu"
+                text: Translation.tr("Paper warmth tone")
+                checked: HyprlandReadingMode.paperTone
+                onCheckedChanged: {
+                    if (checked !== HyprlandReadingMode.paperTone)
+                        HyprlandReadingMode.togglePaperTone(checked);
+                }
+            }
+            ConfigSpinBox {
+                icon: "tune"
+                text: Translation.tr("Grayscale intensity (%)")
+                value: HyprlandReadingMode.intensity
+                from: 0
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    if (value !== HyprlandReadingMode.intensity)
+                        HyprlandReadingMode.setIntensity(value);
+                }
             }
         }
     }
@@ -419,9 +398,6 @@ ContentPage {
     ContentSection {
         icon: "screenshot_monitor"
         title: Translation.tr("Bar & screen")
-        Layout.topMargin: -25
-
-        
 
         ConfigRow {
             ContentSubsection {
@@ -532,12 +508,12 @@ ContentPage {
                         Config.options.appearance.sharpMode = newValue;
                         HyprlandSettings.setRounding(newValue ? 0 : Config.options.appearance.defaultBorderRadius);
                     }
-                    options: [ 
+                    options: [
                         {
                             displayName: Translation.tr("Default"),
                             icon: "rounded_corner",
                             value: false
-                        }, 
+                        },
                         {
                             displayName: Translation.tr("Sharp"),
                             icon: "square",
@@ -545,7 +521,7 @@ ContentPage {
                         }
                     ]
                 }
-            } 
+            }
         }
 
         ConfigSpinBox {
@@ -571,17 +547,17 @@ ContentPage {
                     onSelected: newValue => {
                         Config.options.bar.barBackgroundStyle = newValue;
                     }
-                    options: [ 
+                    options: [
                         {
                             displayName: Translation.tr("Visible"),
                             icon: "visibility",
                             value: 1
-                        }, 
+                        },
                         {
                             displayName: Translation.tr("Adaptive"),
                             icon: "masked_transitions",
                             value: 2
-                        },        
+                        },
                         {
                             displayName: Translation.tr("Transparent"),
                             icon: "opacity",
@@ -590,7 +566,7 @@ ContentPage {
                     ]
                 }
             }
-            
+
             ContentSubsection {
                 title: Translation.tr("Hyprland layout")
                 Layout.fillWidth: false
@@ -601,7 +577,6 @@ ContentPage {
                         else return "scrolling"
                     }
                     onSelected: newValue => {
-                        console.log(newValue)
                         if (newValue === "scrolling") {
                             HyprlandSettings.setLayout("scrolling")
                         } else {
@@ -609,12 +584,12 @@ ContentPage {
                             HyprlandSettings.setLayout(defaultLayout)
                         }
                     }
-                    options: [ 
+                    options: [
                         {
                             displayName: Translation.tr("Default"),
                             icon: "mobile_layout",
                             value: "default"
-                        }, 
+                        },
                         {
                             displayName: Translation.tr("Scrolling"),
                             icon: "view_carousel",
@@ -622,13 +597,12 @@ ContentPage {
                         }
                     ]
                 }
-            }                          
+            }
         }
-    }    
+    }
 
     NoticeBox {
         Layout.fillWidth: true
-        Layout.topMargin: -20
         text: Translation.tr('Not all options are available in this app. You should also check the config file by hitting the "Config file" button on the topleft corner or opening ~/.config/illogical-impulse/config.json manually.')
 
         RippleButtonWithIcon {
