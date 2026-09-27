@@ -16,9 +16,9 @@ import QtQuick
  * a correct self-dismiss: `xOffset`'s own-row branch reads this instance's
  * `dragDiffX` directly rather than bouncing through the parent, and every
  * write to `qmlParent` is gated on `hasSharedDragState`, so a `qmlParent` that
- * does not actually implement the contract is a no-op, not a crash (see
- * .audit/ii-clipboardToast/notes.md, which hit exactly this and hand-rolled
- * its own dismiss instead). Neighbour-follow -- the 0.3/0.1 fractions -- only
+ * does not actually implement the contract is a no-op, not a crash (the
+ * clipboard toast hit exactly this and hand-rolled its own dismiss instead).
+ * Neighbour-follow -- the 0.3/0.1 fractions -- only
  * ever fires with a real shared parent; a lone item has no neighbours to move.
  *
  * DESIGN.md 3.6: nothing here fades -- this widget only tracks the gesture. A

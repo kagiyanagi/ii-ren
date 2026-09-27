@@ -91,7 +91,7 @@ Scope {
                 // Derived from the animated scale, never from `GlobalStates.overviewOpen`:
                 // the window has to stay mapped through the close or the exit plays
                 // to nobody, and a surface that simply disappears has no other
-                // symptom. Five other rows in this audit found the same defect in
+                // symptom. Five other surfaces shipped the same defect in
                 // `Loader.active` form.
                 visible: {
                     if (isResettingZoom) return false // not showing when we are resetting

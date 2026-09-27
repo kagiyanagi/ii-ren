@@ -46,7 +46,7 @@ for g in CHECKED + ("variableAxes", "pixelSize", "family"):
     assert GROUPS.get(g), f"Appearance.qml has no `{g}` group any more -- this check is stale"
 
 # Vendored from ii-p3drovfx and rsynced over by tools/p3-widget-port, so a fix here is
-# reverted by the next re-port (AUDIT.md, "the re-port hazard"). Named rather than
+# reverted by the next re-port. Named rather than
 # skipped wholesale, so a new one in that tree still fails.
 KNOWN = {
     "modules/ii/background/widgets/clock/concentric/ConcentricHourDisplay.qml: Appearance.font.family.display",

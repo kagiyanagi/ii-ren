@@ -8,8 +8,8 @@ Four concerns, none of which a still frame of the surface shows.
 `scaleAnimated`, the animated zoom -- not from `GlobalStates.overviewOpen`. Bind
 `visible` to the request and the surface unmaps on the frame the flag clears, so
 the close animation plays to nobody; the overview still disappears, which is what
-it is supposed to do, so there is no symptom at all. Five other rows in this audit
-found the same defect wearing `Loader.active`. The spec the zoom runs on is checked
+it is supposed to do, so there is no symptom at all. Five other surfaces shipped
+the same defect wearing `Loader.active`. The spec the zoom runs on is checked
 too: it used to be `elementMoveFast` -- 200ms on the *effects* curve -- in both
 directions, while the desktop plane behind it zooms on `elementMoveEnter`, so the
 two halves of one gesture travelled over durations 2.5x apart. A scale is spatial

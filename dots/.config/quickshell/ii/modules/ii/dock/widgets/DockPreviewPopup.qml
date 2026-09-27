@@ -255,7 +255,7 @@ PopupWindow {
                                 text: windowButton.modelData?.title ?? ""
                                 elide: Text.ElideRight
                                 // Fixed white, like the privacy
-                                // chip's fixed green (DECISIONS.md 27). It sits
+                                // chip's fixed green. It sits
                                 // on the shot's own pixels under a black scrim,
                                 // not on a themed surface -- a title that shifts
                                 // hue with the wallpaper is unreadable half the

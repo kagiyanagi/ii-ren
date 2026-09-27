@@ -3,7 +3,7 @@
 
 `CircularProgress` and `ClippedFilledCircularProgress` used to export
 `animationDuration` and `easingType` as properties. That is the shape
-`.audit/common-widgets/brief.md` calls the worst of its three motion findings:
+the shared-widget audit called the worst of its three motion findings:
 it does not merely violate "never invent a number", it hands every call site a
 place to invent one, in a file `check-design.py` will never connect back to the
 widget. So the knobs are gone, and this is what keeps them gone.

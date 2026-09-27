@@ -326,7 +326,7 @@ Scope {
         }
 
         // ArrowPopup.animateOpen() / animateClose(), from the one composite the
-        // whole shell shares (DESIGN.md 9, .audit/DECISIONS.md 14). The card owns
+        // whole shell shares (DESIGN.md 9). The card owns
         // the transformOrigin, because that is the per-surface half of the recipe.
         ArrowPopupMotion {
             id: motion

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for waffle-lock audit.
+"""Regression checks for the waffle lock screen.
 
 Verifies:
 1. WaffleLock.qml declares pragma ComponentBehavior: Bound.

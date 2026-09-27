@@ -106,7 +106,7 @@ assert "Desaturate" not in icon and "ColorOverlay" not in icon, \
 # ---------------------------------------------------------------------------
 # The ArrowPopup recipe: assembled once, asymmetric, and pivoted on the dock.
 
-assert MOTION.exists(), "ArrowPopupMotion.qml is gone (DECISIONS.md 14)"
+assert MOTION.exists(), "ArrowPopupMotion.qml is gone, and both dock popups open on it"
 motion = src(MOTION)
 
 for token in ("arrowPopupScale", "arrowPopupOvershoot", "arrowPopupSettle",

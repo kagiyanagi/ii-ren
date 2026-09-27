@@ -4,7 +4,7 @@
 Every write rewrites the whole file, and FileView's watch reloads it, so a write
 nobody asked for is not free and a write mid-edit resets the row under the user.
 None of this shows in a screenshot; all of it was measured with a sandboxed
-XDG_CONFIG_HOME (see .audit/ii-settings/notes.md).
+XDG_CONFIG_HOME, because any probe that loads the page writes to the real one.
 
 * **The slider commits on `moved`.** `valueChanged` fires on every frame of
   StyledSlider's settle animation: the old panel left `gain: 57.3` in a real

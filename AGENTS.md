@@ -119,7 +119,7 @@ you touched; they are the only automated gate.
   guards the two things the surface says about why a password will not work: the Caps
   Lock refresh (Hyprland has no event for it, so the key press *is* the refresh) and the
   capture of PAM's messages, which must not be filtered on `messageIsError` because
-  pam_faillock sends the lockout as info. `tools/audit/preview-lock.sh out.png [timeout]
+  pam_faillock sends the lockout as info. `tools/preview-lock.sh out.png [timeout]
   [setup-js]` is how the surface is looked at at all: nothing can screenshot a locked
   session, and only the password ends one
 - `python3 tools/check-keypress-display.py` — the keystroke overlay still shows the key
@@ -176,7 +176,7 @@ you touched; they are the only automated gate.
   Services never reached this surface, while the empty state told the user to go and use
   it), the exit (`Loader.active` on the open request destroys the surface before the close
   plays), and the mask — the column now rests at `arrowPopupScale`, so a `Region` over it
-  would freeze the input region at half size. `tools/audit/mock-mpris.py` is how the
+  would freeze the input region at half size. `tools/mock-mpris.py` is how the
   surface is reached at all: none of its states exist without music, and the
   more-than-one-player layout needs two buses
 - `python3 tools/check-notification-popup.py` — the notification stack finishes leaving.
@@ -564,7 +564,13 @@ you touched; they are the only automated gate.
   flag the runtime path waits on), so it also holds that list to every page, and runs the
   registry's brace matcher under node: an apostrophe in a `//` comment opened a "string"
   that swallowed the rest of the file, and Quick indexed one section of three
-- `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
+- `bash tools/smoke.sh` — starts `qs -c ii` and fails unless its layer surfaces appear. A
+  QML error that blanks a whole panel family prints nothing at all, so this is the one
+  proof a change boots. It `pkill`s every quickshell on the machine, the running desktop
+  included
+- `bash tools/smoke-settings.sh` — the same for the settings app, a second process that
+  `smoke.sh` never touches. It kills only the pid it started
+- `bash tools/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`
 
@@ -741,7 +747,3 @@ see — transform origin, spatial-vs-effects, enter/exit pairing, layer nesting,
 effects in delegates, missed reuse.
 `tools/check-m3-tokens.py` asserts the tokens still match AOSP; run it after
 touching motion tokens or state layer values.
-
-The repo-wide pass that brings every existing surface up to that law — how the work is
-split, who runs which half, and the brief that gets written before any code — is
-`.github/AUDIT.md`. Read it before starting or resuming audit work.

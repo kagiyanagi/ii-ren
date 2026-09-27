@@ -8,7 +8,7 @@ resolved to, unconditionally. Fine inside a `StyledListView` (the ancestor two
 hops up carries that contract); a crash the moment `owner` is not a list
 delegate, because the guess still lands on a real Item, just one with none of
 those members. `ii-clipboardToast` hit exactly this and hand-rolled its own
-dismiss instead of using the shared widget (.audit/ii-clipboardToast/notes.md).
+dismiss instead of using the shared widget.
 
 Neither half shows up in check-design.py: one is two numbers with no token to
 check against, the other is a null-safety shape spread across three call

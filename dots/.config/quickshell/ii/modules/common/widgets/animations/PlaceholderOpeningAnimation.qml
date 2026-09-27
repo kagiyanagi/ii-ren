@@ -21,10 +21,8 @@ TriggerAnimation {
     // stops rotating the icon for good.
     //
     // Composing an offset here instead keeps that binding alive forever; it
-    // costs PagePlaceholder one line to add `+ openingAnimation.iconRotationOffset`
-    // to its own rotation expression so the swing is visible again -- see
-    // .audit/cw-motion/notes.md, filed there rather than edited here since
-    // PagePlaceholder belongs to cw-scaffolding.
+    // costs PagePlaceholder one line, `+ openingAnimation.iconRotationOffset` in
+    // its own rotation expression, which is how the swing shows.
     property real iconRotationOffset: 0
 
     animation: SequentialAnimation {

@@ -6,9 +6,10 @@ surface should *be*, what should not be on it, how it behaves when it is empty o
 and the calls the owner has already made. It is distilled from the audit of 2026-09-20
 to 09-27: 110 queue rows, their briefs and notes, and every call the owner made on them.
 
-Every rule names the rows it came from. `.audit/<id>/brief.md` is the worked example and
-`notes.md` is what was tried. When a rule and one of the owner's recorded calls (§9)
-disagree, the call wins.
+Every rule names the audit rows it came from. The audit's working files were removed
+from the tree afterwards, so each row's brief (the worked example) and notes (what was
+tried) are read from history: `git show 6cc240c9a:.audit/<id>/brief.md`. When a rule and
+one of the owner's recorded calls (§9) disagree, the call wins.
 
 **Read this before designing a feature, restructuring a surface, or auditing a UI.** A
 request like "make this better" means this file first, then `DESIGN.md` for the numbers.
@@ -340,9 +341,9 @@ The tokens are in `DESIGN.md`. These are the calls about when to use which.
   settings-About].
 - **Corner cards** swipe to dismiss [ii-fastPair].
 - **No stretch overscroll.** It was removed once watched on a real desktop, and it is the
-  shell's one deliberate departure from Android 16 (DESIGN.md 3.6, DECISIONS 24).
+  shell's one deliberate departure from Android 16 (DESIGN.md 3.6).
 - **Divider styles** on the dock and bar exist only because the owner's config picked
-  them. New code never adds a divider (DECISIONS 10).
+  them. New code never adds a divider.
 - **No new imports from ii-p3drovfx**: no features, motion or looks, because its feature
   list is "all bloat". What is vendored from it (the background widgets, the bar popups
   and cards, the quick toggles) arrives only through the port scripts in `tools/p3-*`.
@@ -390,5 +391,19 @@ Answer them in order, one sentence each. A question you cannot answer is the fin
 10. Which widget in §10 already does this?
 11. Has the owner already decided this (§9)?
 
-Then the brief (`AUDIT.md` has the template), then the code, then `/design-check`. Leave
-one `tools/check-*.py` behind for any logic a still frame cannot show.
+Then write the brief, one page, before any code:
+
+```markdown
+**Purpose.** One sentence: what the user came here to do.
+**Primary action.** The one thing it exists for. Everything else is secondary and looks it.
+**Hierarchy.** What the eye hits first, second and third, by name.
+**Reference.** Which Android 16 or Google surface this imitates, and why that one.
+**Interaction.** States, motion per element, and what it grows out of. Tokens by name.
+**Edge states.** Empty, loading, error, one item, many. A sentence each.
+**Cost.** Which effects it keeps and which it drops.
+**Delete.** What goes away.
+**Out of scope.** What this deliberately does not touch.
+```
+
+Then the code, then `/design-check`. Leave one `tools/check-*.py` behind for any logic a
+still frame cannot show.

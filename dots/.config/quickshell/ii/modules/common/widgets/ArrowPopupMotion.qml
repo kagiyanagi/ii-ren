@@ -10,7 +10,7 @@ import qs.modules.common
  * "assembled by each caller" -- and four callers did assemble them, by hand.
  * One of them grew an inline bezier that way; another ended up running its
  * enter and its exit on the same spatial spec, which is not an exit at all.
- * This is that assembly, in one place (`.audit/DECISIONS.md` 14).
+ * This is that assembly, in one place.
  *
  * The caller still owns two things, because both are per-surface:
  *

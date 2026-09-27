@@ -2,8 +2,8 @@
 //
 // These hexes are DELIBERATE and are the one place in this surface that does not
 // read from Appearance.colors -- the colour here *is* the data, the same
-// argument DECISIONS.md 27 accepted for PrivacyIndicator's fixed privacy-chip
-// colours. A family hue that shifts with the wallpaper stops meaning "halogen",
+// argument that keeps PrivacyIndicator's privacy-chip colours fixed. A family
+// hue that shifts with the wallpaper stops meaning "halogen",
 // and a heat map whose ramp is re-themed per wallpaper cannot be read against
 // its own legend. Each set is stepped separately for the dark and light surface
 // rather than flipped, and every one was produced by search and then validated
