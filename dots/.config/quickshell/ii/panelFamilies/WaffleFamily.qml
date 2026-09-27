@@ -18,6 +18,8 @@ import qs.modules.waffle.taskView
 // Fallbacks
 import qs.modules.ii.altTab
 import qs.modules.ii.cheatsheet
+import qs.modules.ii.desktopMenu
+import qs.modules.ii.dropover
 import qs.modules.ii.keypressDisplay
 import qs.modules.ii.onScreenKeyboard
 import qs.modules.ii.overlay
@@ -27,7 +29,7 @@ import qs.modules.ii.wallpaperSelector
 Scope {
     PanelLoader { component: WaffleActionCenter {} }
     PanelLoader { component: WaffleBar {} }
-    PanelLoader { component: WaffleBackground {} }
+    PanelLoader { extraCondition: Config.options.background.enable; component: WaffleBackground {} }
     PanelLoader { component: WaffleLock {} }
     PanelLoader { component: WaffleNotificationCenter {} }
     PanelLoader { component: WaffleNotificationPopup {} }
@@ -40,6 +42,8 @@ Scope {
 
     PanelLoader { component: AltTab {} }
     PanelLoader { component: Cheatsheet {} }
+    PanelLoader { extraCondition: Config.options.background.rightClickMenu; component: DesktopMenu {} }
+    PanelLoader { component: DropShelfPanel {} }
     PanelLoader { extraCondition: Config.ready; component: KeypressDisplay {} }
     PanelLoader { component: OnScreenKeyboard {} }
     PanelLoader { component: Overlay {} }
