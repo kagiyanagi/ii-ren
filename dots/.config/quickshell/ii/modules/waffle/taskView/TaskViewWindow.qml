@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -21,20 +23,20 @@ WMouseAreaButton {
     required property int maxWidth
 
     property var hyprlandClient: HyprlandData.clientForToplevel(root.toplevel)
-    property string address: hyprlandClient?.address
+    property string address: hyprlandClient?.address ?? ""
 
     property string iconName: AppSearch.guessIcon(hyprlandClient?.class)
 
-    color: drag.active ? ColorUtils.transparentize(Looks.colors.bg1Base) : (containsMouse ? Looks.colors.bg1Base : Looks.colors.bgPanelFooterBackground)
-    borderColor: ColorUtils.transparentize(Looks.colors.bg2Border, drag.active ? 1 : 0)
+    color: root.Drag.active ? ColorUtils.transparentize(Looks.colors.bg1Base) : (containsMouse ? Looks.colors.bg1Base : Looks.colors.bgPanelFooterBackground)
+    borderColor: ColorUtils.transparentize(Looks.colors.bg2Border, root.Drag.active ? 1 : 0)
     radius: Looks.radius.xLarge
 
     property real titleBarImplicitHeight: titleBar.implicitHeight
     property bool scaleSize: true
-    property size openedSize: WindowLayout.scaleWindow(hyprlandClient, maxWidth, maxHeight);
-    property size fullSize: Qt.size(hyprlandClient?.size[0] ?? maxWidth, hyprlandClient?.size[1] ?? maxHeight)
+    property size openedSize: WindowLayout.scaleWindow(hyprlandClient, maxWidth, maxHeight)
+    property size fullSize: Qt.size(hyprlandClient?.size?.[0] ?? maxWidth, hyprlandClient?.size?.[1] ?? maxHeight)
     property size size: scaleSize ? openedSize : fullSize
-    implicitWidth: Math.max(Math.round(contentItem.implicitWidth), 138)
+    implicitWidth: Math.max(Math.round(contentItem.implicitWidth), 140)
     implicitHeight: Math.round(contentItem.implicitHeight)
 
     layer.enabled: true
@@ -46,7 +48,7 @@ WMouseAreaButton {
                 radius: root.background.radius
                 anchors {
                     fill: parent
-                    topMargin: root.drag.active ? root.titleBarImplicitHeight : 0
+                    topMargin: root.Drag.active ? root.titleBarImplicitHeight : 0
                 }
             }
         }
@@ -56,21 +58,25 @@ WMouseAreaButton {
     Behavior on scale {
         NumberAnimation {
             id: scaleAnim
-            duration: 200
-            easing.type: Easing.OutExpo
+            duration: Appearance.animation.elementMoveFast.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
         }
     }
 
     function closeWindow() {
-        Hyprland.dispatch(`hl.dsp.window.close({window = "address:${root.hyprlandClient?.address}"})`)
+        if (root.hyprlandClient?.address) {
+            Hyprland.dispatch(`hl.dsp.window.close({window = "address:${root.hyprlandClient.address}"})`);
+        }
     }
 
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
     onClicked: event => {
         if (event.button === Qt.LeftButton) {
             GlobalStates.overviewOpen = false;
-            Hyprland.dispatch(`hl.dsp.focus({window = "address:${root.hyprlandClient?.address}"})`)
-            GlobalStates.overviewOpen = false;
+            if (root.hyprlandClient?.address) {
+                Hyprland.dispatch(`hl.dsp.focus({window = "address:${root.hyprlandClient.address}"})`);
+            }
         } else if (event.button === Qt.MiddleButton) {
             root.closeWindow();
             event.accepted = true;
@@ -86,15 +92,14 @@ WMouseAreaButton {
         id: contentItem
         z: 2
         anchors.fill: parent
-        anchors.margins: 1
         spacing: 0
 
         RowLayout {
             id: titleBar
-            opacity: root.drag.active ? 0 : 1
+            opacity: root.Drag.active ? 0 : 1
             spacing: 8
             WAppIcon {
-                Layout.leftMargin: 10
+                Layout.leftMargin: 8
                 Layout.alignment: Qt.AlignVCenter
                 iconName: root.iconName
                 implicitSize: 16
@@ -107,8 +112,8 @@ WMouseAreaButton {
                 text: root.hyprlandClient?.title ?? ""
             }
             CloseButton {
-                implicitWidth: 38
-                implicitHeight: 38
+                implicitWidth: 32
+                implicitHeight: 32
                 padding: 8
                 onClicked: root.closeWindow()
             }
@@ -129,7 +134,7 @@ WMouseAreaButton {
             }
 
             captureSource: root.toplevel ?? null
-            live: true
+            live: GlobalStates.overviewOpen
         }
     }
 
@@ -138,12 +143,14 @@ WMouseAreaButton {
         downDirection: true
 
         Action {
-            enabled: root.hyprlandClient?.floating
-            property bool isPinned: root.hyprlandClient?.pinned
+            enabled: Boolean(root.hyprlandClient?.floating)
+            property bool isPinned: Boolean(root.hyprlandClient?.pinned)
             icon.name: isPinned ? "checkmark" : "empty"
             text: Translation.tr("Show this window on all desktops")
             onTriggered: {
-                Hyprland.dispatch(`hl.dsp.window.pin({window = "address:${root.hyprlandClient?.address}"})`);
+                if (root.hyprlandClient?.address) {
+                    Hyprland.dispatch(`hl.dsp.window.pin({window = "address:${root.hyprlandClient.address}"})`);
+                }
             }
         }
         Action {
