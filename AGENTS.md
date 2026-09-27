@@ -559,7 +559,10 @@ you touched; they are the only automated gate.
   result on. Each page declares `readonly property int index: N` by hand and search
   navigates by nothing else; `pages` in `settings.qml` was reordered and six numbers were
   not, so "Fonts" opened Services and every Lock result opened About. It pins each index
-  to the page's position, and that page 0 (Quick) registers at all
+  to the page's position. Search reads each page's *text* (nothing sets the `register`
+  flag the runtime path waits on), so it also holds that list to every page, and runs the
+  registry's brace matcher under node: an apostrophe in a `//` comment opened a "string"
+  that swallowed the rest of the file, and Quick indexed one section of three
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

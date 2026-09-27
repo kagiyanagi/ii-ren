@@ -10,6 +10,11 @@ Item {
     id: root
 
     property list<var> sections: []
+    // tools/check-settings-search.py holds this to every page that declares
+    // a search index.
+    readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BarConfig", "BackgroundConfig",
+        "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "ExtensionsConfig", "HyprlandConfig",
+        "LockConfig", "AdvancedConfig", "HermesConfig"]
 
     property string currentSearch: ""
     onCurrentSearchChanged: {
@@ -18,14 +23,11 @@ Item {
 
     function startIndexing() {
         sections = []
-        pageFile.start([
-            Directories.generalConfigPath,
-            Directories.barConfigPath,
-            Directories.backgroundConfigPath,
-            Directories.interfaceConfigPath,
-            Directories.servicesConfigPath,
-            Directories.advancedConfigPath
-        ])
+        // Every page, read as text. This is the only path into search: pages
+        // register their sections at runtime only when `register` is true, and
+        // nothing in the settings app sets it, so the six pages that used to be
+        // missing from this list were not searchable at all.
+        pageFile.start(root.indexedPages.map(name => FileUtils.trimFileProtocol(Quickshell.shellPath(`modules/settings/${name}.qml`))))
     }
 
     Component.onCompleted: startIndexing()
@@ -144,7 +146,21 @@ Item {
             while (j < text.length && depth > 0) {
                 let ch = text[j]
 
-                if (!inString && (ch === '"' || ch === "'")) {
+                // Comments are not code: an apostrophe in one ("the carousel's")
+                // opened a "string" that swallowed every section after it, so
+                // Quick indexed one section of three.
+                if (!inString && ch === "/" && text[j + 1] === "/") {
+                    const eol = text.indexOf("\n", j)
+                    j = eol === -1 ? text.length : eol
+                    continue
+                }
+                if (!inString && ch === "/" && text[j + 1] === "*") {
+                    const end = text.indexOf("*/", j + 2)
+                    j = end === -1 ? text.length : end + 2
+                    continue
+                }
+
+                if (!inString && (ch === '"' || ch === "'" || ch === "`")) {
                     inString = true
                     stringChar = ch
                 } else if (inString && ch === stringChar) {
