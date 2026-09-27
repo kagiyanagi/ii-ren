@@ -26,7 +26,11 @@ Item {
         radius: Appearance.rounding.full
         color: Appearance.colors.colSecondaryContainer
         implicitHeight: root.expanded ? itemHeight : baseHighlightHeight
-        implicitWidth: tabBarColumn?.children[root.currentIndex]?.visualWidth ?? 130
+        // Not children[currentIndex]: a Repeater parents each delegate at the end
+        // (childrenChanged) and only then stacks it before itself, silently. So
+        // while the last delegate is built, that slot holds the Repeater, and the
+        // pill locks onto the 130 fallback until the tab changes.
+        implicitWidth: tabBarColumn.children.filter(c => c.visualWidth !== undefined)[root.currentIndex]?.visualWidth ?? 130
 
         /*
          * This is the selection indicator, so all three legs ride
