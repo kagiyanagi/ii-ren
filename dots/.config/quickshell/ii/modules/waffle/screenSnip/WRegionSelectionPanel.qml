@@ -1,8 +1,6 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
-import Qt.labs.synchronizer
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -37,19 +35,33 @@ PanelWindow {
         Window
     }
 
+    property bool open: true
+    signal fadedOut()
+    signal dismiss()
+
     function close() {
-        root.closed();
+        root.dismiss();
     }
+
+    onOpenChanged: {
+        if (!root.open && (!root.visible || content.opacity === 0))
+            root.fadedOut();
+    }
+
+    readonly property bool passive: !root.open || !root.preparationDone
+    WlrLayershell.keyboardFocus: root.passive ? WlrKeyboardFocus.None : WlrKeyboardFocus.OnDemand
+    mask: root.passive ? passthroughRegion : null
+    Region { id: passthroughRegion }
 
     property var mediaType: WRegionSelectionPanel.MediaType.Image
     property var imageAction: WRegionSelectionPanel.ImageAction.Copy
+    property var videoAction: WRegionSelectionPanel.VideoAction.Record
     property var selectionMode: WRegionSelectionPanel.SelectionMode.Rect
 
     visible: false
     color: "transparent"
     WlrLayershell.namespace: "quickshell:regionSelector"
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     exclusionMode: ExclusionMode.Ignore
     anchors {
         left: true
@@ -58,9 +70,12 @@ PanelWindow {
         bottom: true
     }
 
-    // Hyprland stuff
+    // Hyprland monitors and active workspace
     readonly property HyprlandMonitor hyprlandMonitor: Hyprland.monitorFor(screen)
-    readonly property real monitorScale: hyprlandMonitor.scale
+    readonly property real monitorScale: hyprlandMonitor?.scale ?? 1.0
+    readonly property real monitorOffsetX: hyprlandMonitor?.x ?? 0
+    readonly property real monitorOffsetY: hyprlandMonitor?.y ?? 0
+    property int activeWorkspaceId: hyprlandMonitor?.activeWorkspace?.id ?? (HyprlandData.activeWorkspace?.id ?? 0)
     readonly property var windows: [...HyprlandData.windowList].sort((a, b) => {
         // Sort floating=true windows before others
         if (a.floating === b.floating)
@@ -69,7 +84,7 @@ PanelWindow {
     })
 
     property string screenshotDir: Directories.screenshotTemp
-    property string screenshotPath: `${root.screenshotDir}/image-${screen.name}`
+    property string screenshotPath: `${root.screenshotDir}/image-${root.screen?.name ?? "default"}.ppm`
     TempScreenshotProcess {
         id: screenshotProc
         running: true
@@ -104,95 +119,133 @@ PanelWindow {
             default:
                 return ScreenshotAction.Action.Copy;
             }
-            break;
         case WRegionSelectionPanel.MediaType.Video:
             switch (root.videoAction) {
             case WRegionSelectionPanel.VideoAction.Record:
                 return ScreenshotAction.Action.Record;
             case WRegionSelectionPanel.VideoAction.RecordWithSound:
                 return ScreenshotAction.Action.RecordWithSound;
+            default:
+                return ScreenshotAction.Action.Record;
             }
+        default:
+            return ScreenshotAction.Action.Copy;
         }
     }
 
-    Process {
-        id: snipProc
-    }
-
-    ScreencopyView {
-        id: screencopyView
+    Item {
+        id: content
         anchors.fill: parent
-        live: false
-        captureSource: root.screen
 
-        focus: root.visible
-        Keys.onPressed: event => { // Esc to close
-            if (event.key === Qt.Key_Escape) {
-                root.close();
-            } else if (event.key === Qt.Key_E && event.modifiers & Qt.ControlModifier) {
-                if (root.imageAction === WRegionSelectionPanel.ImageAction.Menu) {
-                    root.imageAction = WRegionSelectionPanel.ImageAction.Copy;
-                } else {
-                    root.imageAction = WRegionSelectionPanel.ImageAction.Menu;
-                }
+        property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+        opacity: {
+            content.fadeSpec = root.open ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+            return root.visible && root.open ? 1 : 0;
+        }
+        Behavior on opacity {
+            NumberAnimation {
+                duration: content.fadeSpec.duration
+                easing.type: content.fadeSpec.type
+                easing.bezierCurve: content.fadeSpec.bezierCurve
             }
         }
+        onOpacityChanged: {
+            if (content.opacity === 0 && !root.open)
+                root.fadedOut();
+        }
 
-        DragManager {
-            id: dragArea
+        ScreencopyView {
+            id: screencopyView
             anchors.fill: parent
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: Qt.CrossCursor
+            live: false
+            captureSource: root.screen
 
-            property bool isWindowSelection: root.selectionMode === WRegionSelectionPanel.SelectionMode.Window
-            property var hoveredWindow: root.windows.find(w => {
-                const inCurrentWorkspace = w.workspace.id === HyprlandData.activeWorkspace.id;
-                const withinXRange = w.at[0] <= dragArea.mouseX && dragArea.mouseX <= w.at[0] + w.size[0];
-                const withinYRange = w.at[1] <= dragArea.mouseY && dragArea.mouseY <= w.at[1] + w.size[1];
-                return inCurrentWorkspace && withinXRange && withinYRange;
-            })
-            property int winPadding: 1
-            property int selectionX: isWindowSelection ? ((hoveredWindow?.at[0] ?? 0) - winPadding) : regionTopLeftX
-            property int selectionY: isWindowSelection ? ((hoveredWindow?.at[1] ?? 0) - winPadding) : regionTopLeftY
-            property int selectionWidth: isWindowSelection ? ((hoveredWindow?.size[0] ?? 0) + winPadding * 2) : regionWidth
-            property int selectionHeight: isWindowSelection ? ((hoveredWindow?.size[1] ?? 0) + winPadding * 2) : regionHeight
-
-            onDragReleased: (diffX, diffY) => {
-                if (selectionWidth === 0 || selectionHeight === 0) {
-                    return;
+            focus: root.visible && !root.passive
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Escape) {
+                    root.dismiss();
+                } else if (event.key === Qt.Key_E && (event.modifiers & Qt.ControlModifier)) {
+                    if (root.imageAction === WRegionSelectionPanel.ImageAction.Menu) {
+                        root.imageAction = WRegionSelectionPanel.ImageAction.Copy;
+                    } else {
+                        root.imageAction = WRegionSelectionPanel.ImageAction.Menu;
+                    }
                 }
-                const screenshotDir = Config.options.screenSnip.savePath !== "" ? Config.options.screenSnip.savePath : "";
-                const screenshotAction = root.getScreenshotAction();
-                const command = ScreenshotAction.getCommand(dragArea.selectionX * root.monitorScale //
-                , dragArea.selectionY * root.monitorScale //
-                , dragArea.selectionWidth * root.monitorScale//
-                , dragArea.selectionHeight * root.monitorScale //
-                , root.screenshotPath //
-                , screenshotAction //
-                , screenshotDir); // yo wtf is this formatting qmlls do be funnie
-                snipProc.command = command;
-
-                // Image post-processing
-                snipProc.startDetached();
-                root.close();
             }
 
-            WRectangularSelection {
-                id: rectangularSelection
+            DragManager {
+                id: dragArea
                 anchors.fill: parent
-                regionX: dragArea.selectionX
-                regionY: dragArea.selectionY
-                regionWidth: dragArea.selectionWidth
-                regionHeight: dragArea.selectionHeight
-                dashed: root.selectionMode === WRegionSelectionPanel.SelectionMode.Rect
-            }
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton
+                cursorShape: Qt.CrossCursor
+                enabled: !root.passive
 
-            RegionSelectionOptionsToolbar {
-                anchors {
-                    horizontalCenter: parent.horizontalCenter
-                    top: parent.top
-                    topMargin: 12
+                property bool isWindowSelection: root.selectionMode === WRegionSelectionPanel.SelectionMode.Window
+                property var hoveredWindow: {
+                    if (!isWindowSelection)
+                        return null;
+                    return root.windows.find(w => {
+                        const inCurrentWorkspace = w.workspace.id === root.activeWorkspaceId;
+                        const winX = w.at[0] - root.monitorOffsetX;
+                        const winY = w.at[1] - root.monitorOffsetY;
+                        const withinXRange = winX <= dragArea.mouseX && dragArea.mouseX <= winX + w.size[0];
+                        const withinYRange = winY <= dragArea.mouseY && dragArea.mouseY <= winY + w.size[1];
+                        return inCurrentWorkspace && withinXRange && withinYRange;
+                    });
+                }
+                property int rawSelectionX: isWindowSelection ? ((hoveredWindow?.at[0] ?? root.monitorOffsetX) - root.monitorOffsetX) : regionTopLeftX
+                property int rawSelectionY: isWindowSelection ? ((hoveredWindow?.at[1] ?? root.monitorOffsetY) - root.monitorOffsetY) : regionTopLeftY
+                property int rawSelectionWidth: isWindowSelection ? (hoveredWindow ? hoveredWindow.size[0] : 0) : regionWidth
+                property int rawSelectionHeight: isWindowSelection ? (hoveredWindow ? hoveredWindow.size[1] : 0) : regionHeight
+
+                property int selectionX: Math.max(0, rawSelectionX)
+                property int selectionY: Math.max(0, rawSelectionY)
+                property int selectionWidth: Math.max(0, Math.min(root.screen.width, rawSelectionX + rawSelectionWidth) - selectionX)
+                property int selectionHeight: Math.max(0, Math.min(root.screen.height, rawSelectionY + rawSelectionHeight) - selectionY)
+
+                onDragReleased: (diffX, diffY) => {
+                    if (selectionWidth <= 0 || selectionHeight <= 0) {
+                        return;
+                    }
+                    const screenshotDir = Config.options.screenSnip.savePath !== "" ? Config.options.screenSnip.savePath : "";
+                    const screenshotAction = root.getScreenshotAction();
+                    if (screenshotAction === undefined) {
+                        return;
+                    }
+                    const command = ScreenshotAction.getCommand(
+                        dragArea.selectionX * root.monitorScale,
+                        dragArea.selectionY * root.monitorScale,
+                        dragArea.selectionWidth * root.monitorScale,
+                        dragArea.selectionHeight * root.monitorScale,
+                        root.screenshotPath,
+                        screenshotAction,
+                        screenshotDir
+                    );
+                    Quickshell.execDetached(command);
+                    root.dismiss();
+                }
+
+                WRectangularSelection {
+                    id: rectangularSelection
+                    anchors.fill: parent
+                    regionX: dragArea.selectionX
+                    regionY: dragArea.selectionY
+                    regionWidth: dragArea.selectionWidth
+                    regionHeight: dragArea.selectionHeight
+                    dashed: root.selectionMode === WRegionSelectionPanel.SelectionMode.Rect
+                }
+
+                RegionSelectionOptionsToolbar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: root.open && root.visible ? 12 : -implicitHeight - 24
+                    Behavior on y {
+                        NumberAnimation {
+                            duration: root.open ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: root.open ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+                        }
+                    }
                 }
             }
         }
@@ -236,9 +289,9 @@ PanelWindow {
         // Selection type
         WToolbarButton {
             id: selectionTypeBtn
-            implicitWidth: selectionTypeBtnRow.implicitWidth + 11 * 2
-            leftPadding: 11
-            rightPadding: 11
+            implicitWidth: selectionTypeBtnRow.implicitWidth + 12 * 2
+            leftPadding: 12
+            rightPadding: 12
             onClicked: {
                 selectionTypeMenu.visible = !selectionTypeMenu.visible;
             }
@@ -251,20 +304,14 @@ PanelWindow {
                     case WRegionSelectionPanel.SelectionMode.Rect:
                         return "crop";
                     case WRegionSelectionPanel.SelectionMode.Window:
-                        return "calendar-add";
+                        return "desktop";
                     default:
                         return "crop";
                     }
                     implicitSize: 18
                 }
                 FluentIcon {
-                    anchors {
-                        top: parent.top
-                        topMargin: (parent.height - height) / 2 + (selectionTypeBtn.down ? 2 : 0)
-                        Behavior on topMargin {
-                            animation: Looks.transition.enter.createObject(this)
-                        }
-                    }
+                    anchors.verticalCenter: parent.verticalCenter
                     icon: "chevron-down"
                     implicitSize: 12
                 }
@@ -272,12 +319,9 @@ PanelWindow {
 
             WMenu {
                 id: selectionTypeMenu
+                downDirection: true
                 onClosed: screencopyView.focus = true
-                x: -margins
-                y: -margins - (selectionTypeBtn.parent.height - selectionTypeBtn.height) - 16
-                topMargin: -6
-                height: implicitHeight + sourceEdgeMargin
-
+                y: selectionTypeBtn.height + 4
                 color: Looks.colors.bg1Base
 
                 Action {
@@ -289,7 +333,7 @@ PanelWindow {
                     }
                 }
                 Action {
-                    icon.name: "calendar-add"
+                    icon.name: "desktop"
                     text: Translation.tr("Window")
                     checked: root.selectionMode === WRegionSelectionPanel.SelectionMode.Window
                     onTriggered: {
@@ -342,7 +386,7 @@ PanelWindow {
             icon.name: "eyedropper"
             onClicked: {
                 Quickshell.execDetached(["bash", "-c", "sleep 0.2; hyprpicker -a"]);
-                root.closed();
+                root.dismiss();
             }
             WToolTip {
                 text: Translation.tr("Color picker")
@@ -368,7 +412,7 @@ PanelWindow {
 
         WToolbarIconButton {
             icon.name: "dismiss"
-            onClicked: root.close()
+            onClicked: root.dismiss()
             WToolTip {
                 text: Translation.tr("Close (Esc)")
             }
