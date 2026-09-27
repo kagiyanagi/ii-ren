@@ -20,7 +20,7 @@ from collections import defaultdict
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 QML_ROOT = ROOT / "dots/.config/quickshell/ii"
-# Appearance.qml *is* the token source; shapes is a submodule.
+# Appearance.qml *is* the token source; shapes is vendored upstream code.
 SKIP = {"modules/common/Appearance.qml", "modules/common/AnimSpec.qml",
         "modules/common/Config.qml"}  # tokens source; anim spec; config schema
 SKIP_DIRS = ("modules/common/widgets/shapes/",)
