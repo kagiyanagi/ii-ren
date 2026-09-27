@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs
 import qs.services
 import qs.modules.common
@@ -12,70 +13,152 @@ import Quickshell
 Item {
     id: root
 
+    signal closed()
+
+    property bool show: false
+
+    function run(action) {
+        if (!GlobalStates.sessionOpen)
+            return;
+        GlobalStates.sessionOpen = false;
+        action();
+    }
+
     Component.onCompleted: {
+        root.show = true;
         lockButton.forceActiveFocus();
     }
 
-    ColumnLayout {
+    Connections {
+        target: GlobalStates
+        function onSessionOpenChanged() {
+            root.show = GlobalStates.sessionOpen;
+            if (GlobalStates.sessionOpen) {
+                lockButton.forceActiveFocus();
+            }
+        }
+    }
+
+    opacity: root.show ? 1 : 0
+    visible: opacity > 0
+    Behavior on opacity {
+        NumberAnimation {
+            duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible && !GlobalStates.sessionOpen)
+            root.closed();
+    }
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) {
+            event.accepted = true;
+            GlobalStates.sessionOpen = false;
+        }
+    }
+
+    // Scrim dimming background
+    Rectangle {
+        id: scrim
+        anchors.fill: parent
+        color: Appearance.colors.m3scrim
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            hoverEnabled: true
+            onPressed: GlobalStates.sessionOpen = false
+            onWheel: wheel => wheel.accepted = true
+        }
+
+        WheelHandler {
+            target: null
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+            onWheel: event => event.accepted = true
+        }
+    }
+
+    // Center action buttons
+    Item {
+        id: centralContainer
         anchors.centerIn: parent
-        spacing: 4
-
-        WSessionScreenTextButton {
-            id: lockButton
-            focus: true
-            text: Translation.tr("Lock")
-            onClicked: {
-                GlobalStates.sessionOpen = false;
-                Session.lock();
+        implicitWidth: centralColumn.implicitWidth
+        implicitHeight: centralColumn.implicitHeight
+        transformOrigin: Item.Center
+        scale: root.show ? 1.0 : 0.96
+        Behavior on scale {
+            NumberAnimation {
+                duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
             }
-            KeyNavigation.up: powerButton
-            KeyNavigation.down: signOutButton
-        }
-        WSessionScreenTextButton {
-            id: signOutButton
-            focus: true
-            text: Translation.tr("Sign out")
-            onClicked: {
-                GlobalStates.sessionOpen = false;
-                Session.logout();
-            }
-            KeyNavigation.up: lockButton
-            KeyNavigation.down: changePasswordButton
         }
 
-        WSessionScreenTextButton {
-            id: changePasswordButton
-            focus: true
-            text: Translation.tr("Change password")
-            onClicked: {
-                GlobalStates.sessionOpen = false;
-                Session.changePassword();
-            }
-            KeyNavigation.up: signOutButton
-            KeyNavigation.down: taskManagerButton
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
         }
 
-        WSessionScreenTextButton {
-            id: taskManagerButton
-            focus: true
-            text: Translation.tr("Task Manager")
-            onClicked: {
-                GlobalStates.sessionOpen = false;
-                Session.launchTaskManager();
-            }
-            KeyNavigation.up: signOutButton
-            KeyNavigation.down: cancelButton
-        }
+        ColumnLayout {
+            id: centralColumn
+            anchors.fill: parent
+            spacing: 4
 
-        CancelButton {
-            id: cancelButton
-            Layout.fillWidth: true
-            Layout.leftMargin: 5
-            Layout.rightMargin: 5
-            Layout.topMargin: 38
-            onClicked: GlobalStates.sessionOpen = false
-            KeyNavigation.up: taskManagerButton
-            KeyNavigation.down: powerButton
+            WSessionScreenTextButton {
+                id: lockButton
+                Layout.fillWidth: true
+                focus: true
+                text: Translation.tr("Lock")
+                onClicked: root.run(() => Session.lock())
+                KeyNavigation.up: powerButton
+                KeyNavigation.down: signOutButton
+            }
+
+            WSessionScreenTextButton {
+                id: signOutButton
+                Layout.fillWidth: true
+                focus: true
+                text: Translation.tr("Sign out")
+                onClicked: root.run(() => Session.logout())
+                KeyNavigation.up: lockButton
+                KeyNavigation.down: changePasswordButton
+            }
+
+            WSessionScreenTextButton {
+                id: changePasswordButton
+                Layout.fillWidth: true
+                focus: true
+                text: Translation.tr("Change password")
+                onClicked: root.run(() => Session.changePassword())
+                KeyNavigation.up: signOutButton
+                KeyNavigation.down: taskManagerButton
+            }
+
+            WSessionScreenTextButton {
+                id: taskManagerButton
+                Layout.fillWidth: true
+                focus: true
+                text: Translation.tr("Task Manager")
+                onClicked: root.run(() => Session.launchTaskManager())
+                KeyNavigation.up: changePasswordButton
+                KeyNavigation.down: cancelButton
+            }
+
+            CancelButton {
+                id: cancelButton
+                Layout.fillWidth: true
+                Layout.leftMargin: 0
+                Layout.rightMargin: 0
+                Layout.topMargin: 40
+                onClicked: GlobalStates.sessionOpen = false
+                KeyNavigation.up: taskManagerButton
+                KeyNavigation.down: powerButton
+                KeyNavigation.right: powerButton
+            }
         }
     }
 
@@ -83,22 +166,23 @@ Item {
         anchors {
             bottom: parent.bottom
             right: parent.right
-            bottomMargin: 21
-            rightMargin: 31
+            bottomMargin: 24
+            rightMargin: 32
         }
         PowerButton {
             id: powerButton
             KeyNavigation.up: cancelButton
             KeyNavigation.down: lockButton
+            KeyNavigation.left: cancelButton
         }
     }
 
     component CancelButton: WBorderlessButton {
-        id: root
+        id: cancelButtonComponent
         implicitHeight: 32
         colBackground: Looks.darkColors.bg1Base
-        colBackgroundHover: Qt.lighter(Looks.darkColors.bg1Base, 1.2)
-        colBackgroundActive: Qt.lighter(Looks.darkColors.bg1Base, 1.1)
+        colBackgroundHover: Looks.darkColors.bg1Hover
+        colBackgroundActive: Looks.darkColors.bg1Active
         colForeground: Looks.darkColors.fg
 
         property bool keyboardDown: false
@@ -112,7 +196,7 @@ Item {
         Keys.onReleased: event => {
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 keyboardDown = false;
-                root.clicked();
+                cancelButtonComponent.clicked();
                 event.accepted = true;
             }
         }
@@ -120,20 +204,21 @@ Item {
         contentItem: WText {
             text: Translation.tr("Cancel")
             horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
             font.pixelSize: Looks.font.pixelSize.large
-            color: root.colForeground
+            color: cancelButtonComponent.colForeground
         }
 
         Rectangle {
-            visible: cancelButton.focus
+            visible: cancelButtonComponent.focus
             anchors {
                 fill: parent
-                margins: -3
+                margins: -4
             }
-            radius: cancelButton.background.radius + 4
+            radius: cancelButtonComponent.radius + 4
             color: "transparent"
             border.width: 2
-            border.color: "#ffffff"
+            border.color: Looks.darkColors.fg
         }
     }
 }
