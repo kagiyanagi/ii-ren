@@ -1,5 +1,4 @@
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 import QtQuick
 
@@ -15,20 +14,36 @@ Item {
 
     property bool warning: percentage * 100 >= warningThreshold
 
+    // The horizontal bar's ring (bar/Resource.qml), without the number.
     ClippedFilledCircularProgress {
         id: resourceProgress
         anchors.centerIn: parent
-        value: percentage
+        implicitSize: 20
+        lineWidth: Appearance.rounding.unsharpen
+        value: root.percentage
         enableAnimation: false
         colPrimary: root.warning ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
         accountForLightBleeding: !root.warning
 
-        MaterialSymbol {
-            font.weight: Font.Medium
-            fill: 1
-            text: root.iconName
-            iconSize: 13
-            color: Appearance.colors.colOnSecondaryContainer
+        Behavior on colPrimary {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+
+        // The ring's OpacityMask stretches its mask over the whole ring, so the
+        // mask has to be the ring's size with the icon centred in it. A bare
+        // MaterialSymbol here was drawn stretched from its glyph box.
+        Item {
+            width: resourceProgress.implicitSize
+            height: resourceProgress.implicitSize
+
+            MaterialSymbol {
+                anchors.centerIn: parent
+                font.weight: Font.DemiBold
+                fill: 1
+                text: root.iconName
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colOnSecondaryContainer
+            }
         }
     }
 }

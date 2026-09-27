@@ -10,7 +10,10 @@ exit that never renders because the thing stops existing on the first frame of i
    quarter of that. Both directions come out of one `revealSpec` assigned *inside* the
    binding that writes the margin, because a Behavior bakes its duration and curve at the
    instant of the write (2.9) -- read from a binding of its own the spec is a frame late
-   and the exit runs on the enter's curve.
+   and the exit runs on the enter's curve. `VerticalBar.qml` is the same panel on a side
+   edge and is held to the same shape; it ran on one effects spec both ways after this
+   one was fixed, and its right-hand bar hid by `barHeight`, the *horizontal* bar's
+   thickness, leaving a strip of a wider vertical bar on screen.
 
 2. **A widget coming and going (`BarComponent.qml`).** The record, screenshare and
    privacy indicators, the timer and an emptying tray call `toggleVisible()`. The
@@ -30,6 +33,7 @@ from types import SimpleNamespace as NS
 
 QML = pathlib.Path(__file__).parent.parent / "dots/.config/quickshell/ii/modules"
 bar = (QML / "ii/bar/Bar.qml").read_text()
+vbar = (QML / "ii/verticalBar/VerticalBar.qml").read_text()
 comp = (QML / "ii/bar/BarComponent.qml").read_text()
 appearance = (QML / "common/Appearance.qml").read_text()
 
@@ -120,50 +124,56 @@ def js(expr):
 # A spec stands for its own name, so the pick can be asserted by what it returns.
 APPEARANCE = NS(animation=NS(elementMoveEnter="elementMoveEnter", elementMoveExit="elementMoveExit",
                              elementResize="elementResize"),
-                sizes=NS(barHeight=40))
+                sizes=NS(barHeight=40, verticalBarWidth=46))
 
 
 # --- 1. auto-hide -------------------------------------------------------------
 
-REVEALED = grab(bar, r"readonly property bool revealed: (.*)",
-                "Bar.qml no longer derives `revealed`").group(1)
-OFFSET = block(bar, r"readonly property real edgeOffset:", "Bar.qml no longer has `edgeOffset`")
-PICK = grab(OFFSET, r"barContent\.revealSpec = ([^;]+);",
-            "edgeOffset no longer picks the spec from inside its own binding (2.9)").group(1)
-RETURN = grab(OFFSET, r"return ([^;]+);", "edgeOffset returns nothing").group(1)
+# (file, name, the two margins the reveal moves, the far-edge state, thickness token)
+BARS = ((bar, "Bar.qml", ("anchors.topMargin", "anchors.bottomMargin"),
+         "anchors.bottomMargin: barContent.edgeOffset", "barHeight"),
+        (vbar, "VerticalBar.qml", ("anchors.leftMargin", "anchors.rightMargin"),
+         "anchors.rightMargin: barContent.edgeOffset", "verticalBarWidth"))
 
+for src, name, margins, far_edge, thickness in BARS:
+    REVEALED = grab(src, r"readonly property bool revealed: (.*)",
+                    f"{name} no longer derives `revealed`").group(1)
+    OFFSET = block(src, r"readonly property real edgeOffset:", f"{name} no longer has `edgeOffset`")
+    PICK = grab(OFFSET, r"barContent\.revealSpec = ([^;]+);",
+                f"{name}: edgeOffset no longer picks the spec from inside its own binding (2.9)").group(1)
+    RETURN = grab(OFFSET, r"return ([^;]+);", f"{name}: edgeOffset returns nothing").group(1)
 
-def autohide(enabled, hovering):
-    env = {"Config": NS(options=NS(bar=NS(autoHide=NS(enable=enabled)))),
-           "barRoot": NS(mustShow=hovering)}
-    revealed = eval(js(REVEALED), env)
-    env = {"barContent": NS(revealed=revealed), "Appearance": APPEARANCE}
-    return revealed, eval(js(PICK), env), eval(js(RETURN), env)
+    def autohide(enabled, hovering):
+        env = {"Config": NS(options=NS(bar=NS(autoHide=NS(enable=enabled)))),
+               "barRoot": NS(mustShow=hovering)}
+        revealed = eval(js(REVEALED), env)
+        env = {"barContent": NS(revealed=revealed), "Appearance": APPEARANCE}
+        return revealed, eval(js(PICK), env), eval(js(RETURN), env)
 
+    for hovering in (False, True):
+        revealed, picked, offset = autohide(False, hovering)
+        assert revealed and offset == 0, f"{name}: auto-hide off still parks the bar off its edge"
+        assert picked == "elementMoveEnter", f"{name}: a bar that never hides picked {picked}"
 
-for hovering in (False, True):
-    revealed, picked, offset = autohide(False, hovering)
-    assert revealed and offset == 0, "auto-hide off still parks the bar off its edge"
-    assert picked == "elementMoveEnter", f"a bar that never hides picked {picked}"
+    revealed, picked, offset = autohide(True, True)
+    assert revealed and offset == 0 and picked == "elementMoveEnter", \
+        f"{name} hovered: revealed={revealed} offset={offset} spec={picked} -- enter is the spatial spec"
 
-revealed, picked, offset = autohide(True, True)
-assert revealed and offset == 0 and picked == "elementMoveEnter", \
-    f"hovered: revealed={revealed} offset={offset} spec={picked} -- enter is the spatial spec"
+    revealed, picked, offset = autohide(True, False)
+    want = -getattr(APPEARANCE.sizes, thickness)
+    assert not revealed and offset == want, \
+        f"{name}: unhovered the bar sits at {offset}, not its own thickness ({want}) off its edge"
+    assert picked == "elementMoveExit", \
+        f"{name}: the bar leaves on {picked} -- 2.5 wants the accelerating exit, not the enter's curve"
 
-revealed, picked, offset = autohide(True, False)
-assert not revealed and offset == -APPEARANCE.sizes.barHeight, \
-    f"unhovered the bar sits at {offset}, not one bar height off its edge"
-assert picked == "elementMoveExit", \
-    f"the bar leaves on {picked} -- 2.5 wants the accelerating exit, not the enter's curve"
-
-for prop in ("anchors.topMargin", "anchors.bottomMargin"):
-    blk = block(bar, f"Behavior on {re.escape(prop)}", f"no Behavior on {prop}")
-    assert "revealSpec.duration" in blk and "revealSpec.bezierCurve" in blk, \
-        f"the Behavior on {prop} does not read revealSpec -- one of the two directions is fixed"
-    assert "alwaysRunToEnd: false" in blk, \
-        f"the Behavior on {prop} runs to the end -- a hover reversal cannot cut in (2.7)"
-assert "anchors.bottomMargin: barContent.edgeOffset" in bar, \
-    "the bottom-bar state no longer hides through edgeOffset, so it moves on its own terms"
+    for prop in margins:
+        blk = block(src, f"Behavior on {re.escape(prop)}", f"{name}: no Behavior on {prop}")
+        assert "revealSpec.duration" in blk and "revealSpec.bezierCurve" in blk, \
+            f"{name}: the Behavior on {prop} does not read revealSpec -- one of the two directions is fixed"
+        assert "alwaysRunToEnd: false" in blk, \
+            f"{name}: the Behavior on {prop} runs to the end -- a hover reversal cannot cut in (2.7)"
+    assert far_edge in src, \
+        f"{name}: the far-edge state no longer hides through edgeOffset, so it moves on its own terms"
 
 
 # --- 2. a widget collapsing out of the row ------------------------------------
@@ -224,5 +234,5 @@ assert "sizeSpec.duration" in anim and "sizeSpec.bezierCurve" in anim, \
 assert "alwaysRunToEnd: false" in anim, \
     "SizeAnim runs to the end -- a widget that comes back mid-collapse cannot cut in (2.7)"
 
-print(f"ok: the bar reveals on {ENTER_CURVE} in {ENTER_MS}ms and hides on {EXIT_CURVE} in "
+print(f"ok: both bars reveal on {ENTER_CURVE} in {ENTER_MS}ms and hide on {EXIT_CURVE} in "
       f"{EXIT_MS}ms, and a widget collapsing out of the row stays visible to do it")

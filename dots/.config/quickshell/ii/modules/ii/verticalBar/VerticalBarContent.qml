@@ -5,25 +5,14 @@ import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import qs.modules.ii.bar as Bar
 
 Item { // Bar content region
     id: root
 
     property var screen: root.QsWindow.window?.screen
-    property var brightnessMonitor: Brightness.getMonitorForScreen(screen)
     // Computed by VerticalBar.qml, which is where monitorIndex actually lives.
     required property bool showBarBackground
-
-    component HorizontalBarSeparator: Rectangle {
-        Layout.leftMargin: Appearance.sizes.baseBarHeight / 3
-        Layout.rightMargin: Appearance.sizes.baseBarHeight / 3
-        Layout.fillWidth: true
-        implicitHeight: 1
-        color: Appearance.colors.colOutlineVariant
-    }
-
 
     ////// Definning places of center modules //////
     property var fullModel: Config.options?.bar?.layouts?.center
@@ -52,18 +41,19 @@ Item { // Bar content region
         }
         z: -10 // making sure its behind everything
         color: root.showBarBackground ? Appearance.colors.colLayer0 : "transparent"
-        radius: Config.options.bar.cornerStyle === 1 ? Appearance.rounding.windowRounding : 0
+        radius: Config.options.bar.cornerStyle === 1 ? (Config.options.bar.cornerRadius ?? Appearance.rounding.windowRounding) : 0
         border.width: Config.options.bar.cornerStyle === 1 ? 1 : 0
         border.color: root.showBarBackground ? Appearance.colors.colLayer0Border : "transparent"
         Behavior on color {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
+        Behavior on border.color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
     }
 
     FocusedScrollMouseArea { // Top section | scroll to change brightness
         id: barTopSectionMouseArea
-        anchors.top: parent.top
-        
 
         anchors {
             top: parent.top
@@ -71,9 +61,6 @@ Item { // Bar content region
             left: parent.left
             right: parent.right
         }
-        implicitWidth: Appearance.sizes.baseVerticalBarWidth
-        height: (root.height - middleSection.height) / 2
-        width: Appearance.sizes.verticalBarWidth
 
         onScrollDown: Brightness.decreaseBrightness()
         onScrollUp: Brightness.increaseBrightness()
@@ -128,6 +115,7 @@ Item { // Bar content region
                 bottom: centerCenter.top
                 bottomMargin: 4
             }
+            spacing: 4
             Repeater {
                 id: middleLeftRepeater
                 model: root.leftList
@@ -146,6 +134,7 @@ Item { // Bar content region
                 horizontalCenter: parent.horizontalCenter
                 verticalCenter: parent.verticalCenter
             }
+            spacing: 4
             Repeater {
                 model: root.centerList
                 delegate: Bar.BarComponent {
@@ -163,6 +152,7 @@ Item { // Bar content region
                 top: centerCenter.bottom
                 topMargin: 4
             }
+            spacing: 4
             Repeater {
                 id: middleRightRepeater
                 model: root.rightList
@@ -217,8 +207,7 @@ Item { // Bar content region
             bottom: parent.bottom
             top: middleSection.bottom
         }
-        implicitWidth: Appearance.sizes.baseVerticalBarWidth
-        
+
         onScrollDown: Audio.decrementVolume();
         onScrollUp: Audio.incrementVolume();
         onMovedAway: GlobalStates.osdVolumeOpen = false;

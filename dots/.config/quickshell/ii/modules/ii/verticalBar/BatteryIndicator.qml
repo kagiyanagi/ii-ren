@@ -1,17 +1,12 @@
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.services
 import QtQuick
-import QtQuick.Layouts
 import qs.modules.ii.bar as Bar
 
+// CustomBatteryMeter reads Battery itself; the five re-exports that sat here
+// fed nothing, as in bar/BatteryIndicator.qml.
 MouseArea {
     id: root
-    readonly property var chargeState: Battery.chargeState
-    readonly property bool isCharging: Battery.isCharging
-    readonly property bool isPluggedIn: Battery.isPluggedIn
-    readonly property real percentage: Battery.percentage
-    readonly property bool isLow: percentage <= Config.options.battery.low / 100
 
     implicitWidth: batteryMeter.implicitWidth
     implicitHeight: batteryMeter.implicitHeight
