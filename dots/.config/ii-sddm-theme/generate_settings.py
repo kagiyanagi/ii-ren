@@ -104,6 +104,20 @@ def generate_qml_content(data: Dict[str, Any]) -> Tuple[str, int]:
     return "\n".join(lines), len(flat_data)
 
 
+def fold_lock_blur(data: Dict[str, Any]) -> None:
+    """
+    The greeter only reads lock.blur.enable, but the shell's lock screen also
+    blurs through background.effects.lock (or .desktop when synced). Fold that
+    in so SDDM blurs whenever the lock screen does.
+    """
+    effects = data.get("background", {}).get("effects", {})
+    group = effects.get("lock", {})
+    if group.get("sync"):
+        group = effects.get("desktop", {})
+    if group.get("blur", {}).get("enable"):
+        data.setdefault("lock", {}).setdefault("blur", {})["enable"] = True
+
+
 def main() -> None:
     """
     Main execution flow.
@@ -129,6 +143,7 @@ def main() -> None:
         sys.exit(1)
 
     # 4. Generate and write QML
+    fold_lock_blur(config_data)
     qml_content, property_count = generate_qml_content(config_data)
     
     try:

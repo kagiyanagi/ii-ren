@@ -79,4 +79,16 @@ live = Path.home() / ".config/illogical-impulse/config.json"
 if live.exists():
     sweep(gen.generate_qml_content(json.loads(live.read_text()))[0], str(live))
 
+# --- lock blur: the greeter blurs whenever the shell's lock screen does ---
+
+def folded(cfg):
+    gen.fold_lock_blur(cfg)
+    return cfg.get("lock", {}).get("blur", {}).get("enable", False)
+
+lock_fx = lambda on, sync=False: {"lock": {"sync": sync, "blur": {"enable": on}}, "desktop": {"blur": {"enable": not on}}}
+assert folded({"lock": {"blur": {"enable": False}}, "background": {"effects": lock_fx(True)}})
+assert not folded({"lock": {"blur": {"enable": False}}, "background": {"effects": lock_fx(False)}})
+assert folded({"background": {"effects": lock_fx(False, sync=True)}}), "sync reads the desktop group"
+assert folded({"lock": {"blur": {"enable": True}}}), "the legacy switch still works on its own"
+
 print("check-sddm-settings-gen: ok")
