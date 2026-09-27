@@ -10,7 +10,7 @@ ContentPage {
     readonly property int index: 3
     property bool register: parent.register ?? false
     forceWidth: true
-    
+
     // A video wallpaper is swapped by mpvpaper, which knows nothing about the
     // transition set here.
     readonly property bool wallpaperIsVideo: Wallpapers.isVideoFile((Config.options.background.wallpaperPath ?? "").toLowerCase())
@@ -26,7 +26,11 @@ ContentPage {
             buttonIcon: "unfold_more_double"
             text: Translation.tr("Vertical")
             checked: Config.options.background.parallax.vertical
+            // The handler fires while the switch is built too, and this one
+            // rewrites a Hyprland animation and reloads the compositor.
             onCheckedChanged: {
+                if (Config.options.background.parallax.vertical === checked)
+                    return;
                 HyprlandSettings.changeAnimation("workspaces", checked ? "slidevert" : "slide");
                 Config.options.background.parallax.vertical = checked;
             }
@@ -62,6 +66,12 @@ ContentPage {
                 Config.options.background.parallax.workspaceZoom = value / 100;
             }
         }
+    }
+
+    ContentSection {
+        icon: "wallpaper"
+        title: Translation.tr("Wallpaper")
+
         ConfigSwitch {
             buttonIcon: "masked_transitions"
             text: Translation.tr("Animate wallpaper changes")
@@ -70,10 +80,10 @@ ContentPage {
                 Config.options.background.animateWallpaperChanges = checked;
             }
         }
-        
+
         ContentSubsection {
             visible: Config.options.background.animateWallpaperChanges
-            title: Translation.tr("Wallpaper transition style")
+            title: Translation.tr("Transition")
 
             // Kept at full strength while the controls below it dim: a disabled
             // control that cannot say why it is disabled is its own kind of
@@ -90,10 +100,6 @@ ContentPage {
             StyledComboBox {
                 Layout.fillWidth: true
                 enabled: !page.wallpaperIsVideo
-                opacity: enabled ? 1 : 0.4
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
                 buttonIcon: "masked_transitions"
                 textRole: "displayName"
                 model: [
@@ -144,10 +150,6 @@ ContentPage {
 
             ConfigSpinBox {
                 enabled: !page.wallpaperIsVideo
-                opacity: enabled ? 1 : 0.4
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
                 Layout.fillWidth: true
                 icon: "timer"
                 text: Translation.tr("Transition duration (ms)")
@@ -163,10 +165,6 @@ ContentPage {
             ConfigSpinBox {
                 visible: Config.options.background.transitionType === "wipe" || Config.options.background.transitionType === "wave"
                 enabled: !page.wallpaperIsVideo
-                opacity: enabled ? 1 : 0.4
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
                 Layout.fillWidth: true
                 icon: "rotate_right"
                 text: Translation.tr("Wipe Angle (0° starts from left side)")
@@ -179,11 +177,6 @@ ContentPage {
                 }
             }
         }
-    }
-
-    ContentSection {
-        icon: "wallpaper"
-        title: Translation.tr("Wallpaper")
 
         ConfigSwitch {
             buttonIcon: "add_photo_alternate"
@@ -346,6 +339,9 @@ ContentPage {
                     Layout.rightMargin: 8
                 }
 
+                // Buttons, with every state and a mark on the one in use. They were
+                // bare circles over a MouseArea: no hover, no focus, no press, and
+                // nothing said which was picked.
                 Repeater {
                     model: [
                         { name: "colLayer0", col: Appearance.colors.colLayer0 },
@@ -356,20 +352,27 @@ ContentPage {
                         { name: "colTertiaryContainer", col: Appearance.colors.colTertiaryContainer }
                     ]
 
-                    delegate: Rectangle {
-                        width: 32
-                        height: 32
-                        radius: 16
-                        color: modelData.col
-                        border.color: Appearance.colors.colOutlineVariant
-                        border.width: 1
+                    delegate: RippleButton {
+                        id: swatch
+                        required property var modelData
+                        readonly property bool current: shapeSection.opt.backgroundColor === "@" + modelData.name
+                        implicitWidth: 32
+                        implicitHeight: 32
+                        buttonRadius: Appearance.rounding.full
+                        colBackground: modelData.col
+                        colBackgroundHover: modelData.col
+                        onClicked: shapeSection.opt.backgroundColor = "@" + modelData.name
 
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                shapeSection.opt.backgroundColor = "@" + modelData.name;
-                            }
+                        StyledToolTip {
+                            text: "@" + swatch.modelData.name
+                        }
+
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            visible: swatch.current
+                            text: "check"
+                            iconSize: Appearance.font.pixelSize.normal
+                            color: Appearance.colors.colOnLayer1
                         }
                     }
                 }
@@ -455,7 +458,7 @@ ContentPage {
         implicitHeight: 106
 
         contentItem: ColumnLayout {
-            spacing: 3
+            spacing: 4
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 implicitWidth: 116
@@ -499,11 +502,9 @@ ContentPage {
                 ? Config.options.background.shape.desktop.enable
                 : Config.options.background.shape.lock.enable)
 
+        // The controls dim themselves when disabled; dimming the section too
+        // multiplied them out to 0.16 (3.1).
         enabled: !depthSection.shapeConflict
-        opacity: enabled ? 1 : 0.4
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
 
         ConfigSwitch {
             visible: !depthSection.collapsed
@@ -904,7 +905,6 @@ ContentPage {
                 to: 100
                 value: weatherSection.opt.intensity
                 enabled: !weatherSection.opt.followWeather
-                opacity: enabled ? 1 : 0.4
                 onMoved: value => weatherSection.opt.intensity = Math.round(value)
             }
 
