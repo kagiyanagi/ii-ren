@@ -1,6 +1,7 @@
+pragma ComponentBehavior: Bound
 import qs.modules.common
+import qs.modules.waffle.looks
 import QtQuick
-import QtQuick.Controls.FluentWinUI3
 import QtQuick.Controls
 
 TextField {
@@ -10,10 +11,8 @@ TextField {
     renderType: Text.NativeRendering
     verticalAlignment: Text.AlignVCenter
     color: Looks.colors.fg
-
-    palette {
-        active: Looks.colors.accent
-    }
+    selectionColor: Looks.colors.selection
+    selectedTextColor: Looks.colors.selectionFg
 
     font {
         hintingPreference: Font.PreferDefaultHinting

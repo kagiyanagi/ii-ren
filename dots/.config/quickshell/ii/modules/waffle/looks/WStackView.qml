@@ -1,12 +1,14 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import qs.modules.common
 import qs.modules.waffle.looks
 
 StackView {
     id: root
-    property real moveDistance: 30
-    property int pushDuration: 200
-    property int fadeDuration: 80
+    property real moveDistance: 32
+    property int pushDuration: Appearance.animation.elementMoveFast.duration
+    property int fadeDuration: Appearance.animation.fadeFast.duration
     property list<real> bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     property list<real> fadeBezierCurve: Looks.transition.easing.bezierCurve.easeInOut
     clip: true

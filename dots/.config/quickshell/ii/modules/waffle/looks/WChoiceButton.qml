@@ -1,8 +1,7 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import qs
-import qs.services
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
@@ -16,7 +15,7 @@ WButton {
     Layout.fillWidth: true
     implicitWidth: contentItem.implicitWidth
     horizontalPadding: 10
-    verticalPadding: 11
+    verticalPadding: 12
     buttonSpacing: 8
 
     color: {
@@ -53,19 +52,19 @@ WButton {
             anchors.verticalCenter: parent.verticalCenter
             shown: root.checked
             sourceComponent: Rectangle {
-                implicitWidth: 3
-                implicitHeight: 3
+                implicitWidth: 4
+                implicitHeight: 4
                 radius: width / 2
                 color: Looks.colors.accent
                 property bool forceZeroHeight: true
-                height: forceZeroHeight ? 0 : Math.max(16, root.background.height - 18 * 2)
+                height: forceZeroHeight ? 0 : Math.max(16, root.background.height - 16 * 2)
                 Component.onCompleted: {
                     forceZeroHeight = false;
                 }
 
                 Behavior on height {
                     enabled: root.animateChoiceHighlight
-                    animation: Looks.transition.opacity.createObject(this)
+                    animation: Looks.transition.resize.createObject(this)
                 }
             }
         }

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -16,7 +17,7 @@ PopupToolTip {
         anchors.centerIn: parent
     }
 
-    property real visualMargin: 11
+    property real visualMargin: 12
     verticalPadding: 8
     horizontalPadding: 10
     verticalMargin: visualMargin

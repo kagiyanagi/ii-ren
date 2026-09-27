@@ -72,7 +72,7 @@ Slider {
     handle: Circle {
         id: handle
         anchors.verticalCenter: parent.verticalCenter
-        x: (diameter / 2) + root.visualPosition * (root.width - diameter) - (diameter / 2)
+        x: root.visualPosition * (root.width - diameter)
         diameter: 20
         color: Looks.colors.controlFg
 
@@ -98,7 +98,7 @@ Slider {
             extraVisibleCondition: root.pressed
             text: root.tooltipContent
             font.pixelSize: Looks.font.pixelSize.larger
-            verticalPadding: 3
+            verticalPadding: 4
             horizontalPadding: 8
         }
     }

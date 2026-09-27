@@ -1,12 +1,14 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.waffle.looks
 
 Item {
     id: root
 
-    property real padding: 9
+    property real padding: 8
     property alias colBackground: background.color
     property alias spacing: toolbarLayout.spacing
     property alias radius: background.radius
@@ -18,7 +20,7 @@ Item {
     Rectangle {
         id: background
         anchors.fill: parent
-        implicitHeight: 50
+        implicitHeight: 48
         implicitWidth: toolbarLayout.implicitWidth + root.padding * 2
         radius: Looks.radius.large
         color: Looks.colors.bg0Base

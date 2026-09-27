@@ -20,7 +20,7 @@ Menu {
     implicitWidth: background.implicitWidth + margins * 2
     implicitHeight: background.implicitHeight + margins * 2
     margins: 10
-    padding: 3
+    padding: 4
     property real sourceEdgeMargin: -implicitHeight
     clip: true
 
@@ -29,7 +29,7 @@ Menu {
             property: "sourceEdgeMargin"
             from: -root.implicitHeight
             to: root.margins
-            duration: 200
+            duration: Appearance.animation.elementMoveFast.duration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
         }
@@ -39,7 +39,7 @@ Menu {
             property: "sourceEdgeMargin"
             from: root.margins
             to: -root.implicitHeight
-            duration: 150
+            duration: Appearance.animation.elementMoveExit.duration
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
         }
@@ -92,7 +92,7 @@ Menu {
             implicitHeight: contentHeight
             implicitWidth: Array.from({
                 length: count
-            }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0).reduce((a, b) => a > b ? a : b)
+            }, (_, i) => itemAtIndex(i)?.implicitWidth ?? 0).reduce((a, b) => a > b ? a : b, 0)
 
             model: root.contentModel
         }

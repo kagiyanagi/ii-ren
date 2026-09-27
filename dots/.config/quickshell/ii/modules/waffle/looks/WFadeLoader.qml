@@ -1,5 +1,7 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.modules.common
+import qs.modules.waffle.looks
 
 // Yes, this is (mostly) a copy of FadeLoader.
 // The animation of a Behavior cannot be changed... I'd love to be proven wrong.

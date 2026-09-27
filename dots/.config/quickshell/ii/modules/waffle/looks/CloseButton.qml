@@ -1,18 +1,15 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
-import qs.services
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.waffle.looks
-import qs.modules.waffle.bar
-import Quickshell
 
 Button {
     id: reusableCloseButton
-    implicitHeight: 30
-    implicitWidth: 30
+    implicitHeight: 32
+    implicitWidth: 32
     property alias radius: closeButtonBg.radius
 
     Rectangle {

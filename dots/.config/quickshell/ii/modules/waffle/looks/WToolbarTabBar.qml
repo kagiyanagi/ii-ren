@@ -1,7 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.waffle.looks
 
 TabBar {
     id: root
@@ -34,20 +36,13 @@ TabBar {
                 anchors {
                     horizontalCenter: parent.horizontalCenter
                     bottom: parent.bottom
-                    bottomMargin: 1
+                    bottomMargin: 2
                 }
-                implicitWidth: pressDetector.containsPress ? 16 : 12
-                implicitHeight: 3
+                implicitWidth: (root.currentItem && root.currentItem["pressed"]) ? 16 : 12
+                implicitHeight: 4
                 radius: height / 2
                 color: Looks.colors.accent
             }
         }
-    }
-
-    MouseArea {
-        id: pressDetector
-        z: 9999
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
     }
 }

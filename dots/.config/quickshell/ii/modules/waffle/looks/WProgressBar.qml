@@ -43,7 +43,7 @@ ProgressBar {
             radius: root.implicitHeight / 2
             color: Looks.colors.accent
             implicitHeight: root.implicitHeight
-            width: background.width * root.value
+            width: background.width * root.visualPosition
         }
     }
 }

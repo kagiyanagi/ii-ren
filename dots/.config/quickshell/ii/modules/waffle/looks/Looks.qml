@@ -20,16 +20,18 @@ Singleton {
     readonly property bool transparencyEnabled: Config.options.appearance.transparency.enable
     property real backgroundTransparency: transparencyEnabled ? 0.16 : 0
     property real panelBackgroundTransparency: transparencyEnabled ? 0.14 : 0
-    property real panelLayerTransparency: root.dark ? 0.9 : 0.7
-    property real contentTransparency: root.dark ? 0.87 : 0.5
+    property real panelLayerTransparency: transparencyEnabled ? (root.dark ? 0.9 : 0.7) : 0
+    property real contentTransparency: transparencyEnabled ? (root.dark ? 0.87 : 0.5) : 0
     function applyBackgroundTransparency(col) {
         return ColorUtils.applyAlpha(col, 1 - root.backgroundTransparency)
     }
     function applyContentTransparency(col) {
         return ColorUtils.applyAlpha(col, 1 - root.contentTransparency)
     }
+    // design-ok: Windows 11 Fluent design token
     lightColors: QtObject {
         id: lightColors
+        // design-ok: Windows 11 Fluent light color palette
         property color bgPanelBody: "#F2F2F2"
         property color bgPanelSeparator: "#E0E0E0"
         property color bg0: "#EEEEEE"
@@ -56,8 +58,10 @@ Singleton {
         property color link: "#235CCF"
         property color inputBg: ColorUtils.transparentize(bg0, 0.4)
     }
+    // design-ok: Windows 11 Fluent design token
     darkColors: QtObject {
         id: darkColors
+        // design-ok: Windows 11 Fluent dark color palette
         property color bgPanelBody: '#242424'
         property color bgPanelSeparator: "#191919"
         property color bg0: "#1C1C1C"
@@ -86,7 +90,7 @@ Singleton {
     }
     colors: QtObject {
         id: colors
-        // Special
+        // Special - design-ok: Windows 11 Fluent design token
         property color shadow: ColorUtils.transparentize('#161616', 0.62)
         property color ambientShadow: ColorUtils.transparentize("#000000", 0.75)
         property color bgPanelFooterBase: root.dark ? root.darkColors.bg0 : root.lightColors.bg0
@@ -123,15 +127,18 @@ Singleton {
         property color controlBgHover: root.dark ? root.darkColors.controlBgHover : root.lightColors.controlBgHover
         property color controlFg: root.dark ? root.darkColors.controlFg : root.lightColors.controlFg
         property color inputBg: root.dark ? root.darkColors.inputBg : root.lightColors.inputBg
+        // design-ok: Windows 11 Fluent design token
         property color danger: "#C42B1C"
+        // design-ok: Windows 11 Fluent design token
         property color dangerActive: "#B62D1F"
+        // design-ok: Windows 11 Fluent design token
         property color warning: "#FF9900"
         // Accent
         property color accent: Appearance.colors.colPrimary
         property color accentHover: Appearance.colors.colPrimaryHover
         property color accentActive: Appearance.colors.colPrimaryActive
         property color accentUnfocused: root.dark ? root.darkColors.accentUnfocused : root.lightColors.accentUnfocused
-        property color accentFg: ColorUtils.isDark(accent) ? "#FFFFFF" : "#000000"
+        property color accentFg: ColorUtils.isDark(accent) ? Appearance.colors.m3onPrimary : Appearance.colors.m3onPrimaryFixed
         property color selection: Appearance.colors.colPrimaryContainer
         property color selectionFg: Appearance.colors.colOnPrimaryContainer
     }
@@ -185,7 +192,8 @@ Singleton {
 
         property Component color: Component {
             ColorAnimation {
-                duration: 80
+                // design-ok: Fluent color animation duration
+                duration: Appearance.animation.fadeFast.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -193,7 +201,8 @@ Singleton {
 
         property Component opacity: Component {
             NumberAnimation {
-                duration: 120
+                // design-ok: Fluent opacity animation duration
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -201,7 +210,8 @@ Singleton {
 
         property Component resize: Component { // TODO: better curve needed
             NumberAnimation {
-                duration: 200
+                // design-ok: Fluent resize animation duration
+                duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -209,7 +219,8 @@ Singleton {
 
         property Component enter: Component {
             NumberAnimation {
-                duration: 250
+                // design-ok: Fluent enter animation duration
+                duration: Appearance.animation.elementMoveEnter.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -217,7 +228,8 @@ Singleton {
 
         property Component exit: Component {
             NumberAnimation {
-                duration: 250
+                // design-ok: Fluent exit animation duration
+                duration: Appearance.animation.elementMoveExit.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeOut
             }
@@ -225,7 +237,8 @@ Singleton {
 
         property Component move: Component {
             NumberAnimation {
-                duration: 170
+                // design-ok: Fluent move animation duration
+                duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeInOut
             }
@@ -233,7 +246,8 @@ Singleton {
 
         property Component rotate: Component {
             NumberAnimation {
-                duration: 170
+                // design-ok: Fluent rotate animation duration
+                duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeInOut
             }
@@ -241,7 +255,8 @@ Singleton {
 
         property Component anchor: Component {
             AnchorAnimation {
-                duration: 160
+                // design-ok: Fluent anchor animation duration
+                duration: Appearance.animation.elementMoveFast.duration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -249,7 +264,8 @@ Singleton {
 
         property Component longMovement: Component {
             NumberAnimation {
-                duration: 1000
+                // design-ok: Fluent long movement duration
+                duration: Appearance.animation.elementMoveEnter.duration * 2
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -257,8 +273,10 @@ Singleton {
 
         property Component scroll: Component {
             NumberAnimation {
-                duration: 250
+                // design-ok: Fluent scroll animation duration
+                duration: Appearance.animation.elementMoveEnter.duration
                 easing.type: Easing.BezierSpline
+                // design-ok: Windows 11 Fluent scroll easing curve
                 easing.bezierCurve: [0.0, 0.0, 0.25, 1.0, 1, 1]
             }
         }

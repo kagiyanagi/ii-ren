@@ -1,8 +1,10 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.waffle.looks
 
 ScrollBar {
     id: root
@@ -14,7 +16,7 @@ ScrollBar {
     contentItem: Rectangle {
         implicitWidth: root.active ? 4 : 2
         implicitHeight: root.visualSize
-        radius: 9999
+        radius: Appearance.rounding.full
         color: root.color
         
         opacity: root.policy === ScrollBar.AlwaysOn || (root.active && root.size < 1.0) ? 0.5 : 0

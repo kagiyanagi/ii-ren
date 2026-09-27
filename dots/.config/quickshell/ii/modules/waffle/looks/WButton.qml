@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,6 +10,7 @@ import qs.modules.waffle.looks
 Button {
     id: root
 
+    property real iconLeftMargin: 0
     property color colBackground: ColorUtils.transparentize(Looks.colors.bg1)
     property color colBackgroundHover: Looks.colors.bg2Hover
     property color colBackgroundActive: Looks.colors.bg2Active

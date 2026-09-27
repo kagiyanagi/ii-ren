@@ -11,17 +11,28 @@ import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.modules.waffle.looks
 
-StyledImage {
-    id: avatar
-    Layout.alignment: Qt.AlignTop
-    sourceSize: Qt.size(32, 32)
-    source: Directories.userAvatarPathAccountsService
-    fallbacks: [Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
+Item {
+    id: root
 
-    layer.enabled: true
-    layer.effect: OpacityMask {
-        maskSource: Circle {
-            diameter: avatar.height
+    property alias source: avatar.source
+    property alias fallbacks: avatar.fallbacks
+    property alias sourceSize: avatar.sourceSize
+
+    implicitWidth: 32
+    implicitHeight: 32
+
+    StyledImage {
+        id: avatar
+        anchors.fill: parent
+        sourceSize: root.sourceSize
+        source: Directories.userAvatarPathAccountsService
+        fallbacks: [Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
+
+        layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Circle {
+                diameter: Math.min(avatar.width, avatar.height)
+            }
         }
     }
 }

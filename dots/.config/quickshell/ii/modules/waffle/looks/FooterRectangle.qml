@@ -1,10 +1,7 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
-import Quickshell
-import qs
-import qs.services
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.waffle.looks
 
 Rectangle {
@@ -12,6 +9,6 @@ Rectangle {
     Layout.fillWidth: true
     color: "transparent"
 
-    implicitWidth: 358
-    implicitHeight: 47
+    implicitWidth: 360
+    implicitHeight: 48
 }

@@ -15,7 +15,7 @@ Item {
 
     required property Item contentItem
     property real visualMargin: 12
-    property int closeAnimDuration: 150
+    property int closeAnimDuration: Appearance.animation.elementMoveExit.duration
     property bool revealFromSides: false
     property bool revealFromLeft: true
 
@@ -31,7 +31,7 @@ Item {
     focus: true
     Keys.onPressed: event => { // Esc to close
         if (event.key === Qt.Key_Escape) {
-            content.close();
+            root.close();
         }
     }
 
@@ -85,7 +85,7 @@ Item {
     component OpenAnim: PropertyAnimation {
         target: panelContent
         to: root.visualMargin
-        duration: 200
+        duration: Appearance.animation.elementMoveFast.duration
         easing.type: Easing.BezierSpline
         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     }

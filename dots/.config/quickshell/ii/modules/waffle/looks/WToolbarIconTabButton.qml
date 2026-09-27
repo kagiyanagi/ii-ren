@@ -1,11 +1,13 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.modules.common
+import qs.modules.waffle.looks
 
 TabButton {
     id: root
 
-    implicitWidth: 38
+    implicitWidth: 36
     implicitHeight: 32
     padding: 0
 

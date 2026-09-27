@@ -1,7 +1,8 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import QtQuick.Effects
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.waffle.looks
 
 Item {
     default property Item contentItem

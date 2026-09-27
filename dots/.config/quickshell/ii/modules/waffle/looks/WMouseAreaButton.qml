@@ -1,5 +1,5 @@
+pragma ComponentBehavior: Bound
 import QtQuick
-import qs
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.waffle.looks

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -10,8 +11,8 @@ Switch {
     implicitWidth: 40
     implicitHeight: 20
     property real indicatorHeight: 12
-    property real indicatorPressedHeight: 14
-    property real indicatorPressedWidth: 17
+    property real indicatorPressedHeight: 12
+    property real indicatorPressedWidth: 16
     property color checkedColor: Looks.colors.accent
     property color uncheckedColor: Looks.colors.bg1
     property color borderColor: Looks.colors.controlBgInactive
@@ -46,7 +47,7 @@ Switch {
             if (root.checked) {
                 return 24 - (root.pressed || root.down ? root.indicatorPressedWidthDiff : 0);
             } else {
-                return (root.pressed || root.down) ? 3 : 4;
+                return 4;
             }
         }
 

@@ -1,7 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import org.kde.kirigami as Kirigami
 import qs.services
 import qs.modules.common
+import qs.modules.waffle.looks
 
 Kirigami.Icon {
     id: root
@@ -9,7 +11,7 @@ Kirigami.Icon {
     property bool separateLightDark: false
     property bool tryCustomIcon: true
     
-    property real implicitSize: 26
+    property real implicitSize: 28
     implicitWidth: implicitSize
     implicitHeight: implicitSize
 

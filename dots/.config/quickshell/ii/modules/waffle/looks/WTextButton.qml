@@ -5,7 +5,7 @@ import qs.modules.waffle.looks
 WButton {
     id: root
     implicitHeight: 40
-    implicitWidth: contentItem.implicitWidth + 30
+    implicitWidth: contentItem.implicitWidth + 32
     color: "transparent"
 
     contentItem: Item {

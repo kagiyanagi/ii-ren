@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -40,6 +41,8 @@ Singleton {
     property string hotspotIcon: Network.hotspotToggled ? "wifi-4" : "wifi-off"
 
     property string batteryIcon: {
+        if (!Battery.available)
+            return "battery-0";
         if (Battery.isCharging)
             return "battery-charge";
         if (Battery.isCriticalAndNotCharging)
@@ -50,6 +53,8 @@ Singleton {
     }
 
     property string batteryLevelIcon: {
+        if (!Battery.available || Battery.percentage === undefined)
+            return "battery-0";
         const discreteLevel = Math.ceil(Battery.percentage * 10);
         return `battery-${discreteLevel > 9 ? "full" : discreteLevel}`;
     }
@@ -85,6 +90,8 @@ Singleton {
             return "flash-on";
         case PowerProfile.Performance:
             return "fire";
+        default:
+            return "flash-on";
         }
     }
 

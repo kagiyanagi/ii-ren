@@ -54,7 +54,7 @@ MenuItem {
     bottomInset: inset
     leftInset: inset
     rightInset: inset
-    horizontalPadding: 11
+    horizontalPadding: 12
 
     width: ListView.view?.width
     height: visible ? implicitHeight : 0
@@ -108,12 +108,12 @@ MenuItem {
             }
             shown: root.checked
             sourceComponent: Rectangle {
-                implicitWidth: 3
-                implicitHeight: 3
+                implicitWidth: 4
+                implicitHeight: 4
                 radius: width / 2
                 color: Looks.colors.accent
                 property bool forceZeroHeight: true
-                height: forceZeroHeight ? 0 : Math.max(root.down ? 10 : 16, root.background.height - 18 * 2)
+                height: forceZeroHeight ? 0 : Math.max(root.down ? 10 : 16, root.background.height - 16 * 2)
                 Component.onCompleted: {
                     forceZeroHeight = false;
                 }

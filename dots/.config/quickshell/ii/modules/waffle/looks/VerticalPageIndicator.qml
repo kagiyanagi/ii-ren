@@ -58,7 +58,7 @@ Column {
         required property bool down
         anchors.horizontalCenter: parent.horizontalCenter
         implicitHeight: 12
-        implicitWidth: 12 - (2 * upArea.containsPress)
+        implicitWidth: 12 - (2 * (upArea.pressed ? 1 : 0))
         icon: down ? "caret-down" : "caret-up"
         color: upArea.containsMouse ? Looks.colors.controlBgHover : Looks.colors.controlBg
         filled: true
