@@ -7,13 +7,13 @@
         "fakeScreenRounding": 2,
         "fonts": {
             "enableCustom": false,
-            "expressive": "Space Grotesk",
+            "expressive": "Google Sans Flex",
             "iconNerd": "JetBrains Mono NF",
-            "main": "Space Grotesk",
+            "main": "Google Sans Flex",
             "monospace": "JetBrains Mono NF",
-            "numbers": "Space Grotesk",
+            "numbers": "Google Sans Flex",
             "reading": "Readex Pro",
-            "title": "Space Grotesk"
+            "title": "Google Sans Flex"
         },
         "icons": {
             "autoSwitchWithDarkMode": true,
@@ -313,7 +313,7 @@
                 "placementStrategy": "free",
                 "quote": {
                     "enable": true,
-                    "text": "क्षमावत् सर्वेषां कार्यसिद्धिभवति"
+                    "text": "Believe in the me that believes in you.""
                 },
                 "showOnlyWhenLocked": false,
                 "style": "cookie",
@@ -337,7 +337,7 @@
                 "minuteHandStyle": "medium",
                 "placementStrategy": "free",
                 "quoteEnable": true,
-                "quoteText": "क्षमावत् सर्वेषां कार्यसिद्धिभवति",
+                "quoteText": "Believe in the me that believes in you."",
                 "secondHandStyle": "dot",
                 "sides": 14,
                 "timeIndicators": true,
@@ -1215,18 +1215,13 @@
             "org.kde.dolphin",
             "kitty",
             "zen",
-            "antigravity",
             "org.kde.kate",
             "dev.zed.zed",
-            "beeper",
-            "com.ayugram.desktop",
-            "tor browser",
-            "in.gxanshu.postcard",
+            "com.telegram.desktop",
             "com.obsproject.studio",
             "md.obsidian.obsidian",
             "bitwarden",
             "org.kde.discover",
-            "helium",
             "io.bassi.Amberol"
         ],
         "pinnedFiles": [
