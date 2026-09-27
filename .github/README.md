@@ -126,7 +126,7 @@ extension ecosystem and the Discord channel — **go to [ii-vynx](https://github
 One command, on a fresh machine, no prompts:
 
 ```bash
-git clone https://github.com/kagiyanagi/ii-ren.git --recurse-submodules && cd ii-ren && ./setup-ii-ren.sh --fresh
+git clone https://github.com/kagiyanagi/ii-ren.git && cd ii-ren && ./setup-ii-ren.sh --fresh
 ```
 
 `--fresh` installs the base illogical-impulse dependencies and dots first, then this

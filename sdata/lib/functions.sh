@@ -175,13 +175,6 @@ function showhelp_if_asked(){
   done
 }
 
-function auto_update_git_submodule(){
-  if git submodule status --recursive | grep -E '^[+-U]';then
-    # Note: `git pull --recurse-submodules` cannot substitute `git submodule update --init --recursive` cuz it does not init a submodule when needed.
-    x git submodule update --init --recursive
-  fi
-}
-
 function backup_clashing_targets(){
   # For non-recursive dirs/files under target_dir, only backup those which clashes with the ones under source_dir
   # However, ignore the ones listed in ignored_list

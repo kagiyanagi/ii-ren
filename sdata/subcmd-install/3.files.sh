@@ -178,9 +178,6 @@ case "${INSTALL_FIRSTRUN}" in
 esac
 
 
-showfun auto_update_git_submodule
-v auto_update_git_submodule
-
 # Backup
 if [[ ! "${SKIP_BACKUP}" == true ]]; then auto_backup_configs; fi
 

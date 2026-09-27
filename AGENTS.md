@@ -691,7 +691,7 @@ The details of the implementation of the extension system is in
 
 ## Git Setup
 
-- **Must clone with `--recurse-submodules`** — submodule at `modules/common/widgets/shapes` (rounded-polygon-qmljs)
+- `modules/common/widgets/shapes` is end-4/rounded-polygon-qmljs **vendored** (was a submodule); update it by copying upstream over it
 - `.qmlls.ini` is gitignored — agents must create it manually for LSP
 
 ## Design law — applies to every change, unasked

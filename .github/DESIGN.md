@@ -468,8 +468,8 @@ M3 Expressive signature and it is worth using on toggles and tabs.
 
 ### 4.4 Beyond rounded rectangles
 
-`MaterialShape`, `MaterialShapeWrappedMaterialSymbol` and the `shapes`
-submodule (rounded-polygon-qmljs) cover cookie/clover/pill shapes, and
+`MaterialShape`, `MaterialShapeWrappedMaterialSymbol` and the vendored `shapes`
+library (rounded-polygon-qmljs) cover cookie/clover/pill shapes, and
 `MaterialCookie`/`SineCookie` are the ready-made ones. Use them for decorative
 containers — loading indicators, avatar frames, expressive badges — not for
 anything the user has to read text out of.
