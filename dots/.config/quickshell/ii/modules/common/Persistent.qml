@@ -63,6 +63,8 @@ Singleton {
                 // model never overwrites what the hermes CLI starts on.
                 property string model: ""
                 property string provider: ""
+                // A connection id from the Hermes desktop app's connections.json.
+                property string gateway: "local"
             }
 
             property JsonObject water: JsonObject {

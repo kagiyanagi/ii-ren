@@ -11,6 +11,21 @@
 
 set -euo pipefail
 
+# A remote gateway (HERMES_GATEWAY_SSH=user@host, from the desktop app's
+# connections.json) is this same script run on that host: stdio JSON-RPC goes over
+# ssh unchanged, and the remote HERMES_HOME brings its own sessions, memory and
+# personality. The script is sent as the command, so nothing has to be installed
+# there but hermes-agent. BatchMode: there is no terminal to type a password into,
+# and a prompt would hang the sidebar on "Starting".
+# ponytail: assumes the remote login shell is bash ($'...' quoting from %q).
+if [[ -n ${HERMES_GATEWAY_SSH:-} ]]; then
+    key="${HERMES_GATEWAY_SSH_KEY:-}"
+    key="${key/#\~/$HOME}"
+    ssh_args=(-T -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+    [[ -n $key ]] && ssh_args+=(-i "$key")
+    exec ssh "${ssh_args[@]}" -- "$HERMES_GATEWAY_SSH" "bash -c $(printf '%q' "$(<"$0")") gateway.sh"
+fi
+
 # The sidebar's toolsets: the configured `platform_toolsets.cli` list minus
 # computer_use, which cannot work on this machine. cua-driver drives X11 only
 # (XSendEvent + AT-SPI); under Hyprland its window discovery returns an empty
@@ -32,6 +47,14 @@ if [[ ! -d $agent_dir ]]; then
     echo "hermes-agent not found at $agent_dir" >&2
     exit 127
 fi
+
+# The checkout is only where the interpreter has to start (see the cd below), not
+# the user's workspace. Left to os.getcwd(), a newer agent reads its own source
+# tree as the project: the coding posture ("You are a coding agent pairing with the
+# user inside their codebase") and the checkout's AGENTS.md go in after SOUL.md,
+# and a 66k-character prompt buried the persona -- the Pi answered as a generic
+# coding assistant. TERMINAL_CWD is what both the terminal tool and that detection read.
+export TERMINAL_CWD="${TERMINAL_CWD:-$HOME}"
 
 # Prefer the agent's own venv; fall back to uv, then a bare python3 that can at
 # least produce a real import error instead of a silent exit.

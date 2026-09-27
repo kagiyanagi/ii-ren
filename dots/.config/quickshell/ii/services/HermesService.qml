@@ -53,6 +53,69 @@ Singleton {
     property int consecutiveFailures: 0
     readonly property int maxRestarts: 3
 
+    // ── Gateway ──────────────────────────────────────────────────────────
+    //
+    // Which Hermes install the sidebar drives. The list is the desktop app's own,
+    // so a host added there shows up here. Only local and ssh gateways: the stdio
+    // transport this uses goes over ssh as-is, and the remote's HERMES_HOME brings
+    // its own sessions, memory and personality with it.
+    property var gateways: [{ id: "local", kind: "local", label: Translation.tr("This device") }]
+    readonly property var gateway: root.gateways.find(g => g.id === (Persistent.states?.hermes?.gateway ?? "local")) ?? root.gateways[0]
+    readonly property bool remote: root.gateway.kind === "ssh"
+    property bool _switchingGateway: false
+
+    function setGateway(id: string): void {
+        if (id === root.gateway.id)
+            return;
+        Persistent.states.hermes.gateway = id;
+        if (root.busy)
+            root.interrupt();
+        root.clearMessages();
+        root.sessionTitle = "";
+        root.usage = null;
+        root.recentSessions = [];
+        root.sideTasks = [];
+        root.subagents = [];
+        root.currentModel = "";
+        root.currentProvider = "";
+        root.approvalMode = "";
+        root.missing = false;
+        root.lastError = "";
+        root.consecutiveFailures = 0;
+        restartTimer.stop();
+        // The old process has to be gone before the new one starts; onExited
+        // picks the switch up rather than counting it as a crash.
+        if (gatewayProc.running) {
+            root._switchingGateway = true;
+            gatewayProc.running = false;
+        } else if (root.enabled) {
+            root.ensureStarted();
+        }
+    }
+
+    FileView {
+        path: FileUtils.trimFileProtocol(`${Directories.config}/Hermes/connections.json`)
+        watchChanges: true
+        onFileChanged: reload()
+        // Read before the lazy start can pick a gateway off the fallback list.
+        blockLoading: true
+        onLoaded: {
+            try {
+                const listed = (JSON.parse(text()).connections ?? []).filter(c => c.kind === "ssh" && c.host).map(c => ({
+                    id: c.id,
+                    kind: "ssh",
+                    label: c.label || c.host,
+                    host: c.host,
+                    user: c.user ?? "",
+                    keyPath: c.keyPath ?? ""
+                }));
+                root.gateways = [root.gateways[0], ...listed];
+            } catch (e) {
+                console.log("[Hermes] could not read the desktop app's gateways:", e);
+            }
+        }
+    }
+
     // ── Session ──────────────────────────────────────────────────────────
 
     property string sessionId: ""
@@ -1452,8 +1515,12 @@ Singleton {
     function setModel(model: string, providerSlug: string, feedback = true): void {
         if ((model ?? "").length === 0)
             return;
-        Persistent.states.hermes.model = model;
-        Persistent.states.hermes.provider = providerSlug ?? "";
+        // A remote gateway keeps its own default: the remembered pick is this
+        // machine's, and the remote may not even have the provider.
+        if (!root.remote) {
+            Persistent.states.hermes.model = model;
+            Persistent.states.hermes.provider = providerSlug ?? "";
+        }
 
         const parts = [`/model ${model}`];
         if ((providerSlug ?? "").length > 0)
@@ -1478,7 +1545,7 @@ Singleton {
     /** Re-apply the remembered pick to a newly created session. */
     function applyPreferredModel(): void {
         const model = Persistent.states?.hermes?.model ?? "";
-        if (model.length === 0 || model === root.currentModel)
+        if (root.remote || model.length === 0 || model === root.currentModel)
             return;
         root.setModel(model, Persistent.states.hermes.provider ?? "", false);
     }
@@ -2469,6 +2536,12 @@ Singleton {
         running: false
         stdinEnabled: true
         command: [root.gatewayScript]
+        // Read at start, so a switch only lands on the next launch -- setGateway
+        // restarts the process for exactly that.
+        environment: ({
+            HERMES_GATEWAY_SSH: root.remote ? (root.gateway.user ? `${root.gateway.user}@` : "") + root.gateway.host : null,
+            HERMES_GATEWAY_SSH_KEY: root.remote ? root.gateway.keyPath : null
+        })
 
         stdout: SplitParser {
             onRead: line => {
@@ -2496,7 +2569,9 @@ Singleton {
                     root.lastError = text;
                     return;
                 }
-                if (text.startsWith("[gateway-crash]"))
+                // ssh's own complaints (unreachable host, refused key) are the only
+                // account of why a remote gateway never came up.
+                if (text.startsWith("[gateway-crash]") || text.startsWith("ssh:") || text.includes("Permission denied"))
                     root.lastError = text;
                 console.log("[Hermes]", text);
             }
@@ -2514,6 +2589,13 @@ Singleton {
             root.pendingClarify = null;
             root.speakingMessageId = "";
             root._pendingCalls = ({});
+
+            if (root._switchingGateway) {
+                root._switchingGateway = false;
+                if (root.enabled)
+                    root.ensureStarted();
+                return;
+            }
 
             if (root.missing || exitCode === 127) {
                 root.missing = true;

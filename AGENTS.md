@@ -143,6 +143,12 @@ you touched; they are the only automated gate.
   grim actually wrote rather than an assumed 1:1, and the refusal to read a window that is
   not on screen — grim captures the screen, so reading a window parked on another workspace
   returns whatever is displayed at those coordinates and the click lands there
+- `python3 tools/check-hermes-gateway.py` — a remote Hermes gateway (an ssh host from the
+  desktop app's `~/.config/Hermes/connections.json`, picked from the sidebar's cloud pill)
+  is `scripts/hermes/gateway.sh` shipping itself over ssh as a `printf %q`-quoted command.
+  A quoting slip fails with no clear symptom, so this runs the launcher against a fake `ssh`
+  and asserts the far side takes the local branch: a missing install there still exits 127,
+  which the sidebar reads as "not installed on that gateway"
 - `python3 tools/check-sddm-settings-gen.py` — the SDDM theme's `Settings.qml` generator
   cannot emit a type QML refuses. Every type in the greeter resolves through that singleton,
   so one bad declaration makes all of them unavailable and SDDM falls back to its embedded

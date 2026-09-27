@@ -451,19 +451,9 @@ Item {
                         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                     }
 
-                    StatusItem {
-                        icon: HermesService.ready ? "cloud_done" : HermesService.missing ? "cloud_off" : "cloud_sync"
-                        statusText: ""
-                        description: HermesService.missing ? Translation.tr("hermes-agent is not installed") : HermesService.ready ? Translation.tr("Connected to the Hermes agent") : Translation.tr("Starting the Hermes agent…")
-                    }
+                    HermesGatewayMenu {}
                     HermesApprovalModeMenu {
                         visible: HermesService.approvalMode.length > 0
-                    }
-                    StatusItem {
-                        visible: (HermesService.usage?.total ?? 0) > 0
-                        icon: "token"
-                        statusText: HermesService.usage?.total ?? 0
-                        description: Translation.tr("Tokens this session\nInput: %1\nOutput: %2").arg(HermesService.usage?.input ?? 0).arg(HermesService.usage?.output ?? 0)
                     }
                 }
 
@@ -591,7 +581,7 @@ Item {
                 rotateIconWithShape: true
                 shown: HermesService.messageIDs.length === 0
                 description: HermesService.missing
-                    ? Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab")
+                    ? (HermesService.remote ? Translation.tr("hermes-agent was not found in ~/.hermes on %1\nInstall it there, or pick another gateway above").arg(HermesService.gateway.label) : Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab"))
                     : Translation.tr("Ask anything, or type %1 for commands\nStart a line with ! to run a shell command, or write @window to mean the window you were just in").arg(root.commandPrefix)
                 // Under a centred title. The send keys live in the send button's tooltip.
                 descriptionHorizontalAlignment: Text.AlignHCenter
