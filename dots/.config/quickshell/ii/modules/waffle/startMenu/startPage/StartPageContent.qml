@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs
 import qs.services
@@ -27,7 +26,7 @@ WPanelPageColumn {
     }
 
     component StartFooter: FooterRectangle {
-        implicitHeight: 63
+        implicitHeight: 64
 
         StartUserButton {
             anchors {
@@ -63,7 +62,7 @@ WPanelPageColumn {
 
         WToolTip {
             extraVisibleCondition: !powerMenu.visible
-            text: qsTr("Power")
+            text: Translation.tr("Power")
         }
 
         onClicked: {
@@ -72,27 +71,39 @@ WPanelPageColumn {
 
         WMenu {
             id: powerMenu
-            x: -powerMenu.implicitWidth / 2 + powerButton.implicitWidth / 2
+            x: Math.round(-powerMenu.implicitWidth / 2 + powerButton.implicitWidth / 2)
             y: -powerMenu.implicitHeight - 4
             Action {
                 icon.name: "lock-closed"
                 text: Translation.tr("Lock")
-                onTriggered: Session.lock()
+                onTriggered: {
+                    GlobalStates.searchOpen = false;
+                    Session.lock();
+                }
             }
             Action {
                 icon.name: "weather-moon"
                 text: Translation.tr("Sleep")
-                onTriggered: Session.suspend()
+                onTriggered: {
+                    GlobalStates.searchOpen = false;
+                    Session.suspend();
+                }
             }
             Action {
                 icon.name: "power"
                 text: Translation.tr("Shut down")
-                onTriggered: Session.poweroff()
+                onTriggered: {
+                    GlobalStates.searchOpen = false;
+                    Session.poweroff();
+                }
             }
             Action {
                 icon.name: "arrow-counterclockwise"
                 text: Translation.tr("Restart")
-                onTriggered: Session.reboot()
+                onTriggered: {
+                    GlobalStates.searchOpen = false;
+                    Session.reboot();
+                }
             }
         }
     }

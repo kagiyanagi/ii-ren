@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs
 import qs.services
@@ -27,10 +26,10 @@ GridLayout {
         delegate: StartAppButton {
             id: pinnedAppButton
             required property var modelData
-            desktopEntry: modelData
+            desktopEntry: modelData as DesktopEntry
             onClicked: {
                 GlobalStates.searchOpen = false;
-                desktopEntry?.execute();
+                desktopEntry?.execute?.();
             }
         }
     }

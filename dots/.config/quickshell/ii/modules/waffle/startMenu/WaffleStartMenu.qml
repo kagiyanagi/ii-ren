@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -16,59 +17,80 @@ Scope {
 
         function onSearchOpenChanged() {
             if (GlobalStates.searchOpen) {
+                panelLoader.active = true;
                 LauncherSearch.query = "";
-            } else {
-                content.close();
+            }
+        }
+
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked && GlobalStates.searchOpen) {
+                GlobalStates.searchOpen = false;
             }
         }
     }
 
-    PanelWindow {
-        id: panelWindow
-        visible: GlobalStates.searchOpen
-        exclusiveZone: 0
-        WlrLayershell.namespace: "quickshell:wStartMenu"
-        WlrLayershell.keyboardFocus: GlobalStates.searchOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        color: "transparent"
+    Loader {
+        id: panelLoader
+        active: false
+        sourceComponent: PanelWindow {
+            id: panelWindow
+            exclusiveZone: 0
+            WlrLayershell.namespace: "quickshell:wStartMenu"
+            WlrLayershell.keyboardFocus: GlobalStates.searchOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            color: "transparent"
 
-        anchors {
-            bottom: Config.options.waffles.bar.bottom
-            top: !Config.options.waffles.bar.bottom
-            left: Config.options.waffles.bar.leftAlignApps
-        }
+            anchors {
+                bottom: Config.options.waffles.bar.bottom
+                top: !Config.options.waffles.bar.bottom
+                left: Config.options.waffles.bar.leftAlignApps
+            }
 
-        implicitWidth: content.implicitWidth
-        implicitHeight: content.implicitHeight
+            implicitWidth: content.implicitWidth
+            implicitHeight: content.implicitHeight
 
-        HyprlandFocusGrab {
-            id: focusGrab
-            active: GlobalStates.searchOpen
-            windows: [panelWindow]
-            onCleared: content.close()
-        }
+            HyprlandFocusGrab {
+                id: focusGrab
+                active: GlobalStates.searchOpen && !GlobalStates.screenLocked
+                windows: [panelWindow]
+                onCleared: content.close()
+            }
 
-        StartMenuContent {
-            id: content
-            anchors.fill: parent
-            focus: true
+            Connections {
+                target: GlobalStates
+                function onSearchOpenChanged() {
+                    if (!GlobalStates.searchOpen) content.close();
+                }
+            }
 
-            onClosed: {
-                GlobalStates.searchOpen = false;
-                LauncherSearch.query = "";
+            StartMenuContent {
+                id: content
+                anchors.fill: parent
+                focus: true
+
+                onClosed: {
+                    GlobalStates.searchOpen = false;
+                    panelLoader.active = false;
+                    LauncherSearch.query = "";
+                }
             }
         }
     }
 
     function toggleClipboard() {
-        if (LauncherSearch.query.startsWith(Config.options.search.prefix.clipboard) || !GlobalStates.searchOpen) {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+        if (GlobalStates.searchOpen && LauncherSearch.query.startsWith(Config.options.search.prefix.clipboard)) {
+            GlobalStates.searchOpen = false;
+            return;
         }
+        GlobalStates.searchOpen = true;
         LauncherSearch.ensurePrefix(Config.options.search.prefix.clipboard);
     }
+
     function toggleEmojis() {
-        if (LauncherSearch.query.startsWith(Config.options.search.prefix.emojis) || !GlobalStates.searchOpen) {
-            GlobalStates.searchOpen = !GlobalStates.searchOpen;
+        if (GlobalStates.searchOpen && LauncherSearch.query.startsWith(Config.options.search.prefix.emojis)) {
+            GlobalStates.searchOpen = false;
+            return;
         }
+        GlobalStates.searchOpen = true;
         LauncherSearch.ensurePrefix(Config.options.search.prefix.emojis);
     }
 

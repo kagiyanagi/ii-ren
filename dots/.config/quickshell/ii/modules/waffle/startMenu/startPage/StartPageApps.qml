@@ -18,10 +18,10 @@ BodyRectangle {
             fill: parent
             leftMargin: 32
             rightMargin: 32
-            topMargin: 25
-            bottomMargin: 30
+            topMargin: 24
+            bottomMargin: 32
         }
-        spacing: 26
+        spacing: 24
 
         PinnedApps {
             Layout.fillWidth: true
@@ -38,7 +38,9 @@ BodyRectangle {
         BigAppGrid {
             Layout.fillWidth: true
             columns: 8
-            desktopEntries: Config.options.launcher.pinnedApps.map(appId => DesktopEntries.byId(appId))
+            desktopEntries: Config.options.launcher.pinnedApps
+                .map(appId => DesktopEntries.byId(appId))
+                .filter(app => app != null)
         }
     }
 

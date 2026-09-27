@@ -23,9 +23,17 @@ WBarAttachedPanelContent {
     }
 
     Keys.onPressed: event => {
-        // Prevent Esc and Backspace from registering
-        if (event.key === Qt.Key_Escape)
+        // Handle Escape: clear query if searching, otherwise close start menu
+        if (event.key === Qt.Key_Escape) {
+            if (root.searching) {
+                searchBar.text = "";
+                LauncherSearch.query = "";
+            } else {
+                root.close();
+            }
+            event.accepted = true;
             return;
+        }
 
         // Handle Backspace: focus and delete character if not focused
         if (event.key === Qt.Key_Backspace) {
@@ -99,9 +107,12 @@ WBarAttachedPanelContent {
                 onAccepted: {
                     context.accepted();
                 }
+                onCloseRequested: {
+                    root.close();
+                }
             }
             Item {
-                implicitHeight: root.searching ? 800 : 800 // TODO: Make sizes naturally inferred
+                implicitHeight: 800 // TODO: Make sizes naturally inferred
                 Layout.fillWidth: true
                 Loader {
                     id: pageContentLoader

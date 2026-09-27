@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -28,7 +29,7 @@ WChoiceButton {
 
     function execute() {
         GlobalStates.searchOpen = false;
-        root.entry.execute();
+        root.entry?.execute?.();
     }
 
     horizontalPadding: 0
@@ -42,9 +43,9 @@ WChoiceButton {
             id: launchButton
             Layout.fillWidth: true
             Layout.fillHeight: true
-            horizontalPadding: 10
-            verticalPadding: 11
-            implicitHeight: Math.max(root.firstEntry ? 62 : 36, entryContentRow.implicitHeight + 8 * 2)
+            horizontalPadding: 8
+            verticalPadding: 12
+            implicitHeight: Math.max(root.firstEntry ? 64 : 36, entryContentRow.implicitHeight + 8 * 2)
             implicitWidth: entryContentRow.implicitWidth + leftPadding + rightPadding
             topRightRadius: 0
             bottomRightRadius: 0
@@ -80,7 +81,7 @@ WChoiceButton {
         WButton {
             visible: !root.checked
             Layout.fillHeight: true
-            implicitWidth: 47
+            implicitWidth: 48
             topLeftRadius: 0
             bottomLeftRadius: 0
             onClicked: root.requestFocus()
@@ -88,7 +89,7 @@ WChoiceButton {
                 FluentIcon {
                     anchors.centerIn: parent
                     icon: "chevron-right"
-                    implicitSize: 14
+                    implicitSize: 16
                 }
             }
         }
@@ -100,7 +101,7 @@ WChoiceButton {
         WText {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: root.entry.name
+            text: root.entry?.name ?? ""
             font.pixelSize: Looks.font.pixelSize.large
             maximumLineCount: 2
             elide: Text.ElideRight
@@ -109,7 +110,7 @@ WChoiceButton {
         WText {
             Layout.fillWidth: true
             visible: root.firstEntry
-            text: root.entry.type
+            text: root.entry?.type ?? ""
             color: Looks.colors.accentUnfocused
             elide: Text.ElideRight
         }

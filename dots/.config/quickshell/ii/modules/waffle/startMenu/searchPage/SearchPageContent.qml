@@ -19,7 +19,7 @@ BodyRectangle {
     ColumnLayout {
         anchors {
             fill: parent
-            topMargin: 2
+            topMargin: 0
             leftMargin: 24
             rightMargin: 24
         }

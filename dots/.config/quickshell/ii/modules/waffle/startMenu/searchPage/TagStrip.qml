@@ -27,7 +27,7 @@ RowLayout {
         Layout.fillHeight: true
         orientation: Qt.Horizontal
         spacing: 4
-        model: root.context.categories
+        model: root.context?.categories ?? []
         clip: true
         delegate: WBorderedButton {
             id: tagButton
@@ -40,7 +40,7 @@ RowLayout {
                 if (modelData.prefix != "") {
                     return LauncherSearch.query.startsWith(modelData.prefix);
                 } else {
-                    return !tagListView.model.some(i => (i.prefix != "" && LauncherSearch.query.startsWith(i.prefix)));
+                    return !((tagListView.model as var[])?.some(i => (i.prefix != "" && LauncherSearch.query.startsWith(i.prefix))));
                 }
             }
             contentItem: Item {
@@ -64,17 +64,26 @@ RowLayout {
 
         onClicked: accountsMenu.open()
 
+        Connections {
+            target: GlobalStates
+            function onSearchOpenChanged() {
+                if (!GlobalStates.searchOpen && accountsMenu.visible) {
+                    accountsMenu.close();
+                }
+            }
+        }
+
         WMenu {
             id: accountsMenu
-            x: -accountsMenu.implicitWidth + optionsButton.implicitWidth + 10
+            x: -accountsMenu.implicitWidth + optionsButton.implicitWidth + 8
             y: optionsButton.height
             downDirection: true
             Action {
                 icon.name: "people-settings"
                 text: Translation.tr("Manage accounts")
                 onTriggered: {
-                    Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser])
                     GlobalStates.searchOpen = false;
+                    Quickshell.execDetached(["bash", "-c", Config.options.apps.manageUser]);
                 }
             }
         }
