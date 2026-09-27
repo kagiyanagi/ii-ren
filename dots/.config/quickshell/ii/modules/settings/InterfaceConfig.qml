@@ -39,7 +39,7 @@ Item {
     ContentPage {
         id: page
 
-        readonly property int index: 4
+        readonly property int index: 5
         property bool register: interfaceConfigRoot.register
 
         anchors.fill: parent

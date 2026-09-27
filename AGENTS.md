@@ -555,6 +555,11 @@ you touched; they are the only automated gate.
   A wrong regex only shows as a tile that reads oddly on someone else's machine, so the
   cleaners and the byte formatter are lifted out of `About.qml` and run under node against
   real strings from each vendor
+- `python3 tools/check-settings-search.py` — settings search opens the page it found the
+  result on. Each page declares `readonly property int index: N` by hand and search
+  navigates by nothing else; `pages` in `settings.qml` was reordered and six numbers were
+  not, so "Fonts" opened Services and every Lock result opened About. It pins each index
+  to the page's position, and that page 0 (Quick) registers at all
 - `bash tools/audit/probe-settings-pages.sh` — instantiates all 61 settings sub-pages in one
   throwaway `qs -p` config and fails on a dirty log. They load on demand, so neither smoke
   script reaches them; run it after touching anything under `modules/settings/widgets/`

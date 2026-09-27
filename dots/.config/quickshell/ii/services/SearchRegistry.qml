@@ -227,6 +227,11 @@ Item {
     }
 
     function registerSection(data) {
+        // The six statically indexed pages register again from ContentSection
+        // once they load, which listed every one of their results twice.
+        if (sections.some(s => s.pageIndex === data.pageIndex && (s.titleKey === data.title || s.title === data.title)))
+            return
+        data.titleKey = data.title
         const titleKey = data.title
         const searchStringsKeys = [...data.searchStrings]
 

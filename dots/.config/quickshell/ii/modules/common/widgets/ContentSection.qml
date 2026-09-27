@@ -27,7 +27,8 @@ ColumnLayout {
         // skipping registration.
         const ownerPage = (typeof page !== 'undefined') ? page : null
         if (!ownerPage || ownerPage.register == false) return
-        if (!ownerPage.index) return
+        // Quick is page 0, so a falsy test left it out of search entirely.
+        if (typeof ownerPage.index !== 'number') return
         SearchRegistry.registerSection({
             pageIndex: ownerPage.index,
             title: root.title,
