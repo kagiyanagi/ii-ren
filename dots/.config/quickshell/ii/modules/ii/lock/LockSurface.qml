@@ -359,7 +359,8 @@ MouseArea {
      * the keyguard lets a transient message cover it. No rapid/slow label: its
      * thresholds are phone watts, and every laptop charger would be "rapid".
      */
-    readonly property bool chargingShown: Battery.available && (Battery.isPluggedIn || Battery.chargeLimitReached)
+    readonly property bool chargingShown: Config.options.lock.showChargingInfo && Battery.available
+        && (Battery.isPluggedIn || Battery.chargeLimitReached)
     readonly property string chargingText: {
         if (!root.chargingShown)
             return "";

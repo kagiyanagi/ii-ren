@@ -59,7 +59,12 @@ Singleton {
     }
     property int chargeLimitCandidateIndex: 0
     property int chargeLimit: 100 // 0 or 100 = no limit
+    // Where the kernel has charge modes (charge_types, e.g. dell-laptop), the
+    // thresholds only apply in Custom: in Adaptive or Standard the firmware
+    // keeps them on file and charges straight past them. No file, no modes.
+    property string chargeMode: ""
     readonly property bool chargeLimitActive: available && chargeLimit > 0 && chargeLimit < 100
+        && (chargeMode === "" || chargeMode === "Custom")
 
     // At the limit the firmware reports Discharging/PendingCharge at ~0W even though AC is plugged in,
     // so the AC line (UPower.onBattery) is the reliable signal, not the battery state
@@ -107,6 +112,15 @@ Singleton {
     }
 
     FileView {
+        id: chargeTypesFile
+        printErrors: false // Only some drivers have charge modes
+        path: root.batteryNativePath ? `/sys/class/power_supply/${root.batteryNativePath}/charge_types` : ""
+        // "Trickle Fast Standard [Adaptive] Custom": the bracketed one is selected
+        onLoaded: root.chargeMode = text().match(/\[([^\]]+)\]/)?.[1] ?? text().trim()
+        onLoadFailed: root.chargeMode = ""
+    }
+
+    FileView {
         id: cycleCountFile
         printErrors: false // Plenty of batteries do not report a cycle count
         path: root.batteryNativePath ? `/sys/class/power_supply/${root.batteryNativePath}/cycle_count` : ""
@@ -128,12 +142,14 @@ Singleton {
         cycleCountFile.reload();
         root.chargeLimitCandidateIndex = 0;
         chargeLimitFile.reload();
+        chargeTypesFile.reload();
     }
 
     onChargeStateChanged: {
         cycleCountFile.reload();
         root.chargeLimitCandidateIndex = 0;
         chargeLimitFile.reload();
+        chargeTypesFile.reload();
     }
 
     onIsLowAndNotChargingChanged: {

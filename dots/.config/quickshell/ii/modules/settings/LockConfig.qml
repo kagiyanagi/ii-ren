@@ -91,6 +91,15 @@ Item {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "bolt"
+                enabled: !Config.options.lock.useHyprlock
+                text: Translation.tr("Show charging info")
+                checked: Config.options.lock.showChargingInfo
+                onCheckedChanged: {
+                    Config.options.lock.showChargingInfo = checked;
+                }
+            }
+            ConfigSwitch {
                 buttonIcon: "push_pin"
                 enabled: !Config.options.lock.useHyprlock
                 text: Translation.tr("Lock widget size and position")

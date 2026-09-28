@@ -1634,6 +1634,8 @@ Singleton {
                     }
                 }
                 property bool materialShapeChars: true
+                // The keyguard's "69% • Charging • Full in 25m" line above the field.
+                property bool showChargingInfo: true
                 // Freezes widget drag/resize on the lock screen specifically,
                 // independent of `background.widgets.lockWidgetPositions`
                 // which freezes them on the desktop.
