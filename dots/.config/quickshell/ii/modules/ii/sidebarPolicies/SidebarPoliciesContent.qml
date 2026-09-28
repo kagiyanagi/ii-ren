@@ -112,17 +112,26 @@ Item {
         spacing: sidebarPadding
 
         Toolbar {
-            visible: tabButtonList.length > 1
             Layout.alignment: Qt.AlignHCenter
             enableShadow: false
             colBackground: Appearance.colors.colLayer3
             ToolbarTabBar {
                 id: tabBar
+                visible: tabButtonList.length > 1
                 Layout.alignment: Qt.AlignHCenter
                 tabButtonList: root.tabButtonList
                 maxTextTabs: root._maxTextTabs
                 currentIndex: root.currentTab
                 onCurrentIndexChanged: if (currentIndex !== root.currentTab) Persistent.states.sidebar.policies.tab = currentIndex
+            }
+            IconToolbarButton {
+                text: "keep"
+                toggled: root.scopeRoot.pin
+                iconFill: toggled
+                onClicked: root.scopeRoot.togglePin()
+                StyledToolTip {
+                    text: root.scopeRoot.pin ? Translation.tr("Unpin (Ctrl+P)") : Translation.tr("Pin open, beside windows (Ctrl+P)")
+                }
             }
         }
 

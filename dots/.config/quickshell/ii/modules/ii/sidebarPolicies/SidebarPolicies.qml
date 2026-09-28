@@ -418,6 +418,16 @@ Scope { // Scope
     }
 
     GlobalShortcut {
+        name: "sidebarLeftTogglePin"
+        description: "Pin the left sidebar open, reserving its space from windows/Unpin it"
+
+        onPressed: {
+            GlobalStates.sidebarLeftOpen = true;
+            root.togglePin();
+        }
+    }
+
+    GlobalShortcut {
         name: "sidebarLeftToggleDetach"
         description: "Detach left sidebar into a window/Attach it back"
 
