@@ -348,9 +348,45 @@ MouseArea {
             return root.context.authMessage;
         if (HyprlandXkb.capsLock)
             return Translation.tr("Caps Lock is on");
-        return "";
+        return root.chargingText;
     }
     readonly property bool statusFromPam: root.context.authMessage.length > 0
+
+    /*
+     * The keyguard's charging indication, in the order AOSP writes it
+     * (KeyguardIndicationController): percentage, state, then when it will be
+     * done -- plus the wattage custom ROMs add. It takes the slot last, the way
+     * the keyguard lets a transient message cover it. No rapid/slow label: its
+     * thresholds are phone watts, and every laptop charger would be "rapid".
+     */
+    readonly property bool chargingShown: Battery.available && (Battery.isPluggedIn || Battery.chargeLimitReached)
+    readonly property string chargingText: {
+        if (!root.chargingShown)
+            return "";
+        const parts = [`${Math.round(Battery.percentage * 100)}%`];
+        if (Battery.chargeState == UPowerDeviceState.FullyCharged) {
+            parts.push(Translation.tr("Charged"));
+        } else if (Battery.chargeLimitReached) {
+            parts.push(Translation.tr("Charging on hold to protect battery"));
+        } else if (!Battery.isCharging) {
+            parts.push(Translation.tr("Plugged in"));
+        } else {
+            parts.push(Translation.tr("Charging"));
+            const watts = Math.abs(Battery.energyRate);
+            if (watts > 0.01)
+                parts.push(`${watts.toFixed(1)}W`);
+            const seconds = Battery.timeToFullEffective;
+            if (seconds > 0) {
+                const h = Math.floor(seconds / 3600);
+                const m = Math.floor((seconds % 3600) / 60);
+                const time = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                parts.push(Battery.chargeLimitActive
+                    ? Translation.tr("%1% in %2").arg(Battery.chargeLimit).arg(time)
+                    : Translation.tr("Full in %1").arg(time));
+            }
+        }
+        return parts.join(" • ");
+    }
 
     Rectangle {
         id: statusChip
@@ -445,7 +481,9 @@ MouseArea {
                 id: statusIcon
                 Layout.alignment: Qt.AlignVCenter
                 fill: 1
-                text: root.statusFromPam ? "error" : "keyboard_capslock"
+                text: root.statusFromPam ? "error"
+                    : HyprlandXkb.capsLock ? "keyboard_capslock"
+                    : Battery.isCharging ? "bolt" : "battery_android_full"
                 iconSize: Appearance.font.pixelSize.huge
                 color: root.statusFromPam ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnSurfaceVariant
             }
