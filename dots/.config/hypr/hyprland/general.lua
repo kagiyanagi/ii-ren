@@ -84,8 +84,7 @@ hl.config({
             brightness = 1,
             noise = 0.05,
             contrast = 0.89,
-            vibrancy = 0.5,
-            vibrancy_darkness = 0.5,
+            vibrancy = 0, -- AOSP blur is a plain Gaussian; 0.5 oversaturated the overview backdrop
             popups = false,
             popups_ignorealpha = 0.6,
             input_methods = true,
