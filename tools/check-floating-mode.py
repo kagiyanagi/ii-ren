@@ -11,7 +11,8 @@ windows the shell does not draw:
     would cover completely (KWin cascadeIfCovering). One over 80% of the area opens
     maximized (Mutter auto-maximize); an Electron app remembering its tile size used to
     open looking maximized without being so.
-  - Maximize fills the work area edge to edge, and any number of windows can be
+  - Maximize takes a lone tile's place, inside gaps_out with its border and corners (the
+    owner's call over KWin's edge to edge), survives a minimize, and any number of windows can be
     maximized at once. Every path into Hyprland's own maximize (Super+D, the bar, an
     app's button) is turned into it; Hyprland's allows one window per workspace and
     hides the rest.
@@ -54,6 +55,7 @@ windows the shell does not draw:
     python3 tools/check-floating-mode.py
 """
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -126,10 +128,9 @@ assert not rails_for(raised, OWN, "right")["0xaa"]["covered"], "A is last in the
 fs = EVENT.replace("W 0xdd 7 7 1906 1066 3 0 0", "W 0xdd 7 7 1906 1066 3 2 0")
 assert all(r["covered"] for side_ in ("top", "right") for r in rails_for(fs, ALL, side_).values()), \
     "a fullscreen window covers every rail on its monitor"
-# A maximized window has no border (the mode's rule takes it off), so its bar starts at the
-# content's edge exactly, and its rail says it is maximized for the restore icon.
-mx = rails_for(EVENT.replace("W 0xcc 1200 600 300 200 2 0 1 0", "W 0xcc 6 46 1908 1028 2 0 1 1"), OWN, "top")["0xcc"]
-assert (mx["x"], mx["y"], mx["w"], mx["h"]) == (6, 6, 1908, RAIL) and mx["maximized"], mx
+# A maximized window's rail says so, for the restore icon.
+mx = rails_for(EVENT.replace("W 0xcc 1200 600 300 200 2 0 1 0", "W 0xcc 7 47 1906 1026 2 0 1 1"), OWN, "top")["0xcc"]
+assert (mx["x"], mx["y"], mx["w"], mx["h"]) == (6, 6, 1908, 1 + RAIL) and mx["maximized"], mx
 print("ok  rails: on the content edge over the border, cut back behind whatever is in front")
 
 area = state["areas"]["eDP-1"]
@@ -174,7 +175,8 @@ LUA_FILE = SHELL / "services/floatingMode.lua"
 MOCK = r"""
 local wins, handlers, timers = {}, {}, {}
 cursor = { x = 0, y = 0 }
-local cfg = { ["general.border_size"] = 1, ["decoration.rounding"] = 18, ["decoration.rounding_power"] = 2.5 }
+local cfg = { ["general.border_size"] = 1, ["decoration.rounding"] = 18, ["decoration.rounding_power"] = 2.5,
+              ["general.gaps_out"] = { top = 6, right = 6, bottom = 6, left = 6 } }
 mon = { name = "eDP-1", x = 0, y = 0, width = 1920, height = 1080, scale = 1, transform = 0,
         reserved = { left = 0, top = 40, right = 0, bottom = 57 } }
 local ws = { id = 1, name = "1", visible = true }
@@ -185,11 +187,13 @@ end
 local function d(name) return function(a) return { name = name, a = a } end end
 hl = {
     dsp = { window = { resize = d("resize"), move = d("move"), fullscreen_state = d("fullscreen_state"), set_prop = d("set_prop"),
-                       tag = d("tag"), float = d("float"), alter_zorder = d("alter_zorder") }, event = d("event") },
+                       tag = d("tag"), float = d("float"), alter_zorder = d("alter_zorder") }, event = d("event"), focus = d("focus") },
     dispatch = function(x)
         local w = x.a and x.a.window and find(x.a.window)
         if x.name == "resize" then w.size = { x = x.a.x, y = x.a.y }
         elseif x.name == "move" and x.a.x then w.at = { x = x.a.x, y = x.a.y }
+        elseif x.name == "move" and x.a.workspace then
+            w.workspace = x.a.workspace == "special:minimized" and { id = -99, name = "special:minimized", visible = false } or ws
         elseif x.name == "tag" and x.a.tag:sub(1, 1) == "+" then table.insert(w.tags, x.a.tag:sub(2))
         elseif x.name == "fullscreen_state" then
             local was = w.fullscreen
@@ -198,7 +202,13 @@ hl = {
         end
     end,
     get_config = function(k) return cfg[k] end, config = function() end,
-    get_monitors = function() return { mon } end, get_windows = function() return wins end,
+    get_monitors = function() return { mon } end,
+    get_windows = function(f)
+        if not (f and f.mapped) then return wins end
+        local out = {}
+        for _, w in ipairs(wins) do if w.mapped then out[#out + 1] = w end end
+        return out
+    end,
     get_cursor_pos = function() return cursor end, get_active_workspace = function() return ws end,
     window_rule = function() return { set_enabled = function() end } end,
     on = function(ev, fn) handlers[ev] = fn return { remove = function() end } end,
@@ -248,7 +258,7 @@ local hidden = { id = 9, name = "9", visible = false }
 local function on_hidden(a)
     local w = { address = a, at = { x = 560, y = 281 }, size = { x = 800, y = 500 }, floating = true, fullscreen = 0,
         fullscreen_client = 0, mapped = true, hidden = false, pinned = false, workspace = hidden, monitor = mon, tags = {}, class = "plain" }
-    table.insert(hl.get_windows(), w)
+    table.insert(hl.get_windows({}), w)
     H["window.open"](w)
     return w
 end
@@ -258,7 +268,7 @@ eq(h2, 600, 301, 800, 500, "second on the same hidden workspace: cascaded off th
 h1.mapped, h2.mapped = false, false
 local c = open("0xc", 7, 47, 1906, 969)
 assert(c.fullscreen == 0 and c.fullscreen_client == 1, "over 80% of the area it opens maximized (Mutter), and the app is told")
-eq(c, 0, 80, 1920, 943, "maximized: the work area edge to edge, below the bar, no border")
+eq(c, 7, 87, 1906, 929, "maximized: where a lone tile sits, inside gaps_out, border and bar kept (the owner's call)")
 local huge = open("0xd", 100, 100, 3000, 400, "plain")
 eq(huge, 1, 100, 1918, 400, "wider than the area but under 80% of it: shrunk to fit and slid inside (KWin keepInArea)")
 local placed = open("0xe", 50, 60, 300, 200, "plain")
@@ -272,7 +282,7 @@ hypr_maximize(a)
 hypr_maximize(b)
 assert(a.fullscreen == 0 and a.fullscreen_client == 1 and b.fullscreen_client == 1,
     "two windows maximized at once, each a plain floating window to Hyprland (internal 0)")
-eq(a, 0, 80, 1920, 943, "a stays maximized with b maximized too")
+eq(a, 7, 87, 1906, 929, "a stays maximized with b maximized too")
 
 a.fullscreen_client = 0 -- its own restore button: the client alone, no event
 tick()
@@ -282,18 +292,37 @@ hypr_maximize(a)
 cursor.x, cursor.y = 1500, 60
 M.before_drag("0xa")
 assert(a.fullscreen_client == 0, "a drag takes a window out of maximize")
-eq(a, 874, 90, 800, 500, "grab point at x 1500 of 1920 stays at that fraction of the restored frame (KWin)")
+eq(a, 873, 93, 800, 500, "grab point at x 1500 of the frame stays at that fraction of the restored frame (KWin)")
 
 fullscreen(b, true)
 fullscreen(b, false)
 tick()
 flush()
 assert(b.fullscreen == 0 and b.fullscreen_client == 1, "out of fullscreen, back to the maximize it left")
-eq(b, 0, 80, 1920, 943, "and at its maximized box, once Hyprland is done recentring it")
+eq(b, 7, 87, 1906, 929, "and at its maximized box, once Hyprland is done recentring it")
+
+-- Minimize parks it on a hidden workspace, and Hyprland drops the maximize on the way.
+-- It keeps its box while there and is maximized again as it comes back (KWin); the
+-- watcher used to take the drop for the app restoring itself.
+b.workspace, b.fullscreen_client = { id = -99, name = "special:minimized", visible = false }, 0
+tick()
+eq(b, 7, 87, 1906, 929, "minimized: left alone")
+-- The dock's activate opens the hidden workspace over the one in front first, so the
+-- "active" workspace is the minimized one: it goes back to the monitor's own.
+local front = mon.active_workspace
+mon.active_workspace = { id = 1, name = "1", visible = true }
+mon.active_special_workspace = b.workspace
+local closed = false
+mon.set_special_workspace = function(self, o) if o.workspace == nil then closed = true; self.active_special_workspace = nil end end
+H["window.active"](b)
+assert(b.fullscreen_client == 1 and b.workspace.id == 1, "back from minimize: maximized again, on the workspace in front")
+assert(closed, "and the minimized workspace the activation opened is closed again")
+mon.active_workspace, mon.active_special_workspace = front, nil
+eq(b, 7, 87, 1906, 929, "at its maximized box")
 
 mon.reserved.bottom = 0
 tick()
-eq(b, 0, 80, 1920, 1000, "the dock hidden: a maximized window follows its work area")
+eq(b, 7, 87, 1906, 986, "the dock hidden: a maximized window follows its work area")
 
 b.at = { x = 300, y = 80 }
 cursor.x, cursor.y = 400, 100
@@ -303,12 +332,40 @@ assert(b.size.x == 800 and b.size.y == 500, "at its restored size")
 
 M.before_drag("0xe")
 eq(placed, 50, 60, 300, 200, "before_drag leaves a window that is not maximized alone")
+
+-- An app's last window closing leaves its size (on disk); its next main window opens at it.
+mon.reserved.bottom = 57
+local m1 = open("0xm1", 560, 281, 800, 500, "memo")
+m1.size = { x = 600, y = 400 }
+tick()
+H["window.close"](m1)
+m1.mapped = false
+local m2 = open("0xm2", 560, 281, 800, 500, "memo")
+assert(m2.size.x == 600 and m2.size.y == 400, "reopened at the size it closed at")
+local d = open("0xd2", 810, 431, 300, 200, "memo") -- centred over its centred parent
+assert(d.size.x == 300, "a second window of the app (a dialog) keeps its own size")
+d.mapped = false
+H["window.close"](d)
+hypr_maximize(m2)
+H["window.close"](m2)
+m2.mapped = false
+local m3 = open("0xm3", 560, 281, 800, 500, "memo")
+assert(m3.fullscreen_client == 1, "closed maximized, it opens maximized")
+hypr_maximize(m3)
+assert(m3.size.x == 600 and m3.size.y == 400, "and restores to the size it had before")
+local f = io.open(os.getenv("XDG_STATE_HOME") .. "/ii-ren/floating-sizes")
+assert(f and f:read("a"):find("memo 600 400 1", 1, true), "kept on disk, so it outlives a Hyprland restart")
+-- An app's own minimize button: Hyprland ignores xdg set_minimized and Chromium stops
+-- drawing, waiting to be hidden; hyprbars' patch passes it on, and it is minimized.
+M.minimize("0xe")
+flush()
+assert(placed.workspace.name == "special:minimized", "an app's own minimize button minimizes it")
 print("lua ok")
 """
 with tempfile.TemporaryDirectory() as tmp:
     test = pathlib.Path(tmp) / "t.lua"
     test.write_text(MOCK + f"\nLUA_FILE = [[{LUA_FILE}]]\n" + BEHAVIOUR)
-    run = subprocess.run(["lua", str(test)], capture_output=True, text=True)
+    run = subprocess.run(["lua", str(test)], capture_output=True, text=True, env={**os.environ, "XDG_STATE_HOME": tmp})
     assert run.returncode == 0 and "lua ok" in run.stdout, run.stderr or run.stdout
 print("ok  window management: KWin's placement and cascade, Mutter's auto-maximize and restore cap, many maximized at once")
 
@@ -324,7 +381,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert "os.exit" not in lua, f"a non-hex address or an odd class reached the Lua ({name})"
 assert '"kitty"' in inst and js("beforeDragExpr('x\"y')") is None
 # hyprbars: the compositor draws the top bar, so it cannot trail its window.
-bars = js("barsLua({height: 40, color: 'rgba(1c1b1fff)', text: 'rgba(e6e1e5ff)', font: 'Google Sans Flex', textSize: 13, padding: 12, gap: 12, button: 32})")
+bars = js("barsLua({height: 40, color: 'rgba(1c1b1fff)', text: 'rgba(e6e1e5ff)', font: 'Google Sans Flex', chip: 'rgba(2b2930ff)', closeHover: 'rgba(8c1d18ff)', textSize: 13, padding: 12, gap: 12, button: 32})")
 with tempfile.NamedTemporaryFile("w", suffix=".lua") as t:
     t.write(bars)
     t.flush()
@@ -337,8 +394,8 @@ assert "follow_mouse = 2" in lua_src and "focus_on_close = 2" in lua_src and "wi
     "click to focus with the pointer's window taking scroll; focus goes to the next in stacking order on close; 10px snap zones"
 assert lua_src.index("if not ii_fm_saved") < lua_src.index("follow_mouse = 2"), "the user's values are saved before they are overridden"
 assert "hl.config(ii_fm_saved)" in lua_src.split("function M.disable")[1], "turning the mode off gives tiling its own focus back"
-assert "fullscreen_state_client = 1" in lua_src and "rounding = 0, border_size = 0" in lua_src, \
-    "a maximized window has square corners and no border, as Breeze draws one"
+assert "rounding = 0" not in lua_src and "border_size = 0" not in lua_src, \
+    "a maximized window keeps a tile's border and corners (the owner's call); a rule squaring them outlived the maximize"
 assert "ii_fm_bar_classes[w.class]" in lua_src, "a known class is tagged as its window opens, so its bar is there on the first frame"
 assert "delete root.barred[address]" in (SHELL / "services/FloatingMode.qml").read_text(), \
     "Hyprland reuses a closed window's address; a stale 'already tagged' kept the next window bar-less"
@@ -360,13 +417,26 @@ script = SHELL / "scripts/hyprland/hyprbars.sh"
 assert script.stat().st_mode & 0o111, "hyprbars.sh has to be executable"
 sh = script.read_text()
 assert '"$commit' in sh and "built-for" in sh and "sha1sum" in sh, "the build is keyed on the running Hyprland's commit and the patch"
-assert 'git -C "$src" apply "$patch"' in sh, "hyprbars is built with its patch"
+assert 'patch -s -p1 -d "$work" < "$patch"' in sh, "hyprbars is built with its patch"
+assert "flock -w" in sh and 'git -C "$src" archive' in sh and "checkout" not in sh, \
+    "one build at a time, from a clean export in its own directory: two builds in one tree tore a build and crashed the compositor"
+assert "hyprlandCrashReport" in sh and 'touch "$out/DISABLED"' in sh and sh.index("DISABLED ]] && exit 1") < sh.index("plugin load"), \
+    "a build the compositor crashed with is never loaded again"
 assert 'mv -f "$out/hyprbars.so.new" "$out/hyprbars.so"' in sh and 'cp "$src/hyprbars/hyprbars.so" "$out/hyprbars.so"' not in sh, \
     "the new build goes in by rename: writing over the library the compositor has mapped crashes it"
 assert "ii_fm_buttons, ii_fm_bars_untagged, ii_fm_bars_tiled = nil" in sh, "a swapped plugin gets its buttons and rules declared again"
 subprocess.run(["bash", "-n", str(script)], check=True)
 patch = (SHELL / "scripts/hyprland/hyprbars.patch").read_text()
 assert "ii_fm_lib.before_drag" in patch and "handleMovement();" in patch, "hyprbars' title drag calls before_drag before it starts"
+assert "strokeIcon" in patch and "hover.a               = 0.08;" in patch and "mask != m_iButtonHoverState" in patch, \
+    "icons stroked centred in their chip, and M3's 8% hover layer, cleared when the pointer leaves (one flag for all missed that)"
+assert "plugin:hyprbars:close_hover_color" in patch and 'button.icon == "ii:close"' in patch, "close hovers in its own colour"
+assert 'pcall(hl.get_config, "plugin.hyprbars.close_hover_color")' in bars and '"ii:close", "ii:maximize", "ii:minimize"' in bars, \
+    "the ii: icons only when the plugin can draw them: an unpatched one would print them as words"
+assert "close_hover_color = [[rgba(8c1d18ff)]]" in bars and bars.count("bg_color = [[rgba(2b2930ff)]]") == 3, \
+    "chips a layer up from the bar, close's hover the error container: both from the shell's colours"
+assert "requestsMinimize" in patch and "ii_fm_lib.minimize" in patch, \
+    "an app's own minimize (xdg set_minimized) reaches the mode: Hyprland drops it, and Chromium froze waiting"
 keys = (HYPR / "keybinds.lua").read_text()
 assert "ii_fm_lib.before_drag()" in keys and 'hl.bind("SUPER + mouse:272", dragWindow' in keys, "so does Super+drag"
 assert 'if hl.plugin.hyprbars then hl.config({ plugin = { hyprbars = { enabled = false } } }) end' in (HYPR / "rules.lua").read_text(), \

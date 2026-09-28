@@ -68,6 +68,8 @@ Singleton {
         color: root.hyprColor(Appearance.colors.colLayer1),
         text: root.hyprColor(Appearance.colors.colOnLayer1),
         font: Appearance.font.family.main,
+        chip: root.hyprColor(Appearance.colors.colLayer2),
+        closeHover: root.hyprColor(Appearance.colors.colErrorContainer),
         textSize: Appearance.font.pixelSize.small,
         padding: 12,
         gap: 12,
@@ -194,10 +196,8 @@ Singleton {
         return !root.ownControlsPatterns.some(re => re.test(w.cls));
     }
 
-    // A maximized window has square corners and no border, and so has its rail.
-    function railOutline(width, height, maximized) {
-        return FM.railOutline(width, height, maximized ? 0 : root.state.rounding, maximized ? 0 : root.state.border, root.state.power, 10,
-                              root.railSide);
+    function railOutline(width, height) {
+        return FM.railOutline(width, height, root.state.rounding, root.state.border, root.state.power, 10, root.railSide);
     }
 
     function windowFor(address) {

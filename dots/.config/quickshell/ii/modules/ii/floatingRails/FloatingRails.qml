@@ -168,8 +168,8 @@ Scope {
         }
 
         // floatingMode.js says how the outline follows the window's own corners.
-        readonly property var outline: FloatingMode.railOutline(rail.width, rail.height, rail.modelData.maximized).map(p => Qt.point(p.x,
-                                                                                                                                      p.y))
+        readonly property var outline: FloatingMode.railOutline(rail.width, rail.height).map(p => Qt.point(p.x,
+                                                                                                           p.y))
 
         // The focused window's rail sits a layer up, as Android lifts the focused
         // caption; the rest recede to the background tone.
@@ -186,7 +186,7 @@ Scope {
 
         readonly property var span: rail.modelData.span
         // How far the notches reach past the strip, into the window's corners.
-        readonly property real overhang: rail.modelData.maximized ? 0 : FloatingMode.state.rounding + FloatingMode.state.border
+        readonly property real overhang: FloatingMode.state.rounding + FloatingMode.state.border
 
         Item {
             id: hit
@@ -353,20 +353,20 @@ Scope {
                     RailButton {
                         visible: controls.roomy
                         railFocused: rail.focused
-                        symbol: "minimize"
+                        glyph: "minimize"
                         tip: Translation.tr("Minimize")
                         onClicked: FloatingMode.minimize(rail.address)
                     }
                     RailButton {
                         visible: controls.roomy
                         railFocused: rail.focused
-                        symbol: rail.modelData.maximized ? "filter_none" : "crop_square"
+                        glyph: "maximize"
                         tip: rail.modelData.maximized ? Translation.tr("Restore") : Translation.tr("Maximize")
                         onClicked: FloatingMode.toggleMaximize(rail.address)
                     }
                     RailButton {
                         railFocused: rail.focused
-                        symbol: "close"
+                        glyph: "close"
                         tip: Translation.tr("Close")
                         onClicked: FloatingMode.close(rail.address)
                     }
@@ -375,27 +375,44 @@ Scope {
         }
     }
 
+    // The same controls hyprbars.patch strokes on the top bar: a chevron (minimize), a diamond
+    // (maximize) and a cross (close), 1.5px strokes on a glyph 3/8 of the button, centred by
+    // construction, as the apps with their own buttons draw theirs. Each sits on a chip one
+    // layer up from its rail; close hovers in the error container.
     component RailButton: RippleButton {
         id: button
-        property string symbol
+        property string glyph
         property string tip
         property bool railFocused
+        readonly property bool closes: button.glyph === "close"
+        readonly property real g: button.width * 0.375 / 2
 
         implicitWidth: 32
         implicitHeight: 32
         buttonRadius: Appearance.rounding.full
-        // The film of whichever layer the rail is painted with.
-        colBackgroundHover: button.railFocused ? Appearance.colors.colLayer1Hover :
-                                                 Appearance.colors.colLayer0Hover
-        colRipple: button.railFocused ? Appearance.colors.colLayer1Active : Appearance.colors.colLayer0Active
-        colStateLayer: button.railFocused ? Appearance.colors.colOnLayer1 : Appearance.colors.colOnLayer0
+        colBackground: button.railFocused ? Appearance.colors.colLayer2 : Appearance.colors.colLayer1
+        colBackgroundHover: button.closes ? Appearance.colors.colErrorContainer :
+                            button.railFocused ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer1Hover
+        colRipple: button.closes ? Appearance.colors.colErrorContainerActive :
+                   button.railFocused ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer1Active
 
-        contentItem: MaterialSymbol {
-            anchors.centerIn: parent
-            horizontalAlignment: Text.AlignHCenter
-            text: button.symbol
-            iconSize: 20
-            color: Appearance.colors.colOnLayer1
+        contentItem: Shape {
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: button.closes && button.hovered ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnLayer1
+                strokeWidth: 1.5
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathMultiline {
+                    readonly property real c: button.width / 2
+                    readonly property real g: button.g
+                    readonly property real x: button.g * 0.85
+                    paths: button.glyph === "minimize" ? [[Qt.point(c - g, c - g / 2), Qt.point(c, c + g / 2), Qt.point(c + g, c - g / 2)]]
+                         : button.glyph === "maximize" ? [[Qt.point(c, c - g), Qt.point(c + g, c), Qt.point(c, c + g), Qt.point(c - g, c), Qt.point(c, c - g)]]
+                         : [[Qt.point(c - x, c - x), Qt.point(c + x, c + x)], [Qt.point(c + x, c - x), Qt.point(c - x, c + x)]]
+                }
+            }
         }
 
         StyledToolTip {

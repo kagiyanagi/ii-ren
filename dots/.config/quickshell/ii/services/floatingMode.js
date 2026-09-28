@@ -20,12 +20,10 @@ var CLASS = /^[A-Za-z0-9_.\-]+$/;
 var BAR_TAG = "iibar";
 
 // "B border rounding power;M monitor x0 y0 x1 y1;W address x y w h z fs floating max monitor pid class"
-// M is a monitor's work area: the monitor less the bar and dock reservations, which a
-// maximized window fills edge to edge. W is every mapped window on a visible
+// M is a monitor's work area: the monitor less the bar and dock reservations. W is every mapped window on a visible
 // workspace, bottom to top: Hyprland lists windows in stacking order. z is the
 // focus-history index, 0 being the focused window -- which is not the same thing,
-// since focus follows the mouse without raising anything. max: maximized by the mode,
-// which draws it with no border.
+// since focus follows the mouse without raising anything. max: maximized by the mode.
 function parse(data) {
     var state = { border: 0, rounding: 0, power: 2, areas: {}, windows: [] };
     var records = String(data).split(";");
@@ -120,23 +118,18 @@ function freeSpan(box, covers, side) {
 // the watcher's list and floating (tiled windows are always below the floating
 // ones), or fullscreen, which covers its whole monitor. What stays is the longest
 // uncovered stretch (`span`); shorter than the strip is thick, and there is nothing
-// worth showing, so it is `covered`. A maximized window has no border (the mode's rule
-// takes it off, as Breeze does), so neither do the bounds its rail is worked from.
-function borderOf(state, w) {
-    return w.maximized ? 0 : state.border;
-}
-
+// worth showing, so it is `covered`.
 function rails(state, hasRail, thickness, side) {
     var out = [];
-    var ws = state.windows;
+    var ws = state.windows, b = state.border;
     for (var i = 0; i < ws.length; i++) {
-        var w = ws[i], b = borderOf(state, w);
+        var w = ws[i];
         if (!w.floating || w.fullscreen || !hasRail(w))
             continue;
         var box = railBox(w, b, thickness, side);
         var covers = [];
         for (var j = 0; j < ws.length; j++) {
-            var v = ws[j], o = outer(v, borderOf(state, v));
+            var v = ws[j], o = outer(v, b);
             if (j !== i && v.monitor === w.monitor && (v.fullscreen || (v.floating && j > i)) && overlaps(o, box))
                 covers.push(o);
         }
@@ -298,11 +291,21 @@ function barsLua(o) {
             + ", bar_text_font = " + q(o.font) + ", bar_text_size = " + o.textSize + ', bar_text_align = "left", bar_padding = ' + o.padding
             + ", bar_button_padding = " + o.gap + ", bar_part_of_window = true, bar_precedence_over_border = true, on_double_click = " + q(maximize) + " } } })",
         "if not ii_fm_buttons then",
-        // Right to left. Plain Unicode: hyprbars sets its icons in "sans", so a Material
-        // Symbols codepoint comes out as whatever other font owns that private-use slot.
-        '    hl.plugin.hyprbars.add_button({ bg_color = "rgba(00000000)", fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = "\u{2715}", action = ' + q(close) + " })",
-        '    hl.plugin.hyprbars.add_button({ bg_color = "rgba(00000000)", fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = "\u{25A2}", action = ' + q(maximize) + " })",
-        '    hl.plugin.hyprbars.add_button({ bg_color = "rgba(00000000)", fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = "\u{2212}", action = ' + q(minimize) + " })",
+        // Right to left: close, maximize, minimize, each on a chip a layer up from the bar.
+        // The patched plugin (scripts/hyprland/hyprbars.patch, known by its
+        // close_hover_color) strokes the ii: icons itself, centred in the chip, as the apps
+        // with their own buttons draw theirs, and fills close's hover with the error
+        // container. Without it, plain Unicode: hyprbars sets text in "sans", so a Material
+        // Symbols codepoint would come out as some other font's glyph.
+        '    local ok, has = pcall(hl.get_config, "plugin.hyprbars.close_hover_color")',
+        "    local icons = { \"\u{2715}\", \"\u{25A2}\", \"\u{2212}\" }",
+        "    if ok and has ~= nil then",
+        "        hl.config({ plugin = { hyprbars = { close_hover_color = " + q(o.closeHover) + " } } })",
+        '        icons = { "ii:close", "ii:maximize", "ii:minimize" }',
+        "    end",
+        '    hl.plugin.hyprbars.add_button({ bg_color = ' + q(o.chip) + ', fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = icons[1], action = ' + q(close) + " })",
+        '    hl.plugin.hyprbars.add_button({ bg_color = ' + q(o.chip) + ', fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = icons[2], action = ' + q(maximize) + " })",
+        '    hl.plugin.hyprbars.add_button({ bg_color = ' + q(o.chip) + ', fg_color = ' + q(o.text) + ', size = ' + o.button + ', icon = icons[3], action = ' + q(minimize) + " })",
         "    ii_fm_buttons = true", // only once all three are in: a failed add retries next time
         "end",
         'if not ii_fm_bars_untagged then ii_fm_bars_untagged = hl.window_rule({ name = "ii-bars-untagged", match = { tag = "negative:' + BAR_TAG + '" }, ["hyprbars:no_bar"] = true }) end',

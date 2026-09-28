@@ -15,9 +15,10 @@
 --              placement.cpp: placeCentered, cascadeIfCovering, Workspace::cascadeOffset,
 --              keepInArea). Over 80% of the area, it opens maximized instead (Mutter
 --              place.c, maybe_automaximize).
---   maximize   Fills the work area edge to edge, with no border and square corners (KWin
---              MaximizeArea; Breeze drops its outline and radius when maximized). Any number
---              of windows can be maximized, stacked like any other, and the app is told.
+--   maximize   Takes the space a lone tiled window has: the work area inside gaps_out, with
+--              its border and rounded corners. That is the owner's call over KWin's edge to
+--              edge (TASTE.md 9). Any number of windows can be maximized, stacked like any
+--              other, and the app is told. A minimize keeps it, as KWin's does.
 --              Restore returns to the size the window had, centred where it was (KWin
 --              XdgToplevelWindow::maximize), capped at 80% of the area with its aspect kept
 --              (Mutter meta_window_unmaximize, MAX_UNMAXIMIZED_WINDOW_AREA).
@@ -49,6 +50,10 @@ ii_fm_normal = ii_fm_normal or {}
 ii_fm_placed = ii_fm_placed or {}
 -- address -> true while a window out of fullscreen waits to be maximized again.
 ii_fm_back = ii_fm_back or {}
+-- class -> { w, h, max }: the size an app's last window closed at, and whether it was
+-- maximized, kept on disk. Wayland gives an app no say in where it opens, and many
+-- (terminals, most GTK3 and Qt apps) do not remember their own size either.
+M.SIZES_FILE = (os.getenv("XDG_STATE_HOME") or ((os.getenv("HOME") or "") .. "/.local/state")) .. "/ii-ren/floating-sizes"
 
 local function n(v) return math.floor(v + 0.5) end
 local function near(a, b, d) return math.abs(a - b) <= (d or 2) end
@@ -79,9 +84,14 @@ function M.room(area, e)
     return { x0 = area.x0 + e.b, y0 = area.y0 + e.top + e.b, x1 = area.x1 - e.right - e.b, y1 = area.y1 - e.b }
 end
 
--- Maximized: the work area less the controls, and no border.
-function M.max_box(area, e)
-    return { x = area.x0, y = area.y0 + e.top, w = area.x1 - area.x0 - e.right, h = area.y1 - area.y0 - e.top }
+-- Maximized: where a lone tile sits, inside gaps_out `g`, less the controls.
+function M.max_box(area, e, g)
+    return M.content({ x0 = area.x0 + g.left, y0 = area.y0 + g.top, x1 = area.x1 - g.right, y1 = area.y1 - g.bottom }, e)
+end
+
+-- The content of a window whose whole frame fills `f`.
+function M.content(f, e)
+    return { x = f.x0 + e.b, y = f.y0 + e.b + e.top, w = f.x1 - f.x0 - 2 * e.b - e.right, h = f.y1 - f.y0 - 2 * e.b - e.top }
 end
 
 function M.frame(box, e)
@@ -168,7 +178,7 @@ local function maximized(w) return w.fullscreen == 0 and w.fullscreen_client == 
 -- What a window's frame adds to its content. `bar` overrides the tag, which a window has
 -- not got yet as it opens.
 function M.edges(w, bar)
-    local e = { b = maximized(w) and 0 or hl.get_config("general.border_size"), top = 0, right = 0 }
+    local e = { b = hl.get_config("general.border_size"), top = 0, right = 0 }
     if bar == nil then bar = tagged(w, M.BAR_TAG) end
     if bar then
         if M.cfg.side == "top" then e.top = M.cfg.size else e.right = M.cfg.size end
@@ -188,9 +198,7 @@ function M.maximize(w)
     -- fullscreen_state leaves a window whose two modes differ unsynced, and an unsynced
     -- window's own fullscreen request (F11, a video) would never reach Hyprland.
     hl.dispatch(hl.dsp.window.set_prop({ prop = "sync_fullscreen", value = "1", window = w }))
-    local e = M.edges(w)
-    e.b = 0
-    local box = M.max_box(M.work_area(w.monitor), e)
+    local box = M.max_box(M.work_area(w.monitor), M.edges(w), hl.get_config("general.gaps_out"))
     ii_fm_placed[a] = box
     M.place(w, box)
 end
@@ -202,7 +210,6 @@ function M.restore(w, box)
     ii_fm_max[a], ii_fm_placed[a] = nil, nil
     hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, window = w }))
     local e = M.edges(w)
-    e.b = hl.get_config("general.border_size")
     M.place(w, box or M.restore_box(saved or nil, M.room(M.work_area(w.monitor), e)))
 end
 
@@ -234,25 +241,75 @@ function M.before_drag(address)
     end
     if not target or not target.floating or not maximized(target) then return end
     local e = M.edges(target)
-    e.b = hl.get_config("general.border_size")
     local size = M.restore_box(ii_fm_max[target.address] or nil, M.room(M.work_area(target.monitor), e))
     M.restore(target, M.grab_box(frame_of(target), size, e, c))
 end
 
+function M.sizes()
+    if ii_fm_sizes then return ii_fm_sizes end
+    ii_fm_sizes = {}
+    local f = io.open(M.SIZES_FILE, "r")
+    if f then
+        for line in f:lines() do
+            local c, w, h, max = line:match("^(%S+) (%d+) (%d+) ([01])$")
+            if c then ii_fm_sizes[c] = { w = tonumber(w), h = tonumber(h), max = max == "1" } end
+        end
+        f:close()
+    end
+    return ii_fm_sizes
+end
+
+local function save_sizes()
+    local f = io.open(M.SIZES_FILE, "w")
+    if not f then
+        os.execute("mkdir -p '" .. M.SIZES_FILE:match("^(.*)/") .. "'")
+        f = io.open(M.SIZES_FILE, "w")
+    end
+    if not f then return end
+    for c, v in pairs(M.sizes()) do f:write(string.format("%s %d %d %d\n", c, v.w, v.h, v.max and 1 or 0)) end
+    f:close()
+end
+
+-- The only window of its class: an app's main window. A dialog has its parent open, so it
+-- neither takes the app's size nor writes over it.
+local function alone(w)
+    for _, o in ipairs(hl.get_windows({ mapped = true })) do
+        if o.address ~= w.address and o.class == w.class then return false end
+    end
+    return true
+end
+
+-- As an app's last window closes: the size restore would give it, and whether it was
+-- maximized. A window maximized with no box of its own keeps the size known before.
+function M.remember(w)
+    if not w.floating or not w.class or not w.class:match("^[%w_.%-]+$") or not alone(w) then return end
+    local max = ii_fm_max[w.address] ~= nil
+    local b = (max and ii_fm_max[w.address]) or (not max and ii_fm_normal[w.address]) or M.sizes()[w.class]
+    if not b then return end
+    M.sizes()[w.class] = { w = n(b.w), h = n(b.h), max = max }
+    save_sizes()
+end
+
 -- A new window: auto-maximized, or kept inside the work area and, where Hyprland only
 -- centred it, re-centred below the controls and cascaded. A window a rule or its parent
--- placed stays where it was put.
+-- placed stays where it was put. An app's main window opening centred comes back at the
+-- size it closed at, maximized if it was.
 function M.place_new(w, bar)
     if not w.floating or w.fullscreen ~= 0 or not w.monitor or w.pinned then return end
     local area, e = M.work_area(w.monitor), M.edges(w, bar)
     local room, box = M.room(area, e), box_of(w)
+    local opened = box
+    local slack = 2 + (e.top + e.right) / 2
+    local centred = near(box.x + box.w / 2, (area.x0 + area.x1) / 2, slack) and near(box.y + box.h / 2, (area.y0 + area.y1) / 2, slack)
+    local known = centred and alone(w) and M.sizes()[w.class]
+    if known then
+        box = { x = n(box.x + (box.w - known.w) / 2), y = n(box.y + (box.h - known.h) / 2), w = known.w, h = known.h }
+    end
     ii_fm_normal[w.address] = box
-    if box.w * box.h > (room.x1 - room.x0) * (room.y1 - room.y0) * M.MAX_AREA then
+    if (known and known.max) or box.w * box.h > (room.x1 - room.x0) * (room.y1 - room.y0) * M.MAX_AREA then
         M.maximize(w)
         return
     end
-    local slack = 2 + (e.top + e.right) / 2
-    local centred = near(box.x + box.w / 2, (area.x0 + area.x1) / 2, slack) and near(box.y + box.h / 2, (area.y0 + area.y1) / 2, slack)
     local fit = M.keep_in(box, room)
     if centred then
         fit.x, fit.y = n(room.x0 + (room.x1 - room.x0 - fit.w) / 2), n(room.y0 + (room.y1 - room.y0 - fit.h) / 2)
@@ -270,17 +327,17 @@ function M.place_new(w, bar)
         local f = M.cascade(M.frame(fit, e), others, area)
         fit.x, fit.y = n(f.x0 + e.b), n(f.y0 + e.b + e.top)
     end
-    if not same(fit, box) then
-        M.place(w, fit)
-        ii_fm_normal[w.address] = fit
-    end
+    if not same(fit, opened) then M.place(w, fit) end
+    ii_fm_normal[w.address] = fit
 end
 
 -- Once a tick, per floating window: what the app did to its own maximize, and whether a
 -- maximized window still has its work area.
 function M.reconcile(w)
     local a = w.address
-    if ii_fm_back[a] then return end
+    -- Minimized: Hyprland drops the maximize on the way to the hidden workspace; the box
+    -- restore needs stays kept, and the window is maximized again as it comes back.
+    if ii_fm_back[a] or (w.workspace and w.workspace.name == M.MINIMIZED) then return end
     if w.fullscreen == 0 and w.fullscreen_client == 0 then
         if ii_fm_max[a] ~= nil then
             M.restore(w) -- its own restore button
@@ -290,9 +347,14 @@ function M.reconcile(w)
         return
     end
     if not maximized(w) then return end
-    if ii_fm_max[a] == nil then ii_fm_max[a] = false end
     local e = M.edges(w)
-    local want, cur, last = M.max_box(M.work_area(w.monitor), e), box_of(w), ii_fm_placed[a]
+    if ii_fm_max[a] == nil then
+        -- Maximized before this Lua state (a config reload): restore goes to the size its
+        -- app last closed at, if known, centred.
+        local k, room = M.sizes()[w.class], M.room(M.work_area(w.monitor), e)
+        ii_fm_max[a] = k and { x = n((room.x0 + room.x1 - k.w) / 2), y = n((room.y0 + room.y1 - k.h) / 2), w = k.w, h = k.h } or false
+    end
+    local want, cur, last = M.max_box(M.work_area(w.monitor), e, hl.get_config("general.gaps_out")), box_of(w), ii_fm_placed[a]
     if same(cur, want) then
         ii_fm_placed[a] = want
     elseif last and not same(cur, last) then
@@ -303,7 +365,6 @@ function M.reconcile(w)
             local c, f = hl.get_cursor_pos(), frame_of(w)
             if not c or c.x < f.x0 or c.x >= f.x1 or c.y < f.y0 or c.y >= f.y1 then c = { x = (f.x0 + f.x1) / 2, y = f.y0 } end
             local r = M.edges(w)
-            r.b = hl.get_config("general.border_size")
             local size = M.restore_box(ii_fm_max[a] or nil, M.room(M.work_area(w.monitor), r))
             M.restore(w, M.grab_box(f, size, r, c))
         else
@@ -313,6 +374,19 @@ function M.reconcile(w)
         ii_fm_placed[a] = want
         M.place(w, want)
     end
+end
+
+-- An app's own minimize button (xdg set_minimized), which Hyprland ignores: hyprbars
+-- (scripts/hyprland/hyprbars.patch) passes it on from inside the request, so it waits a
+-- millisecond before the move, which then lands where the shell's own minimize button does.
+function M.minimize(address)
+    hl.timer(function()
+        for _, w in ipairs(hl.get_windows({ mapped = true })) do
+            if w.address == address and not (w.workspace and w.workspace.name == M.MINIMIZED) then
+                hl.dispatch(hl.dsp.window.move({ workspace = M.MINIMIZED, follow = false, window = w }))
+            end
+        end
+    end, { timeout = 1, type = "oneshot" })
 end
 
 function M.forget(a)
@@ -329,12 +403,10 @@ function M.install(cfg)
 
     -- One of each, kept across toggles.
     if not ii_fm_rule then ii_fm_rule = hl.window_rule({ name = "ii-floating-mode", match = { class = ".*" }, float = true }) end
-    if not ii_fm_max_rule then
-        ii_fm_max_rule = hl.window_rule({ name = "ii-floating-maximized",
-            match = { float = true, fullscreen_state_internal = 0, fullscreen_state_client = 1 }, rounding = 0, border_size = 0 })
-    end
+    -- An older install squared maximized windows' corners with a rule on their fullscreen
+    -- state, which a minimize left behind on a window no longer maximized.
+    if ii_fm_max_rule then ii_fm_max_rule:set_enabled(false) end
     ii_fm_rule:set_enabled(true)
-    ii_fm_max_rule:set_enabled(true)
 
     local function on(event, fn) fm.subs[#fm.subs + 1] = hl.on(event, fn) end
 
@@ -345,7 +417,11 @@ function M.install(cfg)
         if bar then hl.dispatch(hl.dsp.window.tag({ tag = "+" .. M.BAR_TAG, window = w })) end
         M.place_new(w, bar)
     end)
-    on("window.close", function(w) if w then M.forget(w.address) end end)
+    on("window.close", function(w)
+        if not w then return end
+        M.remember(w)
+        M.forget(w.address)
+    end)
 
     -- A minimized window is parked on a hidden special workspace; focusing it from the dock
     -- or Alt+Tab brings it back to the workspace in front. KWin's stacking: the active
@@ -353,7 +429,21 @@ function M.install(cfg)
     on("window.active", function(w)
         if not w then return end
         if w.workspace and w.workspace.name == M.MINIMIZED then
-            hl.dispatch(hl.dsp.window.move({ workspace = hl.get_active_workspace().id, window = w }))
+            -- Activating a window on a hidden special workspace opens that workspace over the
+            -- one in front first (FocusState rawWindowFocus), as the dock's activate does: the
+            -- "active" workspace is then the minimized one itself. Back to the monitor's own,
+            -- with the overlay closed and the window focused there.
+            local m = w.monitor
+            local to = m and m.active_workspace or hl.get_active_workspace()
+            hl.dispatch(hl.dsp.window.move({ workspace = to.id, window = w }))
+            local s = m and m.active_special_workspace
+            if s and s.name == M.MINIMIZED then m:set_special_workspace({}) end
+            if ii_fm_max[w.address] ~= nil then M.maximize(w) end
+            local warps = hl.get_config("cursor.no_warps") -- a dock click must not throw the pointer
+            hl.config({ cursor = { no_warps = true } })
+            hl.dispatch(hl.dsp.focus({ window = w }))
+            hl.config({ cursor = { no_warps = warps } })
+            return
         end
         if not w.floating then return end
         hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = w }))
@@ -430,7 +520,6 @@ function M.install(cfg)
     function fm.stop()
         fm.timer:set_enabled(false)
         ii_fm_rule:set_enabled(false)
-        ii_fm_max_rule:set_enabled(false)
         for _, s in ipairs(fm.subs) do s:remove() end
         ii_fm = nil
     end

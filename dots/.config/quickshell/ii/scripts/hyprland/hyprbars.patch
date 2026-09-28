@@ -1,16 +1,48 @@
 diff --git a/hyprbars/barDeco.cpp b/hyprbars/barDeco.cpp
-index c27653d..29f1bf7 100644
+index c27653d..aefe798 100644
 --- a/hyprbars/barDeco.cpp
 +++ b/hyprbars/barDeco.cpp
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,9 @@
  #include <hyprland/src/managers/input/InputManager.hpp>
  #include <hyprland/src/render/Renderer.hpp>
  #include <hyprland/src/config/ConfigManager.hpp>
 +#include <hyprland/src/config/lua/ConfigManager.hpp>
++#include <hyprland/src/protocols/XDGShell.hpp>
++#include <cairo/cairo.h>
  #include <hyprland/src/config/shared/animation/AnimationTree.hpp>
  #include <hyprland/src/config/shared/parserUtils/ParserUtils.hpp>
  #include <hyprland/src/config/supplementary/executor/Executor.hpp>
-@@ -158,6 +159,13 @@ void CHyprBar::onMouseMove(Vector2D coords) {
+@@ -49,6 +52,20 @@ CHyprBar::CHyprBar(PHLWINDOW pWindow) : IHyprWindowDecoration(pWindow) {
+     m_pTouchMoveCallback = Event::bus()->m_events.input.touch.motion.listen([&](ITouch::SMotionEvent e, Event::SCallbackInfo& info) { onTouchMove(info, e); });
+     m_pMouseMoveCallback = Event::bus()->m_events.input.mouse.move.listen([&](Vector2D c, Event::SCallbackInfo& info) { onMouseMove(c); });
+ 
++    // ii-ren: an app's own minimize button asks with xdg set_minimized, which Hyprland drops
++    // on the floor; Chromium and Electron then stop drawing, waiting to be shown again. The
++    // shell's floating mode minimizes it (quickshell/ii/services/floatingMode.lua, minimize).
++    if (const auto XDG = pWindow->m_xdgSurface.lock(); XDG && XDG->m_toplevel) {
++        m_pMinimizeCallback = XDG->m_toplevel->m_events.stateChanged.listen([this] {
++            const auto W = m_pWindow.lock();
++            const auto T = W && W->m_xdgSurface ? W->m_xdgSurface->m_toplevel.lock() : nullptr;
++            if (!T || !T->m_state.requestsMinimize.value_or(false))
++                return;
++            if (const auto LUA = dynamicPointerCast<Config::Lua::CConfigManager>(WP<Config::IConfigManager>(Config::mgr())))
++                LUA->eval(std::format("if ii_fm and ii_fm_lib then ii_fm_lib.minimize(\"0x{:x}\") end", (uintptr_t)W.get()));
++        });
++    }
++
+     Animation::mgr()->createAnimation(configColor(g_pGlobalState->config.barColor->value()), m_cRealBarColor, Config::animationTree()->getAnimationPropertyConfig("border"),
+                                       pWindow, AVARDAMAGE_NONE);
+     m_cRealBarColor->setUpdateCallback([&](auto) { damageEntire(); });
+@@ -151,13 +168,20 @@ void CHyprBar::onTouchUp(Event::SCallbackInfo& info, ITouch::SUpEvent e) {
+ 
+ void CHyprBar::onMouseMove(Vector2D coords) {
+     // ensure proper redraws of button icons on hover when using hardware cursors
+-    if (g_pGlobalState->config.iconOnHover->value())
+-        damageOnButtonHover();
++    // ii-ren: and of the hover state layer, which every button has
++    damageOnButtonHover();
+ 
+     if (!m_bDragPending || m_bTouchEv || !validMapped(m_pWindow) || m_touchId != 0)
          return;
  
      m_bDragPending = false;
@@ -24,3 +56,155 @@ index c27653d..29f1bf7 100644
      handleMovement();
  }
  
+@@ -372,10 +396,62 @@ void CHyprBar::renderBarButtons(CBox* barBox, const float scale, const float a)
+ 
+         g_pHyprOpenGL->renderRect(buttonBox, color, {.round = static_cast<int>(std::round(scaledButtonSize / 2.0)), .roundingPower = 2.F});
+ 
++        // ii-ren: Material 3's hover state layer, the icon's own colour at 8% over the button;
++        // on close, the colour the shell gives it (its error container) instead.
++        if (m_iButtonHoverState & (1 << i)) {
++            const auto CLOSEHOVER = g_pGlobalState->config.closeHoverColor->value();
++            auto       hover      = button.userfg ? button.fgcol : CHyprColor(0xFFFFFFFF);
++            hover.a               = 0.08;
++            if (button.icon == "ii:close" && CLOSEHOVER != 0)
++                hover = configColor(CLOSEHOVER);
++            hover.a *= a;
++            g_pHyprOpenGL->renderRect(buttonBox, hover, {.round = static_cast<int>(std::round(scaledButtonSize / 2.0)), .roundingPower = 2.F});
++        }
++
+         offset += scaledButtonsPad + scaledButtonSize;
+     }
+ }
+ 
++// ii-ren: the shell's icons, stroked rather than set as text, so that each sits exactly in the
++// middle of its button: a chevron down (minimize), a diamond (maximize), a cross (close).
++// Strokes 1.5px, round caps, on a glyph 3/8 of the button, as the apps with their own
++// buttons draw them.
++SP<Render::ITexture> CHyprBar::strokeIcon(const std::string& icon, const CHyprColor& col, double size, float scale) {
++    const int  S  = std::max(1, (int)std::round(size));
++    const auto CS = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, S, S);
++    const auto CR = cairo_create(CS);
++    const auto C = S / 2.0, G = S * 0.375 / 2.0;
++
++    cairo_set_source_rgba(CR, col.r, col.g, col.b, col.a);
++    cairo_set_line_width(CR, 1.5 * scale);
++    cairo_set_line_cap(CR, CAIRO_LINE_CAP_ROUND);
++    cairo_set_line_join(CR, CAIRO_LINE_JOIN_ROUND);
++    if (icon == "ii:minimize") {
++        cairo_move_to(CR, C - G, C - G / 2);
++        cairo_line_to(CR, C, C + G / 2);
++        cairo_line_to(CR, C + G, C - G / 2);
++    } else if (icon == "ii:maximize") {
++        cairo_move_to(CR, C, C - G);
++        cairo_line_to(CR, C + G, C);
++        cairo_line_to(CR, C, C + G);
++        cairo_line_to(CR, C - G, C);
++        cairo_close_path(CR);
++    } else {
++        const auto X = G * 0.85;
++        cairo_move_to(CR, C - X, C - X);
++        cairo_line_to(CR, C + X, C + X);
++        cairo_move_to(CR, C + X, C - X);
++        cairo_line_to(CR, C - X, C + X);
++    }
++    cairo_stroke(CR);
++    cairo_surface_flush(CS);
++
++    auto tex = g_pHyprRenderer->createTexture(CS);
++    cairo_destroy(CR);
++    cairo_surface_destroy(CS);
++    return tex;
++}
++
+ void CHyprBar::renderBarButtonsText(CBox* barBox, const float scale, const float a) {
+     const auto HEIGHT           = g_pGlobalState->config.barHeight->value();
+     const auto BARBUTTONPADDING = g_pGlobalState->config.barButtonPadding->value();
+@@ -405,7 +481,8 @@ void CHyprBar::renderBarButtonsText(CBox* barBox, const float scale, const float
+             // render icon
+             auto fgcol = button.userfg ? button.fgcol : (button.bgcol.r + button.bgcol.g + button.bgcol.b < 1) ? CHyprColor(0xFFFFFFFF) : CHyprColor(0xFF000000);
+ 
+-            button.iconTex = g_pHyprRenderer->renderText(button.icon, fgcol, std::round(button.size * 0.62 * scale), false, "sans", scaledButtonSize);
++            button.iconTex = button.icon.starts_with("ii:") ? strokeIcon(button.icon, fgcol, scaledButtonSize, scale) :
++                                                              g_pHyprRenderer->renderText(button.icon, fgcol, std::round(button.size * 0.62 * scale), false, "sans", scaledButtonSize);
+         }
+ 
+         if (!button.iconTex || button.iconTex->m_texID == 0)
+@@ -675,17 +752,22 @@ void CHyprBar::damageOnButtonHover() {
+ 
+     const auto COORDS = cursorRelativeToBar();
+ 
+-    for (auto& b : g_pGlobalState->buttons) {
+-        const auto BARBUF     = Vector2D{(int)assignedBoxGlobal().w, HEIGHT};
+-        Vector2D   currentPos = Vector2D{(BUTTONSRIGHT ? BARBUF.x - BARBUTTONPADDING - b.size - offset : offset), (BARBUF.y - b.size) / 2.0}.floor();
++    // ii-ren: one bit per button, as the render keeps them; one flag for all of them missed
++    // the pointer leaving a button, and its hover layer stayed.
++    unsigned int mask = 0;
++    for (size_t i = 0; i < g_pGlobalState->buttons.size(); ++i) {
++        const auto& b          = g_pGlobalState->buttons[i];
++        const auto  BARBUF     = Vector2D{(int)assignedBoxGlobal().w, HEIGHT};
++        Vector2D    currentPos = Vector2D{(BUTTONSRIGHT ? BARBUF.x - BARBUTTONPADDING - b.size - offset : offset), (BARBUF.y - b.size) / 2.0}.floor();
+ 
+-        bool       hover = VECINRECT(COORDS, currentPos.x, currentPos.y, currentPos.x + b.size + BARBUTTONPADDING, currentPos.y + b.size);
+-
+-        if (hover != m_bButtonHovered) {
+-            m_bButtonHovered = hover;
+-            damageEntire();
+-        }
++        if (VECINRECT(COORDS, currentPos.x, currentPos.y, currentPos.x + b.size + BARBUTTONPADDING, currentPos.y + b.size))
++            mask |= 1 << i;
+ 
+         offset += BARBUTTONPADDING + b.size;
+     }
++
++    if (mask != m_iButtonHoverState) {
++        m_iButtonHoverState = mask;
++        damageEntire();
++    }
+ }
+diff --git a/hyprbars/barDeco.hpp b/hyprbars/barDeco.hpp
+index a3b4e2d..cda52d7 100644
+--- a/hyprbars/barDeco.hpp
++++ b/hyprbars/barDeco.hpp
+@@ -93,6 +93,7 @@ class CHyprBar : public IHyprWindowDecoration {
+     void handleDownEvent(Event::SCallbackInfo& info, std::optional<ITouch::SDownEvent> touchEvent);
+     void handleUpEvent(Event::SCallbackInfo& info);
+     void handleMovement();
++    SP<Render::ITexture> strokeIcon(const std::string& icon, const CHyprColor& col, double size, float scale);
+     bool doButtonPress(Config::INTEGER barPadding, Config::INTEGER barButtonPadding, Config::INTEGER barHeight, Vector2D COORDS, bool BUTTONSRIGHT);
+ 
+     CBox assignedBoxGlobal();
+@@ -103,6 +104,7 @@ class CHyprBar : public IHyprWindowDecoration {
+ 
+     CHyprSignalListener m_pTouchMoveCallback;
+     CHyprSignalListener m_pMouseMoveCallback;
++    CHyprSignalListener m_pMinimizeCallback;
+ 
+     std::string         m_szLastTitle;
+ 
+diff --git a/hyprbars/globals.hpp b/hyprbars/globals.hpp
+index 0ef19ae..8a88c52 100644
+--- a/hyprbars/globals.hpp
++++ b/hyprbars/globals.hpp
+@@ -30,7 +30,7 @@ struct SGlobalState {
+     uint32_t                  titleColorRuleIdx = 0;
+ 
+     struct {
+-        SP<Config::Values::CColorValue>      barColor, textColor, inactiveButtonColor;
++        SP<Config::Values::CColorValue>      barColor, textColor, inactiveButtonColor, closeHoverColor;
+         SP<Config::Values::CIntValue>        barHeight;
+         SP<Config::Values::CIntValue>        barTextSize;
+         SP<Config::Values::CFontWeightValue> barTextWeight;
+diff --git a/hyprbars/main.cpp b/hyprbars/main.cpp
+index ae9c90b..b2b5674 100644
+--- a/hyprbars/main.cpp
++++ b/hyprbars/main.cpp
+@@ -251,6 +251,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+     HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.enabled);
+     HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.iconOnHover);
+     HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.onDoubleClick);
++    // ii-ren: the hover fill of the button whose icon is "ii:close"; 0 means the usual layer.
++    g_pGlobalState->config.closeHoverColor = makeShared<Config::Values::CColorValue>("plugin:hyprbars:close_hover_color", "Hover fill of the close button", 0);
++    HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.closeHoverColor);
+ 
+     if (Config::mgr()->type() == Config::CONFIG_LEGACY)
+         HyprlandAPI::addConfigKeyword(PHANDLE, "plugin:hyprbars:hyprbars-button", onNewButton, Hyprlang::SHandlerOptions{});
