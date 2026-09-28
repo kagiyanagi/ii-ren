@@ -1,7 +1,7 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-fonts-themes
 pkgver=1.0
-pkgrel=6
+pkgrel=7
 pkgdesc='Illogical Impulse Fonts and Theming Dependencies'
 arch=(any)
 license=(None)
@@ -17,7 +17,7 @@ depends=(
   matugen
   otf-space-grotesk
   starship
-  ttf-jetbrains-mono-nerd
+  maplemono-nf-unhinted
   ttf-material-symbols-variable-git
   ttf-readex-pro
   ttf-rubik-vf

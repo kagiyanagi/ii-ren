@@ -100,7 +100,7 @@ quickshell, home_attrs, ... }:
       matugen #matugen-bin (Used in Quickshell)
       #otf-space-grotesk (TODO: Not available as Nixpkg)
       starship #starship
-      nerd-fonts.jetbrains-mono #ttf-jetbrains-mono-nerd
+      maple-mono.NF #maplemono-nf-unhinted
       material-symbols #ttf-material-symbols-variable-git
       #ttf-readex-pro (TODO: seems not available as nixpkg)
       rubik #ttf-rubik-vf

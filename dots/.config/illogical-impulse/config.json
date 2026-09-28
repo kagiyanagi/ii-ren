@@ -7,10 +7,10 @@
         "fakeScreenRounding": 2,
         "fonts": {
             "enableCustom": false,
-            "expressive": "Google Sans Flex",
-            "iconNerd": "JetBrains Mono NF",
+            "expressive": "Space Grotesk",
+            "iconNerd": "Maple Mono CN NF",
             "main": "Google Sans Flex",
-            "monospace": "JetBrains Mono NF",
+            "monospace": "Maple Mono CN NF",
             "numbers": "Google Sans Flex",
             "reading": "Readex Pro",
             "title": "Google Sans Flex"

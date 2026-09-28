@@ -138,8 +138,8 @@ Singleton {
                     property string main: "Google Sans Flex"
                     property string numbers: "Google Sans Flex"
                     property string title: "Google Sans Flex"
-                    property string iconNerd: "JetBrains Mono NF"
-                    property string monospace: "JetBrains Mono NF"
+                    property string iconNerd: "Maple Mono NF"
+                    property string monospace: "Maple Mono NF"
                     property string reading: "Readex Pro"
                     property string expressive: "Space Grotesk" 
                 }

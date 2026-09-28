@@ -79,8 +79,8 @@ Tips:
   - Used in Quickshell and matugen config.
 - `starship`
   - Used in Fish config.
-- `ttf-jetbrains-mono-nerd`
-  - Font name: `JetBrains Mono NF`, `JetBrainsMono Nerd Font`.
+- `maplemono-nf-unhinted` (AUR)
+  - Font name: `Maple Mono NF`.
   - Used in foot, kdeglobals, kitty, qt5ct, qt6ct and Quickshell config.
 - `ttf-material-symbols-variable-git`
   - Font name: `Material Symbols Rounded`, `Material Symbols Outlined`

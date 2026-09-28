@@ -39,8 +39,8 @@ Item {
         { key: "numbers", icon: "123", label: Translation.tr("Numbers"), fallback: "Google Sans Flex" },
         { key: "reading", icon: "chrome_reader_mode", label: Translation.tr("Reading"), fallback: "Readex Pro" },
         { key: "expressive", icon: "brush", label: Translation.tr("Expressive"), fallback: "Space Grotesk" },
-        { key: "monospace", icon: "code", label: Translation.tr("Monospace"), fallback: "JetBrains Mono NF" },
-        { key: "iconNerd", icon: "emoji_symbols", label: Translation.tr("Nerd Font icons"), fallback: "JetBrains Mono NF" }
+        { key: "monospace", icon: "code", label: Translation.tr("Monospace"), fallback: "Maple Mono NF" },
+        { key: "iconNerd", icon: "emoji_symbols", label: Translation.tr("Nerd Font icons"), fallback: "Maple Mono NF" }
     ]
 
     // Committed on Enter or focus-out, not per keystroke: every write re-lays
