@@ -7,7 +7,6 @@ import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
-import "configs/widgets"
 
 Item {
     id: interfaceConfigRoot
@@ -1370,49 +1369,8 @@ Item {
             }
 
             ContentSubsection {
-                title: Translation.tr("OSD Position")
+                title: Translation.tr("Style")
                 Layout.fillWidth: true
-                visible: (Config.options.osd.style ?? "default") === "default"
-
-                OsdPositionPicker {
-                    Layout.fillWidth: true
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("OSD Style")
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.osd.style ?? "default"
-                    onSelected: (newValue) => {
-                        Config.options.osd.style = newValue;
-                        GlobalStates.osdVolumeOpen = true;
-                        GlobalStates.osdInteraction();
-                    }
-                    options: [{
-                        "displayName": Translation.tr("Android"),
-                        "icon": "smartphone",
-                        "tooltip": Translation.tr("Edge vertical slider bar"),
-                        "value": "default"
-                    }, {
-                        "displayName": Translation.tr("Minimal"),
-                        "icon": "horizontal_rule",
-                        "tooltip": Translation.tr("Compact horizontal floating pill"),
-                        "value": "minimalist"
-                    }, {
-                        "displayName": Translation.tr("Material"),
-                        "icon": "interests",
-                        "tooltip": Translation.tr("Themed geometric slider card"),
-                        "value": "material"
-                    }]
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Material Style Options")
-                Layout.fillWidth: true
-                visible: Config.options.osd.style === "material"
 
                 ConfigSwitch {
                     buttonIcon: "compress"

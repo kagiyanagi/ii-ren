@@ -18,7 +18,6 @@ import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
 import qs.modules.ii.notificationPopup
 import qs.modules.ii.onScreenDisplay
-import qs.modules.ii.onScreenDisplay.minimalist
 import qs.modules.ii.keypressDisplay
 import qs.modules.ii.onScreenKeyboard
 import qs.modules.ii.overview
@@ -68,8 +67,7 @@ Scope {
     PanelLoader { component: ImmersiveMedia {} }
     PanelLoader { component: MediaControls {} }
     PanelLoader { component: NotificationPopup {} }
-    PanelLoader { extraCondition: !(Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material")); component: OnScreenDisplay {} }
-    PanelLoader { extraCondition: Config.ready && (Config.options.osd.style === "minimalist" || Config.options.osd.style === "material"); component: MinimalistOsd {} }
+    PanelLoader { component: OnScreenDisplay {} }
     PanelLoader {
         // Kept loaded rather than gated on the service: the windows are empty
         // and invisible until a recording or the quick toggle asks for them.

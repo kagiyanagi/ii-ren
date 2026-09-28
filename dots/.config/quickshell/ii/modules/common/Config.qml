@@ -1692,11 +1692,6 @@ Singleton {
 
             property JsonObject osd: JsonObject {
                 property bool enable: true
-                property string style: "minimalist"
-                property string position: "right"
-                // AOSP volume dialog height: 2 * background_margin + 2 * button_size
-                // + 2 * components_spacing + volume_dialog_slider_height (254).
-                property int height: 418
                 property int timeout: 3000
                 property bool showValues: false
                 property bool hideWhenFullscreen: true
