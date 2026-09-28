@@ -119,13 +119,11 @@ Scope {
                     left: true
                     right: true
                 }
-                property int barSize: Config.options.bar.vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.barHeight
-                property int margin: isZoomInStyle ? barSize : barSize * 2
-                margins { 
-                    top: -margin * 2
-                    bottom: -margin * 2
-                    left: -margin * 2
-                    right: -margin * 2
+
+                margins {
+                    bottom: (!Config.options.bar.bottom && (Config.options?.dock?.position ?? "bottom") === "bottom")
+                        ? -Math.round((Config.options?.dock?.height ?? 60) * 2.5)
+                        : 0
                 }
 
                 HyprlandFocusGrab {
@@ -220,7 +218,7 @@ Scope {
                         anchors {
                             horizontalCenter: parent.horizontalCenter
                             top: parent.top
-                            topMargin: root.margin * 2 + Appearance.sizes.elevationMargin
+                            topMargin: Appearance.sizes.elevationMargin
                         }
                         SearchWidget {
                             id: searchWidget

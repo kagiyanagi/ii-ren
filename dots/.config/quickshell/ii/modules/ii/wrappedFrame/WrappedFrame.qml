@@ -28,6 +28,7 @@ Scope {
         readonly property bool horizontal: edge === "top" || edge === "bottom"
 
         WlrLayershell.namespace: "quickshell:wrappedFrame"
+        WlrLayershell.layer: WlrLayer.Overlay
         mask: Region {}
 
         color: edgeFrameWindow.showBackground ? Appearance.colors.colLayer0 : "transparent"
@@ -61,6 +62,7 @@ Scope {
         readonly property bool isBottom: corner === RoundCorner.CornerEnum.BottomLeft || corner === RoundCorner.CornerEnum.BottomRight
 
         WlrLayershell.namespace: "quickshell:wrappedFrame"
+        WlrLayershell.layer: WlrLayer.Overlay
         exclusionMode: ExclusionMode.Ignore
         mask: Region {}
 
