@@ -1492,10 +1492,6 @@
                         "type": "idleInhibitor"
                     },
                     {
-                        "size": 1,
-                        "type": "cloudflareWarp"
-                    },
-                    {
                         "size": 2,
                         "type": "audio"
                     },
@@ -1587,7 +1583,6 @@
                 "nightLight",
                 "darkMode",
                 "antiFlashbang",
-                "cloudflareWarp",
                 "mic",
                 "musicRecognition",
                 "notifications",

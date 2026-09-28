@@ -41,13 +41,6 @@ DelegateChooser {
         }
     }
     DelegateChoice {
-        roleValue: "cloudflareWarp"
-        ActionCenterToggleButton {
-            toggleModel: CloudflareWarpToggle {}
-            icon: "cloudflare"
-        }
-    }
-    DelegateChoice {
         roleValue: "colorPicker"
         ActionCenterToggleButton {
             toggleModel: ColorPickerToggle {}

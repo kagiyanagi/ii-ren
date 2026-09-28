@@ -115,10 +115,6 @@ RippleButton { // Right sidebar button
             NotificationUnreadCount {}
         }
         IndicatorRevealer {
-            reveal: CloudflareWarpService.available && CloudflareWarpService.connected
-            icon: "cloud_lock"
-        }
-        IndicatorRevealer {
             reveal: Network.hotspotToggled
             icon: "wifi_tethering"
         }

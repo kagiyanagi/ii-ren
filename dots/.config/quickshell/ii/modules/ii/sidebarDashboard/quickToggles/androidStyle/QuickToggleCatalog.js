@@ -14,7 +14,6 @@ var TOGGLE_TYPES = {
     comfortView: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     readingMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     darkMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
-    cloudflareWarp: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     gameMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     floatingMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     screenSnip: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },

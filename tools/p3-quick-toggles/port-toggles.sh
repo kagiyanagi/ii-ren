@@ -20,7 +20,7 @@ DST="$F/modules/ii/sidebarDashboard/quickToggles"
 # Toggle types this shell can back with a model. Keep in sync with SUPPORTED in
 # the python block below.
 TOGGLES=(Network Bluetooth IdleInhibitor EasyEffects NightLight DarkMode
-         CloudflareWarp GameMode ScreenSnip ColorPicker OnScreenKeyboard Mic
+         GameMode ScreenSnip ColorPicker OnScreenKeyboard Mic
          Audio Notification PowerProfile AntiFlashbang
          VolumeSlider MicSlider BrightnessSlider GammaSlider MediaWidget)
 
@@ -53,7 +53,7 @@ import re, sys
 DST, MEDIA_POPUP, VERTICAL_SLIDER = sys.argv[1], sys.argv[2], sys.argv[3]
 SUPPORTED = {
     "network", "bluetooth", "idleInhibitor", "easyEffects", "nightLight",
-    "darkMode", "cloudflareWarp", "gameMode", "screenSnip", "colorPicker",
+    "darkMode", "gameMode", "screenSnip", "colorPicker",
     "onScreenKeyboard", "mic", "audio", "notifications", "powerProfile",
     "musicRecognition", "antiFlashbang",
     "volumeSlider", "micSlider", "brightnessSlider", "gammaSlider",

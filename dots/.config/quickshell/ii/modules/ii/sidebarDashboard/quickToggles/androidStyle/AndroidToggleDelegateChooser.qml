@@ -71,17 +71,6 @@ DelegateChooser {
     }
 
     DelegateChoice {
-        roleValue: "cloudflareWarp"
-        AndroidCloudflareWarpToggle {
-            required property int index
-            required property var modelData
-            buttonIndex: index
-            buttonData: modelData
-            chooser: root
-        }
-    }
-
-    DelegateChoice {
         roleValue: "colorPicker"
         AndroidColorPickerToggle {
             required property int index
