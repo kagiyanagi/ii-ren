@@ -1,103 +1,44 @@
-# Don't print a new line at the start of the prompt
+# Themed by ii: slots 232-255 are overridden with the wallpaper's Material
+# scheme (scripts/colors/terminal/kitty-theme.conf), so the prompt recolours
+# with the shell. Shows what end-4's prompt shows, nothing more.
+#   255 primary   254/233 primaryContainer/on   252/235 secondaryContainer/on
+#   250/237 tertiaryContainer/on   249 error   245 outlineVariant
 add_newline = false
-# Pipes ╰─ ╭─
-# Powerline symbols                                     
-# Wedges 🭧🭒 🭣🭧🭓
-# Random noise 🬖🬥🬔🬗
-# Cool stuff 󰜥   
-
-# format = """
-# $directory $fill $git_branch $cmd_duration
-#  $character"""
 format = """
-$cmd_duration $directory$git_branch
-  $character"""
+[╭─](fg:245) $directory$git_branch
+[╰─](fg:245)$character"""
+right_format = "$cmd_duration"
 
-[fill]
-symbol = '-'
-style = 'fg:245'
-
-# Replace the "❯" symbol in the prompt with "➜"
-[character]                            # The name of the module we are configuring is "character"
-success_symbol = "[ ](bold fg:243)"
-error_symbol = "[ ](bold fg:244)"
-
-# Disable the package module, hiding it from the prompt completely
-[package]
-disabled = true
-
-[git_branch]
-style = "bg: 252"
-symbol = "󰘬"
-truncation_length = 12
-truncation_symbol = ""
-format = " 󰜥 [](bold fg:252)[$symbol $branch(:$remote_branch)](fg:235 bg:252)[ ](bold fg:252)"
-
-[git_commit]
-commit_hash_length = 4
-tag_symbol = " "
-
-[git_state]
-format = '[\($state( $progress_current of $progress_total)\)]($style) '
-cherry_pick = "[🍒 PICKING](bold red)"
-
-[git_status]
-conflicted = " 🏳 "
-ahead = " 🏎💨 "
-behind = " 😰 "
-diverged = " 😵 "
-untracked = " 🤷 ‍"
-stashed = " 📦 "
-modified = " 📝 "
-staged = '[++\($count\)](green)'
-renamed = " ✍️ "
-deleted = " 🗑 "
-
-[hostname]
-ssh_only = false
-format =  "[•$hostname](bg:252 bold fg:235)[](bold fg:252)"
-trim_at = ".companyname.com"
-disabled = false
-
-[line_break]
-disabled = false
-
-[memory_usage]
-disabled = true
-threshold = -1
-symbol = " "
-style = "bold dimmed green"
-
-[time]
-disabled = true
-format = '🕙[\[ $time \]]($style) '
-time_format = "%T"
-
-[username]
-style_user = "bold bg:252 fg:235"
-style_root = "red bold"
-format = "[](bold fg:252)[$user]($style)"
-disabled = false
-show_always = true
+[character]
+success_symbol = "[❯](bold fg:255)"
+error_symbol = "[❯](bold fg:249)"
+vimcmd_symbol = "[❮](bold fg:255)"
 
 [directory]
-home_symbol = " "
-read_only = "  "
-style = "bg:255 fg:240"
+style = "bg:254 fg:233"
+home_symbol = "\uf015"
+read_only = " \U000f033e"
+read_only_style = "bg:254 fg:233"
 truncation_length = 2
-truncation_symbol = ".../"
-format = '[](bold fg:255)[󰉋 → $path]($style)[](bold fg:255)'
-
+truncation_symbol = "…/"
+format = "[](fg:254)[\U000f024b $path[$read_only]($read_only_style)](bg:254 fg:233)[](fg:254)"
 
 [directory.substitutions]
-"Desktop" = "  "
-"Documents" = "  "
-"Downloads" = "  "
-"Music" = " 󰎈 "
-"Pictures" = "  "
-"Videos" = "  "
-"GitHub" = " 󰊤 "
+"Code" = "\uf121"
+"GitHub" = "\U000f02a4"
+"Desktop" = "\uf108"
+"Documents" = "\U000f0219"
+"Downloads" = "\uf019"
+"Music" = "\U000f0388"
+"Pictures" = "\uf03e"
+"Videos" = "\uf03d"
+
+[git_branch]
+symbol = "\ue725"
+truncation_length = 24
+truncation_symbol = "…"
+format = " [](fg:252)[$symbol $branch(:$remote_branch)](bg:252 fg:235)[](fg:252)"
 
 [cmd_duration]
 min_time = 0
-format = '[](bold fg:252)[󰪢 $duration](bold bg:252 fg:235)[](bold fg:252)'
+format = "[](fg:250)[\U000f051b $duration](bg:250 fg:237)[](fg:250)"
