@@ -235,17 +235,6 @@ DelegateChooser {
     }
 
     DelegateChoice {
-        roleValue: "notifications"
-        AndroidNotificationToggle {
-            required property int index
-            required property var modelData
-            buttonIndex: index
-            buttonData: modelData
-            chooser: root
-        }
-    }
-
-    DelegateChoice {
         roleValue: "onScreenKeyboard"
         AndroidOnScreenKeyboardToggle {
             required property int index

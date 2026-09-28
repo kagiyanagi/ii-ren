@@ -25,7 +25,6 @@ var TOGGLE_TYPES = {
     keyboardBacklight: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     mic: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     audio: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
-    notifications: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     powerProfile: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     musicRecognition: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     antiFlashbang: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
