@@ -54,7 +54,7 @@ Scope { // Scope
         }
         stdout: StdioCollector {
             onStreamFinished: {
-                pinWithFunnyHyprlandWorkaroundProc.hook(text);
+                pinWithFunnyHyprlandWorkaroundProc.hook?.(text);
             }
         }
     }
@@ -161,7 +161,14 @@ Scope { // Scope
             implicitWidth: Appearance.sizes.sidebarWidthExtended + Appearance.sizes.elevationMargin
             WlrLayershell.namespace: root.isOnLeft ? "quickshell:sidebarLeft" : "quickshell:sidebarRight"
             // Hyprland 0.49: OnDemand is Exclusive, Exclusive just breaks click-outside-to-close
-            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+            // Pinned, it lives beside windows, and Hyprland hands an OnDemand layer the
+            // keyboard on mere hover (follow_mouse 2 does not take it back without a
+            // click): every pass across it stole the app's keys. So pinned, it takes the
+            // keyboard only once clicked, and gives it up with the focus. Hyprland only
+            // focuses a layer on pointer motion, so the click moves the cursor onto itself.
+            property bool pinFocus: false
+            onPinFocusChanged: if (pinFocus) Qt.callLater(() => Hyprland.dispatch("hl.dsp.cursor.move(hl.get_cursor_pos())"))
+            WlrLayershell.keyboardFocus: !root.pin || pinFocus ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors {
@@ -217,6 +224,8 @@ Scope { // Scope
                 y: root.pin ? 0 : Appearance.sizes.hyprlandGapsOut
                 width: panelWindow.sidebarWidth - Appearance.sizes.hyprlandGapsOut - Appearance.sizes.elevationMargin
                 property bool _initialized: false
+                readonly property bool hasKeyboard: Window.active
+                onHasKeyboardChanged: if (!hasKeyboard) panelWindow.pinFocus = false
 
                 Timer {
                     interval: 2500 // Avoid animations on first show
@@ -289,6 +298,15 @@ Scope { // Scope
                         }
                         event.accepted = true;
                     }
+                }
+            }
+
+            MouseArea { // Sees every press first, then lets it through to what is under it
+                anchors.fill: sidebarLeftBackground
+                enabled: root.pin
+                onPressed: (mouse) => {
+                    panelWindow.pinFocus = true;
+                    mouse.accepted = false;
                 }
             }
 
