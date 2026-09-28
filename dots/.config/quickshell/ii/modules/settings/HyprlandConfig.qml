@@ -170,6 +170,22 @@ ContentPage {
                 { displayName: Translation.tr("Scrolling"), icon: "view_carousel", value: "scrolling" }
             ]
         }
+
+        ContentSubsection {
+            title: Translation.tr("Floating window controls")
+            tooltip: Translation.tr("Where floating mode puts close, maximize and minimize, for apps that have none of their own. Ctrl+Super+Space turns floating mode on and off.")
+
+            ConfigSelectionArray {
+                currentValue: Config.options.windows.floatingControls
+                onSelected: newValue => {
+                    Config.options.windows.floatingControls = newValue;
+                }
+                options: [
+                    { displayName: Translation.tr("Top bar"), icon: "toolbar", value: "top" },
+                    { displayName: Translation.tr("Side rail"), icon: "side_navigation", value: "right" }
+                ]
+            }
+        }
     }
 
     ContentSection {

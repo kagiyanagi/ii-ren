@@ -98,6 +98,10 @@ Singleton {
 
             property JsonObject hyprland: JsonObject {
                 property string layout: "dwindle"
+                property bool floatingMode: false
+                // Classes whose windows get a floating-mode bar, so an app's bar is on its
+                // first frame from its second launch on, reboots included.
+                property list<string> floatingBarClasses: []
             }
 
             property JsonObject lock: JsonObject {

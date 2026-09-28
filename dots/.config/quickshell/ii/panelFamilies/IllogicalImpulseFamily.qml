@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.modules.common
+import qs.services
 import qs.modules.ii.altTab
 import qs.modules.ii.background
 import qs.modules.ii.bar
@@ -11,6 +12,7 @@ import qs.modules.ii.desktopMenu
 import qs.modules.ii.dock
 import qs.modules.ii.dropover
 import qs.modules.ii.fastPair
+import qs.modules.ii.floatingRails
 import qs.modules.ii.immersiveMedia
 import qs.modules.ii.lock
 import qs.modules.ii.mediaControls
@@ -59,6 +61,9 @@ Scope {
     PanelLoader { extraCondition: Config.options.background.rightClickMenu; component: DesktopMenu {} }
     PanelLoader { component: DropShelfPanel {} }
     PanelLoader { extraCondition: Config.options.bluetooth.fastPair.enable; component: FastPairPopup {} }
+    // The side rail, and the top bar when hyprbars cannot load. Stays until the last
+    // rail has faded out.
+    PanelLoader { extraCondition: (FloatingMode.enabled && !FloatingMode.pluginBars) || FloatingMode.rails.length > 0; component: FloatingRails {} }
     PanelLoader { component: Lock {} }
     PanelLoader { component: ImmersiveMedia {} }
     PanelLoader { component: MediaControls {} }

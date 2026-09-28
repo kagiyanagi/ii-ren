@@ -21,6 +21,10 @@ end
 
 function workspace_in_group(i)
     local curr = hl.get_active_workspace().id
+    -- Outside the real workspaces (the lock screen's temporary one is 2147483647 - N, as
+    -- services/HyprlandData.qml filters): its group would run past INT_MAX, and Hyprland
+    -- aborts on a workspace number it cannot stoi(). Count it as the first group.
+    if curr < 1 or curr > 100 then curr = 1 end
     local newVal = math.floor((curr - 1) / workspaceGroupSize) * workspaceGroupSize + i
     -- hl.notification.create({ text = "curr " .. curr .. " floor " .. math.floor(curr / 10) .. " new " .. newVal, duration = 5000 })
     return newVal

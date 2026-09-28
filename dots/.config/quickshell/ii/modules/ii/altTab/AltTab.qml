@@ -94,10 +94,13 @@ Scope {
         const previous = root.windows[0]; // focusHistoryID 0 when we opened
         Hyprland.dispatch(`hl.dsp.focus({window = "address:${target.address}"})`);
 
-        // Focusing a sibling drops the maximize, which dumps the whole
+        // Focusing a tiled sibling drops the maximize, which dumps the whole
         // workspace back into the tiling layout. Hand the state over instead,
-        // so the window you picked takes the space the old one had.
+        // so the window you picked takes the space the old one had. A floating
+        // window is only raised over it (Hyprland's FocusState), as a desktop's
+        // switcher does: handing it the state would fill the screen with it.
         if (!(previous?.fullscreen > 0)) return;
+        if (target.floating) return;
         if (previous.address === target.address) return;
         if (previous.workspace?.id !== target.workspace?.id) return;
         const mode = previous.fullscreen === 2 ? "fullscreen" : "maximized";

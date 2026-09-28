@@ -1,0 +1,26 @@
+diff --git a/hyprbars/barDeco.cpp b/hyprbars/barDeco.cpp
+index c27653d..29f1bf7 100644
+--- a/hyprbars/barDeco.cpp
++++ b/hyprbars/barDeco.cpp
+@@ -12,6 +12,7 @@
+ #include <hyprland/src/managers/input/InputManager.hpp>
+ #include <hyprland/src/render/Renderer.hpp>
+ #include <hyprland/src/config/ConfigManager.hpp>
++#include <hyprland/src/config/lua/ConfigManager.hpp>
+ #include <hyprland/src/config/shared/animation/AnimationTree.hpp>
+ #include <hyprland/src/config/shared/parserUtils/ParserUtils.hpp>
+ #include <hyprland/src/config/supplementary/executor/Executor.hpp>
+@@ -158,6 +159,13 @@ void CHyprBar::onMouseMove(Vector2D coords) {
+         return;
+ 
+     m_bDragPending = false;
++
++    // ii-ren: the shell's floating mode brings a maximized window out of its maximize
++    // under the pointer before the drag reads its geometry, as KWin does
++    // (quickshell/ii/services/floatingMode.lua, before_drag).
++    if (const auto LUA = dynamicPointerCast<Config::Lua::CConfigManager>(WP<Config::IConfigManager>(Config::mgr())))
++        LUA->eval(std::format("if ii_fm and ii_fm_lib then ii_fm_lib.before_drag(\"0x{:x}\") end", (uintptr_t)m_pWindow.lock().get()));
++
+     handleMovement();
+ }
+ 

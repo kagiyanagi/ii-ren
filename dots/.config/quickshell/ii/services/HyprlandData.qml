@@ -88,7 +88,8 @@ Singleton {
 
         function onRawEvent(event) {
             // console.log("Hyprland raw event:", event.name);
-            if (["openlayer", "closelayer", "screencast"].includes(event.name)) return;
+            // "custom" is FloatingMode's watcher, up to once a frame: nothing here changes with it.
+            if (["openlayer", "closelayer", "screencast", "custom"].includes(event.name)) return;
             updateAll()
         }
     }

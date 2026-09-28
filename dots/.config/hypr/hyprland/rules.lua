@@ -150,6 +150,13 @@ hl.layer_rule({ match = { namespace = "quickshell:overview" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:(dockFolder|desktopMenu|dropShelf)" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:polkit" }, no_anim = true})
+-- Window rails: a screen-sized click-through layer, opaque where it paints; nothing behind it needs blurring.
+hl.layer_rule({ match = { namespace = "quickshell:floatingRails" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:floatingRails" }, blur = false})
+-- Floating mode's title bars are hyprbars, which the shell loads and turns on. A reload
+-- resets the plugin to "every window gets a bar" until the shell's rules are back, so
+-- start it off here: no bar flashes onto every window on each reload.
+if hl.plugin.hyprbars then hl.config({ plugin = { hyprbars = { enabled = false } } }) end
 hl.layer_rule({ match = { namespace = "quickshell:popup" }, xray = false}) -- No weird color for bar tooltips (this in theory should suffice)
 hl.layer_rule({ match = { namespace = "quickshell:popup" }, ignore_alpha = 1}) -- No weird color for bar tooltips (but somehow this is necessary)
 hl.layer_rule({ match = { namespace = "quickshell:mediaControls" }, ignore_alpha = 1}) -- Same as above

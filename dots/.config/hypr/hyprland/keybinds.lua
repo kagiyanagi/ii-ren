@@ -117,8 +117,14 @@ hl.bind("SUPER + SHIFT + ALT + mouse:273", hl.dsp.exec_cmd(hyprScripts .. "/ai/p
 --#!
 --##! Window
 --# Focusing
-hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Window: Move" })
-hl.bind("SUPER + mouse:274", hl.dsp.window.drag(), { mouse = true })
+-- In the shell's floating mode a maximized window comes out of it under the pointer
+-- before the drag reads its box (services/floatingMode.lua before_drag), as KWin's do.
+local function dragWindow()
+    if ii_fm and ii_fm_lib then ii_fm_lib.before_drag() end
+    hl.dispatch(hl.dsp.window.drag())
+end
+hl.bind("SUPER + mouse:272", dragWindow, { mouse = true, description = "Window: Move" })
+hl.bind("SUPER + mouse:274", dragWindow, { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Window: Resize" })
 --#/# bind = SUPER + ←/↑/→/↓,, -- Focus in direction
 for i = 1, 6 do
@@ -146,6 +152,7 @@ hl.bind("SUPER + Semicolon", hl.dsp.layout("splitratio -0.1"), { repeating = tru
 hl.bind("SUPER + Apostrophe", hl.dsp.layout("splitratio +0.1"), { repeating = true })
 --# Positioning mode
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Window: Float/Tile" })
+hl.bind("CTRL + SUPER + Space", hl.dsp.global("quickshell:floatingModeToggle"), { description = "Window: Floating mode (all windows)" })
 hl.bind("SUPER + D", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }),
     { description = "Window: Maximize" })
 hl.bind("SUPER + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }),
