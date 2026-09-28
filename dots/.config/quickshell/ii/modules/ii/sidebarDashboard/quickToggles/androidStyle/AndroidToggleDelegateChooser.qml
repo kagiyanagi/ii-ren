@@ -22,6 +22,7 @@ DelegateChooser {
     signal openHotspotDialog
     signal openDnsDialog
     signal openVpnDialog
+    signal openIdleDialog
 
     role: "toggleType"
 
@@ -135,6 +136,7 @@ DelegateChooser {
             buttonIndex: index
             buttonData: modelData
             chooser: root
+            onOpenMenu: root.openIdleDialog()
         }
     }
 

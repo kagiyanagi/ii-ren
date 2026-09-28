@@ -128,7 +128,8 @@ Scope {
             // Post-unlock actions
             if (lockContext.alsoInhibitIdle) {
                 lockContext.alsoInhibitIdle = false;
-                Idle.toggleInhibit(true);
+                // Until turned off, as before durations; the tile's pick stays.
+                Idle.set(true, 0);
             }
         }
     }

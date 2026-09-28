@@ -17,5 +17,6 @@ Rectangle {
     signal openWifiDialog()
     signal openHotspotDialog()
     signal openDnsDialog()
+    signal openIdleDialog()
     signal openVpnDialog()
 }

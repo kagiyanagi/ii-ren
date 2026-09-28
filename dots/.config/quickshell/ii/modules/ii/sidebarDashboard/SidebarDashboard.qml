@@ -118,7 +118,7 @@ Scope {
         }
 
         // One of the dashboard's dialogs by name ("Bluetooth", "Wifi", "Hotspot", "Dns",
-        // "Vpn", "NightLight", "ComfortView", "ReadingMode", "AntiFlashbang",
+        // "Vpn", "Idle", "NightLight", "ComfortView", "ReadingMode", "AntiFlashbang",
         // "AudioOutput", "AudioInput"), so each is reachable without a pointer — and
         // by scripts, which have none.
         function openDialog(name: string): void {

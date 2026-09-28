@@ -116,6 +116,10 @@ Singleton {
             property JsonObject idle: JsonObject {
                 property bool inhibit: false
                 property string sessionId: ""
+                // The last duration picked, in minutes; 0 is until turned off.
+                property int minutes: 0
+                // When the running one ends, epoch ms; 0 is never.
+                property real until: 0
             }
 
             property JsonObject overlay: JsonObject {

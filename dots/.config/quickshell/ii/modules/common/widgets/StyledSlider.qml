@@ -53,6 +53,8 @@ Slider {
     property real dividerMargins: 2
     property real trackDotSize: 3
     property bool usePercentTooltip: true
+    // Off where the value is already drawn large beside the slider.
+    property bool showTooltip: true
     property string tooltipContent: usePercentTooltip ? `${Math.round(((value - from) / (to - from)) * 100)}%` : `${Math.round(value)}`
     property bool wavy: configuration === StyledSlider.Configuration.Wavy // If true, the progress bar will have a wavy fill effect
     property bool animateWave: true
@@ -248,7 +250,7 @@ Slider {
         }
 
         StyledToolTip {
-            extraVisibleCondition: root.pressed
+            extraVisibleCondition: root.pressed && root.showTooltip
             text: root.tooltipContent
             font {
                 family: Appearance.font.family.numbers

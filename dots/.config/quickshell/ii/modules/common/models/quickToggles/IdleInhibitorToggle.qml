@@ -11,8 +11,12 @@ QuickToggleModel {
 
     toggled: Idle.inhibit
     icon: toggled ? "kettle" : "local_cafe"
+    statusText: !toggled ? ""
+        : Idle.until > 0 ? Translation.tr("%1 left").arg(Idle.remainingText)
+        : Translation.tr("Always")
     mainAction: () => {
         Idle.toggleInhibit()
     }
+    hasMenu: true
     tooltipText: Translation.tr("Keep system awake")
 }

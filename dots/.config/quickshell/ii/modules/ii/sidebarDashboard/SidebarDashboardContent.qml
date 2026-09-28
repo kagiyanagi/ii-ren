@@ -21,6 +21,7 @@ import qs.modules.ii.sidebarDashboard.wifiNetworks
 import qs.modules.ii.sidebarDashboard.hotspot
 import qs.modules.ii.sidebarDashboard.dns
 import qs.modules.ii.sidebarDashboard.vpn
+import qs.modules.ii.sidebarDashboard.idle
 
 Item {
     id: root
@@ -38,8 +39,9 @@ Item {
     property bool showHotspotDialog: false
     property bool showDnsDialog: false
     property bool showVpnDialog: false
+    property bool showIdleDialog: false
     property bool editMode: false
-    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog || showVpnDialog
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog || showVpnDialog || showIdleDialog
 
     Connections {
         target: GlobalStates
@@ -49,6 +51,7 @@ Item {
                 root.showHotspotDialog = false;
                 root.showDnsDialog = false;
                 root.showVpnDialog = false;
+                root.showIdleDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
@@ -224,6 +227,11 @@ Item {
         dialog: VpnDialog {}
     }
 
+    ToggleDialog {
+        shownPropertyString: "showIdleDialog"
+        dialog: IdleDialog {}
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -304,6 +312,9 @@ Item {
             }
             function onOpenVpnDialog() {
                 root.showVpnDialog = true;
+            }
+            function onOpenIdleDialog() {
+                root.showIdleDialog = true;
             }
         }
     }
