@@ -333,6 +333,7 @@ AbstractQuickPanel {
                                             onOpenWifiDialog: root.openWifiDialog()
                                             onOpenHotspotDialog: root.openHotspotDialog()
                                             onOpenDnsDialog: root.openDnsDialog()
+                                            onOpenVpnDialog: root.openVpnDialog()
                                         }
                                     }
                                 }
@@ -561,6 +562,7 @@ AbstractQuickPanel {
                             onOpenWifiDialog: root.openWifiDialog()
                             onOpenHotspotDialog: root.openHotspotDialog()
                             onOpenDnsDialog: root.openDnsDialog()
+                            onOpenVpnDialog: root.openVpnDialog()
                         }
                     }
                 }

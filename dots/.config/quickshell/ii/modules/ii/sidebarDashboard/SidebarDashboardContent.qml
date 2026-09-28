@@ -20,6 +20,7 @@ import qs.modules.ii.sidebarDashboard.volumeMixer
 import qs.modules.ii.sidebarDashboard.wifiNetworks
 import qs.modules.ii.sidebarDashboard.hotspot
 import qs.modules.ii.sidebarDashboard.dns
+import qs.modules.ii.sidebarDashboard.vpn
 
 Item {
     id: root
@@ -36,8 +37,9 @@ Item {
     property bool showWifiDialog: false
     property bool showHotspotDialog: false
     property bool showDnsDialog: false
+    property bool showVpnDialog: false
     property bool editMode: false
-    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog || showVpnDialog
 
     Connections {
         target: GlobalStates
@@ -46,6 +48,7 @@ Item {
                 root.showWifiDialog = false;
                 root.showHotspotDialog = false;
                 root.showDnsDialog = false;
+                root.showVpnDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
@@ -216,6 +219,11 @@ Item {
         dialog: DnsDialog {}
     }
 
+    ToggleDialog {
+        shownPropertyString: "showVpnDialog"
+        dialog: VpnDialog {}
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -293,6 +301,9 @@ Item {
             }
             function onOpenDnsDialog() {
                 root.showDnsDialog = true;
+            }
+            function onOpenVpnDialog() {
+                root.showVpnDialog = true;
             }
         }
     }

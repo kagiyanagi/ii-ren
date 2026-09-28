@@ -1676,6 +1676,11 @@ Singleton {
                     property string custom: ""
                     property bool encrypted: false
                 }
+                // The VPN tile's last tunnel brought up, which a tap brings back:
+                // "tailscale", or "nm:" and a NetworkManager connection's UUID.
+                property JsonObject vpn: JsonObject {
+                    property string last: ""
+                }
             }
 
             property JsonObject notifications: JsonObject {

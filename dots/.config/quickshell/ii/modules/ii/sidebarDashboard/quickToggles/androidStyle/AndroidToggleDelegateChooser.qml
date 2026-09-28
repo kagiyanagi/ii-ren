@@ -21,6 +21,7 @@ DelegateChooser {
     signal openWifiDialog
     signal openHotspotDialog
     signal openDnsDialog
+    signal openVpnDialog
 
     role: "toggleType"
 
@@ -204,6 +205,18 @@ DelegateChooser {
             buttonData: modelData
             chooser: root
             onOpenMenu: root.openDnsDialog()
+        }
+    }
+
+    DelegateChoice {
+        roleValue: "vpn"
+        AndroidVpnToggle {
+            required property int index
+            required property var modelData
+            buttonIndex: index
+            buttonData: modelData
+            chooser: root
+            onOpenMenu: root.openVpnDialog()
         }
     }
 
