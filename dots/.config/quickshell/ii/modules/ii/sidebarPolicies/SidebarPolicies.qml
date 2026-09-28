@@ -304,6 +304,9 @@ Scope { // Scope
             MouseArea { // Sees every press first, then lets it through to what is under it
                 anchors.fill: sidebarLeftBackground
                 enabled: root.pin
+                // Sits above the content, and a MouseArea claims ArrowCursor by default,
+                // which hid every hand and I-beam under it. Reset so the content's cursor wins.
+                cursorShape: undefined
                 onPressed: (mouse) => {
                     panelWindow.pinFocus = true;
                     mouse.accepted = false;
