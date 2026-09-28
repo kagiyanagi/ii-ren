@@ -52,7 +52,7 @@ Singleton {
                 id: microtexProcess${hash}
                 running: true
                 command: [ "bash", "-c", 
-                    "cd ${root.microtexBinaryDir} && ./${root.microtexBinaryName} -headless '-input=${StringUtils.shellSingleQuoteEscape(StringUtils.escapeBackslashes(expression))}' "
+                    "cd ${root.microtexBinaryDir} && ./${root.microtexBinaryName} -headless '-input=${StringUtils.escapeBackslashes(StringUtils.shellSingleQuoteEscape(expression))}' "
                     + "'-output=${imagePath}' " 
                     + "'-textsize=${Appearance.font.pixelSize.normal}' "
                     + "'-padding=${renderPadding}' "

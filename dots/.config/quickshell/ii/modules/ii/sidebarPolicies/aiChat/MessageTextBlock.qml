@@ -192,7 +192,13 @@ ColumnLayout {
     function handleRenderedLatex(hash, force = false) {
         if (renderedLatexHashes.includes(hash) || force) {
             const imagePath = LatexRenderer.renderedImagePaths[hash];
-            const markdownImage = `![latex](${imagePath})`;
+            // Centred on the text, not sat on its baseline, and scaled down to the width
+            // its line has (MicroTeX's -maxwidth does not wrap a formula). The hair
+            // space is for Qt: an image that opens a list item is drawn above its own
+            // line, over the heading before it; any visible character first stops that,
+            // a zero-width one does not. Self-closed, or the importer swallows the rest
+            // of the text waiting for </img>.
+            const markdownImage = `\u200A<img src="${imagePath}" align="middle" style="max-width:100%" />`;
 
             const expression = LatexRenderer.processedExpressions[hash];
             renderedSegmentContent = renderedSegmentContent.replace(expression, markdownImage);
@@ -307,7 +313,8 @@ ColumnLayout {
             return;
         }
 
-        const tokens = root.targetText.split(/(\s+)/);
+        // Never between a tag's attributes: a LaTeX <img> cut there shows as raw text
+        const tokens = root.targetText.split(/(\s+)(?![^<>]*>)/);
         const wordIndices = [];
         for (let i = 0; i < tokens.length; i++) {
             if (!/^\s*$/.test(tokens[i]))
@@ -374,7 +381,7 @@ ColumnLayout {
             return;
         }
 
-        const tokens = text.split(/(\s+)/);
+        const tokens = text.split(/(\s+)(?![^<>]*>)/);
         let count = 0;
         for (let i = 0; i < tokens.length; i++) {
             if (!/^\s*$/.test(tokens[i]))

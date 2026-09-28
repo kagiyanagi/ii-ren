@@ -156,6 +156,21 @@ assert styled("```\n`kept`\n```") == "```\n`kept`\n```", "styleCodeSpans: a fenc
 assert styled("**b** `x`").startswith("**b** <span"), \
     "styleCodeSpans: the `*` closing emphasis before a span must stay markdown, not be wrapped for spacing"
 
+# LaTeX: an image opening a list item is drawn above its line, over the heading
+# before it, unless a visible character leads it (a zero-width one does not); and
+# MicroTeX does not wrap, so only max-width keeps a long one on screen.
+img = re.search(r"const markdownImage = `(.+)`;", text)
+assert img and img.group(1).startswith("\\u200A<img ") and img.group(1).endswith(" />"), \
+    "MessageTextBlock: a LaTeX image must be hair-space led (or it overlaps the line above in a list) and " \
+    "self-closed (or Qt's importer swallows the rest of the text waiting for </img>)"
+assert 'style="max-width:100%"' in img.group(1), \
+    "MessageTextBlock: a LaTeX image must be capped at its line's width, or a long formula runs off the sidebar"
+split = re.findall(r"const tokens = \w+(?:\.\w+)?\.split\((/.+/)\);", text)
+assert len(split) == 2 and split[0] == split[1], "MessageTextBlock: the two word splits of the reveal must agree"
+got = node(f"console.log(JSON.stringify('a <img src=\"p\" align=\"middle\" /> b'.split({split[0]}).filter(t => t.trim())))")
+assert got == ["a", '<img src="p" align="middle" />', "b"], \
+    f"MessageTextBlock: the reveal cuts inside a tag, so a half-shown LaTeX <img> prints as raw text: {got}"
+
 strip = re.search(r"for \(let k = 0; k \+ 1 < marks\.length; k \+= 2\)\s*ranges\.push\((\[.+?\])\);", pills)
 assert strip, "InlineCode: the bracket-to-range arithmetic is gone"
 sample = "to \u2063/a\u2063 and \u2063b\u2063."
