@@ -1,12 +1,13 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-fonts-themes
 pkgver=1.0
-pkgrel=7
+pkgrel=8
 pkgdesc='Illogical Impulse Fonts and Theming Dependencies'
 arch=(any)
 license=(None)
 depends=(
   adw-gtk-theme-git
+  bibata-cursor-theme-bin
   breeze
   breeze-plus
   darkly-bin

@@ -216,7 +216,7 @@ Item {
                 // same shared input with an editingFinished to hang that on.
                 MaterialTextField {
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("e.g., macOS-White, Bibata-Modern-Classic")
+                    placeholderText: Translation.tr("e.g., Bibata-Modern-Classic")
                     text: CursorTheme.configuredTheme
                     onEditingFinished: {
                         if (text.trim().length > 0) {

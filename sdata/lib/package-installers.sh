@@ -33,19 +33,6 @@ install-Gabarito(){
   x cd $REPO_ROOT
 }
 
-install-bibata(){
-  x mkdir -p $REPO_ROOT/cache/bibata-cursor
-  x cd $REPO_ROOT/cache/bibata-cursor
-  name="Bibata-Modern-Classic"
-  file="$name.tar.xz"
-  try rm $file
-  x curl -JLO https://github.com/ful1e5/Bibata_Cursor/releases/latest/download/$file
-  tar -xf $file
-  x sudo mkdir -p /usr/local/share/icons
-  x sudo cp -r $name /usr/local/share/icons
-  x cd $REPO_ROOT
-}
-
 install-MicroTeX(){
   x mkdir -p $REPO_ROOT/cache/MicroTeX
   x cd $REPO_ROOT/cache/MicroTeX

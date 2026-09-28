@@ -22,8 +22,8 @@
             "lightTheme": "breeze-plus"
         },
         "cursor": {
-            "theme": "macOS-White",
-            "size": 28
+            "theme": "Bibata-Modern-Classic",
+            "size": 24
         },
         "palette": {
             "accentColor": "",
@@ -313,7 +313,7 @@
                 "placementStrategy": "free",
                 "quote": {
                     "enable": true,
-                    "text": "Believe in the me that believes in you.""
+                    "text": "Believe in the me that believes in you."
                 },
                 "showOnlyWhenLocked": false,
                 "style": "cookie",
@@ -337,7 +337,7 @@
                 "minuteHandStyle": "medium",
                 "placementStrategy": "free",
                 "quoteEnable": true,
-                "quoteText": "Believe in the me that believes in you."",
+                "quoteText": "Believe in the me that believes in you.",
                 "secondHandStyle": "dot",
                 "sides": 14,
                 "timeIndicators": true,

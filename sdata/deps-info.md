@@ -57,6 +57,9 @@ Tips:
 - `adw-gtk-theme-git`
   - [source](https://github.com/lassekongo83/adw-gtk3)
   - Used in Quickshell config.
+- `bibata-cursor-theme-bin`
+  - [source](https://github.com/ful1e5/Bibata_Cursor)
+  - Default cursor: Bibata-Modern-Classic @ 24px.
 - `breeze`
   - Used in kdeglobals config.
 - `breeze-plus`
@@ -232,10 +235,6 @@ Extra dependencies.
 - `cpptrace`
 - `jemalloc`
 - `mesa`
-
-## illogical-impulse-bibata-modern-classic-bin
-- [source](https://github.com/ful1e5/Bibata_Cursor)
-- Used in Hyprland config, not necessary.
 
 ## illogical-impulse-microtex-git
 - [source](https://github.com/NanoMichael/MicroTeX)

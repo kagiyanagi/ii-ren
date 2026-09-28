@@ -84,7 +84,7 @@ quickshell, home_attrs, ... }:
       yq-go #go-yq
 
 
-      ### illogical-impulse-bibata-modern-classic-bin
+      ### bibata-cursor-theme-bin
       bibata-cursors
 
 
