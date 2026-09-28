@@ -62,7 +62,8 @@ SUPPORTED = {
 # Dialogs this shell has. AbstractQuickPanel declares exactly these signals.
 KEPT_SIGNALS = {
     "openAudioOutputDialog", "openAudioInputDialog", "openBluetoothDialog",
-    "openNightLightDialog", "openWifiDialog",
+    "openNightLightDialog", "openComfortViewDialog", "openReadingModeDialog",
+    "openAntiFlashbangDialog", "openWifiDialog",
 }
 
 # --- catalog: one entry per line, so line filtering is enough -----------------

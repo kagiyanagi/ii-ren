@@ -15,6 +15,9 @@ DelegateChooser {
     signal openAudioInputDialog
     signal openBluetoothDialog
     signal openNightLightDialog
+    signal openComfortViewDialog
+    signal openReadingModeDialog
+    signal openAntiFlashbangDialog
     signal openWifiDialog
     signal openHotspotDialog
 
@@ -28,7 +31,7 @@ DelegateChooser {
             buttonIndex: index
             buttonData: modelData
             chooser: root
-            onOpenMenu: root.openNightLightDialog()
+            onOpenMenu: root.openAntiFlashbangDialog()
         }
     }
 
@@ -334,7 +337,7 @@ DelegateChooser {
             buttonIndex: index
             buttonData: modelData
             chooser: root
-            onOpenMenu: root.openNightLightDialog()
+            onOpenMenu: root.openComfortViewDialog()
         }
     }
 
@@ -346,7 +349,7 @@ DelegateChooser {
             buttonIndex: index
             buttonData: modelData
             chooser: root
-            onOpenMenu: root.openNightLightDialog()
+            onOpenMenu: root.openReadingModeDialog()
         }
     }
 }

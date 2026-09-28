@@ -11,6 +11,9 @@ Rectangle {
     signal openAudioInputDialog()
     signal openBluetoothDialog()
     signal openNightLightDialog()
+    signal openComfortViewDialog()
+    signal openReadingModeDialog()
+    signal openAntiFlashbangDialog()
     signal openWifiDialog()
     signal openHotspotDialog()
 }

@@ -327,6 +327,9 @@ AbstractQuickPanel {
                                             onOpenAudioInputDialog: root.openAudioInputDialog()
                                             onOpenBluetoothDialog: root.openBluetoothDialog()
                                             onOpenNightLightDialog: root.openNightLightDialog()
+                                            onOpenComfortViewDialog: root.openComfortViewDialog()
+                                            onOpenReadingModeDialog: root.openReadingModeDialog()
+                                            onOpenAntiFlashbangDialog: root.openAntiFlashbangDialog()
                                             onOpenWifiDialog: root.openWifiDialog()
                                             onOpenHotspotDialog: root.openHotspotDialog()
                                         }
@@ -551,6 +554,9 @@ AbstractQuickPanel {
                             onOpenAudioInputDialog: root.openAudioInputDialog()
                             onOpenBluetoothDialog: root.openBluetoothDialog()
                             onOpenNightLightDialog: root.openNightLightDialog()
+                            onOpenComfortViewDialog: root.openComfortViewDialog()
+                            onOpenReadingModeDialog: root.openReadingModeDialog()
+                            onOpenAntiFlashbangDialog: root.openAntiFlashbangDialog()
                             onOpenWifiDialog: root.openWifiDialog()
                             onOpenHotspotDialog: root.openHotspotDialog()
                         }

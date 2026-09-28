@@ -13,6 +13,9 @@ reload`. `setIntensity` applied on every integer the slider crossed, and its con
 fired `onIntensityChanged`, which applied again: a drag across the track was ~200 Hyprland
 reloads. Both paths go through one debounce now. Measured live: a 47-step drag, 2 reloads.
 
+Each eye-protection tile opens its own dialog. All four used to open one that stacked
+every effect, so right-clicking Anti-flashbang landed on Night Light's controls.
+
 The status line is evaluated under node, since it is the only place the dialog says that
 the schedule has an effect on while its switch is off.
 """
@@ -46,12 +49,21 @@ assert height and height.group(1) == re.search(r"backgroundHeight:\s*(.+)", wifi
     "NightLightDialog: must share the Wi-Fi dialog's screen-scaled height, not a fixed one or its content's"
 assert re.search(r"StyledFlickable \{[^}]*Layout\.fillHeight:\s*true", dialog), "NightLightDialog: the body must fill the card and scroll"
 
+chooser = (II / "modules/ii/sidebarDashboard/quickToggles/androidStyle/AndroidToggleDelegateChooser.qml").read_text()
+content = (II / "modules/ii/sidebarDashboard/SidebarDashboardContent.qml").read_text()
+for tile, name, effect in [("AndroidNightLightToggle", "NightLight", "nightLight"), ("AndroidComfortViewToggle", "ComfortView", "comfortView"),
+                           ("AndroidReadingModeToggle", "ReadingMode", "readingMode"), ("AndroidAntiFlashbangToggle", "AntiFlashbang", "antiFlashbang")]:
+    menu = re.search(rf"{tile} \{{.*?onOpenMenu: root\.(\w+)\(\)", chooser, re.S)
+    assert menu and menu.group(1) == f"open{name}Dialog", f"{tile}: right-click must open its own dialog, not {menu and menu.group(1)}"
+    assert re.search(rf'"show{name}Dialog"\n\s+dialog: NightLightDialog \{{\n\s+effect: "{effect}"', content), f"show{name}Dialog must load the dialog for {effect}"
+    assert f'visible: root.effect === "{effect}"' in dialog, f"NightLightDialog: no card for {effect}"
+
 sunset = (II / "services/Hyprsunset.qml").read_text()
 assert "Hyprland.dispatch(`hyprctl" not in sunset, "Hyprsunset: `hyprctl` is not a dispatcher; that line is a Lua error in this config"
 
 body = re.search(r"function scheduleStatus\(on, automatic\) \{\n(.*?)\n    \}\n", dialog, re.S)
 assert body, "NightLightDialog: could not lift scheduleStatus"
-row = re.search(r'title: Translation\.tr\("Comfort View"\)\n\s+(?://.*\n\s+)*status: (.*)\n', dialog)
+row = re.search(r'title: Translation\.tr\("Use Comfort View"\)\n\s+(?://.*\n\s+)*status: (.*)\n', dialog)
 assert row, "NightLightDialog: could not lift Comfort View's status binding"
 status = re.sub(r"\broot\.scheduleStatus\b", "scheduleStatus", row.group(1))
 

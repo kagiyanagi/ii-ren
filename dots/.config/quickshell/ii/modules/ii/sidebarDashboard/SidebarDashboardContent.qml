@@ -29,10 +29,13 @@ Item {
     property bool showAudioInputDialog: false
     property bool showBluetoothDialog: false
     property bool showNightLightDialog: false
+    property bool showComfortViewDialog: false
+    property bool showReadingModeDialog: false
+    property bool showAntiFlashbangDialog: false
     property bool showWifiDialog: false
     property bool showHotspotDialog: false
     property bool editMode: false
-    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showWifiDialog || showHotspotDialog
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog
 
     Connections {
         target: GlobalStates
@@ -44,6 +47,9 @@ Item {
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
                 root.showNightLightDialog = false;
+                root.showComfortViewDialog = false;
+                root.showReadingModeDialog = false;
+                root.showAntiFlashbangDialog = false;
             }
         }
         // The media popup's audio-device pill. Nothing read this, so the pill
@@ -161,7 +167,30 @@ Item {
 
     ToggleDialog {
         shownPropertyString: "showNightLightDialog"
-        dialog: NightLightDialog {}
+        dialog: NightLightDialog {
+            effect: "nightLight"
+        }
+    }
+
+    ToggleDialog {
+        shownPropertyString: "showComfortViewDialog"
+        dialog: NightLightDialog {
+            effect: "comfortView"
+        }
+    }
+
+    ToggleDialog {
+        shownPropertyString: "showReadingModeDialog"
+        dialog: NightLightDialog {
+            effect: "readingMode"
+        }
+    }
+
+    ToggleDialog {
+        shownPropertyString: "showAntiFlashbangDialog"
+        dialog: NightLightDialog {
+            effect: "antiFlashbang"
+        }
     }
 
     ToggleDialog {
@@ -186,8 +215,20 @@ Item {
         readonly property bool shown: root[shownPropertyString]
         anchors.fill: parent
 
-        onShownChanged: if (shown) toggleDialogLoader.active = true;
-        active: shown
+        // The dialog follows its flag both ways. Closing the sidebar only cleared
+        // the flag, so the dialog stayed shown and covered the next one opened.
+        onShownChanged: {
+            if (!shown) {
+                if (item) item.show = false;
+            } else if (active) {
+                item.show = true;
+                item.forceActiveFocus();
+            } else {
+                active = true;
+            }
+        }
+        // Not bound to `shown`: unloading on close would cut the exit short.
+        active: false
         onActiveChanged: {
             if (active) {
                 item.show = true;
@@ -197,7 +238,6 @@ Item {
         Connections {
             target: toggleDialogLoader.item
             function onDismiss() {
-                toggleDialogLoader.item.show = false
                 root[toggleDialogLoader.shownPropertyString] = false;
             }
             function onVisibleChanged() {
@@ -227,6 +267,15 @@ Item {
             }
             function onOpenNightLightDialog() {
                 root.showNightLightDialog = true;
+            }
+            function onOpenComfortViewDialog() {
+                root.showComfortViewDialog = true;
+            }
+            function onOpenReadingModeDialog() {
+                root.showReadingModeDialog = true;
+            }
+            function onOpenAntiFlashbangDialog() {
+                root.showAntiFlashbangDialog = true;
             }
             function onOpenWifiDialog() {
                 root.showWifiDialog = true;
