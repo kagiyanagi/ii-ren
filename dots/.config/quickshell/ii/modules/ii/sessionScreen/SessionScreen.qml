@@ -34,25 +34,33 @@ Scope {
     readonly property real labelGap: 8
 
     // The top row keeps your work and the bottom row closes every window. `can` is
-    // the logind method that says whether this machine can do it at all.
+    // the logind method that says whether this machine can do it at all; `fade`
+    // takes the screen to black first, for the ones that switch it off.
     readonly property var actions: [
         { icon: "lock", name: Translation.tr("Lock"), run: () => Session.lock() },
-        { icon: "dark_mode", name: Translation.tr("Sleep"), can: "CanSuspend", run: () => Session.suspend() },
-        { icon: "downloading", name: Translation.tr("Hibernate"), can: "CanHibernate", run: () => Session.hibernate() },
+        { icon: "dark_mode", name: Translation.tr("Sleep"), can: "CanSuspend", fade: true, run: () => Session.suspend() },
+        { icon: "downloading", name: Translation.tr("Hibernate"), can: "CanHibernate", fade: true, run: () => Session.hibernate() },
         { icon: "browse_activity", name: Translation.tr("Task Manager"), run: () => Session.launchTaskManager() },
-        { icon: "logout", name: Translation.tr("Logout"), run: () => Session.logout() },
-        { icon: "power_settings_new", name: Translation.tr("Shutdown"), can: "CanPowerOff", run: () => Session.poweroff() },
-        { icon: "restart_alt", name: Translation.tr("Reboot"), can: "CanReboot", run: () => Session.reboot() },
-        { icon: "settings_applications", name: Translation.tr("Reboot to firmware settings"), can: "CanRebootToFirmwareSetup", run: () => Session.rebootToFirmware() },
+        { icon: "logout", name: Translation.tr("Logout"), fade: true, run: () => Session.logout() },
+        { icon: "power_settings_new", name: Translation.tr("Shutdown"), can: "CanPowerOff", fade: true, run: () => Session.poweroff() },
+        { icon: "restart_alt", name: Translation.tr("Reboot"), can: "CanReboot", fade: true, run: () => Session.reboot() },
+        { icon: "settings_applications", name: Translation.tr("Reboot to firmware settings"), can: "CanRebootToFirmwareSetup", fade: true, run: () => Session.rebootToFirmware() },
     ]
+
+    // Held until the exit has played: lock, suspend and logout take the screen
+    // away at once, so firing on the press cut the close off before its first frame.
+    property var pendingAction: null
+    // The screen is going, or has gone, black for a `fade` action.
+    property bool blackout: false
 
     function run(action) {
         // The window keeps the keyboard while it leaves; a second Enter must not
         // fire a second action.
         if (!GlobalStates.sessionOpen)
             return;
+        root.pendingAction = action;
+        root.blackout = action.fade === true;
         GlobalStates.sessionOpen = false;
-        action.run();
     }
 
     // Left and right stay in their row, up and down on the grid.
@@ -65,6 +73,9 @@ Scope {
         function onSessionOpenChanged() {
             if (!GlobalStates.sessionOpen)
                 return;
+            // Reopened mid-exit: the close never finishes, and the choice is dropped.
+            root.pendingAction = null;
+            root.blackout = false;
             root.rendered = true;
             SessionWarnings.refresh();
         }
@@ -164,6 +175,12 @@ Scope {
                     target: card
                     // The close is what unmaps the window, not the request.
                     onClosed: {
+                        // The blackout fires its own action and releases the window.
+                        if (root.blackout)
+                            return;
+                        const action = root.pendingAction;
+                        root.pendingAction = null;
+                        action?.run();
                         if (!GlobalStates.sessionOpen)
                             root.rendered = false;
                     }
@@ -319,6 +336,82 @@ Scope {
                             materialIcon: "warning"
                             text: Translation.tr("There might be a download in progress. Check your Downloads folder.")
                         }
+                    }
+                }
+            }
+
+            // Fade to black, then act. Sleep and hibernate wake up to this black, so
+            // any key or pointer motion afterwards fades it back out and unmaps.
+            Rectangle {
+                id: blackout
+                // Armed once the action has fired; input before that is the dialog's.
+                property bool armed: false
+
+                anchors.fill: parent
+                color: Appearance.m3colors.m3scrim
+                opacity: 0
+                visible: opacity > 0
+
+                Connections {
+                    target: root
+                    function onBlackoutChanged() {
+                        if (root.blackout) {
+                            fadeOut.stop();
+                            fadeIn.restart();
+                            return;
+                        }
+                        blackout.armed = false;
+                        fadeIn.stop();
+                        fadeOut.restart();
+                    }
+                }
+
+                NumberAnimation {
+                    id: fadeIn
+                    target: blackout
+                    property: "opacity"
+                    to: 1
+                    duration: Appearance.animationCurves.expressiveSlowEffectsDuration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    onFinished: {
+                        const action = root.pendingAction;
+                        root.pendingAction = null;
+                        action?.run();
+                        blackout.armed = true;
+                        blackout.forceActiveFocus();
+                    }
+                }
+
+                NumberAnimation {
+                    id: fadeOut
+                    target: blackout
+                    property: "opacity"
+                    to: 0
+                    duration: Appearance.animationCurves.expressiveFastEffectsDuration
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    // The card closed long ago; this is the exit finishing now.
+                    onFinished: motion.closed()
+                }
+
+                Keys.onPressed: event => {
+                    if (blackout.armed)
+                        root.blackout = false;
+                    event.accepted = true;
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                    hoverEnabled: true
+                    onPositionChanged: {
+                        if (blackout.armed)
+                            root.blackout = false;
+                    }
+                    onPressed: {
+                        if (blackout.armed)
+                            root.blackout = false;
                     }
                 }
             }

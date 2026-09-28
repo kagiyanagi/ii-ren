@@ -151,8 +151,8 @@ check(keys and re.search(r"default:\s*return;", keys),
 columns = re.search(r"readonly property int columns:\s*(\d+)", src)
 check(columns, "the grid's column count must stay one `readonly property int columns`")
 columns = int(columns.group(1)) if columns else 0
-actions = re.findall(r"^\s*\{ icon: \"(\w+)\", name: Translation\.tr\(\"([^\"]+)\"\)(?:, can: \"(\w+)\")?, run: \(\) => Session\.(\w+)\(\) \},?$", src, re.M)
-check(len(actions) == 8, f"expected the eight actions, one `{{ icon, name, can?, run }}` per line, parsed {len(actions)}")
+actions = re.findall(r"^\s*\{ icon: \"(\w+)\", name: Translation\.tr\(\"([^\"]+)\"\)(?:, can: \"(\w+)\")?(?:, fade: true)?, run: \(\) => Session\.(\w+)\(\) \},?$", src, re.M)
+check(len(actions) == 8, f"expected the eight actions, one `{{ icon, name, can?, fade?, run }}` per line, parsed {len(actions)}")
 
 reach = re.search(r"function inReach\(from, to, step\)\s*\{\s*return (.+);\s*\}", src)
 check(reach, "inReach() must stay a single return expression, so this can evaluate it")
