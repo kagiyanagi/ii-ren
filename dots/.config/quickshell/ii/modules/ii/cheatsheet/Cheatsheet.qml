@@ -274,6 +274,8 @@ Scope { // Scope
                         implicitHeight: (cheatsheetRoot.screen?.height ?? 1080) * 0.7
 
                         clip: true
+                        // Tabs change from the tab bar only: a sideways touchpad swipe paged it
+                        interactive: false
 
                         // The page slide is the style's own ListView, whose
                         // `highlightMoveDuration: 250` is a literal in
