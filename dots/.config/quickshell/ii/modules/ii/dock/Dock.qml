@@ -103,6 +103,7 @@ Scope {
 
             function updateReveal() {
                 var shouldReveal = dockRoot.pinnedEffective
+                    || GlobalStates.overviewOpen
                     || (dockMouseArea.containsMouse || graceTimer.running)
                     || (dockLoader.item?.requestDockShow ?? false)
                     || (Config.options?.dock?.revealOnEmptyWorkspace && workspaceEmpty)
@@ -191,6 +192,7 @@ Scope {
 
             Connections {
                 target: GlobalStates
+                function onOverviewOpenChanged() { dockRoot.updateReveal() }
                 function onMediaControlsOpenChanged() { dockRoot.updateReveal() }
                 function onBarMediaPresentChanged() { dockRoot.updateReveal() }
             }
@@ -203,7 +205,10 @@ Scope {
 
             // Make the dock clickable while another panel holds a focus grab
             // (overview, sidebars) instead of the first click just dismissing them.
-            Component.onCompleted: GlobalFocusGrab.addPersistent(dockRoot)
+            Component.onCompleted: {
+                GlobalFocusGrab.addPersistent(dockRoot)
+                dockRoot.updateReveal()
+            }
             Component.onDestruction: GlobalFocusGrab.removePersistent(dockRoot)
 
             HyprlandFocusGrab {
