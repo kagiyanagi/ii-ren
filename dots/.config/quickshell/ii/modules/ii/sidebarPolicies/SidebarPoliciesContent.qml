@@ -149,6 +149,10 @@ Item {
                 spacing: 10
                 currentIndex: root.currentTab
                 onCurrentIndexChanged: if (currentIndex !== root.currentTab) Persistent.states.sidebar.policies.tab = currentIndex
+                // Tabs change from the tab bar only: a sideways touchpad swipe paged it,
+                // and did at the end of every scrolled formula or code block. The
+                // closet page has no tab, so there the swipe is the way in.
+                interactive: root.animeCloset
 
                 clip: true
                 layer.enabled: true

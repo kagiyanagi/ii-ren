@@ -19,9 +19,11 @@ None of it shows in a still frame:
 The bubble's width, the clamp rule and the argument layout are arithmetic, so they
 are lifted out and run under node.
 """
+import base64
 import json
 import re
 import subprocess
+import zlib
 from pathlib import Path
 
 P = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules/ii/sidebarPolicies"
@@ -158,13 +160,32 @@ assert styled("**b** `x`").startswith("**b** <span"), \
 
 # LaTeX: an image opening a list item is drawn above its line, over the heading
 # before it, unless a visible character leads it (a zero-width one does not); and
-# MicroTeX does not wrap, so only max-width keeps a long one on screen.
+# rich text cannot clip an image, so the text holds a blank of the formula's size
+# and LatexFormulas draws the formula (the alt) over it, scrolling when it is wider
+# than its line. It finds them by the markup's tags, in the order of the U+FFFCs.
 img = re.search(r"const markdownImage = `(.+)`;", text)
 assert img and img.group(1).startswith("\\u200A<img ") and img.group(1).endswith(" />"), \
     "MessageTextBlock: a LaTeX image must be hair-space led (or it overlaps the line above in a list) and " \
     "self-closed (or Qt's importer swallows the rest of the text waiting for </img>)"
-assert 'style="max-width:100%"' in img.group(1), \
-    "MessageTextBlock: a LaTeX image must be capped at its line's width, or a long formula runs off the sidebar"
+for attr in ('src="${LatexRenderer.placeholder}"', 'alt="${imagePath}"', 'width="${width}"', 'height="${height}"'):
+    assert attr in img.group(1), \
+        f"MessageTextBlock: a LaTeX image must be a sized blank naming its formula ({attr}), or LatexFormulas cannot draw it"
+# The blank must be real, transparent pixels: a size-less SVG gave Qt none, and it
+# stretched uninitialised texture over every formula as white smears.
+renderer = (P.parent.parent.parent / "services/LatexRenderer.qml").read_text()
+blank = re.search(r'placeholder: "data:image/png;base64,([^"]+)"', renderer)
+assert blank, "LatexRenderer: the placeholder must be a PNG, not a pixel-less SVG that draws garbage"
+png = base64.b64decode(blank.group(1))
+ihdr = png[16:26]
+assert int.from_bytes(ihdr[8:9], "big") == 8 and ihdr[9] == 6, "LatexRenderer: the placeholder must be 8-bit RGBA"
+idat = png[png.index(b"IDAT") + 4:png.index(b"IEND") - 8]
+rows = zlib.decompress(idat)
+assert all(rows[i] == 0 for i in range(4, len(rows), 5)), "LatexRenderer: the placeholder must be fully transparent"
+formulas = (P / "aiChat/LatexFormulas.qml").read_text()
+assert "/<img\\b[^>]*>|!\\[/g" in formulas and '"\\ufffc"' in formulas, \
+    "LatexFormulas: every <img> and ![ of the markup is one U+FFFC of the view, or formulas land on the wrong image"
+assert "ScrollBar.horizontal" in formulas and "Flickable.HorizontalFlick" in formulas, \
+    "LatexFormulas: a formula wider than its line must scroll sideways, alone"
 split = re.findall(r"const tokens = \w+(?:\.\w+)?\.split\((/.+/)\);", text)
 assert len(split) == 2 and split[0] == split[1], "MessageTextBlock: the two word splits of the reveal must agree"
 got = node(f"console.log(JSON.stringify('a <img src=\"p\" align=\"middle\" /> b'.split({split[0]}).filter(t => t.trim())))")

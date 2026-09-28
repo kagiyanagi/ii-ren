@@ -21,11 +21,26 @@ Singleton {
     property list<string> processedHashes: []
     property var processedExpressions: ({})
     property var renderedImagePaths: ({})
+    /** Each render's natural [width, height], for the text to reserve its space. */
+    property var renderedSizes: ({})
+    /**
+     * A blank image. Sized by its tag, it holds a formula's place in rich text.
+     * One transparent PNG pixel: a size-less SVG gave Qt no pixels, and it stretched
+     * uninitialised texture over the formulas, measured as white smears.
+     */
+    readonly property string placeholder: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="
     property string microtexBinaryDir: "/opt/MicroTeX"
     property string microtexBinaryName: "LaTeX"
     property string latexOutputPath: Directories.latexOutput
 
     signal renderFinished(string hash, string imagePath)
+
+    // A local image loads synchronously, so the probe knows its size on creation
+    function measure(hash, imagePath) {
+        const probe = Qt.createQmlObject(`import QtQuick; Image { cache: false; source: "file://${imagePath}" }`, root);
+        root.renderedSizes[hash] = [probe.implicitWidth, probe.implicitHeight];
+        probe.destroy();
+    }
 
     /**
     * Requests rendering of a LaTeX expression.
@@ -61,6 +76,7 @@ Singleton {
                 ]
                 onExited: (exitCode, exitStatus) => {
                     renderedImagePaths["${hash}"] = "${imagePath}"
+                    root.measure("${hash}", "${imagePath}")
                     root.renderFinished("${hash}", "${imagePath}")
                     microtexProcess${hash}.destroy()
                 }

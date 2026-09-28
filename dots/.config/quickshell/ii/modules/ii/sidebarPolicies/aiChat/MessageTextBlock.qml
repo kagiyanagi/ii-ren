@@ -192,13 +192,18 @@ ColumnLayout {
     function handleRenderedLatex(hash, force = false) {
         if (renderedLatexHashes.includes(hash) || force) {
             const imagePath = LatexRenderer.renderedImagePaths[hash];
-            // Centred on the text, not sat on its baseline, and scaled down to the width
-            // its line has (MicroTeX's -maxwidth does not wrap a formula). The hair
-            // space is for Qt: an image that opens a list item is drawn above its own
-            // line, over the heading before it; any visible character first stops that,
-            // a zero-width one does not. Self-closed, or the importer swallows the rest
-            // of the text waiting for </img>.
-            const markdownImage = `\u200A<img src="${imagePath}" align="middle" style="max-width:100%" />`;
+            const [width, height] = LatexRenderer.renderedSizes[hash] ?? [];
+            // Not rendered yet, or failed: the source stays, not a broken image
+            if (!width)
+                return;
+            // A blank of the formula's size, centred on the text, not sat on its
+            // baseline; LatexFormulas draws the formula (the alt) over it, scrolling
+            // on its own when wider than its line, which Qt's rich text cannot do to
+            // an image. The hair space is for Qt: an image that opens a list item is
+            // drawn above its own line, over the heading before it; any visible
+            // character first stops that, a zero-width one does not. Self-closed, or
+            // the importer swallows the rest of the text waiting for </img>.
+            const markdownImage = `\u200A<img src="${LatexRenderer.placeholder}" alt="${imagePath}" width="${width}" height="${height}" align="middle" />`;
 
             const expression = LatexRenderer.processedExpressions[hash];
             renderedSegmentContent = renderedSegmentContent.replace(expression, markdownImage);
@@ -535,6 +540,11 @@ ColumnLayout {
                 id: codePills
                 target: textArea
                 fill: root.codeSpanColor
+            }
+
+            LatexFormulas {
+                target: textArea
+                markup: textArea.modelData.text
             }
 
             SpeechHighlight {

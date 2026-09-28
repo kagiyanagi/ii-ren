@@ -65,6 +65,8 @@ Item {
             spacing: 10
             clip: true
             currentIndex: tabBar.currentIndex
+            // Tabs change from the tab bar only: a sideways touchpad swipe paged it
+            interactive: false
 
             PomodoroTimer {}
             Stopwatch {}

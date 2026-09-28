@@ -257,18 +257,15 @@ AbstractQuickPanel {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
                         onWheel: function (wheelEvent) {
-                            if (Math.abs(wheelEvent.angleDelta.x) > Math.abs(wheelEvent.angleDelta.y)) {
-                                if (wheelEvent.angleDelta.x < 0 && root.currentPage < root.displayPages.length - 1) {
-                                    root.goToPage(root.currentPage + 1);
-                                } else if (wheelEvent.angleDelta.x > 0 && root.currentPage > 0) {
-                                    root.goToPage(root.currentPage - 1);
-                                }
-                            } else {
-                                if (wheelEvent.angleDelta.y < 0 && root.currentPage < root.displayPages.length - 1) {
-                                    root.goToPage(root.currentPage + 1);
-                                } else if (wheelEvent.angleDelta.y > 0 && root.currentPage > 0) {
-                                    root.goToPage(root.currentPage - 1);
-                                }
+                            // Pages turn from the arrows, not a sideways touchpad swipe.
+                            // Still accepted, or the Flickable scrolls on it and snaps
+                            // to the next page anyway.
+                            if (Math.abs(wheelEvent.angleDelta.x) > Math.abs(wheelEvent.angleDelta.y))
+                                return;
+                            if (wheelEvent.angleDelta.y < 0 && root.currentPage < root.displayPages.length - 1) {
+                                root.goToPage(root.currentPage + 1);
+                            } else if (wheelEvent.angleDelta.y > 0 && root.currentPage > 0) {
+                                root.goToPage(root.currentPage - 1);
                             }
                             wheelEvent.accepted = root.displayPages.length > 1;
                         }
