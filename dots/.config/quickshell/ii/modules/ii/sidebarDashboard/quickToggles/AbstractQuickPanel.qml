@@ -16,4 +16,5 @@ Rectangle {
     signal openAntiFlashbangDialog()
     signal openWifiDialog()
     signal openHotspotDialog()
+    signal openDnsDialog()
 }

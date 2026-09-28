@@ -19,6 +19,7 @@ import qs.modules.ii.sidebarDashboard.nightLight
 import qs.modules.ii.sidebarDashboard.volumeMixer
 import qs.modules.ii.sidebarDashboard.wifiNetworks
 import qs.modules.ii.sidebarDashboard.hotspot
+import qs.modules.ii.sidebarDashboard.dns
 
 Item {
     id: root
@@ -34,8 +35,9 @@ Item {
     property bool showAntiFlashbangDialog: false
     property bool showWifiDialog: false
     property bool showHotspotDialog: false
+    property bool showDnsDialog: false
     property bool editMode: false
-    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog
 
     Connections {
         target: GlobalStates
@@ -43,6 +45,7 @@ Item {
             if (!GlobalStates.sidebarRightOpen) {
                 root.showWifiDialog = false;
                 root.showHotspotDialog = false;
+                root.showDnsDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
@@ -208,6 +211,11 @@ Item {
         dialog: HotspotDialog {}
     }
 
+    ToggleDialog {
+        shownPropertyString: "showDnsDialog"
+        dialog: DnsDialog {}
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -282,6 +290,9 @@ Item {
             }
             function onOpenHotspotDialog() {
                 root.showHotspotDialog = true;
+            }
+            function onOpenDnsDialog() {
+                root.showDnsDialog = true;
             }
         }
     }

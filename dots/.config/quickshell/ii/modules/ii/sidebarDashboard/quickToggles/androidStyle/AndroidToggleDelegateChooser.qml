@@ -20,6 +20,7 @@ DelegateChooser {
     signal openAntiFlashbangDialog
     signal openWifiDialog
     signal openHotspotDialog
+    signal openDnsDialog
 
     role: "toggleType"
 
@@ -191,6 +192,18 @@ DelegateChooser {
             buttonData: modelData
             chooser: root
             onOpenMenu: root.openHotspotDialog()
+        }
+    }
+
+    DelegateChoice {
+        roleValue: "dns"
+        AndroidDnsToggle {
+            required property int index
+            required property var modelData
+            buttonIndex: index
+            buttonData: modelData
+            chooser: root
+            onOpenMenu: root.openDnsDialog()
         }
     }
 

@@ -1669,6 +1669,13 @@ Singleton {
                 property JsonObject wifiPowerSave: JsonObject {
                     property bool enable: true
                 }
+                // The DNS tile's last choice, which a tap turns back on. What a
+                // connection uses now is read from NetworkManager, not from here.
+                property JsonObject dns: JsonObject {
+                    property string provider: "cloudflare" // an id in services/dns.js, or "custom"
+                    property string custom: ""
+                    property bool encrypted: false
+                }
             }
 
             property JsonObject notifications: JsonObject {

@@ -117,7 +117,7 @@ Scope {
             GlobalStates.sidebarRightOpen = true;
         }
 
-        // One of the dashboard's dialogs by name ("Bluetooth", "Wifi", "Hotspot",
+        // One of the dashboard's dialogs by name ("Bluetooth", "Wifi", "Hotspot", "Dns",
         // "NightLight", "ComfortView", "ReadingMode", "AntiFlashbang", "AudioOutput",
         // "AudioInput"), so each is reachable without a pointer — and by scripts,
         // which have none.
