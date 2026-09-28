@@ -58,10 +58,24 @@ not even in this repo's QML.
   parked id as the one to return to and unlocking drops the user on an empty
   workspace with every window somewhere else.
 
+- **Nothing can bring it back if it dies twice.** The takeback needs a new qs,
+  and two things stop one appearing. A live reload under the lock tears the old
+  generation's `WlSessionLock` down without unlocking (the new one never inherits
+  it: `PanelLoader` waits on a fresh `Config`), and Quickshell leaves its
+  process-wide lock pointer dangling, so the relock hits `qFatal("Tried to show
+  lockscreen surfaces without active lock")` -- in the crash reports here on
+  2026-08-31. So no reloads while locked. And Quickshell relaunches itself after
+  a crash but not one within 10s of launch, so a crash loop under the lock is
+  permanent unless `launch_quickshell.sh` starts it again. That loop is run here
+  against a fake `qs`.
+
 Run: python3 tools/check-lock.py
 """
+import os
 import pathlib
 import re
+import subprocess
+import tempfile
 
 REPO = pathlib.Path(__file__).parent.parent
 SHELL = REPO / "dots/.config/quickshell/ii"
@@ -69,6 +83,8 @@ LOCK_SCREEN = SHELL / "modules/common/panels/lock/LockScreen.qml"
 LOCK = SHELL / "modules/ii/lock/Lock.qml"
 SURFACE = SHELL / "modules/ii/lock/LockSurface.qml"
 HYPR_GENERAL = REPO / "dots/.config/hypr/hyprland/general.lua"
+HYPR_EXECS = REPO / "dots/.config/hypr/hyprland/execs.lua"
+LAUNCH = REPO / "dots/.config/hypr/hyprland/scripts/launch_quickshell.sh"
 
 
 def src(p: pathlib.Path) -> str:
@@ -251,6 +267,44 @@ for ws in list(range(1, 32)) + [100, 1000, 999999]:
         f"a re-lock on parked workspace {park(ws)} must save {ws} to return to, "
         f"not {park(ws)} -- every window is on {ws}")
 
+# ---------------------------------------------------------------------------
+# Something is always there to take it back.
+
+assert re.search(r'Binding\s*\{\s*target:\s*Quickshell\s*property:\s*"watchFiles"\s*'
+                 r'value:\s*!GlobalStates\.screenLocked', screen), (
+    "live reload must be off while locked: a reload under the lock drops it "
+    "without unlocking and the relock aborts on Quickshell's qFatal")
+assert "launch_quickshell.sh" in src(HYPR_EXECS) and not re.search(
+    r'exec_cmd\("qs -c', src(HYPR_EXECS)), \
+    "the shell must start through launch_quickshell.sh, or a crash loop under the lock is final"
+assert os.access(LAUNCH, os.X_OK), "launch_quickshell.sh must be executable"
+
+
+def launches(codes, locked):
+    """How many times the script starts qs, given each run's exit code."""
+    with tempfile.TemporaryDirectory() as tmp:
+        t = pathlib.Path(tmp)
+        (t / "quickshell").mkdir()
+        (t / "quickshell/states.json").write_text(
+            '{\n    "lock": {\n        "locked": %s\n    }\n}\n' % str(locked).lower())
+        (t / "codes").write_text("\n".join(map(str, codes)) + "\n")
+        (t / "qs").write_text(
+            '#!/usr/bin/env bash\necho run >> "$T/runs"\n'
+            'c=$(head -n1 "$T/codes"); sed -i 1d "$T/codes"; exit "${c:-0}"\n')
+        (t / "qs").chmod(0o755)
+        env = dict(os.environ, T=tmp, XDG_STATE_HOME=tmp, PATH=f"{tmp}:{os.environ['PATH']}")
+        subprocess.run(["bash", str(LAUNCH)], env=env, timeout=30, check=True)
+        return (t / "runs").read_text().count("run")
+
+
+assert launches([255, 139, 0], locked=True) == 3, \
+    "a crash under the lock must be followed by another qs, until one exits cleanly"
+assert launches([143], locked=True) == 1, \
+    "SIGTERM is pkill / iiren run, which start their own qs -- a second one would duplicate the shell"
+assert launches([255], locked=False) == 1, \
+    "unlocked, a crash loop is Quickshell's to stop; the supervisor only covers the locked case"
+
 print("ok: session takeback wired on both sides, flag written on both edges, "
+      "no reloads under the lock, relaunched when it dies locked, "
       "unlock holds the lock for its exit, PAM's lockout reaches the screen "
       "unfiltered, Caps Lock is asked for on the key, parked workspaces map back")

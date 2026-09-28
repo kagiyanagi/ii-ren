@@ -139,6 +139,20 @@ Scope {
         surface: root.sessionLockSurface
     }
 
+    // No live reload under the lock. The new generation is not holding it --
+    // PanelLoader waits for its own fresh Config, so this WlSessionLock never
+    // inherits the old one -- and the old one is torn down without unlocking,
+    // which is Hyprland's "lockscreen died" screen. Quickshell also forgets to
+    // clear its process-wide lock pointer when that happens, so the relock in
+    // initIfReady() dies on `qFatal("Tried to show lockscreen surfaces without
+    // active lock")`. The QML edits made while locked get picked up by the next
+    // change after unlocking.
+    Binding {
+        target: Quickshell
+        property: "watchFiles"
+        value: !GlobalStates.screenLocked
+    }
+
     function lock() {
         if (Config.options.lock.useHyprlock) {
             Quickshell.execDetached(["bash", "-c", "pidof hyprlock || hyprlock"]);
