@@ -21,9 +21,11 @@ windows the shell does not draw:
   - An app restoring itself, fullscreen from maximized and back, and a work area that
     grows are each followed. A drag brings a maximized window out with the grab point at
     the same fraction of it (KWin), and a window moved by anything else leaves maximize.
-  - Minimize hands the focus to the next window down (KWin). An activation brings a
-    minimized window back once Hyprland's focus is done, not from inside the workspace
-    change that focus is making. The dock and Alt+Tab ask instead of activating, which
+  - Minimize hands the focus to the next window down (KWin). An activation (urgent, then
+    focus) brings a minimized window back once Hyprland's focus is done, not from inside the
+    workspace change that focus is making. Hyprland's own refocus does not: a window alone
+    on its workspace keeps the focus while minimized, and closing the right panel handed it
+    back and brought the window back unasked. The dock and Alt+Tab ask instead of activating, which
     would open the hidden workspace over the screen first.
   - An app's own maximize button is a toggle of the one record, since Hyprland tells every
     app it is maximized. Two copies of the state (Hyprland's and a table's), each flipped
@@ -279,8 +281,12 @@ function open(a, x, y, w, h, class, space)
     return win
 end
 -- CWindow::activate, as the dock's foreign-toplevel activate and an app's xdg activation
--- reach it: a window that has the focus already is skipped.
-function activate(w) if active ~= w then focus(w) end end
+-- reach it: a window that has the focus already is skipped, any other marked urgent and focused.
+function activate(w)
+    if active == w then return end
+    H["window.urgent"](w)
+    focus(w)
+end
 -- What Hyprland does to a floating window it maximizes itself, sync on: both modes to 1,
 -- the box to its own maximized one, then the event.
 function hypr_maximize(w)
@@ -390,7 +396,9 @@ activate(lone)
 flush()
 assert(lone.workspace == ws2, "so an activation brings it back")
 -- Alone on its workspace, nothing can take the focus from it: the dock and Alt+Tab bring it
--- back by asking, not by activating.
+-- back by asking, not by activating. Hyprland's own refocus lands on it (a panel closing hands
+-- the focus back to the last window), and that is no one asking for it: it brought the window
+-- back each time the owner closed the right panel.
 other.mapped = false
 H["window.close"](other)
 focus(lone)
@@ -398,6 +406,11 @@ app(lone, "minimize")
 assert(active == lone, "Hyprland leaves the focus on it")
 activate(lone)
 assert(lone.workspace == minws, "and so skips activating it, which is why the shell does not rely on that")
+active = nil
+focus(lone) -- refocusLastWindow, as the right panel closes
+flush()
+assert(lone.workspace == minws, "Hyprland's own refocus does not bring it back")
+assert(not minws.visible and mon.active_special_workspace == nil, "and the hidden workspace it opened goes again")
 M.activate("0xl")
 assert(lone.workspace == ws2 and active == lone, "the dock's path brings it back")
 lone.mapped = false
@@ -473,6 +486,7 @@ local ops = {
     function(w) if shown(w) then hl.dispatch(hl.dsp.window.move({ workspace = "special:minimized", follow = false, window = w })) end end,
     function(w) if w.workspace == minws then M.activate(w.address) else activate(w) end end, -- the dock, Alt+Tab
     function(w) activate(w) end, -- an app's activation
+    function(w) if w.workspace == minws then active = nil; focus(w) end end, -- Hyprland's refocus, a panel closing
     function(w)
         if not shown(w) then return end
         cursor.x, cursor.y = w.at.x + 10, w.at.y - 20
@@ -484,7 +498,7 @@ local ops = {
     function() mon.reserved.bottom = mon.reserved.bottom == 0 and 57 or 0 end,
     function(w) if active == w then hl.dispatch(hl.dsp.window.move({ workspace = 1, window = w })) end end, -- Super+Shift+1
 }
-local labels = { "app button", "app min", "set max", "Super+D", "bar min", "dock", "activate", "drag", "F11", "xwayland restore", "work area", "keybind move" }
+local labels = { "app button", "app min", "set max", "Super+D", "bar min", "dock", "activate", "refocus", "drag", "F11", "xwayland restore", "work area", "keybind move" }
 local trail = {}
 for step = 1, 4000 do
     local k, w = math.random(#ops), wins3[math.random(#wins3)]
@@ -496,6 +510,7 @@ for step = 1, 4000 do
     local why = "after " .. table.concat(trail, ", ") .. " (seed " .. SEED .. ", step " .. step .. ")"
     if k == 6 then assert(w.workspace ~= minws, "the dock brings back a minimized window, " .. why) end
     if k == 7 and was_min and not had_focus then assert(w.workspace ~= minws, "an activation brings one back, " .. why) end
+    if k == 8 and was_min then assert(w.workspace == minws and not minws.visible, "Hyprland's own refocus leaves it minimized, " .. why) end
     for _, v in ipairs(wins3) do
         local s = ii_fm_win[v.address]
         assert(s, "every window has a record, " .. why)

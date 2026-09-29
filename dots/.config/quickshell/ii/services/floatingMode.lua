@@ -54,6 +54,7 @@ M.cfg = M.cfg or { bar_classes = {}, side = "top", size = 40, event = "iiFloatin
 --   prev    "normal" or "maximized": what a minimize or a fullscreen comes back to
 --   ws      the workspace it was on before it was minimized
 --   placed  the maximized box it was given: found elsewhere, it was moved by someone else
+--   asked   set while an activation of it, minimized, is on its way to the focus
 -- Survives a reinstall, not a reload: M.get adopts what a reload left.
 ii_fm_win = ii_fm_win or {}
 -- class -> { w, h, max }: the size an app's last window closed at, and whether it was
@@ -531,14 +532,32 @@ function M.install(cfg)
         M.forget(w.address)
     end)
 
+    -- Anything that asks for a window (the dock's foreign-toplevel activate, an app's or a
+    -- notification's xdg activation) marks it urgent first, then focuses it (CWindow::activate).
+    on("window.urgent", function(w)
+        if w and on_min(w) then M.get(w).asked = true end
+    end)
+
     -- KWin's stacking: the active window is on top, whatever activated it. Hyprland's own
-    -- focus raises nothing. A minimized window activated (an app, a notification, the dock's
-    -- own activate) comes back once Hyprland is done: its focus opens the hidden workspace
-    -- over the one in front first (FocusState rawWindowFocus) and runs this from inside that
-    -- workspace change, which the window is not moved out from under.
+    -- focus raises nothing. Focusing a minimized window opens the hidden workspace over the
+    -- one in front first (FocusState rawWindowFocus), and runs this from inside that change.
+    -- Asked for, the window comes back once Hyprland is done. Not asked for, it stays
+    -- minimized and the hidden workspace goes again: with nothing left on its workspace to
+    -- take the focus, Hyprland keeps it on the minimized window, and a panel closing handed
+    -- it back to it, which brought the window back unasked.
     on("window.active", function(w)
         if not w then return end
-        if on_min(w) then return M.later(w.address, function(v) M.activate(v.address) end) end
+        if on_min(w) then
+            local asked = M.get(w).asked
+            M.get(w).asked = nil
+            return M.later(w.address, function(v)
+                if asked then return M.activate(v.address) end
+                for _, o in ipairs(hl.get_monitors()) do
+                    local sp = o.active_special_workspace
+                    if sp and sp.name == M.MINIMIZED then o:set_special_workspace({}) end
+                end
+            end)
+        end
         if not w.floating then return end
         hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = w }))
         for _, p in ipairs(hl.get_windows({ mapped = true })) do
