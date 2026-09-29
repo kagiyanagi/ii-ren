@@ -46,6 +46,7 @@ M.MAX_AREA = 0.8 -- Mutter src/core/window-private.h, MAX_UNMAXIMIZED_WINDOW_ARE
 M.INITIAL_SCALE = 0.75 -- AOSP DesktopModeUtils.kt, DESKTOP_MODE_INITIAL_BOUNDS_SCALE
 M.CASCADE = 48 -- KWin Workspace::cascadeOffset: a 48th of the area
 M.TAG, M.BAR_TAG, M.MINIMIZED = "iifloat", "iibar", "special:minimized"
+M.DRAG_KEYS = { "SUPER + mouse:272", "SUPER + mouse:274" } -- hyprland/keybinds.lua's move binds
 M.cfg = M.cfg or { bar_classes = {}, side = "top", size = 40, event = "iiFloatingMode", tick = 16 }
 
 -- address -> the one record of a window's state:
@@ -603,6 +604,19 @@ function M.install(cfg)
     hl.config({ input = { follow_mouse = 2, focus_on_close = 2, float_switch_override_focus = 0 }, misc = { focus_on_activate = true },
         general = { snap = { enabled = true, window_gap = 10, monitor_gap = 10 } } })
 
+    -- Super+drag brings a maximized window out under the pointer before Hyprland's drag reads
+    -- its box: the drag keeps the box it began with, so a window made smaller after it began
+    -- was dragged with the pointer off it. The mode binds this itself, and puts the plain drag
+    -- back when it goes: the config's hyprland/keybinds.lua reaches ~/.config/hypr only by
+    -- hand (`iiren update` copies the shell), and the owner's still had the plain drag.
+    for _, key in ipairs(M.DRAG_KEYS) do
+        hl.unbind(key)
+        hl.bind(key, function()
+            M.before_drag()
+            hl.dispatch(hl.dsp.window.drag())
+        end, { mouse = true, description = "Window: Move" })
+    end
+
     -- Hyprland emits nothing when a window moves, so a timer walks the windows every frame
     -- and reports to the shell only when something changed: an idle desktop costs a Lua
     -- walk per tick and no IPC.
@@ -632,6 +646,10 @@ function M.install(cfg)
     end, { timeout = M.cfg.tick, type = "repeat" })
 
     function fm.stop()
+        for _, key in ipairs(M.DRAG_KEYS) do
+            hl.unbind(key)
+            hl.bind(key, hl.dsp.window.drag(), { mouse = true, description = "Window: Move" })
+        end
         fm.timer:set_enabled(false)
         ii_fm_rule:set_enabled(false)
         for _, s in ipairs(fm.subs) do s:remove() end

@@ -188,6 +188,7 @@ print("ok  outline: the notches follow the content's rounding_power corner, 1px 
 LUA_FILE = SHELL / "services/floatingMode.lua"
 MOCK = r"""
 local wins, handlers, timers = {}, {}, {}
+binds = {}
 cursor = { x = 0, y = 0 }
 local cfg = { ["general.border_size"] = 1, ["decoration.rounding"] = 18, ["decoration.rounding_power"] = 2.5,
               ["general.gaps_out"] = { top = 6, right = 6, bottom = 6, left = 6 } }
@@ -221,7 +222,7 @@ end
 local function d(name) return function(a) return { name = name, a = a } end end
 hl = {
     dsp = { window = { resize = d("resize"), move = d("move"), fullscreen_state = d("fullscreen_state"), set_prop = d("set_prop"),
-                       tag = d("tag"), float = d("float"), alter_zorder = d("alter_zorder") }, event = d("event"), focus = d("focus") },
+                       tag = d("tag"), float = d("float"), alter_zorder = d("alter_zorder"), drag = d("drag") }, event = d("event"), focus = d("focus") },
     dispatch = function(x)
         local w = x.a and x.a.window and find(x.a.window)
         if x.name == "resize" then w.size = { x = x.a.x, y = x.a.y }
@@ -263,6 +264,7 @@ hl = {
     get_cursor_pos = function() return cursor end,
     get_active_workspace = function() return mon.active_special_workspace or mon.active_workspace end,
     window_rule = function() return { set_enabled = function() end } end,
+    bind = function(key, fn) binds[key] = fn end, unbind = function(key) binds[key] = nil end,
     on = function(ev, fn) handlers[ev] = fn return { remove = function() end } end,
     timer = function(fn, o)
         if o.type == "repeat" then tick = fn else timers[#timers + 1] = fn end
@@ -443,6 +445,20 @@ assert(b.size.x == 800 and b.size.y == 500, "at its restored size")
 
 M.before_drag("0xe")
 eq(placed, 50, 60, 300, 200, "before_drag leaves a window that is not maximized alone")
+-- Super+drag is the mode's own bind, so a maximized window is restored under the pointer
+-- before Hyprland's drag reads its box, whatever the config in ~/.config/hypr says.
+app(b, "unmaximize")
+assert(b.fullscreen_client == 1, "b maximized again")
+local drags = 0
+local drag = hl.dsp.window.drag
+hl.dsp.window.drag = function() return { name = "drag" } end
+local dispatch = hl.dispatch
+hl.dispatch = function(x) if x.name == "drag" then drags = drags + 1; assert(b.fullscreen_client == 0, "restored before the drag begins") end return dispatch(x) end
+cursor.x, cursor.y = 1500, 60
+assert(type(binds["SUPER + mouse:272"]) == "function", "the mode binds Super+drag itself")
+binds["SUPER + mouse:272"]()
+hl.dispatch, hl.dsp.window.drag = dispatch, drag
+assert(drags == 1 and b.size.x == 800, "and then drags it, at its restored size under the pointer")
 
 -- An app's last window closing leaves its size (on disk); its next main window opens at it.
 mon.reserved.bottom = 57
@@ -614,7 +630,10 @@ assert "close_hover_color = [[rgba(8c1d18ff)]]" in bars and bars.count("bg_color
 assert "requestsMinimize" in patch and "ii_fm_lib.minimize" in patch, \
     "an app's own minimize (xdg set_minimized) reaches the mode: Hyprland drops it, and Chromium froze waiting"
 keys = (HYPR / "keybinds.lua").read_text()
-assert "ii_fm_lib.before_drag()" in keys and 'hl.bind("SUPER + mouse:272", dragWindow' in keys, "so does Super+drag"
+drag_keys = lua_src.split("M.DRAG_KEYS = ")[1].split("\n")[0]
+assert all(f'hl.bind("{k}", hl.dsp.window.drag()' in keys and f'"{k}"' in drag_keys for k in ("SUPER + mouse:272", "SUPER + mouse:274")), \
+    "the mode binds Super+drag over the config's own drag keys, and gives them back the plain drag when it goes"
+assert "hl.unbind(key)" in lua_src.split("function fm.stop()")[1][:300], "and when it stops, the plain drag is back"
 assert 'if hl.plugin.hyprbars then hl.config({ plugin = { hyprbars = { enabled = false } } }) end' in (HYPR / "rules.lua").read_text(), \
     "a reload resets hyprbars to a bar on every window until the shell is back; the config starts it off"
 

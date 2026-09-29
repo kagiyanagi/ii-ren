@@ -117,14 +117,10 @@ hl.bind("SUPER + SHIFT + ALT + mouse:273", hl.dsp.exec_cmd(hyprScripts .. "/ai/p
 --#!
 --##! Window
 --# Focusing
--- In the shell's floating mode a maximized window comes out of it under the pointer
--- before the drag reads its box (services/floatingMode.lua before_drag), as KWin's do.
-local function dragWindow()
-    if ii_fm and ii_fm_lib then ii_fm_lib.before_drag() end
-    hl.dispatch(hl.dsp.window.drag())
-end
-hl.bind("SUPER + mouse:272", dragWindow, { mouse = true, description = "Window: Move" })
-hl.bind("SUPER + mouse:274", dragWindow, { mouse = true })
+-- The shell's floating mode binds these two over the plain drag while it is on
+-- (services/floatingMode.lua, DRAG_KEYS).
+hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true, description = "Window: Move" })
+hl.bind("SUPER + mouse:274", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true, description = "Window: Resize" })
 --#/# bind = SUPER + ←/↑/→/↓,, -- Focus in direction
 for i = 1, 6 do
