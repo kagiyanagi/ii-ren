@@ -53,6 +53,12 @@ ApplicationWindow {
             component: "modules/settings/GeneralConfig.qml"
         },
         {
+            id: "battery",
+            name: Translation.tr("Battery"),
+            icon: "battery_android_full",
+            component: "modules/settings/BatteryConfig.qml"
+        },
+        {
             id: "bar",
             name: Translation.tr("Bar"),
             icon: "toast",

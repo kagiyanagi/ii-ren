@@ -14,7 +14,7 @@ ContentPage {
     id: page
     // This page's slot in settings.qml's `pages`; search navigates by it.
     // tools/check-settings-search.py keeps the two in step.
-    readonly property int index: 11
+    readonly property int index: 12
     property bool register: parent.register ?? false
     forceWidth: true
 

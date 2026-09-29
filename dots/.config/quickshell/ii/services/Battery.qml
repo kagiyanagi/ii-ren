@@ -4,6 +4,7 @@ import qs.services
 import qs.modules.common
 import Quickshell
 import Quickshell.Services.UPower
+import Quickshell.Wayland
 import QtQuick
 import Quickshell.Io
 
@@ -138,22 +139,28 @@ Singleton {
         }
     }
 
-    onBatteryNativePathChanged: {
+    // sysfs has no change notification, so this runs when something may have
+    // moved it: the battery, its state, or the Battery page setting a limit.
+    function reloadChargeLimit() {
         cycleCountFile.reload();
         root.chargeLimitCandidateIndex = 0;
         chargeLimitFile.reload();
         chargeTypesFile.reload();
     }
+    onBatteryNativePathChanged: reloadChargeLimit()
+    onChargeStateChanged: reloadChargeLimit()
 
-    onChargeStateChanged: {
-        cycleCountFile.reload();
-        root.chargeLimitCandidateIndex = 0;
-        chargeLimitFile.reload();
-        chargeTypesFile.reload();
-    }
-
+    // Power saver at the low warning, handed back once plugged in, as GNOME and
+    // Android's battery saver do. Only a switch this made is undone: a profile
+    // picked by hand since then stays. ponytail: in memory, so a shell restart
+    // in between leaves power saver on.
+    property int profileBeforeSaver: -1
     onIsLowAndNotChargingChanged: {
         if (!root.available || !isLowAndNotCharging) return;
+        if (Config.options.battery.autoPowerSaver && PowerProfiles.profile !== PowerProfile.PowerSaver) {
+            root.profileBeforeSaver = PowerProfiles.profile;
+            PowerProfiles.profile = PowerProfile.PowerSaver;
+        }
         Quickshell.execDetached([
             "notify-send", 
             Translation.tr("Low battery"), 
@@ -172,7 +179,10 @@ Singleton {
         Quickshell.execDetached([
             "notify-send", 
             Translation.tr("Critically low battery"), 
-            Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options.battery.suspend), 
+            !root.allowAutomaticSuspend ? Translation.tr("Please charge!")
+                : Config.options.battery.criticalAction === "hibernate" ? Translation.tr("Please charge!\nHibernates at %1%").arg(Config.options.battery.suspend)
+                : Config.options.battery.criticalAction === "poweroff" ? Translation.tr("Please charge!\nShuts down at %1%").arg(Config.options.battery.suspend)
+                : Translation.tr("Please charge!\nAutomatic suspend triggers at %1%").arg(Config.options.battery.suspend),
             "-u", "critical",
             "-a", "Shell",
             "--hint=int:transient:1",
@@ -182,10 +192,14 @@ Singleton {
         SoundService.playEvent("battery", ["battery-caution", "suspend-error", "dialog-error"]);
     }
 
+    // Hibernate falls back to suspend: a failed one would leave nothing between
+    // the session and an empty battery.
     onIsSuspendingAndNotChargingChanged: {
-        if (root.available && isSuspendingAndNotCharging) {
-            Quickshell.execDetached(["bash", "-c", `systemctl suspend || loginctl suspend`]);
-        }
+        if (!root.available || !isSuspendingAndNotCharging) return;
+        const action = Config.options.battery.criticalAction;
+        Quickshell.execDetached(["bash", "-c", action === "hibernate" ? "systemctl hibernate || systemctl suspend || loginctl suspend"
+            : action === "poweroff" ? "systemctl poweroff || loginctl poweroff"
+            : "systemctl suspend || loginctl suspend"]);
     }
 
     onIsFullAndChargingChanged: {
@@ -204,10 +218,28 @@ Singleton {
 
     onIsPluggedInChanged: {
         if (!root.available) return;
+        if (isPluggedIn && root.profileBeforeSaver !== -1) {
+            if (PowerProfiles.profile === PowerProfile.PowerSaver) PowerProfiles.profile = root.profileBeforeSaver;
+            root.profileBeforeSaver = -1;
+        }
         if (isPluggedIn) {
             SoundService.playEvent("battery", "power-plug");
         } else {
             SoundService.playEvent("battery", "power-unplug");
         }
+    }
+
+    // Shorter idle timeouts on battery. hypridle's own still run, so whichever is
+    // sooner wins, and an idle inhibitor (a video playing) holds both.
+    readonly property bool batteryIdle: available && UPower.onBattery && Config.options.battery.idle.enable
+    IdleMonitor {
+        enabled: root.batteryIdle && timeout > 0
+        timeout: Config.options.battery.idle.screenOff * 60
+        onIsIdleChanged: Quickshell.execDetached(["hyprctl", "dispatch", `hl.dsp.dpms("${isIdle ? "off" : "on"}")`])
+    }
+    IdleMonitor {
+        enabled: root.batteryIdle && timeout > 0
+        timeout: Config.options.battery.idle.sleep * 60
+        onIsIdleChanged: if (isIdle) Quickshell.execDetached(["bash", "-c", "systemctl suspend || loginctl suspend"])
     }
 }

@@ -19,7 +19,10 @@ RippleButton {
     buttonRadius: Appearance.rounding.verysmall
     font.pixelSize: Appearance.font.pixelSize.small
     
-    onClicked: checked = !checked
+    // False for a switch that mirrors a service: its onClicked asks the service,
+    // and the `checked` binding, left intact, shows what really happened (TASTE 3.1).
+    property bool toggles: true
+    onClicked: if (toggles) checked = !checked
 
     property color normalColor: ColorUtils.transparentize(Appearance?.colors.colLayer1Hover, 1) 
     property color highlightColor: Appearance.colors.colSecondaryContainer

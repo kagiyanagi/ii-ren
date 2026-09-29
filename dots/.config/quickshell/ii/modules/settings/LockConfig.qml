@@ -34,7 +34,7 @@ Item {
 
     ContentPage {
         id: page
-        readonly property int index: 9
+        readonly property int index: 10
         property bool register: lockConfigRoot.register
         anchors.fill: parent
         forceWidth: true

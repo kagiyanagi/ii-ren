@@ -1434,6 +1434,14 @@ Singleton {
                 property int full: 101
                 property bool automaticSuspend: true
                 property int suspend: 3
+                property string criticalAction: "suspend" // "suspend", "hibernate", "poweroff"
+                property bool autoPowerSaver: false // at `low`, until plugged in
+                // On battery, on top of hypridle's timeouts: whichever is sooner wins.
+                property JsonObject idle: JsonObject {
+                    property bool enable: false
+                    property int screenOff: 5 // minutes
+                    property int sleep: 10 // minutes
+                }
             }
 
             // Per-device artwork for the bluetooth toggle and dialog, as
