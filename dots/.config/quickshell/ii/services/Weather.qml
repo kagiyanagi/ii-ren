@@ -224,6 +224,12 @@ Singleton {
         return descriptions[bestMatch.toString()] || Translation.tr("Unknown");
     }
 
+    // Open-Meteo sends null for a variable its model lacks, and Math.round(null)
+    // is 0 - a calm, freezing reading stated as fact. "--" instead.
+    function reading(v, format) {
+        return Number.isFinite(v) ? format(v) : "--";
+    }
+
     function refineData(wData, cityName) {
         let temp = {};
         const current = wData.current;
@@ -254,8 +260,8 @@ Singleton {
             temp.press = Math.round(current.pressure_msl) + " hPa"; 
             temp.temp = Math.round(current.temperature_2m * 9 / 5 + 32) + "°F";
             temp.tempFeelsLike = Math.round(current.apparent_temperature * 9 / 5 + 32) + "°F";
-            temp.gusts = Math.round(current.wind_gusts_10m * 0.621371) + " mph";
-            temp.dewPoint = Math.round(current.dew_point_2m * 9 / 5 + 32) + "°";
+            temp.gusts = reading(current.wind_gusts_10m, v => Math.round(v * 0.621371) + " mph");
+            temp.dewPoint = reading(current.dew_point_2m, v => Math.round(v * 9 / 5 + 32) + "°");
         } else {
             temp.wind = Math.round(current.wind_speed_10m) + " km/h";
             temp.precip = current.precipitation.toFixed(1) + " mm";
@@ -263,8 +269,8 @@ Singleton {
             temp.press = Math.round(current.pressure_msl) + " hPa";
             temp.temp = Math.round(current.temperature_2m) + "°C";
             temp.tempFeelsLike = Math.round(current.apparent_temperature) + "°C";
-            temp.gusts = Math.round(current.wind_gusts_10m) + " km/h";
-            temp.dewPoint = Math.round(current.dew_point_2m) + "°";
+            temp.gusts = reading(current.wind_gusts_10m, v => Math.round(v) + " km/h");
+            temp.dewPoint = reading(current.dew_point_2m, v => Math.round(v) + "°");
         }
         
         temp.lastRefresh = DateTime.time + " • " + DateTime.date;

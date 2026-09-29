@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs
 import qs.services
 import Quickshell
 import QtQuick
@@ -33,6 +34,12 @@ MouseArea {
     // does the strip around it.
     Behavior on implicitWidth {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+    }
+
+    // A click opens the whole picture - the cheatsheet's Weather tab.
+    onClicked: mouse => {
+        if (mouse.button === Qt.LeftButton)
+            GlobalStates.cheatsheetTabRequested("weather");
     }
 
     onPressed: mouse => {
@@ -109,5 +116,8 @@ MouseArea {
 
     WeatherPopup {
         hoverTarget: root
+        // The glance stands down while the full page is up. close() alone does
+        // not hold: the pointer is still on the widget, and hover reopens it.
+        contentAvailable: !GlobalStates.cheatsheetOpen
     }
 }

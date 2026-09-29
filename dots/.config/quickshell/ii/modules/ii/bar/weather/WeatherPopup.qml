@@ -1,6 +1,7 @@
 import qs.modules.ii.bar
 import qs.services
 import qs.modules.common
+import qs.modules.common.widgets.animations
 import "../cards"
 
 import QtQuick
@@ -135,60 +136,7 @@ StyledPopup {
     Component.onCompleted: root.fetchForecast()
 
     // One entrance for every child of every popup in this cluster, so its
-    // contents cannot drift apart: siblings enter together, offset by
-    // staggerStep and capped (DESIGN.md 2.8), each with opacity on an effects
-    // spec and exactly one transform on a spatial one (2.1). The two
-    // PropertyActions are the reset 2.7 asks for, at the head of the animation
-    // rather than in a handler somewhere - the previous entrance's final frame
-    // is what a reopen would otherwise show for the length of the stagger.
-    //
-    // There is no matching exit, deliberately: the popup surface scales and
-    // fades out as one (cluster Contract 1), and a second fade running inside
-    // it reads as a stutter rather than as the content leaving.
-    component CardEnter: SequentialAnimation {
-        id: entrance
-
-        required property Item card
-        required property Translate shift
-        required property int slot
-
-        // How far the card travels into place: a short move toward where it
-        // belongs, not a slide in from off the surface. It lives here so the
-        // resting offset has one owner and the Translates below can stay bare.
-        readonly property int fromShift: 12
-
-        PropertyAction {
-            target: entrance.card
-            property: "opacity"
-            value: 0
-        }
-        PropertyAction {
-            target: entrance.shift
-            property: "y"
-            value: entrance.fromShift
-        }
-        PauseAnimation {
-            duration: Appearance.animation.staggerStep * Math.min(entrance.slot, Appearance.animation.staggerCap)
-        }
-        ParallelAnimation {
-            NumberAnimation {
-                target: entrance.card
-                property: "opacity"
-                to: 1
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-            }
-            NumberAnimation {
-                target: entrance.shift
-                property: "y"
-                to: 0
-                duration: Appearance.animation.elementMoveEnter.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-        }
-    }
+    // contents cannot drift apart. The spec and its reasoning are CardEnter's.
 
     contentItem: ColumnLayout {
         id: contentLayout

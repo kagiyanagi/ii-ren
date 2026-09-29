@@ -42,6 +42,9 @@ Singleton {
     }
     property bool workspaceRestoreInProgress: false
     property bool cheatsheetOpen: false
+    // Asks the cheatsheet to open on one of its tabs, by the key in its
+    // `tabKeys` - how the bar's weather widget opens the Weather tab.
+    signal cheatsheetTabRequested(string tab)
     // The keybind editor lives here rather than inside the Keybinds tab: the tab
     // is a clipped SwipeView page, so a scrim mounted in it stops at the page
     // bounds and leaves the sheet's 20px of card padding undimmed down both

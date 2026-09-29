@@ -27,6 +27,38 @@ Scope { // Scope
 
     onOpenChanged: if (root.open) root.rendered = true
 
+    // Published so the bar can tell the sheet is up (the weather popup stands
+    // down while it is).
+    Binding {
+        target: GlobalStates
+        property: "cheatsheetOpen"
+        value: root.open
+    }
+
+    // Stable names for the built-in tabs, in SwipeView order, so a caller can
+    // ask for one without knowing where it sits or what it is called in the
+    // user's language.
+    readonly property var tabKeys: ["timetable", "keybinds", "elements", "weather"]
+    signal tabRequested(int index)
+
+    // Open on a tab. A closed sheet reads the persisted index when it builds;
+    // an open one is told directly.
+    function openTab(key: string): void {
+        const index = root.tabKeys.indexOf(key);
+        if (index < 0)
+            return;
+        Persistent.states.cheatsheet.tabIndex = index;
+        root.tabRequested(index);
+        root.open = true;
+    }
+
+    Connections {
+        target: GlobalStates
+        function onCheatsheetTabRequested(tab) {
+            root.openTab(tab);
+        }
+    }
+
     property var extensionCheatsheetTabs: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("cheatsheet") : []
 
@@ -295,6 +327,13 @@ Scope { // Scope
                             when: swipeView.contentItem !== null
                         }
 
+                        Connections {
+                            target: root
+                            function onTabRequested(index) {
+                                swipeView.currentIndex = index;
+                            }
+                        }
+
                         LazyTab { sourceComponent: CheatsheetTimetable {} }
                         LazyTab { sourceComponent: CheatsheetKeybinds {} }
                         LazyTab { sourceComponent: CheatsheetPeriodicTable {} }
@@ -370,6 +409,11 @@ Scope { // Scope
 
         function open(): void {
             root.open = true;
+        }
+
+        // `qs -c ii ipc call cheatsheet openTab weather`
+        function openTab(tab: string): void {
+            root.openTab(tab);
         }
     }
 

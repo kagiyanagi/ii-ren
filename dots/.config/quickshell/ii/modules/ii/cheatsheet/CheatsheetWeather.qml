@@ -4,7 +4,9 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.modules.common.widgets.animations
 import qs.modules.ii.background
+import qs.modules.ii.bar.cards
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Shapes
@@ -93,50 +95,22 @@ Item {
     // The compass needle is a pointer, not a gauge, so it swings on the
     // spatial spec and may overshoot the bearing and settle.
     property real needle: 1
-    // A short move toward where each card belongs, as the weather popup's do.
+    // A short move toward where each card belongs; a little further than the
+    // popup's, on a surface this much bigger (TASTE 5.4).
     readonly property int travel: 16
-
-    component Rise: SequentialAnimation {
-        id: rise
-        required property Item card
-        required property int order
-        PropertyAction { target: rise.card; property: "opacity"; value: 0 }
-        PropertyAction { target: rise.card; property: "lift"; value: root.travel }
-        PauseAnimation {
-            duration: Appearance.animation.staggerStep * Math.min(rise.order, Appearance.animation.staggerCap)
-        }
-        ParallelAnimation {
-            NumberAnimation {
-                target: rise.card
-                property: "opacity"
-                to: 1
-                duration: Appearance.animation.elementMoveFast.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-            }
-            NumberAnimation {
-                target: rise.card
-                property: "lift"
-                to: 0
-                duration: Appearance.animation.elementMoveEnter.duration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: Appearance.animationCurves.expressiveDefaultSpatial
-            }
-        }
-    }
 
     ParallelAnimation {
         id: entrance
-        Rise { card: hero; order: 0 }
-        Rise { card: hourly; order: 1 }
-        Rise { card: week; order: 2 }
-        Rise { card: uvTile; order: 3 }
-        Rise { card: humidityTile; order: 4 }
-        Rise { card: windTile; order: 5 }
-        Rise { card: pressureTile; order: 6 }
-        Rise { card: sunTile; order: 6 }
-        Rise { card: rainTile; order: 6 }
-        Rise { card: visibilityTile; order: 6 }
+        CardEnter { card: hero; shift: hero.shift; slot: 0; travel: root.travel }
+        CardEnter { card: hourly; shift: hourly.shift; slot: 1; travel: root.travel }
+        CardEnter { card: week; shift: week.shift; slot: 2; travel: root.travel }
+        CardEnter { card: uvTile; shift: uvTile.shift; slot: 3; travel: root.travel }
+        CardEnter { card: humidityTile; shift: humidityTile.shift; slot: 4; travel: root.travel }
+        CardEnter { card: windTile; shift: windTile.shift; slot: 5; travel: root.travel }
+        CardEnter { card: pressureTile; shift: pressureTile.shift; slot: 6; travel: root.travel }
+        CardEnter { card: sunTile; shift: sunTile.shift; slot: 6; travel: root.travel }
+        CardEnter { card: rainTile; shift: rainTile.shift; slot: 6; travel: root.travel }
+        CardEnter { card: visibilityTile; shift: visibilityTile.shift; slot: 6; travel: root.travel }
         SequentialAnimation {
             PropertyAction { target: root; property: "fill"; value: 0 }
             PropertyAction { target: root; property: "needle"; value: 0 }
@@ -163,11 +137,10 @@ Item {
     }
 
     component Card: Rectangle {
-        id: card
-        property real lift: 0
+        readonly property Translate shift: Translate {}
         radius: Appearance.rounding.normal
         color: Appearance.colors.colLayer1
-        transform: Translate { y: card.lift }
+        transform: shift
     }
 
     component CardHeader: RowLayout {
@@ -237,19 +210,13 @@ Item {
 
     // Nothing on the page says anything true without a reading, so without one
     // it is a single status: still fetching, or failed with the way out.
-    ColumnLayout {
+    FadeLoader {
         anchors.centerIn: parent
-        visible: !root.hasReading && root.loading
-        spacing: 12
-        MaterialLoadingIndicator {
-            Layout.alignment: Qt.AlignHCenter
-            loading: parent.visible
-        }
-        StyledText {
-            Layout.alignment: Qt.AlignHCenter
-            text: Weather.city === "" ? Translation.tr("Finding your location...")
+        shown: !root.hasReading && root.loading
+        sourceComponent: LoadingPlaceholder {
+            loading: true
+            loadingText: Weather.city === "" ? Translation.tr("Finding your location...")
                 : Translation.tr("Getting weather for %1...").arg(Weather.city)
-            color: Appearance.colors.colOnSurfaceVariant
         }
     }
     PagePlaceholder {
@@ -471,7 +438,11 @@ Item {
                                     }
                                     StyledText {
                                         Layout.alignment: Qt.AlignHCenter
-                                        text: index === 0 ? Translation.tr("Now") : root.hourLabel(modelData.time)
+                                        // Its own hour, not "Now": the first slot is the
+                                        // forecast for the start of this 3-hour block,
+                                        // up to 2h59 old, and would sit beside the
+                                        // hero's live reading disagreeing with it.
+                                        text: root.hourLabel(modelData.time)
                                         font.pixelSize: Appearance.font.pixelSize.smallie
                                         color: Appearance.colors.colOnSurfaceVariant
                                     }
