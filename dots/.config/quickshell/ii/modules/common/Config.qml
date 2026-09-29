@@ -2065,10 +2065,10 @@ Singleton {
             property JsonObject windows: JsonObject {
                 property bool showTitlebar: true // Client-side decoration for shell apps
                 property bool centerTitle: true
-                // Floating mode: apps that draw their own close/maximize/minimize, by class regex,
-                // on top of the Chromium, Electron, Firefox and libadwaita apps it detects itself.
                 // Floating mode: where a window's controls sit. "top" is a caption bar, "right" a rail.
                 property string floatingControls: "top"
+                // Floating mode: apps that draw their own close/maximize/minimize, by class regex,
+                // on top of the Chromium, Electron, Firefox and libadwaita apps it detects itself.
                 property list<string> ownControls: ["^org\\.telegram\\.desktop$", "^com\\.ayugram\\.desktop$", "^steam$", "^jetbrains-"]
             }
 

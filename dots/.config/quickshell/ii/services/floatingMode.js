@@ -269,9 +269,8 @@ function maximizeExpr(address) {
 
 // hyprbars' side, for `hyprctl eval` once the plugin is loaded, and again after every
 // reload (which clears its buttons and resets its options). The bar is Android 16's
-// desktop caption: 40dp tall (AOSP desktop_mode_freeform_decor_caption_height), 32dp
-// buttons 12dp apart (AOSP 32dp ripples inset 6dp in their slots), minimize,
-// maximize, close. `bar_precedence_over_border` puts the border around bar and window
+// desktop caption, sized by FloatingMode.qml (railWidth, buttonSize, buttonGap):
+// minimize, maximize, close. `bar_precedence_over_border` puts the border around bar and window
 // together, so the two are one shape. A window has no bar unless the shell tags it
 // (no controls of its own) and it floats. Both rules only ever say "no bar": an "off
 // for all" rule and an "on for tagged" one settled differently when a window opened

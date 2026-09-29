@@ -25,9 +25,13 @@ Singleton {
     id: root
 
     readonly property bool enabled: Persistent.ready && Persistent.states.hyprland.floatingMode
-    // AOSP dimen.xml, desktop_mode_freeform_decor_caption_height: 40dp. The side
-    // rail is the same caption stood on its end.
-    readonly property int railWidth: 40
+    // Android's caption is 40dp (AOSP desktop_mode_freeform_decor_caption_height) with
+    // 32dp buttons 12dp apart; shrunk a step so it sits with KDE's Breeze title bars
+    // (the owner's call), buttons still inset evenly. The side rail is the same caption
+    // stood on its end.
+    readonly property int railWidth: 36
+    readonly property int buttonSize: 28
+    readonly property int buttonGap: 8
     // "top", Android 16's caption bar, or "right", a rail down the side.
     readonly property string railSide: Config.options?.windows?.floatingControls === "right" ? "right" : "top"
     // Moving the controls to the other side can put them off screen, so every window
@@ -44,7 +48,7 @@ Singleton {
 
     function installExpr() {
         return FM.installExpr(root.luaPath, {
-            barClasses: root.barClasses,
+            barClasses: root.barClasses.filter(c => !root.ownControlsClass(c)),
             side: root.railSide,
             size: root.railWidth
         });
@@ -65,15 +69,15 @@ Singleton {
     readonly property var barClasses: Persistent.states.hyprland.floatingBarClasses
     readonly property string barsConfig: FM.barsLua({
         height: root.railWidth,
-        color: root.hyprColor(Appearance.colors.colLayer1),
-        text: root.hyprColor(Appearance.colors.colOnLayer1),
+        color: root.hyprColor(Appearance.colors.colLayer2),
+        text: root.hyprColor(Appearance.colors.colOnLayer2),
         font: Appearance.font.family.main,
-        chip: root.hyprColor(Appearance.colors.colLayer2),
+        chip: root.hyprColor(Appearance.colors.colLayer3),
         closeHover: root.hyprColor(Appearance.colors.colErrorContainer),
         textSize: Appearance.font.pixelSize.small,
-        padding: 12,
-        gap: 12,
-        button: 32
+        padding: root.buttonGap,
+        gap: root.buttonGap,
+        button: root.buttonSize
     })
     onBarsConfigChanged: {
         if (root.pluginBars)
@@ -193,7 +197,13 @@ Singleton {
     function hasRail(w) {
         if (root.ownControlsByPid[w.pid] !== false)
             return false; // draws its own, or not probed yet
-        return !root.ownControlsPatterns.some(re => re.test(w.cls));
+        return !root.ownControlsClass(w.cls);
+    }
+
+    // The shell's own windows (the settings app) draw their close button while
+    // windows.showTitlebar is on, as the listed apps always do.
+    function ownControlsClass(cls) {
+        return (cls === "org.quickshell" && Config.options.windows.showTitlebar) || root.ownControlsPatterns.some(re => re.test(cls));
     }
 
     function railOutline(width, height) {

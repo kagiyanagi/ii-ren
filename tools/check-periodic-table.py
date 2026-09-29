@@ -113,14 +113,14 @@ def palette(name):
 
 # These exact values passed the validator; changing one means re-running it.
 expected = {
-    "familyDark": ["#a2413d", "#cb7a35", "#7f6000", "#67a351", "#007b5c",
-                   "#00a6b6", "#0f68aa", "#8d82db", "#834994", "#cb6d9c"],
-    "familyLight": ["#a03f3c", "#e79551", "#7e5f00", "#81be6b", "#007a5b",
-                    "#00c2d2", "#0b67a9", "#a79df8", "#814893", "#e887b6"],
-    "blockDark": ["#c16400", "#00b16e", "#2c78f3", "#dd4ea9"],
-    "blockLight": ["#9c4b00", "#00b97c", "#195cc7", "#e263b1"],
-    "trendDark": ["#28567f", "#326898", "#3c7bb3", "#478ece", "#52a2ea", "#5eb6ff", "#6acbff"],
-    "trendLight": ["#a5d7ff", "#88c0f6", "#6baae5", "#4e94d5", "#2d7fc4", "#0069b3", "#0054a2"],
+    "familyDark": ["#8c4e49", "#bb875f", "#736033", "#7aa06d", "#3a725e",
+                   "#59a2ac", "#38658f", "#908bc5", "#765281", "#bc7e9b"],
+    "familyLight": ["#8a4c48", "#d7a178", "#725f32", "#94bb87", "#3a715d",
+                    "#6bbec8", "#36648e", "#aba6e1", "#745180", "#d898b5"],
+    "blockDark": ["#af6f3f", "#60b687", "#5084d8", "#c867a1"],
+    "blockLight": ["#8d5530", "#6bc598", "#3661aa", "#ce77aa"],
+    "trendDark": ["#385672", "#446889", "#517aa1", "#5f8dba", "#6da1d3", "#7bb5e8", "#89c8ec"],
+    "trendLight": ["#b3d5f1", "#98bfe4", "#7ea9d2", "#6593c1", "#4c7faf", "#346a9d", "#29568c"],
 }
 for name, want in expected.items():
     got = palette(name)

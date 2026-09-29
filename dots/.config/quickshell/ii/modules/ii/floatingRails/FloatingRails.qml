@@ -175,10 +175,10 @@ Scope {
         // caption; the rest recede to the background tone.
         property color fill: {
             if (dragArea.pressed)
-                return rail.focused ? Appearance.colors.colLayer1Active : Appearance.colors.colLayer0Active;
+                return rail.focused ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer1Active;
             if (dragArea.containsMouse)
-                return rail.focused ? Appearance.colors.colLayer1Hover : Appearance.colors.colLayer0Hover;
-            return rail.focused ? Appearance.colors.colLayer1 : Appearance.colors.colLayer0;
+                return rail.focused ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer1Hover;
+            return rail.focused ? Appearance.colors.colLayer2 : Appearance.colors.colLayer1;
         }
         Behavior on fill {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
@@ -305,14 +305,14 @@ Scope {
                     }
                 }
 
-                // AOSP dimen.xml: the caption's app icon is 24dp, inset so it sits square
-                // across the 40dp strip. It gives way before the buttons do on a small window.
+                // The caption's app icon, the size of a button, inset so it sits square
+                // across the strip. It gives way before the buttons do on a small window.
                 IconImage {
                     id: appIcon
                     x: rail.horizontal ? inset : (parent.width - implicitSize) / 2
                     y: rail.horizontal ? (parent.height - implicitSize) / 2 : inset
                     readonly property real inset: (rail.thickness - implicitSize) / 2
-                    implicitSize: 24
+                    implicitSize: FloatingMode.buttonSize
                     visible: rail.length >= (rail.horizontal ? controls.width : controls.height)
                              + implicitSize * 2
                     source: Quickshell.iconPath(TaskbarApps.getCachedIcon(rail.modelData.cls),
@@ -332,23 +332,22 @@ Scope {
                     }
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.small
-                    color: Appearance.colors.colOnLayer1
+                    color: Appearance.colors.colOnLayer2
                     text: TaskbarApps.getCachedDesktopEntry(rail.modelData.cls)?.name ?? rail.modelData.cls
                 }
 
-                // AOSP dimen.xml: 32dp button ripples, inset 6dp in their slots, so 12dp
-                // apart; minimize, maximize, close in the order Android's caption has them.
+                // FloatingMode's button size and gap, the same as the hyprbars bar; minimize, maximize, close in the order Android's caption has them.
                 // Short of room, minimize and maximize go first and close stays.
                 Grid {
                     id: controls
-                    readonly property real inset: (rail.thickness - 32) / 2
-                    readonly property bool roomy: rail.length >= 3 * 32 + 2 * 12 + 2 * inset
+                    readonly property real inset: (rail.thickness - FloatingMode.buttonSize) / 2
+                    readonly property bool roomy: rail.length >= 3 * FloatingMode.buttonSize + 2 * FloatingMode.buttonGap + 2 * inset
                     x: rail.horizontal ? parent.width - width - inset : (parent.width - width) / 2
                     y: rail.horizontal ? (parent.height - height) / 2 : parent.height - height - inset
                     flow: rail.horizontal ? Grid.LeftToRight : Grid.TopToBottom
                     rows: rail.horizontal ? 1 : 3
                     columns: rail.horizontal ? 3 : 1
-                    spacing: 12
+                    spacing: FloatingMode.buttonGap
 
                     RailButton {
                         visible: controls.roomy
@@ -387,19 +386,19 @@ Scope {
         readonly property bool closes: button.glyph === "close"
         readonly property real g: button.width * 0.375 / 2
 
-        implicitWidth: 32
-        implicitHeight: 32
+        implicitWidth: FloatingMode.buttonSize
+        implicitHeight: FloatingMode.buttonSize
         buttonRadius: Appearance.rounding.full
-        colBackground: button.railFocused ? Appearance.colors.colLayer2 : Appearance.colors.colLayer1
+        colBackground: button.railFocused ? Appearance.colors.colLayer3 : Appearance.colors.colLayer2
         colBackgroundHover: button.closes ? Appearance.colors.colErrorContainer :
-                            button.railFocused ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer1Hover
+                            button.railFocused ? Appearance.colors.colLayer3Hover : Appearance.colors.colLayer2Hover
         colRipple: button.closes ? Appearance.colors.colErrorContainerActive :
-                   button.railFocused ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer1Active
+                   button.railFocused ? Appearance.colors.colLayer3Active : Appearance.colors.colLayer2Active
 
         contentItem: Shape {
             preferredRendererType: Shape.CurveRenderer
             ShapePath {
-                strokeColor: button.closes && button.hovered ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnLayer1
+                strokeColor: button.closes && button.hovered ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnLayer2
                 strokeWidth: 1.5
                 fillColor: "transparent"
                 capStyle: ShapePath.RoundCap

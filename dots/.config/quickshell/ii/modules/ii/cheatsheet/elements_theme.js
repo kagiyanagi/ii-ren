@@ -7,16 +7,21 @@
 // and a heat map whose ramp is re-themed per wallpaper cannot be read against
 // its own legend. Each set is stepped separately for the dark and light surface
 // rather than flipped, and every one was produced by search and then validated
-// with the data-viz validator rather than picked by eye:
+// with the data-viz validator rather than picked by eye. All three are muted --
+// each hue at about two thirds of its first chroma (the owner's call: full-chroma
+// tiles shouted on the dark surface) -- so they sit under the validator's 0.10
+// chroma floor on purpose; the separation checks below still pass:
 //
-//   family, 10 slots, adjacent pairlist  -- CVD dE 11.9 (target >= 8),
-//     normal-vision dE 15.2 (floor 15), lightness band and chroma floor pass.
+//   family, 10 slots, adjacent pairlist  -- CVD dE 15.1 dark / 24.0 light
+//     (target >= 8), normal-vision dE 16.2 / 24.9 (floor 15), the light/dark
+//     alternation widened a step to buy back what the chroma cut took.
 //     The pairlist is adjacent rather than all-pairs because the slots are
 //     ordered the way the families are laid out, so "adjacent" is exactly the
 //     set of families that touch on screen. Ten hues cannot pass all-pairs --
 //     no ten can -- which is why `block` exists below.
-//   block, 4 slots, ALL pairs -- CVD dE 8.8, normal-vision dE 21.1, contrast
-//     >= 3:1. This is the colour-blind-safe view of the same table, and it is
+//   block, 4 slots, ALL pairs -- CVD dE 8.5 dark / 9.0 light, normal-vision
+//     dE 15.2 / 21.1, green (and blue, dark) lifted a step so muted pink and
+//     green stay apart for deuteranopes. This is the colour-blind-safe view of the same table, and it is
 //     also a mode a chemistry student wants for its own sake.
 //   trend, 7 steps, one hue -- monotone in lightness, >= 2:1 against the surface
 //     at the dim end so a low value is still a visible tile.
@@ -40,20 +45,20 @@ const familyOrder = [
 ];
 
 const familyDark = [
-    "#a2413d", "#cb7a35", "#7f6000", "#67a351", "#007b5c",
-    "#00a6b6", "#0f68aa", "#8d82db", "#834994", "#cb6d9c",
+    "#8c4e49", "#bb875f", "#736033", "#7aa06d", "#3a725e",
+    "#59a2ac", "#38658f", "#908bc5", "#765281", "#bc7e9b",
 ];
 const familyLight = [
-    "#a03f3c", "#e79551", "#7e5f00", "#81be6b", "#007a5b",
-    "#00c2d2", "#0b67a9", "#a79df8", "#814893", "#e887b6",
+    "#8a4c48", "#d7a178", "#725f32", "#94bb87", "#3a715d",
+    "#6bbec8", "#36648e", "#aba6e1", "#745180", "#d898b5",
 ];
 
 const blockOrder = ["s", "p", "d", "f"];
-const blockDark = ["#c16400", "#00b16e", "#2c78f3", "#dd4ea9"];
-const blockLight = ["#9c4b00", "#00b97c", "#195cc7", "#e263b1"];
+const blockDark = ["#af6f3f", "#60b687", "#5084d8", "#c867a1"];
+const blockLight = ["#8d5530", "#6bc598", "#3661aa", "#ce77aa"];
 
-const trendDark = ["#28567f", "#326898", "#3c7bb3", "#478ece", "#52a2ea", "#5eb6ff", "#6acbff"];
-const trendLight = ["#a5d7ff", "#88c0f6", "#6baae5", "#4e94d5", "#2d7fc4", "#0069b3", "#0054a2"];
+const trendDark = ["#385672", "#446889", "#517aa1", "#5f8dba", "#6da1d3", "#7bb5e8", "#89c8ec"];
+const trendLight = ["#b3d5f1", "#98bfe4", "#7ea9d2", "#6593c1", "#4c7faf", "#346a9d", "#29568c"];
 
 // The ways the table can be coloured. `key` is null for the two categorical
 // modes; the rest read one number off an element and are drawn on the ramp.
