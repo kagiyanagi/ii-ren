@@ -268,5 +268,6 @@ void main() {
     color = mix(color, contactShadowColor, dropShadowIntensity
         * smoothstep(0.055, 0.1, max(length(dropUvMasked * 1.7), length(droppletsUvMasked * 1.9))));
 
-    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity;
+    // The scene's alpha passes through, so a rounded scene keeps its corners.
+    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity * texture(src, qt_TexCoord0).a;
 }

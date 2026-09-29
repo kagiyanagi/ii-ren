@@ -240,6 +240,12 @@ Singleton {
         temp.wDesc = getWeatherDescription(temp.wCode);
         temp.city = cityName;
         temp.isDay = current.is_day !== undefined ? current.is_day : 1;
+        // Raw readings for the cheatsheet's gauges; the strings above are for reading.
+        temp.windDeg = current.wind_direction_10m;
+        temp.visibM = current.visibility;
+        temp.sunriseIso = daily.sunrise[0];
+        temp.sunsetIso = daily.sunset[0];
+        temp.utcOffset = wData.utc_offset_seconds ?? 0;
         
         if (root.useUSCS) {
             temp.wind = Math.round(current.wind_speed_10m * 0.621371) + " mph";
@@ -248,6 +254,8 @@ Singleton {
             temp.press = Math.round(current.pressure_msl) + " hPa"; 
             temp.temp = Math.round(current.temperature_2m * 9 / 5 + 32) + "°F";
             temp.tempFeelsLike = Math.round(current.apparent_temperature * 9 / 5 + 32) + "°F";
+            temp.gusts = Math.round(current.wind_gusts_10m * 0.621371) + " mph";
+            temp.dewPoint = Math.round(current.dew_point_2m * 9 / 5 + 32) + "°";
         } else {
             temp.wind = Math.round(current.wind_speed_10m) + " km/h";
             temp.precip = current.precipitation.toFixed(1) + " mm";
@@ -255,6 +263,8 @@ Singleton {
             temp.press = Math.round(current.pressure_msl) + " hPa";
             temp.temp = Math.round(current.temperature_2m) + "°C";
             temp.tempFeelsLike = Math.round(current.apparent_temperature) + "°C";
+            temp.gusts = Math.round(current.wind_gusts_10m) + " km/h";
+            temp.dewPoint = Math.round(current.dew_point_2m) + "°";
         }
         
         temp.lastRefresh = DateTime.time + " • " + DateTime.date;
@@ -275,7 +285,8 @@ Singleton {
                     minC: Math.round(minC),
                     maxF: Math.round(maxF),
                     minF: Math.round(minF),
-                    code: wmoToWwo(daily.weather_code[i])
+                    code: wmoToWwo(daily.weather_code[i]),
+                    pop: daily.precipitation_probability_max?.[i] ?? 0
                 });
             }
         }
@@ -295,6 +306,7 @@ Singleton {
                         tempC: Math.round(tempC).toString(),
                         tempF: Math.round(tempF).toString(),
                         code: wmoToWwo(hourly.weather_code[i]).toString(),
+                        pop: hourly.precipitation_probability?.[i] ?? 0,
                         isNight: (hourly.is_day && hourly.is_day[i] !== undefined) ? hourly.is_day[i] === 0 : (hourOfDay >= 18 || hourOfDay < 6)
                     });
                 }
@@ -450,7 +462,7 @@ Singleton {
 
     function fetchWeather(lat, lon, cityName) {
         root.forecastLoading = true;
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,uv_index,visibility,is_day&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code&hourly=temperature_2m,weather_code,is_day&timezone=auto`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,dew_point_2m,uv_index,visibility,is_day&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max&hourly=temperature_2m,weather_code,is_day,precipitation_probability&timezone=auto`;
         
         root.request(url, "weather", weather => root.refineData(weather, cityName));
     }

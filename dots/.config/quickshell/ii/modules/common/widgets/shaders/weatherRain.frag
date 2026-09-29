@@ -144,5 +144,6 @@ void main() {
     color = mix(color, highlightColor, 0.7 * rainVisibility
         * generateRain(uvRot, screenAspectRatio, time * 27.0, vec2(8.0, 3.0) * gridScale, intensity));
 
-    fragColor = vec4(color, 1.0) * qt_Opacity;
+    // The scene's alpha passes through, so a rounded scene keeps its corners.
+    fragColor = vec4(color, 1.0) * qt_Opacity * texture(src, qt_TexCoord0).a;
 }

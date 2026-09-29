@@ -210,5 +210,6 @@ void main() {
     // Add flare.
     color = addFlare(color, uv, sunPos, (0.4 + 0.8 * brightnessSunray) * intensity);
 
-    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity;
+    // The scene's alpha passes through, so a rounded scene keeps its corners.
+    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity * texture(src, qt_TexCoord0).a;
 }

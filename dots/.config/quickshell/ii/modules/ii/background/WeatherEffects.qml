@@ -30,7 +30,9 @@ Item {
 
     // Desktop and lock screen target independently, lock mirroring desktop
     // unless told not to - same split as the wallpaper effects above it.
-    readonly property var opt: GlobalStates.screenLocked
+    // `opt`, `otherOpt` and `everConfigured` are writable so a caller that is
+    // not the desktop (the cheatsheet's weather hero) can hand in its own.
+    property var opt: GlobalStates.screenLocked
         ? (Config.options.background.weatherEffects.lock.sync
             ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
         : Config.options.background.weatherEffects.desktop
@@ -39,13 +41,13 @@ Item {
     // decoded off this rather than off what is running, because the effect the
     // lock screen wants is not known until it locks - and by then it is far
     // too late to be decoding PNGs on the GUI thread.
-    readonly property bool everConfigured: Config.ready
+    property bool everConfigured: Config.ready
         && (Config.options.background.weatherEffects.desktop.enable
             || Config.options.background.weatherEffects.lock.enable)
 
     // The target that is *not* on screen. Locking swaps the two, so this is
     // what the shell is about to need.
-    readonly property var otherOpt: GlobalStates.screenLocked
+    property var otherOpt: GlobalStates.screenLocked
         ? Config.options.background.weatherEffects.desktop
         : (Config.options.background.weatherEffects.lock.sync
             ? Config.options.background.weatherEffects.desktop : Config.options.background.weatherEffects.lock)
@@ -166,8 +168,13 @@ Item {
     // sessions, are not raining in lockstep.
     onTakesOverChanged: if (root.takesOver) root.elapsed = Math.random() * 90
 
+    // Freezes the weather on its last frame without unmapping it, for a caller
+    // that slides out of view: hiding it would take the scene with it, since
+    // the scene is hidden under the shader.
+    property bool paused: false
+
     FrameAnimation {
-        running: root.takesOver && root.visible
+        running: root.takesOver && root.visible && !root.paused
         onTriggered: {
             // A stalled frame must not teleport the rain across the screen.
             const dt = Math.min(frameTime, 0.1);

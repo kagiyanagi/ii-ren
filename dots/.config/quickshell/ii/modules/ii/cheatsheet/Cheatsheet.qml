@@ -51,6 +51,10 @@ Scope { // Scope
             "icon": "experiment",
             "name": Translation.tr("Elements")
         },
+        {
+            "icon": "partly_cloudy_day",
+            "name": Translation.tr("Weather")
+        },
         ...root.extensionCheatsheetTabs.map(p => ({icon: p.icon, name: p.title}))
     ]
 
@@ -294,6 +298,10 @@ Scope { // Scope
                         LazyTab { sourceComponent: CheatsheetTimetable {} }
                         LazyTab { sourceComponent: CheatsheetKeybinds {} }
                         LazyTab { sourceComponent: CheatsheetPeriodicTable {} }
+                        LazyTab {
+                            id: weatherTab
+                            sourceComponent: CheatsheetWeather { live: weatherTab.current }
+                        }
 
                         Component.onCompleted: {
                             for (const p of root.extensionCheatsheetTabs) {

@@ -205,5 +205,6 @@ void main() {
         color = normalBlendNotPremultiplied(color, fogColor, fgdFogLayer2 * intensity);
     }
 
-    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity;
+    // The scene's alpha passes through, so a rounded scene keeps its corners.
+    fragColor = vec4(colorGrade(color, lutIntensity), 1.0) * qt_Opacity * texture(src, qt_TexCoord0).a;
 }
