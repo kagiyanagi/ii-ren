@@ -84,18 +84,9 @@ Item {
         onClicked: mouse => {
             if (mouse.button === Qt.BackButton) root.player?.previous();
             else if (mouse.button === Qt.ForwardButton) root.player?.next();
-            else if (mouse.button === Qt.LeftButton && !root.popupOnHover) {
-                if (root.popupShown) {
-                    root.popupOpen = false;
-                    if (root.shouldOpenFromShortcut) {
-                        GlobalStates.mediaControlsOpen = false;
-                    }
-                } else {
-                    root.popupOpen = true;
-                    if (!GlobalStates.barMediaPresent) {
-                        GlobalStates.mediaControlsOpen = true;
-                    }
-                }
+            else if (mouse.button === Qt.LeftButton) {
+                root.popupOpen = false;
+                GlobalStates.immersiveMediaOpen = true;
             }
             else root.player?.togglePlaying();
         }
