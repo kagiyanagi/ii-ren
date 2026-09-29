@@ -193,7 +193,8 @@ PopupWindow {
                     padding: 0
 
                     onClicked: {
-                        modelData?.activate()
+                        if (!FloatingMode.restoreMinimized(HyprlandData.clientForToplevel(modelData)?.address))
+                            modelData?.activate()
                         dockRoot.buttonHovered = false
                         dockRoot.lastHoveredButton = null
                     }

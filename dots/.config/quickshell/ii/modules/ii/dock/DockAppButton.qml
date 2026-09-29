@@ -182,7 +182,9 @@ DockButton {
             }
             // Cycle through open windows on left click
             lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
-            appToplevel.toplevels[lastFocused].activate()
+            const toplevel = appToplevel.toplevels[lastFocused]
+            if (!FloatingMode.restoreMinimized(HyprlandData.clientForToplevel(toplevel)?.address))
+                toplevel.activate()
         }
     }
 

@@ -262,6 +262,14 @@ function beforeDragExpr(address) {
     return 'if ii_fm_lib then ii_fm_lib.before_drag("' + address + '") end';
 }
 
+// A minimized window picked in the dock or Alt+Tab. Asked of the Lua rather than left to
+// an activation, which opens the hidden workspace, every minimized window on it, first.
+function activateExpr(address) {
+    if (!ADDRESS.test(address))
+        return null;
+    return 'if ii_fm_lib then ii_fm_lib.activate("' + address + '") end';
+}
+
 // Hyprland's maximize toggle, which floatingMode.lua turns into its own.
 function maximizeExpr(address) {
     return 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle", ' + sel(address) + " })";

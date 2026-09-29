@@ -280,6 +280,15 @@ Singleton {
         Hyprland.dispatch(FM.minimizeExpr(address));
     }
 
+    // The dock's and Alt+Tab's way back for a minimized window; false for any other, which
+    // they activate as usual.
+    function restoreMinimized(address) {
+        if (!root.enabled || HyprlandData.windowByAddress[address]?.workspace?.name !== FM.MINIMIZED)
+            return false;
+        root.hyprEval(FM.activateExpr(address));
+        return true;
+    }
+
     // Hyprland's own toggle: floatingMode.lua turns it into the mode's maximize, the one
     // path every maximize takes.
     function toggleMaximize(address) {

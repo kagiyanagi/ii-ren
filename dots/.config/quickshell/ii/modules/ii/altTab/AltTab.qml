@@ -92,6 +92,8 @@ Scope {
         const target = root.selectedWindow;
         if (!target?.address) return;
         const previous = root.windows[0]; // focusHistoryID 0 when we opened
+        if (FloatingMode.restoreMinimized(target.address))
+            return;
         Hyprland.dispatch(`hl.dsp.focus({window = "address:${target.address}"})`);
 
         // Focusing a tiled sibling drops the maximize, which dumps the whole
