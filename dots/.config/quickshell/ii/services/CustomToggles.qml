@@ -2,162 +2,64 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.modules.common
 
+// Quick toggles the user defines: a name, an icon, and a command for each way.
+// On or off is only what the last click said, kept in Persistent so a shell
+// reload does not flip every tile back to off. Nothing asks the system.
 Singleton {
     id: root
 
-    // Active runtime state map: id -> bool
-    property var activeStates: ({})
-
-    readonly property list<var> list: {
-        var raw = Config.options?.sidebar?.quickToggles?.customToggles;
-        if (!raw)
-            return [];
-        var result = [];
-        for (var i = 0; i < raw.length; i++) {
-            if (raw[i] && raw[i].id)
-                result.push(raw[i]);
-        }
-        return result;
-    }
+    readonly property list<var> list: (Config.options?.sidebar?.quickToggles?.customToggles ?? []).filter(item => item?.id)
 
     function isToggled(id: string): bool {
-        return !!root.activeStates[id];
+        return Persistent.states.sidebar.activeCustomToggles.includes(id);
     }
 
     function getToggle(id: string): var {
-        for (var i = 0; i < root.list.length; i++) {
-            if (root.list[i].id === id)
-                return root.list[i];
-        }
-        return null;
+        return root.list.find(item => item.id === id) ?? null;
     }
 
     function setToggled(id: string, toggled: bool): void {
-        var updated = Object.assign({}, root.activeStates);
-        updated[id] = toggled;
-        root.activeStates = updated;
+        const others = Persistent.states.sidebar.activeCustomToggles.filter(other => other !== id);
+        Persistent.states.sidebar.activeCustomToggles = toggled ? [...others, id] : others;
     }
 
     function toggle(id: string): void {
-        var item = getToggle(id);
+        const item = root.getToggle(id);
         if (!item)
             return;
-
-        var currentState = isToggled(id);
-        var nextState = !currentState;
-
-        if (nextState) {
-            if (item.commandStart && item.commandStart.trim().length > 0) {
-                Quickshell.execDetached(["bash", "-c", item.commandStart.trim()]);
-            }
-        } else {
-            if (item.commandStop && item.commandStop.trim().length > 0) {
-                Quickshell.execDetached(["bash", "-c", item.commandStop.trim()]);
-            }
-        }
-        setToggled(id, nextState);
+        const next = !root.isToggled(id);
+        const command = next ? item.commandStart : item.commandStop;
+        if (command)
+            Quickshell.execDetached(["bash", "-c", command]);
+        root.setToggled(id, next);
     }
 
-    function addToggle(name: string, icon: string, commandStart: string, commandStop: string): var {
-        var newId = "custom_" + Date.now();
-        var newEntry = {
-            id: newId,
-            type: "custom",
-            name: name,
-            icon: icon && icon.trim().length > 0 ? icon.trim() : "terminal",
-            commandStart: commandStart ? commandStart.trim() : "",
-            commandStop: commandStop ? commandStop.trim() : "",
-            sizeW: 2,
-            sizeH: 1
+    function entry(id, name, icon, commandStart, commandStop) {
+        return {
+            id: id,
+            name: name.trim(),
+            icon: icon.trim() || "terminal",
+            commandStart: commandStart.trim(),
+            commandStop: commandStop.trim()
         };
-
-        var current = [];
-        if (Config.options?.sidebar?.quickToggles?.customToggles) {
-            for (var i = 0; i < Config.options.sidebar.quickToggles.customToggles.length; i++) {
-                current.push(Config.options.sidebar.quickToggles.customToggles[i]);
-            }
-        }
-        current.push(newEntry);
-        Config.options.sidebar.quickToggles.customToggles = current;
-        return newEntry;
     }
 
-    function updateToggle(id: string, name: string, icon: string, commandStart: string, commandStop: string): bool {
-        if (!Config.options?.sidebar?.quickToggles?.customToggles)
-            return false;
-
-        var current = [];
-        var found = false;
-        for (var i = 0; i < Config.options.sidebar.quickToggles.customToggles.length; i++) {
-            var item = Config.options.sidebar.quickToggles.customToggles[i];
-            if (item && item.id === id) {
-                var updated = {
-                    id: id,
-                    type: "custom",
-                    name: name,
-                    icon: icon && icon.trim().length > 0 ? icon.trim() : "terminal",
-                    commandStart: commandStart ? commandStart.trim() : "",
-                    commandStop: commandStop ? commandStop.trim() : "",
-                    sizeW: item.sizeW || 2,
-                    sizeH: item.sizeH || 1
-                };
-                current.push(updated);
-                found = true;
-            } else {
-                current.push(item);
-            }
-        }
-        if (found) {
-            Config.options.sidebar.quickToggles.customToggles = current;
-        }
-        return found;
+    function addToggle(name: string, icon: string, commandStart: string, commandStop: string): void {
+        Config.options.sidebar.quickToggles.customToggles = [...root.list, root.entry("custom_" + Date.now(), name, icon, commandStart, commandStop)];
     }
 
-    function removeToggle(id: string): bool {
-        if (!Config.options?.sidebar?.quickToggles?.customToggles)
-            return false;
+    function updateToggle(id: string, name: string, icon: string, commandStart: string, commandStop: string): void {
+        Config.options.sidebar.quickToggles.customToggles = root.list.map(item => item.id === id ? root.entry(id, name, icon, commandStart, commandStop) : item);
+    }
 
-        var current = [];
-        for (var i = 0; i < Config.options.sidebar.quickToggles.customToggles.length; i++) {
-            var item = Config.options.sidebar.quickToggles.customToggles[i];
-            if (item && item.id !== id) {
-                current.push(item);
-            }
-        }
-        Config.options.sidebar.quickToggles.customToggles = current;
-
-        if (root.activeStates[id] !== undefined) {
-            var updatedStates = Object.assign({}, root.activeStates);
-            delete updatedStates[id];
-            root.activeStates = updatedStates;
-        }
-
-        if (Config.options?.sidebar?.quickToggles?.android?.pages) {
-            var rawPages = Config.options.sidebar.quickToggles.android.pages;
-            var pagesChanged = false;
-            var newPages = [];
-            for (var p = 0; p < rawPages.length; p++) {
-                var page = rawPages[p];
-                if (!page)
-                    continue;
-                var filteredPage = [];
-                for (var j = 0; j < page.length; j++) {
-                    if (page[j] && page[j].id === id) {
-                        pagesChanged = true;
-                    } else {
-                        filteredPage.push(page[j]);
-                    }
-                }
-                newPages.push(filteredPage);
-            }
-            if (pagesChanged) {
-                Config.options.sidebar.quickToggles.android.pages = newPages;
-            }
-        }
-
-        return true;
+    // Also takes the tile off whichever page holds it, or the page would keep
+    // a tile with nothing behind it.
+    function removeToggle(id: string): void {
+        Config.options.sidebar.quickToggles.customToggles = root.list.filter(item => item.id !== id);
+        root.setToggled(id, false);
+        const android = Config.options.sidebar.quickToggles.android;
+        android.pages = android.pages.map(page => page?.filter ? page.filter(item => item?.id !== id) : page);
     }
 }

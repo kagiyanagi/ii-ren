@@ -330,46 +330,41 @@ Item {
         }
     }
 
-    // What a click does in edit mode, on the tile it does it to: a drawer tile is
-    // added, a placed tile is removed. Placed tiles used to say nothing, and the
-    // click that toggles them outside edit mode deletes them in it. It sits inside
-    // the tile's corner: hung 6px outside it, the panel's clip cut it in half on
-    // the right column and the top row.
-    Rectangle {
+    // A custom tile's definition lives outside the page, so it gets its own way
+    // in: the corner opposite the add/remove badge.
+    RippleButton {
         id: editBadge
-        width: 20
-        height: 20
-        radius: Appearance.rounding.full
-        color: Appearance.colors.colSecondaryContainer
+        implicitWidth: 20
+        implicitHeight: 20
+        padding: 0
+        buttonRadius: Appearance.rounding.full
+        colBackground: Appearance.colors.colSecondaryContainer
+        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+        colRipple: Appearance.colors.colSecondaryContainerActive
         anchors.top: parent.top
         anchors.left: parent.left
         opacity: root.target.isDragging || root.resizing ? 0 : 1
-        visible: (root.target.buttonData?.type === "custom") && opacity > 0
+        visible: root.target.buttonData?.type === "custom" && opacity > 0
         z: 10
+        onClicked: root.target.chooser?.openEditCustomToggleDialog(root.target.buttonData.id)
 
         Behavior on opacity {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 
-        MaterialSymbol {
-            anchors.centerIn: parent
+        contentItem: MaterialSymbol {
             text: "edit"
             iconSize: Appearance.font.pixelSize.small
+            horizontalAlignment: Text.AlignHCenter
             color: Appearance.colors.colOnSecondaryContainer
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            preventStealing: true
-            onClicked: {
-                if (root.target?.chooser?.openEditCustomToggleDialog)
-                    root.target.chooser.openEditCustomToggleDialog(root.target.buttonData.id);
-            }
         }
     }
 
+    // What a click does in edit mode, on the tile it does it to: a drawer tile is
+    // added, a placed tile is removed. Placed tiles used to say nothing, and the
+    // click that toggles them outside edit mode deletes them in it. It sits inside
+    // the tile's corner: hung 6px outside it, the panel's clip cut it in half on
+    // the right column and the top row.
     Rectangle {
         id: actionBadge
         width: 20

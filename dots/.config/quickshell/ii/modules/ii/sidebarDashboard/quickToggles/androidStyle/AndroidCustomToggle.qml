@@ -12,8 +12,10 @@ AndroidQuickToggleButton {
 
     name: root.customData?.name ?? Translation.tr("Custom")
     buttonIcon: root.customData?.icon ?? "terminal"
-    tooltipText: root.name
+    tooltipText: Translation.tr("%1 | Right-click to edit").arg(root.name)
     hasMenu: true
+    // A page entry whose definition is gone has nothing to run.
+    available: root.customData !== null
 
     toggled: CustomToggles.isToggled(root.customId)
     statusText: root.toggled ? Translation.tr("Active") : Translation.tr("Inactive")

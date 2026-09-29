@@ -87,20 +87,6 @@ AbstractQuickPanel {
         return root.pages;
     }
 
-    readonly property list<string> allUsedTypes: {
-        var types = [];
-        for (var p = 0; p < root.pages.length; p++) {
-            var page = root.pages[p];
-            if (!page)
-                continue;
-            for (var i = 0; i < page.length; i++) {
-                if (page[i] && page[i].type)
-                    types.push(page[i].type);
-            }
-        }
-        return types;
-    }
-
     readonly property list<string> allUsedIds: {
         var ids = [];
         for (var p = 0; p < root.pages.length; p++) {
@@ -128,7 +114,7 @@ AbstractQuickPanel {
         for (var j = 0; j < customs.length; j++) {
             var cust = customs[j];
             if (cust && cust.id && !allUsedIds.includes(cust.id))
-                items.push(QuickToggleCatalog.item("custom", cust.id, cust.sizeW, cust.sizeH, root.columns));
+                items.push(QuickToggleCatalog.item("custom", cust.id, undefined, undefined, root.columns));
         }
         return items;
     }
@@ -552,6 +538,8 @@ AbstractQuickPanel {
                 }
             }
 
+            // The drawer's header: what the tiles under it are, what a click on one
+            // does, and the one way to make a tile that is not in the catalog.
             FadeLoader {
                 shown: root.editMode
                 anchors {
@@ -559,21 +547,38 @@ AbstractQuickPanel {
                     right: parent.right
                 }
                 sourceComponent: RowLayout {
-                    spacing: 8
+                    spacing: 12
 
-                    StyledText {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: Translation.tr("More toggles")
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        font.weight: Font.DemiBold
-                        color: Appearance.colors.colOnSurfaceVariant
+                        // With the column's 8, whitespace between the pages and the drawer.
+                        Layout.topMargin: 8
+                        Layout.leftMargin: 4
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: Translation.tr("Available toggles")
+                            font.pixelSize: Appearance.font.pixelSize.normal
+                            font.weight: Font.Medium
+                            color: Appearance.colors.colOnLayer1
+                            elide: Text.ElideRight
+                        }
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.unusedToggles.length > 0 ? Translation.tr("Click one to add it to this page")
+                                : Translation.tr("Every toggle is on a page")
+                            font.pixelSize: Appearance.font.pixelSize.smaller
+                            color: Appearance.colors.colSubtext
+                            elide: Text.ElideRight
+                        }
                     }
 
                     RippleButton {
-                        Layout.preferredHeight: 32
+                        Layout.alignment: Qt.AlignBottom
+                        implicitHeight: 32
                         implicitWidth: newCustomToggleRow.implicitWidth + 24
                         buttonRadius: Appearance.rounding.full
-                        buttonRadiusPressed: height / 2
                         colBackground: Appearance.colors.colSecondaryContainer
                         colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                         colRipple: Appearance.colors.colSecondaryContainerActive
@@ -581,7 +586,7 @@ AbstractQuickPanel {
                         contentItem: RowLayout {
                             id: newCustomToggleRow
                             anchors.centerIn: parent
-                            spacing: 6
+                            spacing: 4
                             MaterialSymbol {
                                 text: "add"
                                 iconSize: Appearance.font.pixelSize.normal

@@ -89,6 +89,8 @@ Singleton {
                     property bool collapsed: false
                     property int tab: 0
                 }
+                // Ids of the custom quick toggles last clicked on (services/CustomToggles.qml).
+                property list<string> activeCustomToggles: []
             }
 
             property JsonObject booru: JsonObject {
