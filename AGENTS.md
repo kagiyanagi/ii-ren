@@ -8,24 +8,30 @@ Hyprland dotfiles based on illogical-impulse, built with Quickshell (QtQuick/QML
 ## Commands
 
 - **Run the shell with logs:** `pkill qs; qs -c ii` — QML edits under
-  `dots/.config/quickshell/ii/` reload live, no restart needed
+  `dots/.config/quickshell/ii/` reload live, no restart needed. Two exceptions: a
+  `.pragma library` `.js` stays cached until the shell restarts, and nothing reloads while
+  the screen is locked (`LockScreen.qml` turns file watching off under the lock)
 - **Restart shell + reload Hyprland:** `iiren run` (alias `iiren restart`)
 - **Run settings app:** `qs -p ~/.config/quickshell/ii/settings.qml` (separate QApplication;
   `-c ii settings.qml` is rejected — `qs` takes one config, and `-p` excludes `-c`)
 - **Setup/update:** `./setup-ii-ren.sh` or `iiren update` (CLI)
-- **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell, no prompts)
+- **Fresh machine:** `./setup-ii-ren.sh --fresh` (deps + base dots + shell + the repo's
+  settings, no prompts)
 - **Snapshot live settings into the repo:** `iiren save`
 - **Legacy setup router:** `./setup <subcommand>` (install, uninstall, exp-merge, etc.)
 - **Override a Hyprland option without editing the repo:** `iiren hyprset key|anim|reset|merge`
 - **LSP setup:** `touch ~/.config/quickshell/ii/.qmlls.ini` — gitignored, create manually
 
-### Checks (there is no test suite)
+### Checks (no test framework)
 
-Each `tools/check-*.py` is a standalone assert script and the only automated gate. Its
-docstring says what it guards and why; read that, not a summary here.
+Each `tools/check-*.py` is a standalone assert script; with the JS self-checks below, the
+only automated gate. Its docstring says what it guards and why; read that, not a summary
+here. Some run the shell's JS under `node`; `check-floating-mode.py` also needs `lua`.
 
 - **Always:** `python3 tools/check-design.py --diff` — design law on added lines
 - **What you touched:** `grep -l <FileName> tools/check-*.py`, then run each hit
+- **JS logic:** a `<name>.test.js` or `test_<name>.js` beside the file; its first line is
+  the `node` command, run from `dots/.config/quickshell/ii`
 - **Boots at all:** `bash tools/smoke.sh` (`pkill`s every quickshell, the desktop included);
   `bash tools/smoke-settings.sh` for the settings app;
   `bash tools/probe-settings-pages.sh` after touching `modules/settings/widgets/`
@@ -51,6 +57,17 @@ the GUI, then `iiren save`, rather than hand-editing the JSON defaults.
 `dots/.config/hypr/hyprland.lua` sources `hyprland/*.lua` (env, execs, general, rules,
 colors, keybinds) and then any matching `custom/*.lua`, which is where user overrides go
 and what `iiren save` preserves. Config is built with the `hl.*` API in `hyprland/lib/`.
+Then `workspaces.lua`/`monitors.lua` (Settings > Hyprland > Displays), and last
+`hyprland/shellOverrides/main.lua`, which `iiren hyprset` writes — as does every Hyprland
+option the shell sets, through its `services/HyprlandSettings.qml` — seeded from
+`repo-defaults.lua` on install/update. Loaded last, it beats both: an edit to
+`hyprland/general.lua` that seems ignored is usually pinned there.
+
+One piece of the shell runs inside Hyprland: `services/floatingMode.lua` (paths here under
+`dots/.config/quickshell/ii/`). `FloatingMode.qml` `dofile`s it into the compositor's Lua
+and installs it again after every reload, since a reload starts a fresh Lua state. Its
+title bars are the hyprbars plugin, built per Hyprland commit by
+`scripts/hyprland/hyprbars.sh`; if that fails, the shell draws its own.
 
 `hyprland/general.lua` holds the window-manager animation springs — the same Android 16
 motion tokens as the QML side, as mass/stiffness/dampening. Change one and
@@ -67,17 +84,18 @@ motion tokens as the QML side, as mass/stiffness/dampening. Change one and
 
 ### Panel Families (`panelFamilies/`)
 
-Two mutually exclusive UI styles loaded via `LazyLoader`. Switch with `Super+Ctrl+R` or IPC call `panelFamily cycle`.
+Two mutually exclusive UI styles loaded via `LazyLoader`. Switch with `Super+Ctrl+P` or `qs -c ii ipc call panelFamily cycle`.
 But focus on the ii (Illogical-Impulse) panel family when making any changes unless otherwise stated.
 
 - **`IllogicalImpulseFamily.qml`** — original ii style (bar, sidebars, dock, etc.)
 - **`WaffleFamily.qml`** — Windows 11-like (action center, start menu, task view)
-- Shared components (cheatsheet, OSK, overlay, screen translator, wallpaper selector) are imported in both
+- Shared components (alt-tab, cheatsheet, drop shelf, OSK, overlay, screen translator, wallpaper selector) are imported in both
 
 ### Core Singletons (`modules/common/`)
 
 - **`Config.qml`** — All shell options. Backed by `FileView` + `JsonAdapter` at `~/.config/illogical-impulse/config.json`. Has `readWriteDelay` (default 75ms) to batch writes. Check `Config.ready` before accessing options.
-- **`GlobalStates.qml`** (shell root, `import qs` — not this directory) — Centralized UI state booleans (`sidebarLeftOpen`, `sidebarRightOpen`, `overlayOpen`, `overviewOpen`, etc.). Also has `effectiveLeftOpen`/`effectiveRightOpen` computed properties that respect `Config.options.sidebar.position`.
+- **`GlobalStates.qml`** (shell root, `import qs` — not this directory) — Centralized UI state booleans (`policiesPanelOpen`, `dashboardPanelOpen`, `overlayOpen`, `overviewOpen`, etc.). The two sidebars are `modules/ii/sidebarPolicies/` (left by default) and `modules/ii/sidebarDashboard/` (right); `sidebarLeftOpen`/`sidebarRightOpen` are legacy aliases for them. Also has `effectiveLeftOpen`/`effectiveRightOpen` computed properties that respect `Config.options.sidebar.position`.
+- **`Persistent.qml`** — Runtime state that outlives a restart but is not a setting (`Persistent.states.*`, e.g. whether floating mode is on), in `~/.local/state/quickshell/states.json`. Check `Persistent.ready`.
 - **`Directories.qml`** — XDG paths and internal config paths. All paths use `file://` protocol except noted "without file://" ones. Use `FileUtils.trimFileProtocol()` to strip.
 - **`Appearance.qml`** — Colors, fonts, rounding, animation curves
 - **`Icons.qml`**, **`Images.qml`** — Icon/image resources
@@ -88,10 +106,12 @@ But focus on the ii (Illogical-Impulse) panel family when making any changes unl
 modules/
   common/       # Shared utilities, Config, Appearance, widgets
     widgets/    # Common widgets used accross the repo to maintain Material 3 style
+    models/     # Non-visual models, including the quick toggles' (models/quickToggles/)
+    panels/     # Panels both families mount (the lock screen)
   ii/           # Illogical-impulse panel components
   waffle/       # Waffle panel components
   settings/     # Settings app pages (QuickConfig, BarConfig, etc.)
-services/       # Backend services (Ai, Audio, Battery, Network, MprisController, etc.)
+services/       # Backend services (Audio, Battery, Network, MprisController, HermesService, etc.)
 user_widgets/   # Installed extensions (see Extension System)
 defaults/       # Shipped default assets/config the shell falls back to
 scripts/        # Shell-invoked helper scripts
@@ -125,8 +145,8 @@ Config lives in `Config.qml` as nested `JsonObject` properties. Key top-level gr
 - `background` — wallpaper, widgets (clock/media/weather), parallax
 - `lock` — lock screen, blur, `useHyprlock`
 - `waffles` — Waffle-specific tweaks (bar, actionCenter toggles)
-- `ai` — system prompt, models, tools
-- `policies` — feature flags (ai, weeb, wallpapers, translator)
+- `hermes` — the left sidebar's chat with a hermes-agent install (local or over ssh): tool calls, notifications, dictation
+- `policies` — feature flags (weeb, wallpapers, translator, continuity, hermes)
 
 Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`, etc.
 
@@ -149,6 +169,10 @@ Installed extensions live in `user_widgets/` and load without a shell restart.
 `modules/common/widgets/shapes` is end-4/rounded-polygon-qmljs, vendored (was a
 submodule). Update it by copying upstream over it.
 
+What came from ii-p3drovfx (the background widgets, the bar popups and cards, the quick
+toggles) arrives only through the port scripts in `tools/p3-*`. Nothing new is imported
+from it (`TASTE.md` 9).
+
 ## Design law — applies to every change, unasked
 
 This shell imitates Android 16 / Material 3 Expressive. That is not a feature
@@ -169,7 +193,7 @@ every UI audit answers.
 
 The condensed version, so nothing is missed even without opening that file:
 
-1. **Reuse first.** ~140 widgets live in `modules/common/widgets/`. A button is
+1. **Reuse first.** ~155 widgets live in `modules/common/widgets/`. A button is
    `RippleButton`, a list is `StyledListView`, a popup follows `DockFolderPopup`.
 2. **Never invent a number.** Durations and curves come from
    `Appearance.animation.*` / `Appearance.animationCurves.*`, radii from
