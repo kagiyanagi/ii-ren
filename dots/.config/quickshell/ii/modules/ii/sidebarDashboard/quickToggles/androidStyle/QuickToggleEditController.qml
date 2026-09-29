@@ -317,15 +317,16 @@ Item {
         return persist(pages);
     }
 
-    function addToggle(type, pageIndex) {
+    function addToggle(type, pageIndex, id) {
         if (!QuickToggleCatalog.hasType(type) || pageIndex < 0)
             return false;
+        var itemId = (typeof id === "string" && id.length > 0) ? id : type;
         return updateOrPersist(function(pages) {
             if (pageIndex >= pages.length)
                 return;
-            if (findItemInPages(pages, type).page >= 0)
+            if (findItemInPages(pages, itemId).page >= 0)
                 return;
-            pages[pageIndex].push(QuickToggleCatalog.item(type, type, undefined, undefined, root.columns));
+            pages[pageIndex].push(QuickToggleCatalog.item(type, itemId, undefined, undefined, root.columns));
         });
     }
 

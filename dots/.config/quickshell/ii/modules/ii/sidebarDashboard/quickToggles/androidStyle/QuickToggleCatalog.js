@@ -29,6 +29,7 @@ var TOGGLE_TYPES = {
     musicRecognition: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     antiFlashbang: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     location: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    custom: { kind: "toggle", defaultSize: [2, 1], maxHeight: 8 },
 
     volumeSlider: { kind: "slider", defaultSize: [4, 1], maxHeight: 8 },
     micSlider: { kind: "slider", defaultSize: [4, 1], maxHeight: 8 },

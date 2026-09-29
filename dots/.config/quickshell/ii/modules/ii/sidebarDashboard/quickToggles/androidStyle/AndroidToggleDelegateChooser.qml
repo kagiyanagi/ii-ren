@@ -23,6 +23,7 @@ DelegateChooser {
     signal openDnsDialog
     signal openVpnDialog
     signal openIdleDialog
+    signal openEditCustomToggleDialog(string toggleId)
 
     role: "toggleType"
 
@@ -356,6 +357,17 @@ DelegateChooser {
             buttonData: modelData
             chooser: root
             onOpenMenu: root.openReadingModeDialog()
+        }
+    }
+
+    DelegateChoice {
+        roleValue: "custom"
+        AndroidCustomToggle {
+            required property int index
+            required property var modelData
+            buttonIndex: index
+            buttonData: modelData
+            chooser: root
         }
     }
 }

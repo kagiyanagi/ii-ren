@@ -101,9 +101,36 @@ AbstractQuickPanel {
         return types;
     }
 
+    readonly property list<string> allUsedIds: {
+        var ids = [];
+        for (var p = 0; p < root.pages.length; p++) {
+            var page = root.pages[p];
+            if (!page)
+                continue;
+            for (var i = 0; i < page.length; i++) {
+                if (page[i] && page[i].id)
+                    ids.push(page[i].id);
+            }
+        }
+        return ids;
+    }
+
     readonly property list<var> unusedToggles: {
-        const types = availableToggleTypes.filter(type => !allUsedTypes.includes(type));
-        return types.map(type => QuickToggleCatalog.item(type, type, undefined, undefined, root.columns));
+        var items = [];
+        for (var i = 0; i < availableToggleTypes.length; i++) {
+            var type = availableToggleTypes[i];
+            if (type === "custom")
+                continue;
+            if (!allUsedIds.includes(type))
+                items.push(QuickToggleCatalog.item(type, type, undefined, undefined, root.columns));
+        }
+        var customs = CustomToggles.list;
+        for (var j = 0; j < customs.length; j++) {
+            var cust = customs[j];
+            if (cust && cust.id && !allUsedIds.includes(cust.id))
+                items.push(QuickToggleCatalog.item("custom", cust.id, cust.sizeW, cust.sizeH, root.columns));
+        }
+        return items;
     }
 
     readonly property var packedUnusedToggles: QuickToggleLayout.pack(root.unusedToggles, root.columns)
@@ -332,6 +359,7 @@ AbstractQuickPanel {
                                             onOpenDnsDialog: root.openDnsDialog()
                                             onOpenIdleDialog: root.openIdleDialog()
                                             onOpenVpnDialog: root.openVpnDialog()
+                                            onOpenEditCustomToggleDialog: toggleId => root.openEditCustomToggleDialog(toggleId)
                                         }
                                     }
                                 }
@@ -524,6 +552,55 @@ AbstractQuickPanel {
                 }
             }
 
+            FadeLoader {
+                shown: root.editMode
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                }
+                sourceComponent: RowLayout {
+                    spacing: 8
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: Translation.tr("More toggles")
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        font.weight: Font.DemiBold
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
+
+                    RippleButton {
+                        Layout.preferredHeight: 32
+                        implicitWidth: newCustomToggleRow.implicitWidth + 24
+                        buttonRadius: Appearance.rounding.full
+                        buttonRadiusPressed: height / 2
+                        colBackground: Appearance.colors.colSecondaryContainer
+                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
+                        colRipple: Appearance.colors.colSecondaryContainerActive
+                        onClicked: root.openNewCustomToggleDialog()
+                        contentItem: RowLayout {
+                            id: newCustomToggleRow
+                            anchors.centerIn: parent
+                            spacing: 6
+                            MaterialSymbol {
+                                text: "add"
+                                iconSize: Appearance.font.pixelSize.normal
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                            StyledText {
+                                text: Translation.tr("Custom toggle")
+                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                font.weight: Font.DemiBold
+                                color: Appearance.colors.colOnSecondaryContainer
+                            }
+                        }
+                        StyledToolTip {
+                            text: Translation.tr("Create a custom command toggle")
+                        }
+                    }
+                }
+            }
+
             // The drawer of toggles not on any page
             FadeLoader {
                 shown: root.editMode
@@ -562,6 +639,7 @@ AbstractQuickPanel {
                             onOpenDnsDialog: root.openDnsDialog()
                             onOpenIdleDialog: root.openIdleDialog()
                             onOpenVpnDialog: root.openVpnDialog()
+                            onOpenEditCustomToggleDialog: toggleId => root.openEditCustomToggleDialog(toggleId)
                         }
                     }
                 }

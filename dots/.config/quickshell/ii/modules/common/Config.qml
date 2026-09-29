@@ -1912,6 +1912,7 @@ Singleton {
                 property JsonObject quickToggles: JsonObject {
                     property string style: "android" // Options: classic, android
                     property bool useThreeWaySliders: true
+                    property list<var> customToggles: []
                     property JsonObject android: JsonObject {
                         property int columns: 4
                         property int layoutVersion: 2

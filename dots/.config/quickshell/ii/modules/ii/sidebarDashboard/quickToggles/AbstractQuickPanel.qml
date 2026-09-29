@@ -19,4 +19,6 @@ Rectangle {
     signal openDnsDialog()
     signal openIdleDialog()
     signal openVpnDialog()
+    signal openEditCustomToggleDialog(string toggleId)
+    signal openNewCustomToggleDialog()
 }

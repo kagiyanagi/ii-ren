@@ -223,7 +223,7 @@ Item {
             if (!root.controller)
                 return;
             if (root.isUnused)
-                root.controller.addToggle(root.target.buttonData.type, root.target.pageIndex);
+                root.controller.addToggle(root.target.buttonData.type, root.target.pageIndex, root.target.buttonData.id);
             else
                 root.controller.removeToggle(root.target.buttonData.id);
         }
@@ -335,6 +335,41 @@ Item {
     // click that toggles them outside edit mode deletes them in it. It sits inside
     // the tile's corner: hung 6px outside it, the panel's clip cut it in half on
     // the right column and the top row.
+    Rectangle {
+        id: editBadge
+        width: 20
+        height: 20
+        radius: Appearance.rounding.full
+        color: Appearance.colors.colSecondaryContainer
+        anchors.top: parent.top
+        anchors.left: parent.left
+        opacity: root.target.isDragging || root.resizing ? 0 : 1
+        visible: (root.target.buttonData?.type === "custom") && opacity > 0
+        z: 10
+
+        Behavior on opacity {
+            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+        }
+
+        MaterialSymbol {
+            anchors.centerIn: parent
+            text: "edit"
+            iconSize: Appearance.font.pixelSize.small
+            color: Appearance.colors.colOnSecondaryContainer
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            preventStealing: true
+            onClicked: {
+                if (root.target?.chooser?.openEditCustomToggleDialog)
+                    root.target.chooser.openEditCustomToggleDialog(root.target.buttonData.id);
+            }
+        }
+    }
+
     Rectangle {
         id: actionBadge
         width: 20

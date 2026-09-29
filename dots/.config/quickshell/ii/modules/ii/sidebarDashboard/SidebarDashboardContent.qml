@@ -40,8 +40,10 @@ Item {
     property bool showDnsDialog: false
     property bool showVpnDialog: false
     property bool showIdleDialog: false
+    property string customToggleDialogId: ""
+    property bool showCustomToggleDialog: false
     property bool editMode: false
-    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog || showVpnDialog || showIdleDialog
+    readonly property bool anyDialogOpen: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showComfortViewDialog || showReadingModeDialog || showAntiFlashbangDialog || showWifiDialog || showHotspotDialog || showDnsDialog || showVpnDialog || showIdleDialog || showCustomToggleDialog
 
     Connections {
         target: GlobalStates
@@ -52,6 +54,7 @@ Item {
                 root.showDnsDialog = false;
                 root.showVpnDialog = false;
                 root.showIdleDialog = false;
+                root.showCustomToggleDialog = false;
                 root.showBluetoothDialog = false;
                 root.showAudioOutputDialog = false;
                 root.showAudioInputDialog = false;
@@ -232,6 +235,13 @@ Item {
         dialog: IdleDialog {}
     }
 
+    ToggleDialog {
+        shownPropertyString: "showCustomToggleDialog"
+        dialog: CustomToggleDialog {
+            toggleId: root.customToggleDialogId
+        }
+    }
+
     component ToggleDialog: Loader {
         id: toggleDialogLoader
         required property string shownPropertyString
@@ -315,6 +325,14 @@ Item {
             }
             function onOpenIdleDialog() {
                 root.showIdleDialog = true;
+            }
+            function onOpenEditCustomToggleDialog(toggleId) {
+                root.customToggleDialogId = toggleId;
+                root.showCustomToggleDialog = true;
+            }
+            function onOpenNewCustomToggleDialog() {
+                root.customToggleDialogId = "";
+                root.showCustomToggleDialog = true;
             }
         }
     }
