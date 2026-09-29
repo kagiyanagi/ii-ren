@@ -274,6 +274,7 @@ PopupWindow {
                             }
                             implicitWidth: dockRoot.windowControlsHeight
                             implicitHeight: dockRoot.windowControlsHeight
+                            padding: 0
                             buttonRadius: Appearance.rounding.full
                             colBackground: Qt.rgba(0, 0, 0, 0.55)
                             colBackgroundHover: Appearance.colors.colError
@@ -286,7 +287,8 @@ PopupWindow {
                             }
 
                             contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
                                 text: "close"
                                 iconSize: Appearance.font.pixelSize.normal
                                 // On colBackground's own black, and
