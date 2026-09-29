@@ -410,6 +410,9 @@ assert bars.index("ii_fm_buttons = true") > bars.rindex("add_button"), "the butt
 assert all(0xE000 > ord(c) or ord(c) > 0xF8FF for c in bars), \
     "hyprbars sets icons in 'sans': a private-use (Material Symbols) codepoint renders as some other font's glyph"
 assert js("BARS_OFF_LUA") in js("disableExpr()") and '"-" .. M.BAR_TAG' in lua_src
+fmq = (SHELL / "services/FloatingMode.qml").read_text()
+assert '"configreloaded")' in fmq and "FM.BARS_OFF_LUA" in fmq.split("function startOrOff")[1].split("GlobalShortcut")[0], \
+    "a reload resets a loaded hyprbars to enabled: with the mode off it barred every window, so the off path re-applies too"
 alt = (SHELL / "modules/ii/altTab/AltTab.qml").read_text()
 assert "if (target.floating) return;" in alt.split("function confirm()")[1].split("fullscreen({ mode")[0], \
     "Alt+Tab hands a maximize to a tiled window only: a floating one is raised over it, and handed the state it fills the screen"

@@ -370,8 +370,8 @@ Singleton {
                 const address = "0x" + event.data;
                 delete root.barred[address];
                 delete root.fitted[address];
-            } else if (event.name === "configreloaded" && root.enabled) {
-                root.start(false);
+            } else if (event.name === "configreloaded") {
+                root.startOrOff(false);
             }
         }
     }
@@ -380,14 +380,18 @@ Singleton {
     // QQmlConnections::connectSignalsToMethods() on the reload that first loaded this
     // file (DESIGN.md 2.9), and a change handler has no connection to make.
     readonly property bool persistentReady: Persistent.ready
-    onPersistentReadyChanged: {
-        if (root.enabled)
-            root.start(Persistent.isNewHyprlandInstance);
-    }
+    onPersistentReadyChanged: root.startOrOff(Persistent.isNewHyprlandInstance)
+    Component.onCompleted: root.startOrOff(Persistent.isNewHyprlandInstance)
 
-    Component.onCompleted: {
+    // A reload puts a loaded hyprbars back to its defaults, enabled and without the
+    // no_bar rules: with the mode off, it would bar every window, tiled ones too.
+    function startOrOff(floatAll) {
+        if (!Persistent.ready)
+            return;
         if (root.enabled)
-            root.start(Persistent.isNewHyprlandInstance);
+            root.start(floatAll);
+        else
+            root.hyprEval(FM.BARS_OFF_LUA);
     }
 
     GlobalShortcut {
