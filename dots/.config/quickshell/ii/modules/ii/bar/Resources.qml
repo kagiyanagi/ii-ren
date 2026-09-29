@@ -11,7 +11,7 @@ MouseArea {
     implicitHeight: Appearance.sizes.barHeight
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
     // Click-to-show owns the click for the popup.
-    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.launchTaskManager()
+    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.barClick("resources", Session.launchTaskManager)
     cursorShape: Qt.PointingHandCursor
 
     readonly property bool showCpu: Config.options.bar.resources.showCpu ?? true

@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import qs.services
 import qs
@@ -157,7 +158,9 @@ Item {
         cursorShape: root.vertical ? Qt.ArrowCursor : Qt.PointingHandCursor
 
         onClicked: (mouse) => {
-            if (mouse.button === Qt.RightButton) {
+            if (mouse.button === Qt.LeftButton) {
+                if (!Config.options.bar.tooltips.clickToShow) Session.barClick("networkSpeed");
+            } else {
                 if (root.vertical) return;
 
                 var nextMode = (displayMode + 1) % 5;

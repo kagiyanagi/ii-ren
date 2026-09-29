@@ -39,7 +39,7 @@ MouseArea {
     // A click opens the whole picture - the cheatsheet's Weather tab.
     onClicked: mouse => {
         if (mouse.button === Qt.LeftButton)
-            GlobalStates.cheatsheetTabRequested("weather");
+            Session.barClick("weather", () => GlobalStates.cheatsheetTabRequested("weather"));
     }
 
     onPressed: mouse => {

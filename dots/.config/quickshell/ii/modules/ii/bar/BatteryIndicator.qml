@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.modules.common.functions
 import qs.modules.common.widgets
 import QtQuick
 import Quickshell
@@ -19,7 +20,7 @@ MouseArea {
     onClicked: {
         if (Config.options.bar.tooltips.clickToShow) return
         batteryPopup.close()
-        Quickshell.execDetached(["env", "II_SETTINGS_PAGE=battery", "qs", "-p", Quickshell.shellPath("settings.qml")])
+        Session.barClick("battery", () => Quickshell.execDetached(["env", "II_SETTINGS_PAGE=battery", "qs", "-p", Quickshell.shellPath("settings.qml")]))
     }
 
     CustomBatteryMeter {
