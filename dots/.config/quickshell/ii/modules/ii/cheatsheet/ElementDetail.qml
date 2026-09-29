@@ -55,23 +55,19 @@ Item {
         return unit ? `${value} ${unit}` : String(value);
     }
 
-    // Full bleed, and no scrim. An inset rounded card here stacked three
-    // different corner treatments on top of each other -- the sheet's own
-    // `windowRounding`, the square clip of the SwipeView it sits in, and the
-    // card's `verylarge` -- which is what made the corners look wrong. The tab
-    // is already inside the sheet's rounded card, so this one takes its bounds
-    // and lets that corner be the only one. It also means the toolbar and the
-    // legend are covered rather than left peeking out from behind it.
+    // Detail card surface with standard modal/card rounding (DESIGN.md 4.2).
+    // Deliberately NOT colLayer1: that is solved against the shell's
+    // transparency setting, which made the whole periodic table show through
+    // the card and fight every number on it. colLayer1Base is the opaque
+    // tone under it, and 0.98 keeps a hint of the surface without the card
+    // ever being read *through*.
     Rectangle {
         id: card
         anchors.fill: parent
-        radius: 0
-        // Deliberately NOT colLayer1: that is solved against the shell's
-        // transparency setting, which made the whole periodic table show through
-        // the card and fight every number on it. colLayer1Base is the opaque
-        // tone under it, and 0.98 keeps a hint of the surface without the card
-        // ever being read *through*.
+        radius: Appearance.rounding.verylarge
         color: ColorUtils.applyAlpha(Appearance.colors.colLayer1Base, 0.98)
+        border.width: 1
+        border.color: Appearance.colors.colLayer0Border
         clip: true
 
         // One driver for scale and opacity, with the spec assigned from inside
