@@ -2,14 +2,13 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
 
 // Android's Caffeine tile as the sidebar's other dialogs: the switch row the
 // Wi-Fi and hotspot dialogs share, then how long, as two views of one card
-// behind a connected selector: a slider of durations, or the running apps it
+// behind a connected selector: a dial of durations, or the running apps it
 // stays awake for. One card, so a switch moves nothing under the pointer.
 WindowDialog {
     id: root
@@ -24,10 +23,6 @@ WindowDialog {
     // a binding would flip the card when the last picked app is dropped.
     property int view: 0
     Component.onCompleted: root.view = root.anchored ? 1 : 0
-
-    function commit(): void {
-        Idle.start(root.durations[Math.round(slider.value)]);
-    }
 
     function label(m: int): string {
         return m === 0 ? Translation.tr("Always") : m < 60 ? `${m}m` : `${m / 60}h`;
@@ -163,60 +158,15 @@ WindowDialog {
         radius: Appearance.rounding.large
         color: Appearance.colors.colSurfaceContainerHigh
 
-        // The duration as one big readout over a stepped slider, like Android's
-        // timer. It follows the drag and starts on release, so passing over 6h
-        // on the way to 24h never starts a 6h one.
+        // The durations on a dial; it picks on release, never on the way past.
         View {
             index: 0
 
-            ColumnLayout {
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                    margins: 16
-                }
-                spacing: 8
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    font.pixelSize: Appearance.font.pixelSize.huge * 2
-                    font.family: Appearance.font.family.numbers
-                    font.variableAxes: ({})
-                    font.features: ({ "tnum": 1 })
-                    color: Appearance.colors.colOnSurface
-                    text: root.label(root.durations[Math.round(slider.value)])
-                }
-
-                StyledSlider {
-                    id: slider
-                    Layout.fillWidth: true
-                    configuration: StyledSlider.Configuration.M
-                    from: 0
-                    to: root.durations.length - 1
-                    stepSize: 1
-                    snapMode: Slider.SnapAlways
-                    stopIndicatorValues: root.durations.map((_, i) => i)
-                    showTooltip: false // the readout above is the value
-                    value: root.durations.indexOf(root.picked)
-                    onPressedChanged: if (!pressed) root.commit()
-                    onMoved: if (!pressed) root.commit() // arrow keys
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    StyledText {
-                        Layout.fillWidth: true
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        text: root.label(root.durations[0])
-                    }
-                    StyledText {
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                        text: root.label(0)
-                    }
-                }
+            DurationDial {
+                anchors.fill: parent
+                durations: root.durations
+                currentIndex: Math.max(0, root.durations.indexOf(root.picked))
+                onPicked: i => Idle.start(root.durations[i])
             }
         }
 
