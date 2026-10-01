@@ -195,10 +195,91 @@ index 0ef19ae..8a88c52 100644
          SP<Config::Values::CIntValue>        barTextSize;
          SP<Config::Values::CFontWeightValue> barTextWeight;
 diff --git a/hyprbars/main.cpp b/hyprbars/main.cpp
-index ae9c90b..b2b5674 100644
+index ae9c90b..2ac05be 100644
 --- a/hyprbars/main.cpp
 +++ b/hyprbars/main.cpp
-@@ -251,6 +251,9 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+@@ -14,6 +14,9 @@
+ #include <hyprland/src/config/lua/bindings/LuaBindingsInternal.hpp>
+ #include <hyprland/src/config/lua/types/LuaConfigColor.hpp>
+ #include <hyprland/src/state/MonitorState.hpp>
++#include <hyprland/src/desktop/state/FadingOutState.hpp>
++#include <hyprland/src/desktop/state/WindowFadeout.hpp>
++#include <hyprland/src/config/shared/animation/AnimationTree.hpp>
+ 
+ #include <hyprutils/string/VarList.hpp>
+ 
+@@ -191,6 +194,70 @@ int newLuaButton(lua_State* L) {
+     return 0;
+ }
+ 
++// ii-ren: floating mode's minimize and restore look like a close and an open
++// (quickshell/ii/services/floatingMode.lua, apply). Hyprland only fades a window that moves
++// to a hidden workspace, and draws the fade in that workspace's offset, which is off screen
++// once it has been shown and hidden.
++static PHLWINDOW luaWindow(lua_State* L) {
++    const std::string ADDR = luaL_checkstring(L, 1);
++    for (const auto& w : Desktop::windowState()->windows())
++        if (w->m_isMapped && std::format("0x{:x}", (uintptr_t)w.get()) == ADDR)
++            return w;
++    return nullptr;
++}
++
++static void animsToMove(PHLWINDOW w) {
++    w->positionAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsMove"));
++    w->sizeAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsMove"));
++}
++
++// hide(address, fn): fn moves the window off screen. What leaves is a snapshot taken
++// before, the way an unmap's is (CWindow::onUnmap), on windowsOut and fadeOut.
++static int luaHide(lua_State* L) {
++    luaL_checktype(L, 2, LUA_TFUNCTION);
++    auto                        W = luaWindow(L);
++    SP<Desktop::CWindowFadeout> fadeout;
++    if (W && W->m_workspace && W->m_workspace->isVisible() && !W->m_ruleApplicator->noAnim().valueOrDefault()) {
++        W->positionAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsOut"));
++        W->sizeAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsOut"));
++        fadeout = Desktop::CWindowFadeout::create(
++            W, g_pHyprRenderer->makeSnapshotFB(W),
++            W->alphaValue(Desktop::View::WINDOW_ALPHA_FADE) * W->alphaValue(Desktop::View::WINDOW_ALPHA_FULLSCREEN) * W->alphaValue(Desktop::View::WINDOW_ALPHA_LAYOUT));
++        animsToMove(W);
++    }
++    lua_pushvalue(L, 2);
++    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
++        W.reset(); // lua_error jumps past the destructors
++        fadeout.reset();
++        return lua_error(L);
++    }
++    if (!fadeout || !W->m_isMapped || !W->m_workspace || W->m_workspace->isVisible())
++        return 0;
++    // the window's own fade out stops where it starts
++    W->alpha(Desktop::View::WINDOW_ALPHA_MOVE_TO_WORKSPACE)->warp();
++    Desktop::fadingOutState()->add(fadeout);
++    return 0;
++}
++
++// show(address): the window is back on screen; it pops in as a new one does
++// (CWindow::onMap), on windowsIn and fadeIn, from where it now goes.
++static int luaShow(lua_State* L) {
++    const auto W = luaWindow(L);
++    if (!W || !W->m_workspace || !W->m_workspace->isVisible() || W->m_ruleApplicator->noAnim().valueOrDefault())
++        return 0;
++    W->alpha(Desktop::View::WINDOW_ALPHA_MOVE_TO_WORKSPACE)->warp();
++    W->alpha(Desktop::View::WINDOW_ALPHA_MOVE_FROM_WORKSPACE)->setValueAndWarp(1.F);
++    W->positionAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsIn"));
++    W->sizeAnimation()->setConfig(Config::animationTree()->getAnimationPropertyConfig("windowsIn"));
++    W->alpha(Desktop::View::WINDOW_ALPHA_FADE)->setConfig(Config::animationTree()->getAnimationPropertyConfig("fadeIn"));
++    W->m_animationController.apply(W->m_animationController.animateIn());
++    W->positionAnimation()->setCallbackOnEnd([WEAK = PHLWINDOWREF{W}](auto) {
++        if (const auto W = WEAK.lock())
++            animsToMove(W);
++    });
++    return 0;
++}
++
+ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
+     PHANDLE = handle;
+ 
+@@ -251,11 +318,17 @@ APICALL EXPORT PLUGIN_DESCRIPTION_INFO PLUGIN_INIT(HANDLE handle) {
      HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.enabled);
      HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.iconOnHover);
      HyprlandAPI::addConfigValueV2(PHANDLE, g_pGlobalState->config.onDoubleClick);
@@ -208,3 +289,12 @@ index ae9c90b..b2b5674 100644
  
      if (Config::mgr()->type() == Config::CONFIG_LEGACY)
          HyprlandAPI::addConfigKeyword(PHANDLE, "plugin:hyprbars:hyprbars-button", onNewButton, Hyprlang::SHandlerOptions{});
+-    else
++    else {
+         HyprlandAPI::addLuaFunction(PHANDLE, "hyprbars", "add_button", ::newLuaButton);
++        HyprlandAPI::addLuaFunction(PHANDLE, "hyprbars", "hide", ::luaHide);
++        HyprlandAPI::addLuaFunction(PHANDLE, "hyprbars", "show", ::luaShow);
++    }
+     static auto P4 = Event::bus()->m_events.config.preReload.listen([&] { onPreConfigReload(); });
+     static auto P5 = Event::bus()->m_events.config.reloaded.listen([&] { onConfigReloaded(); });
+ 

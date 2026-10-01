@@ -46,6 +46,8 @@ the same shape: pure asserts, no framework, one concern, the why in its docstrin
 `dots/` is the source; `setup-ii-ren.sh` / `iiren update` **copies** it into `~/.config`.
 A dev machine usually symlinks `~/.config/quickshell/ii` -> `dots/.config/quickshell/ii`
 instead, so QML edits in the repo are live — check with `readlink` before assuming.
+`iiren update` does not know about the link: it moves it aside as a backup and copies a
+real directory in its place, so run `ln -s` again after one.
 
 What is *not* symlinked flows the other way: `iiren save` pulls
 `~/.config/illogical-impulse/config.json` and `~/.config/hypr/custom/*.lua` back into
@@ -63,10 +65,14 @@ option the shell sets, through its `services/HyprlandSettings.qml` — seeded fr
 `repo-defaults.lua` on install/update. Loaded last, it beats both: an edit to
 `hyprland/general.lua` that seems ignored is usually pinned there.
 
-One piece of the shell runs inside Hyprland: `services/floatingMode.lua` (paths here under
-`dots/.config/quickshell/ii/`). `FloatingMode.qml` `dofile`s it into the compositor's Lua
-and installs it again after every reload, since a reload starts a fresh Lua state. Its
-title bars are the hyprbars plugin, built per Hyprland commit by
+Two pieces of the shell run inside Hyprland (paths here under
+`dots/.config/quickshell/ii/`): `services/floatingMode.lua`, and `services/cursorShake.lua`,
+the shake-to-find detector behind `modules/ii/cursorRadar`. Hyprland emits no pointer- or
+window-moved event, so each polls on an `hl.timer` and reports through `hl.dsp.event`
+(a raw `custom` event in the shell) only when something changed. Their QML side
+(`FloatingMode.qml`, `CursorRadar.qml`) `dofile`s them into the compositor's Lua and
+installs them again after every reload, since a reload starts a fresh Lua state. Floating
+mode's title bars are the hyprbars plugin, built per Hyprland commit by
 `scripts/hyprland/hyprbars.sh`; if that fails, the shell draws its own.
 
 `hyprland/general.lua` holds the window-manager animation springs — the same Android 16

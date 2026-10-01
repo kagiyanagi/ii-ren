@@ -8,6 +8,7 @@ import qs.modules.ii.background
 import qs.modules.ii.bar
 import qs.modules.ii.cheatsheet
 import qs.modules.ii.clipboardToast
+import qs.modules.ii.cursorRadar
 import qs.modules.ii.desktopMenu
 import qs.modules.ii.dock
 import qs.modules.ii.dropover
@@ -55,6 +56,7 @@ Scope {
     PanelLoader { extraCondition: Config.options.background.enable; component: Background {} }
     PanelLoader { component: AltTab {} }
     PanelLoader { component: Cheatsheet {} }
+    PanelLoader { extraCondition: Config.options.interactions.shakeToFind.enable; component: CursorRadar {} }
     PanelLoader { extraCondition: Config.options.clipboard.copyToast.enable; component: ClipboardToast {} }
     PanelLoader { extraCondition: Config.options.dock.enable; component: Dock {} }
     PanelLoader { extraCondition: Config.options.background.rightClickMenu; component: DesktopMenu {} }

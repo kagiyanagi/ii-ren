@@ -26,7 +26,8 @@ windows the shell does not draw:
     workspace change that focus is making. Hyprland's own refocus does not: a window alone
     on its workspace keeps the focus while minimized, and closing the right panel handed it
     back and brought the window back unasked. The dock and Alt+Tab ask instead of activating, which
-    would open the hidden workspace over the screen first.
+    would open the hidden workspace over the screen first. Both look like a close and an
+    open (hyprbars.patch): Hyprland only fades a window moving between workspaces.
   - An app's own maximize button is a toggle of the one record, since Hyprland tells every
     app it is maximized. Two copies of the state (Hyprland's and a table's), each flipped
     on its own, left windows that would not maximize until Super+D.
@@ -201,6 +202,7 @@ local spaces = { [1] = ws, [2] = ws2 }
 mon.active_workspace = ws
 function mon.set_special_workspace(self, o) self.active_special_workspace, minws.visible = nil, false end
 active = nil -- Hyprland's focused window
+anims = {}
 local function find(sel)
     if type(sel) == "table" then return sel end
     for _, w in ipairs(wins) do if sel == "address:" .. w.address then return w end end
@@ -264,6 +266,21 @@ hl = {
     get_cursor_pos = function() return cursor end,
     get_active_workspace = function() return mon.active_special_workspace or mon.active_workspace end,
     window_rule = function() return { set_enabled = function() end } end,
+    -- hyprbars.patch: hide snapshots the window, runs fn (the move away), and closes the
+    -- snapshot; show pops it in from wherever it is.
+    plugin = { hyprbars = {
+        hide = function(a, fn)
+            local w = find("address:" .. a)
+            assert(w.workspace ~= minws, "hide on a window already hidden")
+            fn()
+            assert(w.workspace == minws, "hide's fn hides it")
+            anims[#anims + 1] = "hide " .. a
+        end,
+        show = function(a)
+            local w = find("address:" .. a)
+            anims[#anims + 1] = string.format("show %s %d,%d %dx%d", a, w.at.x, w.at.y, w.size.x, w.size.y)
+        end,
+    } },
     bind = function(key, fn) binds[key] = fn end, unbind = function(key) binds[key] = nil end,
     on = function(ev, fn) handlers[ev] = fn return { remove = function() end } end,
     timer = function(fn, o)
@@ -387,6 +404,14 @@ flush()
 assert(b.workspace == ws and b.fullscreen_client == 1, "activated, it comes back as it was")
 assert(active == b and not minws.visible and mon.active_special_workspace == nil,
     "with the focus, and the hidden workspace the activation opened closed again")
+
+-- Minimize and restore look like a close and an open (hyprbars.patch, hide and show): the
+-- move is made inside hide, and show runs once the window is where it goes.
+anims = {}
+app(b, "minimize")
+M.activate("0xb")
+assert(#anims == 2 and anims[1] == "hide 0xb" and anims[2] == "show 0xb 7,87 1906x929",
+    "hide around the move, show at the maximized box: " .. table.concat(anims, "; "))
 
 -- Over bare desktop, Hyprland's own refocus finds nothing to give the focus to.
 ws.visible, ws2.visible, mon.active_workspace = false, true, ws2

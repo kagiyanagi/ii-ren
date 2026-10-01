@@ -249,8 +249,14 @@ end
 function M.apply(w, box)
     local s = M.get(w)
     if s.mode == "fullscreen" then return end -- Hyprland's own
+    local bars = hl.plugin and hl.plugin.hyprbars
     if s.mode == "minimized" then
-        if not on_min(w) then hl.dispatch(hl.dsp.window.move({ workspace = M.MINIMIZED, follow = false, window = w })) end
+        if not on_min(w) then
+            local function hide() hl.dispatch(hl.dsp.window.move({ workspace = M.MINIMIZED, follow = false, window = w })) end
+            -- It leaves as a closing window does, not in Hyprland's plain fade
+            -- (scripts/hyprland/hyprbars.patch, hide); and comes back as an opening one (show).
+            if bars and bars.hide then bars.hide(w.address, hide) else hide() end
+        end
         -- The next window down takes the focus, as in KWin; Hyprland gives it to whatever
         -- is under the pointer, or to nothing. Left on the hidden window, an activation of it
         -- would be skipped (CWindow::activate: it has the focus already).
@@ -263,7 +269,8 @@ function M.apply(w, box)
         end
         return
     end
-    if on_min(w) then
+    local back = on_min(w)
+    if back then
         -- Back to its own workspace, and the hidden one closed wherever an activation opened it.
         local m = w.monitor
         hl.dispatch(hl.dsp.window.move({ workspace = s.ws or (m and m.active_workspace or hl.get_active_workspace()).id, follow = false, window = w }))
@@ -291,6 +298,7 @@ function M.apply(w, box)
     end
     local cur = box_of(w)
     if cur.x ~= n(box.x) or cur.y ~= n(box.y) or cur.w ~= n(box.w) or cur.h ~= n(box.h) then M.place(w, box) end
+    if back and bars and bars.show then bars.show(w.address) end
 end
 
 -- Every change of a window's state, whoever asked for it. `box`: where it goes when it

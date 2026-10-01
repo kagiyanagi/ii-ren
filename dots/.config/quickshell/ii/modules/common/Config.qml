@@ -1588,6 +1588,10 @@ Singleton {
                 property JsonObject deadPixelWorkaround: JsonObject { // Hyprland leaves out 1 pixel on the right for interactions
                     property bool enable: false
                 }
+                // Shake the mouse and a ring closes in on the pointer (modules/ii/cursorRadar).
+                property JsonObject shakeToFind: JsonObject {
+                    property bool enable: true
+                }
             }
 
             property JsonObject language: JsonObject {

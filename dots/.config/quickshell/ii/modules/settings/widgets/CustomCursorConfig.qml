@@ -202,6 +202,19 @@ Item {
                 }
             }
 
+            ConfigSwitch {
+                buttonIcon: "my_location"
+                text: Translation.tr("Shake to find the pointer")
+                checked: Config.options.interactions.shakeToFind.enable
+                onCheckedChanged: {
+                    Config.options.interactions.shakeToFind.enable = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Wiggle the mouse and a ring closes in on the pointer, so it is easy to spot on a large screen.")
+                }
+            }
+
             // Custom Theme Name Override -- also the only way out of the empty
             // state, which is why it stays visible when nothing was detected.
             ContentSubsection {

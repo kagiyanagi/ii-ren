@@ -175,7 +175,7 @@ Item {
             ConfigNavRow {
                 buttonIcon: "arrow_selector_tool"
                 text: Translation.tr("Cursor")
-                searchString: Translation.tr("Cursor Theme, Cursor Size, Mouse, Pointer, Custom Cursor")
+                searchString: Translation.tr("Cursor Theme, Cursor Size, Mouse, Pointer, Custom Cursor, Shake to find")
                 summary: {
                     const theme = CursorTheme.configuredTheme.length > 0 ? CursorTheme.configuredTheme : Translation.tr("Default");
                     return `${theme} · ${CursorTheme.configuredSize}px`;
