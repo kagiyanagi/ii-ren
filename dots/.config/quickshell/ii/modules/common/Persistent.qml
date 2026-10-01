@@ -122,6 +122,8 @@ Singleton {
                 property int minutes: 0
                 // When the running one ends, epoch ms; 0 is never.
                 property real until: 0
+                // Processes it stays awake for, as Idle.anchors has them.
+                property list<var> anchors: []
             }
 
             property JsonObject overlay: JsonObject {

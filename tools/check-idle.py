@@ -8,6 +8,12 @@ timers are monotonic, and one set for 30m would run 30m past a suspend. A shell 
 restarts after the end time must come back off, so restore runs the same tick. Unlock
 and keep awake means until turned off, as it did before durations, and must not
 overwrite the duration the tile remembers.
+
+Keep awake can also be tied to processes picked in the dialog, by PID. A process
+exiting sends nothing, so a poll drops the PIDs ps no longer lists and the last one
+gone ends it. A PID picked while that ps ran was not asked about and must survive
+its answer. Any other way of turning it on (a duration, the tile, unlock) replaces
+the picked apps, and they persist with the rest.
 """
 import json
 import re
@@ -34,4 +40,17 @@ assert re.search(r"root\.until = Persistent\.states\.idle\.until.*?tick\.trigger
 assert "property real until: 0" in persistent, "until is epoch ms: a QML int wraps"
 assert "Idle.set(true, 0)" in lock and "Idle.toggleInhibit(true)" not in lock, \
     "unlock and keep awake is until turned off, without touching the remembered duration"
-print("ok: countdown rounds up, ends on the wall clock, comes back off after a restart, lock keeps it on")
+assert "function set(on, until, anchors = [])" in service and "root.anchors = anchors" in service, \
+    "every other start must clear the picked apps"
+assert "property list<var> anchors: []" in persistent and "Persistent.states.idle.anchors = anchors" in service, \
+    "picked apps must outlive a shell restart"
+reap = re.search(r"onStreamFinished: \{\n(.*?)\n\s*\}\n\s*\}\n\s*\}", service, re.S).group(1)
+assert "running: root.inhibit && root.anchors.length > 0" in service, "no poll unless apps are picked"
+js = ("const root = { anchors: [{pid: 1}, {pid: 2}, {pid: 3}], set: (...a) => out.push(a) }, alive = { pids: [1, 2] }, out = [];\n"
+      "for (const text of ['  1\\n', '']) { (function () {\n" + reap + "\n}).call({ text }); }\n"
+      "console.log(JSON.stringify(out));")
+js = js.replace("text.split", "this.text.split")
+out = json.loads(subprocess.run(["node", "-"], input=js, capture_output=True, text=True, check=True).stdout)
+assert out == [[True, 0, [{"pid": 1}, {"pid": 3}]], [True, 0, [{"pid": 3}]]], \
+    f"exited PIDs drop, one picked mid-poll stays: {out}"
+print("ok: countdown rounds up, ends on the wall clock, comes back off after a restart, lock keeps it on, picked apps end it when they exit")
