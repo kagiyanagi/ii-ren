@@ -1656,6 +1656,8 @@ Singleton {
                     }
                 }
                 property bool materialShapeChars: true
+                // Android's sparkle ripple out of the password field on unlock.
+                property bool unlockRipple: true
                 // The keyguard's "69% • Charging • Full in 25m" line above the field.
                 property bool showChargingInfo: true
                 // Freezes widget drag/resize on the lock screen specifically,

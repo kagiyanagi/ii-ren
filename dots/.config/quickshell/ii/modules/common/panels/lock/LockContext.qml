@@ -22,6 +22,9 @@ Scope {
     property bool showFailure: false
     property var targetAction: LockContext.ActionEnum.Unlock
     property bool alsoInhibitIdle: false
+    // Screen name -> point, in that screen's coordinates: the password field's
+    // centre as the unlock started, which UnlockRipple bursts out of.
+    property var unlockOrigins: ({})
 
     // What PAM said about the last attempt, minus the password prompt itself.
     // After three wrong passwords pam_faillock refuses the next ones before

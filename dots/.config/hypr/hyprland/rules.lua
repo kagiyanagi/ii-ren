@@ -153,6 +153,10 @@ hl.layer_rule({ match = { namespace = "quickshell:polkit" }, no_anim = true})
 -- Window rails: a screen-sized click-through layer, opaque where it paints; nothing behind it needs blurring.
 hl.layer_rule({ match = { namespace = "quickshell:floatingRails" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:floatingRails" }, blur = false})
+-- Unlock ripple: screen-sized and click-through for 800ms; it animates itself, and
+-- blurring the whole screen behind it every frame would cost more than the shader.
+hl.layer_rule({ match = { namespace = "quickshell:unlockRipple" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:unlockRipple" }, blur = false})
 -- Floating mode's title bars are hyprbars, which the shell loads and turns on. A reload
 -- resets the plugin to "every window gets a bar" until the shell's rules are back, so
 -- start it off here: no bar flashes onto every window on each reload.

@@ -25,6 +25,7 @@ Scope {
         id: sessionLockSurface
         color: "transparent"
         Loader {
+            id: surfaceLoader
             active: GlobalStates.screenLocked
             anchors.fill: parent
 
@@ -41,6 +42,18 @@ Scope {
             }
 
             sourceComponent: root.lockSurface
+        }
+
+        // The ripple's origin, keyed by this surface's screen: the surface
+        // itself cannot name it, QsWindow does not attach to a lock surface.
+        Connections {
+            target: GlobalStates
+            function onScreenLockExitingChanged() {
+                const origin = surfaceLoader.item?.unlockOrigin?.();
+                if (!GlobalStates.screenLockExiting || !origin)
+                    return;
+                lockContext.unlockOrigins = Object.assign({}, lockContext.unlockOrigins, { [sessionLockSurface.screen.name]: origin });
+            }
         }
     }
 
@@ -132,6 +145,10 @@ Scope {
                 Idle.set(true, 0);
             }
         }
+    }
+
+    UnlockRipple {
+        context: lockContext
     }
 
     WlSessionLock {

@@ -91,6 +91,15 @@ Item {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "auto_awesome"
+                enabled: !Config.options.lock.useHyprlock
+                text: Translation.tr("Unlock ripple")
+                checked: Config.options.lock.unlockRipple
+                onCheckedChanged: {
+                    Config.options.lock.unlockRipple = checked;
+                }
+            }
+            ConfigSwitch {
                 buttonIcon: "bolt"
                 enabled: !Config.options.lock.useHyprlock
                 text: Translation.tr("Show charging info")

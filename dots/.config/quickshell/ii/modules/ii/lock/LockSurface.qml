@@ -17,6 +17,11 @@ MouseArea {
     required property LockContext context
     readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
 
+    // Where UnlockRipple bursts from, in this surface's coordinates.
+    function unlockOrigin() {
+        return passwordBox.mapToItem(root, passwordBox.width / 2, passwordBox.height / 2);
+    }
+
     // Force focus on entry
     function forceFieldFocus() {
         passwordBox.forceActiveFocus();
