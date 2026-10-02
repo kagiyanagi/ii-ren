@@ -1,11 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
 import qs.modules.common.widgets
+import qs.modules.common.utils
 
 /*
  * Every sound the shell makes, in the shape of Android's Sound & vibration page:
@@ -42,7 +42,7 @@ ContentPage {
         const custom = page.opts.custom[category] ?? "";
         if (SoundService.previewFailed === category)
             return Translation.tr("Couldn't play this sound");
-        if (page.pickerMissing && page.pickingFor === category)
+        if (filePicker.missing && page.pickingFor === category)
             return Translation.tr("Choosing a file needs kdialog or zenity, and neither is installed");
         if (custom !== "")
             return `${when}  ·  ${FileUtils.fileNameForPath(custom)}`;
@@ -62,20 +62,12 @@ ContentPage {
         SoundService.preview(`theme:${theme.id}`, SoundService.resolve([theme.example, ...SoundService.events.notifications].filter(Boolean), theme.id));
     }
 
-    // The same pickers as the photo widget's and the subject cutout's.
     property string pickingFor: ""
-    property bool pickerMissing: false
-    Process {
+    FilePickerProcess {
         id: filePicker
-        command: ["bash", "-c", "if command -v kdialog >/dev/null; then kdialog --getopenfilename \"$HOME\" '*.ogg *.oga *.opus *.wav *.mp3 *.flac'; elif command -v zenity >/dev/null; then zenity --file-selection --file-filter='Sounds | *.ogg *.oga *.opus *.wav *.mp3 *.flac'; else exit 127; fi"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const path = this.text.trim();
-                if (path.length > 0)
-                    Config.options.sounds.custom[page.pickingFor] = path;
-            }
-        }
-        onExited: exitCode => page.pickerMissing = exitCode === 127
+        label: "Sounds"
+        patterns: ["*.ogg", "*.oga", "*.opus", "*.wav", "*.mp3", "*.flac"]
+        onPicked: path => Config.options.sounds.custom[page.pickingFor] = path
     }
 
     // How far along a preview is. In on default effects, out on the exit spec,
@@ -100,6 +92,16 @@ ContentPage {
         }
     }
 
+    // The 0.08 hover film over whatever the button sits on: these buttons sit on
+    // colSurfaceContainerHigh cards, which have no Hover token of their own.
+    // RippleButton's own overlay already does focus and press.
+    component HoverFilm: StateOverlay {
+        anchors.fill: parent
+        radius: parent.buttonRadius
+        hover: parent.hovered
+        contentColor: parent.colStateLayer
+    }
+
     // Plays the row's sound; the ring around it is how far along it is.
     component PlayButton: RippleButton {
         id: playButton
@@ -111,10 +113,14 @@ ContentPage {
         implicitHeight: 32
         buttonRadius: Appearance.rounding.full
         enabled: url !== ""
+        // Dimmed for its own reason only: inside a disabled row it would be 0.4 twice (TASTE 3.6).
+        opacity: url === "" ? 0.4 : 1
         colBackground: playing ? Appearance.colors.colSecondaryContainer : ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 1)
-        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-        colRipple: Appearance.colors.colSecondaryContainerActive
+        colBackgroundHover: colBackground
+        colRipple: Appearance.colors.colSecondaryContainer
         colStateLayer: Appearance.colors.colOnSecondaryContainer
+
+        HoverFilm {}
         onClicked: playing ? SoundService.stopPreview() : SoundService.preview(category, url)
 
         contentItem: Item {
@@ -149,17 +155,20 @@ ContentPage {
         implicitWidth: 32
         implicitHeight: 32
         buttonRadius: Appearance.rounding.full
+        opacity: 1 // the row it sits in does the dimming
         colBackground: ColorUtils.transparentize(Appearance.colors.colSecondaryContainer, 1)
-        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-        colRipple: Appearance.colors.colSecondaryContainerActive
+        colBackgroundHover: colBackground
+        colRipple: Appearance.colors.colSecondaryContainer
         colStateLayer: Appearance.colors.colOnSecondaryContainer
+
+        HoverFilm {}
         onClicked: {
             if (custom) {
                 Config.options.sounds.custom[category] = "";
                 return;
             }
             page.pickingFor = category;
-            filePicker.running = true;
+            filePicker.pick();
         }
 
         contentItem: MaterialSymbol {
@@ -183,48 +192,37 @@ ContentPage {
 
         RippleButton {
             id: mainSwitch
-            readonly property bool on: page.opts.enable
+            readonly property bool soundsOn: page.opts.enable
             x: -8
             width: parent.width + 16
             implicitHeight: mainSwitchRow.implicitHeight + 16 * 2
             leftPadding: 24
             rightPadding: 16
             buttonRadius: Appearance.rounding.full
-            colBackground: on ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHighest
-            colBackgroundHover: on ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colSurfaceContainerHighestHover
-            colRipple: on ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colSurfaceContainerHighestActive
-            colStateLayer: on ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
+            colBackground: soundsOn ? Appearance.colors.colPrimaryContainer : Appearance.colors.colSurfaceContainerHighest
+            colBackgroundHover: soundsOn ? Appearance.colors.colPrimaryContainerHover : Appearance.colors.colSurfaceContainerHighestHover
+            colRipple: soundsOn ? Appearance.colors.colPrimaryContainerActive : Appearance.colors.colSurfaceContainerHighestActive
+            colStateLayer: soundsOn ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
             onClicked: Config.options.sounds.enable = !Config.options.sounds.enable
 
             contentItem: RowLayout {
                 id: mainSwitchRow
                 spacing: 12
 
-                ColumnLayout {
+                // One line in both states, so nothing below moves when it is flipped.
+                // That alarms still ring is the Alarms row's to say.
+                StyledText {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
-                    spacing: 2
-                    StyledText {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: Translation.tr("Use system sounds")
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.family: Appearance.font.family.title
-                        color: mainSwitch.on ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
-                    }
-                    // The alarm loop ignores this switch on purpose (SoundService.startLoop).
-                    StyledText {
-                        Layout.fillWidth: true
-                        visible: !mainSwitch.on && page.opts.alarm
-                        elide: Text.ElideRight
-                        text: Translation.tr("Alarms still ring")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
+                    elide: Text.ElideRight
+                    text: Translation.tr("Use system sounds")
+                    font.pixelSize: Appearance.font.pixelSize.large
+                    font.family: Appearance.font.family.title
+                    color: mainSwitch.soundsOn ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnSurface
                 }
                 StyledSwitch {
                     checkable: false
-                    checked: mainSwitch.on
+                    checked: mainSwitch.soundsOn
                     down: mainSwitch.down
                     focusPolicy: Qt.NoFocus
                     onClicked: mainSwitch.clicked()
@@ -236,75 +234,33 @@ ContentPage {
     ContentSection {
         icon: "graphic_eq"
         title: Translation.tr("Sound")
+        tooltip: Translation.tr("The volume is a share of the output volume, and alarms follow it too")
 
-        // The effects volume. Wavy like the media player's seek bar, and like it the
-        // wave runs while something plays: here, whatever this page is previewing.
-        ColumnLayout {
-            readonly property bool wantsCard: true
-            Layout.fillWidth: true
-            spacing: 4
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 8
-                Layout.rightMargin: 8
-                Layout.topMargin: 8
-                spacing: 10
-
-                MaterialSymbol {
-                    text: page.opts.volume === 0 ? "volume_off" : page.opts.volume < 50 ? "volume_down" : "volume_up"
-                    iconSize: Appearance.font.pixelSize.larger
-                    color: Appearance.colors.colOnSecondaryContainer
-                }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    spacing: 2
-                    StyledText {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: Translation.tr("Volume")
-                        color: Appearance.colors.colOnSecondaryContainer
-                    }
-                    StyledText {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: Translation.tr("A share of the output volume, alarms included")
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        color: Appearance.colors.colSubtext
-                    }
-                }
-                StyledText {
-                    text: `${page.opts.volume}%`
-                    font.family: Appearance.font.family.numbers
-                    color: Appearance.colors.colOnSecondaryContainer
-                }
+        // The effects volume, wavy like the media player's seek bar. Like Android's
+        // squiggle it lies flat at rest and waves while something plays: here,
+        // whatever this page is previewing.
+        ConfigSlider {
+            readonly property bool playing: SoundService.previewing !== ""
+            buttonIcon: page.opts.volume === 0 ? "volume_off" : page.opts.volume < 50 ? "volume_down" : "volume_up"
+            text: Translation.tr("Volume")
+            configuration: StyledSlider.Configuration.Wavy
+            animateWave: playing
+            waveAmplitudeMultiplier: playing ? 0.5 : 0
+            from: 0
+            to: 100
+            stepSize: 1
+            value: page.opts.volume
+            // Android plays the stream's own sound at the new level; a
+            // notification is the one long enough to judge by.
+            function hear() {
+                SoundService.preview("notifications", SoundService.urlFor("notifications"));
             }
-
-            StyledSlider {
-                id: volumeSlider
-                Layout.fillWidth: true
-                Layout.leftMargin: 8
-                Layout.rightMargin: 8
-                Layout.bottomMargin: 8
-                configuration: StyledSlider.Configuration.Wavy
-                animateWave: SoundService.previewing !== ""
-                from: 0
-                to: 100
-                stepSize: 1
-                value: page.opts.volume
-                // Android plays the stream's own sound at the new level; a
-                // notification is the one that is long enough to judge by.
-                function hear() {
-                    SoundService.preview("notifications", SoundService.urlFor("notifications"));
-                }
-                onMoved: {
-                    Config.options.sounds.volume = Math.round(value);
-                    if (!pressed)
-                        hear(); // the wheel and the arrow keys, one step at a time
-                }
-                onPressedChanged: if (!pressed) hear()
+            onMoved: value => {
+                Config.options.sounds.volume = Math.round(value);
+                if (!pressed)
+                    hear(); // the wheel and the arrow keys, one step at a time
             }
+            onPressedChanged: if (!pressed) hear()
         }
 
         // The themes, as cards: picking one plays its example. Under each name, the
@@ -319,6 +275,7 @@ ContentPage {
                 x: -8
                 width: parent.width + 16
                 columns: 2
+                uniformCellWidths: true
                 rowSpacing: 8
                 columnSpacing: 8
 
@@ -332,18 +289,19 @@ ContentPage {
                         readonly property bool playing: SoundService.previewing === `theme:${modelData.id}`
 
                         Layout.fillWidth: true
-                        Layout.preferredWidth: 1 // equal columns, whatever the names
                         implicitHeight: cardRow.implicitHeight + 16 * 2
                         padding: 16
                         buttonRadius: Appearance.rounding.large
                         colBackground: selected ? Appearance.colors.colSecondaryContainer : Appearance.colors.colSurfaceContainerHigh
-                        colBackgroundHover: selected ? Appearance.colors.colSecondaryContainerHover : Appearance.colors.colSurfaceContainerHighestHover
-                        colRipple: selected ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colSurfaceContainerHighestActive
+                        colBackgroundHover: colBackground
+                        colRipple: selected ? Appearance.colors.colSecondaryContainerActive : Appearance.colors.colSurfaceContainerHighest
                         colStateLayer: selected ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurface
                         onClicked: {
                             Config.options.sounds.theme = modelData.id;
                             page.previewTheme(modelData);
                         }
+
+                        HoverFilm {}
 
                         contentItem: RowLayout {
                             id: cardRow
@@ -358,8 +316,11 @@ ContentPage {
                                     anchors.centerIn: parent
                                     implicitSize: 40
                                     shape: themeCard.selected ? MaterialShape.Shape.Cookie7Sided : MaterialShape.Shape.Circle
-                                    color: themeCard.selected ? Appearance.colors.colPrimary : Appearance.colors.colSurfaceContainerHighest
-                                    colSymbol: themeCard.selected ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSurfaceVariant
+                                    color: themeCard.selected ? Appearance.colors.colSecondary : Appearance.colors.colSurfaceContainerHighest
+                                    colSymbol: themeCard.selected ? Appearance.colors.colOnSecondary : Appearance.colors.colOnSurfaceVariant
+                                    Behavior on color {
+                                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                                    }
                                     text: themeCard.playing ? "graphic_eq" : themeCard.selected ? "check" : "music_note"
                                     iconSize: Appearance.font.pixelSize.larger
                                 }
@@ -418,7 +379,8 @@ ContentPage {
             Layout.fillWidth: true
             Layout.leftMargin: 8
             wrapMode: Text.WordWrap
-            text: SoundService.themes.length === 0 ? Translation.tr("Looking for sound themes…")
+            text: SoundService.themesFailed ? Translation.tr("Couldn't read the sound themes, so only FreeDesktop's sounds play")
+                : SoundService.themes.length === 0 ? Translation.tr("Looking for sound themes…")
                 : Translation.tr("Filled icons are sounds a theme has of its own; it borrows the rest. More themes go in ~/.local/share/sounds.")
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: Appearance.colors.colSubtext

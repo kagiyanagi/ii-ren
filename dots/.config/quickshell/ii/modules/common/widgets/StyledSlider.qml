@@ -59,6 +59,10 @@ Slider {
     property bool wavy: configuration === StyledSlider.Configuration.Wavy // If true, the progress bar will have a wavy fill effect
     property bool animateWave: true
     property real waveAmplitudeMultiplier: wavy ? 0.5 : 0
+    // As on StyledProgressBar: a caller can flatten the wave, as Android's player does when paused.
+    Behavior on waveAmplitudeMultiplier {
+        animation: Appearance?.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
     property real waveFrequency: 6
     property real waveFps: 60
 
@@ -168,7 +172,7 @@ Slider {
                     frequency: root.waveFrequency
                     fullLength: root.width
                     color: root.highlightColor
-                    amplitudeMultiplier: root.wavy ? 0.5 : 0
+                    amplitudeMultiplier: root.waveAmplitudeMultiplier
                     width: parent.width
                     height: root.trackWidth
                     // See StyledProgressBar: the wave is a shader, so there is

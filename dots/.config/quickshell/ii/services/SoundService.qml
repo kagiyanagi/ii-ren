@@ -33,6 +33,7 @@ Singleton {
     // [{id, dir, name, comment, inherits, example}]
     property list<var> themes: []
     property bool indexReady: false
+    property bool themesFailed: false
     property bool live: false
     property var _soundFiles: ({})
     property var _lastPlayed: ({})
@@ -382,12 +383,14 @@ Singleton {
                 try {
                     // The freedesktop index.theme just says "Name=Default"; label
                     // it like KDE does so users recognize it as the fallback theme.
+                    root.themesFailed = false;
                     root.themes = JSON.parse(text).map(t => t.id === "freedesktop" ? Object.assign({}, t, {
                         name: "FreeDesktop",
                         comment: Translation.tr("Fallback sound theme from freedesktop.org")
                     }) : t);
                 } catch (e) {
                     console.warn("[SoundService] Failed to parse theme list:", e);
+                    root.themesFailed = true;
                 }
             }
         }

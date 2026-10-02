@@ -92,6 +92,7 @@ RippleButton {
         }
         StyledSwitch {
             id: switchWidget
+            opacity: 1 // the row's 0.4 already covers it; its own made 0.16
             down: root.down
             Layout.fillWidth: false
             checked: root.checked

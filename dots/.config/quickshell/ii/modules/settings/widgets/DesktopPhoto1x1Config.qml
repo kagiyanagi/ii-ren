@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.utils
 
 ContentPage {
     id: root
@@ -11,17 +12,11 @@ ContentPage {
 
     title: Translation.tr("Photo 1x1 Widget Options")
 
-    Process {
+    FilePickerProcess {
         id: pickImageProc
-        command: ["bash", "-c", "if command -v kdialog &> /dev/null; then FILE=$(kdialog --getopenfilename \"$HOME\" \"*.png *.jpg *.jpeg *.gif *.webp *.bmp *.svg *.PNG *.JPG *.JPEG *.GIF *.WEBP *.BMP *.SVG\" 2>/dev/null); elif command -v zenity &> /dev/null; then FILE=$(zenity --file-selection --file-filter=\"Images | *.png *.jpg *.jpeg *.gif *.webp *.bmp *.svg *.PNG *.JPG *.JPEG *.GIF *.WEBP *.BMP *.SVG\" 2>/dev/null); fi; if [ -n \"$FILE\" ] && [ -f \"$FILE\" ]; then echo \"$FILE\"; fi"]
-        stdout: SplitParser {
-            onRead: data => {
-                let path = data.trim();
-                if (path.length > 0) {
-                    Config.options.background.widgets.photo_1x1.imagePath = path;
-                }
-            }
-        }
+        label: "Images"
+        patterns: ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.bmp", "*.svg", "*.PNG", "*.JPG", "*.JPEG", "*.GIF", "*.WEBP", "*.BMP", "*.SVG"]
+        onPicked: path => Config.options.background.widgets.photo_1x1.imagePath = path
     }
 
     ContentSection {
@@ -55,8 +50,7 @@ ContentPage {
                 materialIcon: "folder_open"
                 mainText: Translation.tr("Choose Image")
                 onClicked: {
-                    pickImageProc.running = false;
-                    pickImageProc.running = true;
+                    pickImageProc.pick();
                 }
             }
 

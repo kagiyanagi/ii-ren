@@ -22,6 +22,11 @@ ColumnLayout {
     property real from: slider.from
     property real to: slider.to
     property alias stepSize: slider.stepSize
+    property alias configuration: slider.configuration
+    property alias animateWave: slider.animateWave
+    property alias waveAmplitudeMultiplier: slider.waveAmplitudeMultiplier
+    // For a row that acts once the drag ends (the Sounds page plays a sample).
+    readonly property alias pressed: slider.pressed
 
     // Emitted only for actual user interaction. valueChanged also fires for
     // every frame of StyledSlider's settle animation, so a handler that writes

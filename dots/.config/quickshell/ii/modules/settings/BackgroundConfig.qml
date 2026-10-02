@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.utils
 import qs.modules.ii.settings
 
 ContentPage {
@@ -21,18 +22,11 @@ ContentPage {
 
     // A cutout of your own for subject depth: anything with transparency round
     // the subject. Same pickers as the photo widget's.
-    property bool subjectPickerMissing: false
-    Process {
+    FilePickerProcess {
         id: subjectPicker
-        command: ["bash", "-c", "if command -v kdialog >/dev/null; then kdialog --getopenfilename \"$HOME\" '*.png *.webp *.PNG *.WEBP'; elif command -v zenity >/dev/null; then zenity --file-selection --file-filter='Cutouts | *.png *.webp *.PNG *.WEBP'; else exit 127; fi"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const path = this.text.trim();
-                if (path.length > 0)
-                    framePreview.setSubject(path);
-            }
-        }
-        onExited: exitCode => page.subjectPickerMissing = exitCode === 127
+        label: "Cutouts"
+        patterns: ["*.png", "*.webp", "*.PNG", "*.WEBP"]
+        onPicked: path => framePreview.setSubject(path)
     }
 
     ContentSection {
@@ -579,7 +573,7 @@ ContentPage {
                     text: {
                         if (!WallpaperSubject.wallpaperUsable)
                             return Translation.tr("No wallpaper to cut a subject out of yet.");
-                        if (page.subjectPickerMissing)
+                        if (subjectPicker.missing)
                             return Translation.tr("Picking an image needs kdialog or zenity, and neither is installed.");
                         if (WallpaperSubject.custom && framePreview.subjectStatus === Image.Error)
                             return Translation.tr("Couldn't read your cutout at %1.").arg(WallpaperSubject.customPath);
@@ -658,8 +652,7 @@ ContentPage {
                     materialIcon: "add_photo_alternate"
                     mainText: Translation.tr("Use your own")
                     onClicked: {
-                        subjectPicker.running = false;
-                        subjectPicker.running = true;
+                        subjectPicker.pick();
                     }
                 }
 
