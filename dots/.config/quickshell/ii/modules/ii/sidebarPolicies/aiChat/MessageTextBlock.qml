@@ -45,7 +45,8 @@ ColumnLayout {
      */
     property color codeSpanColor: Appearance.colors.colLayer4Base
 
-    property list<string> renderedLatexHashes: []
+    // The formulas this block has asked for, as a set
+    property var latexHashes: ({})
     property string renderedSegmentContent: ""
     property string shownText: ""
     property bool fadeChunkSplitting: false
@@ -64,17 +65,6 @@ ColumnLayout {
 
     Layout.fillWidth: true
 
-    Timer {
-        id: renderTimer
-        interval: 1000
-        repeat: false
-        onTriggered: {
-            renderLatex()
-            for (const hash of renderedLatexHashes) {
-                handleRenderedLatex(hash, true);
-            }
-        }
-    }
 
     /**
      * Inline `code` set apart from the prose around it, as a chat sets a path or
@@ -145,6 +135,11 @@ ColumnLayout {
         if (!md)
             return "";
         const text = md.replace(/\r\n/g, "\n");
+        // Qt reads a leading `---` as YAML front matter and drops everything up to
+        // the next one: a block opening on a rule lost its first section, formulas
+        // and all, and LatexFormulas then put every later formula in the wrong place.
+        if (text.startsWith("---"))
+            return root.formatMarkdown(`\n${text}`);
         return text.split(/(```[\s\S]*?(?:```|$))/).map((part, idx) => {
             if (idx % 2 === 1)
                 return part;
@@ -172,30 +167,85 @@ ColumnLayout {
         }).join("");
     }
 
+    // $...$, $$...$$, \[...\] and \(...\); the whole match, delimiters and all, is
+    // what gets rendered and what its image replaces
+    function latexPattern(): var {
+        return /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
+    }
+
+    /**
+     * The text each view of this block is given, formatted.
+     *
+     * While the reply is still arriving: settled runs of it, and the run coming in.
+     * Qt re-parses a view's markdown whole on every change, so one view re-read the
+     * entire reply on every tick of the reveal -- ~8ms at 16k characters, before
+     * laying it out -- and a long answer streamed at a crawl, dropping frames. Cut,
+     * a tick re-reads only the last run.
+     *
+     * One cut per 2000 characters, at the last paragraph break in them, so a run
+     * once settled never changes and is never parsed again. Only before a block that
+     * means the same wherever it starts, never a list item, which continues the
+     * list above, or an indented line. Each run but the last keeps the blank
+     * paragraph formatMarkdown() puts between paragraphs and the views meet with no
+     * padding, so they lay out exactly as the one view they become once the reveal
+     * settles, which is when a selection can run across the whole reply again.
+     * tools/check-hermes-stream.py runs this.
+     */
+    function viewTexts(): var {
+        const text = root.shownText;
+        if (!root.renderMarkdown || root.editing)
+            return [text];
+        // Split by either double newlines or single newlines in a list
+        if (root.fadeChunkSplitting)
+            return text.split(/\n\n(?= {0,2})|\n(?= {0,2}(?:[-\*]|\d+\.))/g).filter(line => line.trim() !== "").map(line => root.formatMarkdown(line));
+        if (root.done && !streamTimer.running)
+            return [root.formatMarkdown(text)];
+        // A step back from the end: a cut reads the line after it, and the word fade
+        // restyles the last few words, so only a run with all of that behind it is
+        // settled.
+        const arrived = text.length - text.length % 2000 - 2000;
+        const boundary = /\n\n+(?![ \t\n<`]|[*+-](?:\s|[*+-]{2})|\d+[.)](?:\s|$)|\[[^\]\n]*\]:)/g;
+        const cuts = [];
+        for (let match; (match = boundary.exec(text)) !== null && match.index < arrived;) {
+            const last = cuts[cuts.length - 1];
+            if (last && Math.floor(last.index / 2000) === Math.floor(match.index / 2000))
+                cuts[cuts.length - 1] = match;
+            else
+                cuts.push(match);
+        }
+        const runs = [];
+        let from = 0;
+        for (const cut of cuts) {
+            const run = text.slice(from, cut.index);
+            if (run.trim().length === 0)
+                continue;
+            runs.push(root.formatMarkdown(run) + "\n\n&nbsp;");
+            from = cut.index + cut[0].length;
+        }
+        return runs.concat([root.formatMarkdown(text.slice(from))]);
+    }
+
     function renderLatex() {
-        // $...$, $$...$$, \[...\] and \(...\)
-        let regex = /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
+        const regex = root.latexPattern();
         let match;
         while ((match = regex.exec(segmentContent)) !== null) {
-            let expression = match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || match[7] || match[8];
-            if (expression) {
-                Qt.callLater(() => {
-                    const [renderHash, isNew] = LatexRenderer.requestRender(expression.trim());
-                    if (!renderedLatexHashes.includes(renderHash)) {
-                        renderedLatexHashes.push(renderHash);
-                    }
-                });
-            }
+            const [renderHash] = LatexRenderer.requestRender(match[0].trim());
+            root.latexHashes[renderHash] = true;
         }
     }
 
-    function handleRenderedLatex(hash, force = false) {
-        if (renderedLatexHashes.includes(hash) || force) {
-            const imagePath = LatexRenderer.renderedImagePaths[hash];
+    /**
+     * The text with every formula rendered so far swapped for its image, in one
+     * pass from the source. Patched in one formula per render, a reply of 234 was
+     * re-laid 234 times, and again on every streamed chunk.
+     */
+    function applyLatex(): void {
+        root.renderedSegmentContent = (segmentContent || "").toString().replace(root.latexPattern(), whole => {
+            const hash = LatexRenderer.hashOf(whole.trim());
             const [width, height] = LatexRenderer.renderedSizes[hash] ?? [];
             // Not rendered yet, or failed: the source stays, not a broken image
             if (!width)
-                return;
+                return whole;
             // A blank of the formula's size, centred on the text, not sat on its
             // baseline; LatexFormulas draws the formula (the alt) over it, scrolling
             // on its own when wider than its line, which Qt's rich text cannot do to
@@ -203,11 +253,20 @@ ColumnLayout {
             // drawn above its own line, over the heading before it; any visible
             // character first stops that, a zero-width one does not. Self-closed, or
             // the importer swallows the rest of the text waiting for </img>.
+            const imagePath = LatexRenderer.renderedImagePaths[hash];
             const markdownImage = `\u200A<img src="${LatexRenderer.placeholder}" alt="${imagePath}" width="${width}" height="${height}" align="middle" />`;
+            return markdownImage;
+        });
+    }
 
-            const expression = LatexRenderer.processedExpressions[hash];
-            renderedSegmentContent = renderedSegmentContent.replace(expression, markdownImage);
-        }
+    // Formulas finish one process at a time and every pass re-lays the whole text,
+    // so they go in together once the last of this block's is back: one reflow,
+    // not one per formula. Later in the loop, so renders landing together are
+    // one pass.
+    function handleRenderedLatex(hash) {
+        if (!root.editing && root.latexHashes[hash]
+                && Object.keys(root.latexHashes).every(h => LatexRenderer.renderedImagePaths[h] !== undefined))
+            Qt.callLater(root.applyLatex);
     }
 
     /**
@@ -318,8 +377,11 @@ ColumnLayout {
             return;
         }
 
-        // Never between a tag's attributes: a LaTeX <img> cut there shows as raw text
-        const tokens = root.targetText.split(/(\s+)(?![^<>]*>)/);
+        // Never between a tag's attributes: a LaTeX <img> cut there shows as raw text.
+        // A tag is a token of its own rather than a lookahead from every space for a
+        // `>` ahead, which read to the end of a reply with none: 26ms a split at 16k
+        // characters, run on every tick of the reveal.
+        const tokens = root.targetText.split(/(<[^<>]*>|\s+)/);
         const wordIndices = [];
         for (let i = 0; i < tokens.length; i++) {
             if (!/^\s*$/.test(tokens[i]))
@@ -386,7 +448,7 @@ ColumnLayout {
             return;
         }
 
-        const tokens = text.split(/(\s+)(?![^<>]*>)/);
+        const tokens = text.split(/(<[^<>]*>|\s+)/);
         let count = 0;
         for (let i = 0; i < tokens.length; i++) {
             if (!/^\s*$/.test(tokens[i]))
@@ -408,7 +470,6 @@ ColumnLayout {
     }
 
     onDoneChanged: {
-        renderTimer.restart();
         if (root.done) {
             if (root.revealedWordCount >= root.totalWordCount && root.settleCounter <= 0) {
                 if (streamTimer.running)
@@ -421,7 +482,8 @@ ColumnLayout {
     }
     onEditingChanged: {
         if (!editing) {
-            renderLatex();
+            root.renderLatex();
+            root.applyLatex();
             root.syncContent();
         } else {
             if (streamTimer.running)
@@ -430,12 +492,15 @@ ColumnLayout {
         }
     }
 
+    // Through renderedSegmentContent's own handler: syncing here as well laid the
+    // text out twice per streamed chunk.
     onSegmentContentChanged: {
-        renderedSegmentContent = segmentContent;
-        if (!root.editing && segmentContent) {
-            root.renderLatex();
+        if (root.editing) {
+            renderedSegmentContent = segmentContent;
+            return;
         }
-        root.syncContent();
+        root.renderLatex();
+        root.applyLatex();
     }
 
     onRenderedSegmentContentChanged: {
@@ -443,6 +508,12 @@ ColumnLayout {
     }
 
     Component.onCompleted: {
+        // A turn rebuilt on scroll, or reopened from history, finds its formulas
+        // already rendered and shows them from its first layout.
+        if (!root.editing) {
+            root.renderLatex();
+            root.applyLatex();
+        }
         const text = renderedSegmentContent ? renderedSegmentContent : (segmentContent ? segmentContent : "");
         if (root.done || (root.messageData && root.messageData.done)) {
             root.isHistorical = true;
@@ -472,9 +543,7 @@ ColumnLayout {
             // the text, and destroying the MouseArea under the pointer, which is
             // what made the cursor flicker while a reply came in.
             objectProp: "key"
-            // Split by either double newlines or single newlines in a list
-            values: (root.fadeChunkSplitting ? root.shownText.split(/\n\n(?= {0,2})|\n(?= {0,2}(?:[-\*]|\d+\.))/g).filter(line => line.trim() !== "") : [root.shownText])
-                .map((line, i) => ({ key: i, text: root.renderMarkdown && !root.editing ? root.formatMarkdown(line) : line }))
+            values: root.viewTexts().map((line, i) => ({ key: i, text: line }))
             onValuesChanged: {
                 while (textLinesRepeater.textLineOpacities.length < values.length) {
                     textLinesRepeater.textLineOpacities.push(root.messageData?.done ? 1 : 0);
@@ -510,6 +579,9 @@ ColumnLayout {
             }
 
             Layout.fillWidth: true
+            // Where a streaming reply's two views meet, as one view's lines would
+            topPadding: textArea.index > 0 ? 0 : textArea.padding
+            bottomPadding: textArea.index < textLinesRepeater.count - 1 ? 0 : textArea.padding
             readOnly: !editing
             selectByMouse: enableMouseSelection || editing
             renderType: Text.NativeRendering

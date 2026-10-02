@@ -37,9 +37,14 @@ Rectangle {
     property double leapRotation: 0
     rotation: pullRotation + continuousRotation + leapRotation
 
+    // Hidden is not loading. One parked behind `visible: false` -- the Hermes
+    // page's activity line, for as long as the shell ran -- kept turning and
+    // morphing, and ticked the GUI thread every frame for it.
+    readonly property bool animating: root.loading && root.visible
+
     // One full turn, repeating. The 12000 this replaces was a hand pick.
     RotationAnimation on continuousRotation {
-        running: root.loading
+        running: root.animating
         // AOSP LoadingIndicator.kt: GlobalRotationDurationMillis, LinearEasing.
         duration: 4666
         easing.type: Easing.Linear
@@ -53,7 +58,7 @@ Rectangle {
     // run on elementMoveSmall (350), so they do.
     Timer {
         interval: 650
-        running: root.loading
+        running: root.animating
         repeat: true
         onTriggered: leapAnimation.start()
     }

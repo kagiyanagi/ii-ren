@@ -4,6 +4,7 @@ import qs.services
 import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 
 /**
  * The LaTeX formulas of one text view, each in a scroller of its own.
@@ -42,7 +43,7 @@ Item {
             if (!tag.includes(LatexRenderer.placeholder))
                 continue;
             const rect = view.positionToRectangle(at);
-            out.push({ source: /\balt="([^"]*)"/.exec(tag)[1], x: rect.x, y: rect.y });
+            out.push({ key: out.length, source: /\balt="([^"]*)"/.exec(tag)[1], x: rect.x, y: rect.y });
         }
         root.boxes = out;
     }
@@ -52,20 +53,29 @@ Item {
         font: root.target.font
     }
 
-    Component.onCompleted: root.layout()
+    // Once per event loop, not per textChanged: InlineCode strips its brackets one
+    // remove() at a time, each its own textChanged, and every pass here forces the
+    // whole document's layout. A reply with 234 formulas froze the shell for 10s.
+    Component.onCompleted: Qt.callLater(root.layout)
 
     Connections {
         target: root.target
         function onTextChanged(): void {
-            root.layout();
+            Qt.callLater(root.layout);
         }
         function onWidthChanged(): void {
-            root.layout();
+            Qt.callLater(root.layout);
         }
     }
 
     Repeater {
-        model: root.boxes
+        // Keyed by position, so a fresh `boxes` moves the scrollers already built
+        // and adds the one new formula, instead of rebuilding every one of them
+        // each time a streamed formula lands.
+        model: ScriptModel {
+            objectProp: "key"
+            values: root.boxes
+        }
 
         delegate: Flickable {
             id: scroller
@@ -89,6 +99,10 @@ Item {
 
             Image {
                 id: formula
+                // Off the GUI thread: the text already holds the formula's space, and
+                // a turn rebuilt as it scrolls back in decoded every one of its SVGs
+                // on the frame it came back, 234 of them in one reply.
+                asynchronous: true
                 source: scroller.modelData.source
             }
         }
