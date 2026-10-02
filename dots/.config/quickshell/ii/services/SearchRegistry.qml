@@ -14,7 +14,7 @@ Item {
     // a search index.
     readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BatteryConfig", "BarConfig", "BackgroundConfig",
         "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "ExtensionsConfig", "HyprlandConfig",
-        "LockConfig", "AdvancedConfig", "HermesConfig"]
+        "LockConfig", "AdvancedConfig", "HermesConfig", "ProfilesConfig"]
 
     property string currentSearch: ""
     onCurrentSearchChanged: {

@@ -120,6 +120,12 @@ ApplicationWindow {
             component: "modules/settings/HermesConfig.qml"
         },
         {
+            id: "profiles",
+            name: Translation.tr("Profiles"),
+            icon: "switch_account",
+            component: "modules/settings/ProfilesConfig.qml"
+        },
+        {
             id: "about",
             name: Translation.tr("About"),
             icon: "info",
