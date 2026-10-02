@@ -554,6 +554,25 @@ Item {
 
                 add: null // Keeps streaming from looking janky
 
+                /*
+                 * Every turn built, so the height the scroll bar is drawn from is
+                 * measured, not guessed. A ListView sizes the rows it has not built
+                 * at the average of those it has, and in a chat where one reply is
+                 * 12000px and the rest 100px that guess ran from 15k to 1.1M px over
+                 * one scroll, the handle going backwards 77 times. Built a page a
+                 * frame from where the view opened, never all at once, which froze
+                 * a 337-turn chat for 2s; and again from nothing for each chat.
+                 * ponytail: memory grows with the chat; a height cache per turn if
+                 * chats ever reach thousands of turns.
+                 */
+                cacheBuffer: 0
+                onCountChanged: if (count === 0) cacheBuffer = 0
+
+                FrameAnimation {
+                    running: messageListView.cacheBuffer < messageListView.contentHeight + messageListView.height
+                    onTriggered: messageListView.cacheBuffer += messageListView.height
+                }
+
                 // Follows the reply as it streams; the reader takes that away by
                 // scrolling up, and gets it back at the end or from the button.
                 followsEnd: true

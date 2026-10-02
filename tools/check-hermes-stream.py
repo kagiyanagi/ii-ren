@@ -13,6 +13,9 @@ a 16k-character reply holding 234 LaTeX formulas:
   one to ~3fps, with half-second frames.
 - The reveal's word split looked ahead for a `>` from every space, which reads
   to the end of a reply that has none: 26ms a split, 28 splits a second.
+- The transcript sized the turns it had not built at the average of those it
+  had, so over one scroll of a 337-turn chat its height ran from 15k to 1.1M px
+  and the scroll bar handle went backwards 77 times.
 - Qt reads a leading `---` as YAML front matter, so a block opening on a rule
   lost everything up to the next one, and every formula after it was drawn
   over the wrong image.
@@ -34,6 +37,7 @@ text = (QML / "modules/ii/sidebarPolicies/aiChat/MessageTextBlock.qml").read_tex
 formulas = (QML / "modules/ii/sidebarPolicies/aiChat/LatexFormulas.qml").read_text()
 renderer = (QML / "services/LatexRenderer.qml").read_text()
 spinner = (QML / "modules/common/widgets/MaterialLoadingIndicator.qml").read_text()
+page = (QML / "modules/ii/sidebarPolicies/Hermes.qml").read_text()
 
 
 def node(js):
@@ -120,6 +124,11 @@ assert "'cd \"$0\" && exec \"$@\"'" in renderer and "-input=${proc.expression}" 
 assert re.search(r"processedExpressions\[hash\] !== undefined\)\s*return \[hash, false\]", renderer), \
     "LatexRenderer: a formula already asked for is a lookup and returns, without re-emitting renderFinished"
 assert "root.hashes[expression] ??" in renderer, "LatexRenderer: Qt.md5 runs per formula per chunk again"
+
+# The transcript builds every turn, a page a frame, so its height is measured.
+assert re.search(r"cacheBuffer: 0\s*onCountChanged: if \(count === 0\) cacheBuffer = 0", page) \
+    and "messageListView.cacheBuffer += messageListView.height" in page, \
+    "Hermes: the transcript guesses the height of unbuilt turns again (scroll bar lies), or builds them all on one frame"
 
 # A spinner parked behind `visible: false` must not keep animating.
 assert spinner.count("running: root.animating") == 2 and "root.loading && root.visible" in spinner, \
