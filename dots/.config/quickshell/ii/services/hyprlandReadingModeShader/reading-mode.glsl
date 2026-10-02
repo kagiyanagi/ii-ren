@@ -11,7 +11,7 @@ layout(location = 0) out vec4 fragColor;
 // Luminance coefficients: Red 0.2126, Green 0.7152, Blue 0.0722
 const vec3 kLuminanceWeights = vec3(0.2126, 0.7152, 0.0722);
 const float u_intensity = 1.000;
-const bool u_paperTone = false;
+const bool u_paperTone = true;
 const bool u_comfortViewCap = false;
 const float u_highlightCap = 1.000;
 
