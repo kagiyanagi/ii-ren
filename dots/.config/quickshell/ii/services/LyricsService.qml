@@ -29,12 +29,13 @@ Singleton {
     readonly property bool effectiveLrclibEnabled: lyricsEnabled && lrclibEnabled && isInitialized && (root.activePlayer?.trackTitle?.length > 0) && (root.activePlayer?.trackArtist?.length > 0)
     readonly property bool effectiveGeniusEnabled: lyricsEnabled && geniusEnabled && isInitialized
 
-    readonly property alias syncedLines: lrclib.lines
+    // Off means off: the cache would otherwise keep serving the songs already fetched
+    readonly property var syncedLines: lyricsEnabled && lrclibEnabled ? lrclib.lines : []
     readonly property alias currentIndex: lrclib.currentIndex
     readonly property string statusText: lrclib.displayText
-    readonly property bool hasSyncedLines: lrclib.lines.length > 0
+    readonly property bool hasSyncedLines: syncedLines.length > 0
 
-    readonly property alias geniusHasLyrics: genius.hasString
+    readonly property bool geniusHasLyrics: lyricsEnabled && geniusEnabled && genius.hasString
     readonly property string plainLyrics: genius.lyricsString
 
     // Function to initialize the lyrics service, to prevent unnecessary API calls when no lyrics UI is being use

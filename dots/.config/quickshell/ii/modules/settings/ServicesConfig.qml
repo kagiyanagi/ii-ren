@@ -234,7 +234,7 @@ ContentPage {
                 Config.options.lyricsService.enable = checked;
             }
             StyledToolTip {
-                text: Translation.tr("Disabling this will prevent the API from being called, but already cached lyrics will still be available.")
+                text: Translation.tr("Off stops the API calls and hides lyrics everywhere, cached ones included.")
             }
         }
 

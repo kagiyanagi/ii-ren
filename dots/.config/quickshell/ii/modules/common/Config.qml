@@ -1548,6 +1548,8 @@ Singleton {
                 property bool enableMediaVisualizer: true
                 // Media popup: hover to peek, or click to keep it up
                 property bool mediaPopupOnHover: false
+                // The card's second line follows the synced lyrics (LyricsService)
+                property bool mediaLyrics: true
                 // The desktop media widget shows on an empty workspace too
                 property bool hideMediaOnEmptyWorkspace: false
                 property string position: "bottom"

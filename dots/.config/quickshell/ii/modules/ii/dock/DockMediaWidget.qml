@@ -35,6 +35,11 @@ Item {
     readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("Unknown Title")
     readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
     readonly property string artUrl: MprisController.artUrlFor(player)
+    readonly property bool showLyrics: Config.options?.dock.mediaLyrics ?? false
+    onShowLyricsChanged: if (showLyrics) LyricsService.initiliazeLyrics()
+    // Like the bar: title and artist until the first line plays, then only the lyric
+    readonly property bool lyricsMode: showLyrics && LyricsService.hasSyncedLines && LyricsService.currentIndex >= 0
+    readonly property string lyricLine: LyricsService.syncedLines[LyricsService.currentIndex]?.text ?? ""
 
     // ColorQuantizer and the blur need a local file, so remote art gets cached first.
     readonly property bool isLocalArt: artUrl.startsWith("file://")
@@ -145,6 +150,7 @@ Item {
 
     Component.onCompleted: {
         GlobalStates.dockMediaCount++;
+        if (showLyrics) LyricsService.initiliazeLyrics();
     }
 
     Component.onDestruction: {
@@ -327,7 +333,10 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.trackTitle
+                    text: root.lyricsMode ? root.lyricLine : root.trackTitle
+                    animateChange: root.showLyrics
+                    wrapMode: root.lyricsMode ? Text.Wrap : Text.NoWrap
+                    maximumLineCount: 2
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: root.blendedColors.colOnLayer0
                     elide: Text.ElideRight
@@ -335,6 +344,7 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
+                    visible: !root.lyricsMode
                     text: root.trackArtist
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: root.blendedColors.colSubtext

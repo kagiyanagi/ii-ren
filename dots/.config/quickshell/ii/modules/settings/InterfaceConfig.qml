@@ -299,6 +299,20 @@ Item {
             }
 
             ConfigSwitch {
+                buttonIcon: "lyrics"
+                text: Translation.tr("Media widget lyrics")
+                enabled: Config.options.dock.enableMediaWidget && Config.options.lyricsService.enable
+                checked: Config.options.dock.mediaLyrics
+                onCheckedChanged: {
+                    Config.options.dock.mediaLyrics = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Show the current synced line under the title instead of the artist.\nNeeds the lrclib lyrics service (Settings > Services).")
+                }
+            }
+
+            ConfigSwitch {
                 buttonIcon: "graphic_eq"
                 text: Translation.tr("Media widget audio visualizer")
                 enabled: Config.options.dock.enableMediaWidget
