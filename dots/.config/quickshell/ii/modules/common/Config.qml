@@ -1896,6 +1896,12 @@ Singleton {
                 property string uptimeIcon: "" // Image for the uptime pill; empty = user avatar, falling back to the distro logo
                 property bool keepRightSidebarLoaded: true
                 property bool keepLeftSidebarLoaded: true
+                // Built-in tabs of the dashboard's bottom card. Settings keeps one on.
+                property JsonObject bottomGroup: JsonObject {
+                    property bool calendar: true
+                    property bool todo: true
+                    property bool timer: true
+                }
                 property JsonObject translator: JsonObject {
                     property bool enable: false
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.

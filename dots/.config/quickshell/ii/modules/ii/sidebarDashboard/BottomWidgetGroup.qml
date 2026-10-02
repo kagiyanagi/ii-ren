@@ -5,6 +5,7 @@ import qs.services
 import qs.modules.ii.sidebarDashboard.calendar
 import qs.modules.ii.sidebarDashboard.todo
 import qs.modules.ii.sidebarDashboard.pomodoro
+import "../bar/duration.js" as Duration
 import QtQuick
 import QtQuick.Layouts
 
@@ -19,6 +20,7 @@ Rectangle {
     readonly property int selectedTab: Math.max(0, Math.min(Persistent.states.sidebar.bottomGroup.tab, tabs.length - 1))
     property int lastTab // which way a switch slides; seeded once, not bound, or it races the change
     readonly property bool collapsed: Persistent.states.sidebar.bottomGroup.collapsed
+    readonly property var shown: Config.options.sidebar.bottomGroup
 
     function selectTab(index) {
         Persistent.states.sidebar.bottomGroup.tab = Math.max(0, Math.min(index, root.tabs.length - 1));
@@ -27,7 +29,6 @@ Rectangle {
 
     function syncExtensionTabs() {
         root.extensionTabs = ExtensionManager.getContributionPoint("sidebarRightBottom")
-        root.refreshCurrentTab()
     }
 
     Connections {
@@ -58,25 +59,32 @@ Rectangle {
         }
     }
 
+    // Toggling a tab shifts the ones after it, so whatever now sits at the index loads.
+    onTabsChanged: refreshCurrentTab()
     property var tabs: [
-        {
-            "type": "calendar",
-            "name": Translation.tr("Calendar"),
-            "icon": "calendar_month",
-            "widget": "calendar/CalendarWidget.qml"
-        },
-        {
-            "type": "todo",
-            "name": Translation.tr("To Do"),
-            "icon": "done_outline",
-            "widget": "todo/TodoWidget.qml"
-        },
-        {
-            "type": "timer",
-            "name": Translation.tr("Timer"),
-            "icon": "schedule",
-            "widget": "pomodoro/PomodoroWidget.qml"
-        },
+        ...[
+            {
+                "type": "calendar",
+                "name": Translation.tr("Calendar"),
+                "icon": "calendar_month",
+                "widget": "calendar/CalendarWidget.qml",
+                "shown": root.shown.calendar
+            },
+            {
+                "type": "todo",
+                "name": Translation.tr("To Do"),
+                "icon": "done_outline",
+                "widget": "todo/TodoWidget.qml",
+                "shown": root.shown.todo
+            },
+            {
+                "type": "timer",
+                "name": Translation.tr("Timer"),
+                "icon": "schedule",
+                "widget": "pomodoro/PomodoroWidget.qml",
+                "shown": root.shown.timer
+            }
+        ].filter(tab => tab.shown),
         ...root.extensionTabs.map(p => ({
             "type": "ext_" + p.identifier,
             "name": p.title,
@@ -137,10 +145,26 @@ Rectangle {
         }
 
         StyledText {
-            property int remainingTasks: Todo.list.filter(task => !task.done).length
             Layout.margins: 10
             Layout.leftMargin: 0
-            text: Translation.tr("%1   •   %2 tasks").arg(DateTime.collapsedCalendarFormat).arg(remainingTasks)
+            // One part per enabled tab; the timer only speaks up while it runs,
+            // unless it is the only tab.
+            text: {
+                const parts = [];
+                if (root.shown.calendar)
+                    parts.push(DateTime.collapsedCalendarFormat);
+                if (root.shown.todo)
+                    parts.push(Translation.tr("%1 tasks").arg(Todo.list.filter(task => !task.done).length));
+                if (root.shown.timer) {
+                    if (TimerService.pomodoroRunning)
+                        parts.push(Translation.tr("%1 left").arg(Duration.format(TimerService.pomodoroSecondsLeft)));
+                    else if (TimerService.stopwatchRunning)
+                        parts.push(Duration.format10ms(TimerService.stopwatchTime));
+                    else if (!parts.length)
+                        parts.push(Translation.tr("Timer idle"));
+                }
+                return parts.join("   •   ");
+            }
             font.pixelSize: Appearance.font.pixelSize.large
             color: Appearance.colors.colOnLayer1
         }
@@ -160,13 +184,16 @@ Rectangle {
         spacing: 20
 
         Item { // Navigation rail
+            id: rail
             Layout.fillHeight: true
             Layout.fillWidth: false
             Layout.leftMargin: 10
             Layout.topMargin: 10
-            implicitWidth: tabBar.implicitWidth
+            // A rail of one tab switches nothing; only the collapse button stays.
+            implicitWidth: tabBar.visible ? tabBar.implicitWidth : collapseButton.implicitWidth
             NavigationRailTabArray {
                 id: tabBar
+                visible: root.tabs.length > 1
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
                 anchors.leftMargin: 5
@@ -186,6 +213,7 @@ Rectangle {
                 }
             }
             CalendarHeaderButton {
+                id: collapseButton
                 anchors.left: parent.left
                 anchors.top: parent.top
                 forceCircle: true
@@ -203,6 +231,8 @@ Rectangle {
 
         Item { // Content area
             Layout.fillWidth: true
+            // With no rail, the chevron's inset is mirrored so the widget sits centred in the card.
+            Layout.rightMargin: tabBar.visible ? 0 : rail.Layout.leftMargin + rail.implicitWidth + bottomWidgetGroupRow.spacing
             Layout.fillHeight: true
 
             Loader {
@@ -275,7 +305,7 @@ Rectangle {
         PropertyAction {
             target: tabStack
             property: "source"
-            value: root.tabs[root.selectedTab].widget
+            value: root.tabs[root.selectedTab]?.widget ?? "" // tabs shrinks a beat before selectedTab clamps
         } // The source change happens here
         ParallelAnimation {
             PropertyAnimation {

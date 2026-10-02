@@ -1220,6 +1220,40 @@ Item {
             }
 
             ContentSubsection {
+                id: bottomWidgets
+                title: Translation.tr("Bottom widgets")
+                tooltip: Translation.tr("Tabs of the card at the bottom of the right sidebar. At least one stays on.")
+                readonly property var shown: Config.options.sidebar.bottomGroup
+                readonly property int count: shown.calendar + shown.todo + shown.timer
+
+                ConfigRow {
+                    uniform: true
+
+                    ConfigSwitch {
+                        buttonIcon: "calendar_month"
+                        text: Translation.tr("Calendar")
+                        checked: bottomWidgets.shown.calendar
+                        enabled: !checked || bottomWidgets.count > 1
+                        onCheckedChanged: Config.options.sidebar.bottomGroup.calendar = checked
+                    }
+                    ConfigSwitch {
+                        buttonIcon: "done_outline"
+                        text: Translation.tr("To Do")
+                        checked: bottomWidgets.shown.todo
+                        enabled: !checked || bottomWidgets.count > 1
+                        onCheckedChanged: Config.options.sidebar.bottomGroup.todo = checked
+                    }
+                    ConfigSwitch {
+                        buttonIcon: "schedule"
+                        text: Translation.tr("Timer")
+                        checked: bottomWidgets.shown.timer
+                        enabled: !checked || bottomWidgets.count > 1
+                        onCheckedChanged: Config.options.sidebar.bottomGroup.timer = checked
+                    }
+                }
+            }
+
+            ContentSubsection {
                 title: Translation.tr("Corner open")
                 tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
 
