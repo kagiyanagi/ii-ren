@@ -63,6 +63,14 @@ DockContextMenuBase {
         }
 
         DockMenuButton {
+            visible: !!root.desktopEntry
+            Layout.fillWidth: true
+            symbolName: "add_to_queue"
+            labelText: qsTr("Open in new workspace")
+            onTriggered: { AppSearch.launchOnNewWorkspace(root.desktopEntry, root.appToplevel?.appId ?? root.desktopEntry.id); root.close() }
+        }
+
+        DockMenuButton {
             Layout.fillWidth: true
             symbolName: (root.appToplevel && TaskbarApps.isPinned(root.appToplevel.appId)) ? "keep_off" : "keep"
             labelText: (root.appToplevel && TaskbarApps.isPinned(root.appToplevel.appId)) ? qsTr("Unpin") : qsTr("Pin")

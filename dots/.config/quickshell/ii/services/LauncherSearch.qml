@@ -1,5 +1,6 @@
 pragma Singleton
 
+import qs
 import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.functions
@@ -327,7 +328,16 @@ Singleton {
                 runInTerminal: entry.runInTerminal,
                 genericName: entry.genericName,
                 keywords: entry.keywords,
-                actions: entry.actions.map(action => {
+                actions: [root.createResult( {
+                        name: Translation.tr("Open in new workspace"),
+                        iconName: "add_to_queue",
+                        iconType: LauncherSearchResult.IconType.Material,
+                        selectedOnly: true,
+                        execute: () => {
+                            GlobalStates.overviewOpen = false;
+                            AppSearch.launchOnNewWorkspace(entry);
+                        }
+                    })].concat(entry.actions.map(action => {
                     return root.createResult( {
                         name: action.name,
                         iconName: action.icon,
@@ -340,7 +350,7 @@ Singleton {
                             }
                         }
                     });
-                })
+                }))
             });
         });
         const commandResultObject = root.createResult( {

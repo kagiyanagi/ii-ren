@@ -18,6 +18,7 @@ QtObject {
         print("Not implemented");
     }
     property var actions: []
+    property bool selectedOnly: false // an action button drawn only on the hovered/focused row
     
     // Stuff needed for DesktopEntry 
     property string id: ""

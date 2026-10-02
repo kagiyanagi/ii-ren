@@ -274,10 +274,11 @@ RippleButton {
             Layout.alignment: Qt.AlignVCenter
             spacing: 4
             Repeater {
-                model: (root.entry.actions ?? []).slice(0, 4)
+                model: (root.entry.actions ?? []).slice(0, 5)
                 delegate: RippleButton {
                     id: actionButton
                     required property var modelData
+                    visible: !modelData.selectedOnly || root.selected
                     property var iconType: modelData.iconType
                     property string iconName: modelData.iconName ?? ""
                     implicitHeight: 34

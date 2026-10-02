@@ -60,6 +60,25 @@ Singleton {
         return Fuzzy.queryEntries(search, preppedNames);
     }
 
+    // Hyprland's exec rule follows the pid it spawns, which misses an app that hands the
+    // launch to an instance already running (a browser, `kitty -1`). For those, the first
+    // window of `cls` that opens on this workspace within 10s is moved after it. Both stay
+    // silent: the view and focus stay here.
+    function launchOnNewWorkspace(entry, cls = entry.startupClass || entry.id) {
+        const cmd = entry.command.map(a => `'${StringUtils.shellSingleQuoteEscape(a)}'`).join(" ");
+        const run = entry.runInTerminal ? `${Config.options.apps.terminal} -e ${cmd}` : cmd;
+        Quickshell.execDetached(["hyprctl", "eval", `
+            local cls, from, done, sub = ${JSON.stringify(cls.toLowerCase())}, hl.get_active_workspace().id, false
+            hl.dispatch(hl.dsp.exec_cmd(${JSON.stringify(run)}, { workspace = "emptym silent" }))
+            local function stop() if not done then done = true sub:remove() end end
+            sub = hl.on("window.open", function(w)
+                if done or (w.class or ""):lower() ~= cls or not w.workspace or w.workspace.id ~= from then return end
+                stop()
+                hl.dispatch(hl.dsp.window.move({ workspace = "emptym", follow = false, window = w }))
+            end)
+            hl.timer(stop, { timeout = 10000, type = "oneshot" })`]);
+    }
+
     function iconExists(iconName) {
         if (!iconName || iconName.length == 0) return false;
         return (Quickshell.iconPath(iconName, true).length > 0) 
