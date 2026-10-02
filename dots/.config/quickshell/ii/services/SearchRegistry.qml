@@ -12,7 +12,7 @@ Item {
     property list<var> sections: []
     // tools/check-settings-search.py holds this to every page that declares
     // a search index.
-    readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BatteryConfig", "BarConfig", "BackgroundConfig",
+    readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BatteryConfig", "SoundsConfig", "BarConfig", "BackgroundConfig",
         "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "ExtensionsConfig", "HyprlandConfig",
         "LockConfig", "AdvancedConfig", "HermesConfig", "ProfilesConfig"]
 

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import qs
 import qs.modules.common
+import qs.modules.common.functions
 import QtQuick
 import QtMultimedia
 import Quickshell
@@ -11,23 +12,28 @@ import Quickshell.Io
 /**
  * XDG sound theme event player (freedesktop sound theme & naming specs, simplified).
  *
- * Discovers themes from /usr/share/sounds and ~/.local/share/sounds, resolves
- * event names against the configured theme with fallback to inherited themes
- * and freedesktop, and plays them in-process through Qt Multimedia.
+ * Discovers themes from /usr/share/sounds, ~/.local/share/sounds and the ones the
+ * shell ships (assets/sounds), resolves event names against the configured theme
+ * with fallback to inherited themes and freedesktop, and plays them in-process
+ * through Qt Multimedia.
  *
  * Playback entry points:
  *  - playEvent(category, events): gated by Config.options.sounds.enable and
  *    Config.options.sounds[category], rate-limited per category, honors
- *    per-event custom file overrides (Config.options.sounds.custom).
+ *    per-event custom file overrides (Config.options.sounds.custom). Only the
+ *    shell plays these: load() is called from shell.qml alone, so the settings
+ *    app, which also instantiates the services that call this, stays quiet.
+ *  - preview(key, url): the settings page's play buttons. Ungated.
  *  - startLoop/stopLoop: continuous ring (alarms); ignores the master switch,
  *    the caller checks its own category toggle. Supports gentle fade-in.
  */
 Singleton {
     id: root
 
-    // [{id, dir, name, comment, inherits}]
+    // [{id, dir, name, comment, inherits, example}]
     property list<var> themes: []
     property bool indexReady: false
+    property bool live: false
     property var _soundFiles: ({})
     property var _lastPlayed: ({})
     readonly property real _initTime: Date.now()
@@ -39,15 +45,41 @@ Singleton {
     })
     // Suppress categories that misfire while services settle on startup:
     // UPower flips isPluggedIn once real values arrive, Bluetooth/KDE Connect
-    // report already-connected devices as "new", lock-on-startup engages late.
+    // report already-connected devices as "new", lock-on-startup engages late,
+    // and the sink's volume arrives as a change from 0.
     readonly property var _startupGraceMs: ({
         battery: 5000,
+        charging: 5000,
         devices: 10000,
-        lock: 10000
+        lock: 10000,
+        volumeChange: 5000
+    })
+
+    // What each category plays, first choice first; each one is a switch on the
+    // Sounds page and a key in Config.options.sounds (tools/check-sounds.py).
+    // Callers with a second event (unlock, unplug, removed) pass their own list.
+    readonly property var events: ({
+        notifications: ["message-new-instant", "message"],
+        alarm: ["alarm-clock-elapsed"],
+        pomodoro: ["alarm-clock-elapsed"],
+        session: ["desktop-login", "service-login"],
+        lock: ["screen-locked", "service-logout"],
+        volumeChange: ["audio-volume-change"],
+        screenshot: ["screen-capture", "camera-shutter"],
+        charging: ["power-plug"],
+        battery: ["battery-low", "dialog-warning"],
+        devices: ["device-added"]
     })
 
     readonly property real volume: (Config.options.sounds.volume ?? 100) / 100
     readonly property list<string> _extensions: ["oga", "ogg", "wav"]
+    readonly property string _bundledDir: FileUtils.trimFileProtocol(Quickshell.shellPath("assets/sounds"))
+
+    // Called by shell.qml, never by the settings app.
+    function load() {
+        root.live = true;
+        root._maybePlayLoginSound();
+    }
 
     function rescan() {
         root.indexReady = false;
@@ -62,21 +94,33 @@ Singleton {
      * `events` is a name or a list of names ordered by preference: each name is
      * tried across the whole theme chain (selected theme, its Inherits,
      * freedesktop) before the next, so the event's meaning wins over the theme.
+     * An absolute path is taken as is: notifications may name their own file.
      *
      * Lists that cross the QML boundary (Repeater models, list properties)
      * arrive as QVariantList sequences where Array.isArray is false, so
      * normalize by shape instead.
      */
-    function resolve(events) {
+    function resolve(events, themeId) {
         const names = typeof events === "string" ? [events] : Array.from(events);
-        const chain = root._themeChain(Config.options.sounds.theme);
+        const chain = root._themeChain(themeId ?? Config.options.sounds.theme);
         for (const name of names) {
+            if (name.startsWith("/")) return "file://" + name;
             for (const dir of chain) {
                 const url = root._fileUrl(dir, name);
                 if (url !== "") return url;
             }
         }
         return "";
+    }
+
+    // What a category plays right now: the user's own file, else the theme's.
+    function urlFor(category, themeId) {
+        return root._customUrl(category) || root.resolve(root.events[category], themeId);
+    }
+
+    // The theme a url was found in, for the settings page to say where a sound comes from.
+    function themeOf(url) {
+        return root.themes.find(t => url.startsWith(`file://${t.dir}/`)) ?? null;
     }
 
     function _fileUrl(dir, name) {
@@ -109,7 +153,8 @@ Singleton {
         return custom.startsWith("file://") ? custom : "file://" + custom;
     }
 
-    function playEvent(category, events) {
+    function playEvent(category, events = root.events[category]) {
+        if (!root.live) return;
         if (!Config.options.sounds.enable) return;
         if (!Config.options.sounds[category]) return;
 
@@ -137,6 +182,29 @@ Singleton {
         player.stop();
         player.source = url;
         player.play();
+    }
+
+    // The settings page's play buttons share the blip player, so a second press
+    // cuts the first sound off rather than playing over it. `previewing` names
+    // what is playing and `previewProgress` how far along it is.
+    property string previewing: ""
+    property string previewFailed: ""
+    readonly property real previewProgress: root.previewing !== "" && playersLoader.item
+        ? playersLoader.item.blipPlayer.position / Math.max(1, playersLoader.item.blipPlayer.duration) : 0
+
+    function preview(key, url) {
+        const player = root._ensurePlayers().blipPlayer;
+        player.stop();
+        root.previewing = "";
+        if (!url) return;
+        player.source = url;
+        player.play();
+        root.previewing = key;
+        root.previewFailed = "";
+    }
+
+    function stopPreview() {
+        root.preview("", "");
     }
 
     // Continuous ring for alarms; bypasses the master switch on purpose:
@@ -197,7 +265,15 @@ Singleton {
         EventPlayer { id: player1; outputDevice: mediaDevices.defaultAudioOutput }
         EventPlayer { id: player2; outputDevice: mediaDevices.defaultAudioOutput }
 
-        EventPlayer { id: blip; outputDevice: mediaDevices.defaultAudioOutput }
+        EventPlayer {
+            id: blip
+            outputDevice: mediaDevices.defaultAudioOutput
+            onPlaybackStateChanged: if (playbackState === MediaPlayer.StoppedState) root.previewing = ""
+            onErrorOccurred: {
+                root.previewFailed = root.previewing;
+                root.previewing = "";
+            }
+        }
 
         EventPlayer {
             id: loop
@@ -237,18 +313,37 @@ Singleton {
         }
     }
 
-    // Login sound: PersistentProperties survives QML live-reloads within the
-    // same process, so this only fires once per shell process (= per session).
-    PersistentProperties {
-        id: session
-        reloadableId: "soundServiceSession"
-        property bool loginSoundPlayed: false
+    // USB plug and unplug. udev sends one usb_device event per device, a hub's
+    // ports included; the devices rate limit folds that burst into one sound.
+    // ponytail: internal devices that re-enumerate on resume chime too; filter on
+    // sysfs `removable` if that turns out to happen on real hardware.
+    Process {
+        running: root.live && Config.options.sounds.enable && Config.options.sounds.devices
+        command: ["udevadm", "monitor", "--udev", "--subsystem-match=usb/usb_device"]
+        stdout: SplitParser {
+            onRead: line => {
+                const action = line.match(/^UDEV\s+\[[\d.]+\]\s+(add|remove)\s/)?.[1];
+                if (action) root.playEvent("devices", action === "add" ? "device-added" : "device-removed");
+            }
+        }
     }
 
+    // Login sound, once per Hyprland session: the marker lives in the session's
+    // runtime dir, so a shell restart or a live reload finds it and stays quiet.
+    property bool _loginChecked: false
     function _maybePlayLoginSound() {
-        if (session.loginSoundPlayed || !root.indexReady || !Config.ready) return;
-        session.loginSoundPlayed = true;
-        root.playEvent("session", ["desktop-login", "service-login"]);
+        if (!root.live || root._loginChecked || !root.indexReady || !Config.ready) return;
+        root._loginChecked = true;
+        loginMarker.running = true;
+    }
+
+    Process {
+        id: loginMarker
+        // noclobber: creating it fails if it exists, so only the first shell gets 0.
+        command: ["sh", "-c", 'exec 2>/dev/null; set -C; : > "${XDG_RUNTIME_DIR:-/tmp}/ii-login-sound-$HYPRLAND_INSTANCE_SIGNATURE"']
+        onExited: exitCode => {
+            if (exitCode === 0) root.playEvent("session");
+        }
     }
 
     Connections {
@@ -258,20 +353,30 @@ Singleton {
         }
     }
 
+    IpcHandler {
+        target: "sounds"
+
+        // For what the shell does not see happen: the Print key's grim runs in Hyprland.
+        function play(category: string): void {
+            root.playEvent(category);
+        }
+    }
+
     // ── Theme discovery ───────────────────────────────────────────────────
     Process {
         id: themeScanProc
         command: ["bash", "-c", `
-            for dir in /usr/share/sounds/* "$HOME/.local/share/sounds"/*; do
+            for dir in /usr/share/sounds/* "$HOME/.local/share/sounds"/* "$0"/*; do
                 [ -f "$dir/index.theme" ] || continue
                 grep -q '^Hidden=true' "$dir/index.theme" && continue
                 jq -n --arg id "$(basename "$dir")" --arg dir "$dir" \
                     --arg name "$(sed -n 's/^Name=//p' "$dir/index.theme" | head -1)" \
                     --arg comment "$(sed -n 's/^Comment=//p' "$dir/index.theme" | head -1)" \
                     --arg inherits "$(sed -n 's/^Inherits=//p' "$dir/index.theme" | head -1)" \
-                    '{id: $id, dir: $dir, name: (if $name == "" then $id else $name end), comment: $comment, inherits: $inherits}'
+                    --arg example "$(sed -n 's/^Example=//p' "$dir/index.theme" | head -1)" \
+                    '{id: $id, dir: $dir, name: (if $name == "" then $id else $name end), comment: $comment, inherits: $inherits, example: $example}'
             done | jq -s 'sort_by(.name)'
-        `]
+        `, root._bundledDir]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -290,7 +395,7 @@ Singleton {
 
     Process {
         id: fileScanProc
-        command: ["bash", "-c", `find -L /usr/share/sounds "$HOME/.local/share/sounds" -maxdepth 3 -type f \\( -name '*.oga' -o -name '*.ogg' -o -name '*.wav' \\) 2>/dev/null`]
+        command: ["bash", "-c", `find -L /usr/share/sounds "$HOME/.local/share/sounds" "$0" -maxdepth 3 -type f \\( -name '*.oga' -o -name '*.ogg' -o -name '*.wav' \\) 2>/dev/null`, root._bundledDir]
         stdout: StdioCollector {
             onStreamFinished: {
                 const files = {};

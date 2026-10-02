@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import qs
+import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -181,6 +182,13 @@ Singleton {
                     console.log("[Notifications] Cooled down notification from " + notification.appName);
                 }
             }
+
+            // A closed sidebar holds the popup back, not the sound; Do Not Disturb
+            // holds both. Low urgency is the spec's quiet tier, and an app that
+            // names its own sound (sound-file, sound-name) gets it.
+            const hints = notification.hints;
+            if (!root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
+                SoundService.playEvent("notifications", [hints["sound-file"], hints["sound-name"], ...SoundService.events.notifications].filter(Boolean));
 
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,

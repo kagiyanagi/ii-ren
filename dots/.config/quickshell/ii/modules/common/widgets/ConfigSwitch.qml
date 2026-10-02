@@ -10,6 +10,11 @@ RippleButton {
     id: root
     property string buttonIcon
     property alias iconSize: iconWidget.iconSize
+    // A second line under the label, as on ConfigNavRow. Empty takes no room.
+    property string summary
+    // Controls of the row's own between the label and the switch (a play
+    // button). Named, not default: callers already nest tooltips as children.
+    property alias trailing: trailingRow.data
 
     Layout.fillWidth: true
     readonly property bool wantsCard: true
@@ -59,14 +64,31 @@ RippleButton {
             icon: root.buttonIcon
             iconSize: Appearance.font.pixelSize.larger
         }
-        StyledText {
-            id: labelWidget
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.minimumWidth: 0
-            elide: Text.ElideRight
-            text: root.text
-            font.pixelSize: root.font.pixelSize
-            color: Appearance.colors.colOnSecondaryContainer
+            spacing: 2
+            StyledText {
+                id: labelWidget
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                text: root.text
+                font.pixelSize: root.font.pixelSize
+                color: Appearance.colors.colOnSecondaryContainer
+            }
+            StyledText {
+                Layout.fillWidth: true
+                visible: text.length > 0
+                elide: Text.ElideRight
+                text: root.summary
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+            }
+        }
+        RowLayout {
+            id: trailingRow
+            visible: children.length > 0
+            spacing: 4
         }
         StyledSwitch {
             id: switchWidget

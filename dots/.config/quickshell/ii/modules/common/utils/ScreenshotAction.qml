@@ -50,6 +50,10 @@ Singleton {
                 + `${root.fileUploadApiEndpoint} | jq -r '.files[0].url // empty'`
         }
         const annotationCommand = `${Config.options.regionSelector.annotation.useSatty ? "satty" : "swappy"} -f -`;
+        // Both families' snip surfaces build their command here at the moment of
+        // capture, so the shutter is here once. Only for a picture someone keeps.
+        if (action === ScreenshotAction.Action.Copy || action === ScreenshotAction.Action.Edit)
+            SoundService.playEvent("screenshot");
         switch (action) {
             case ScreenshotAction.Action.Copy:
                 if (saveDir === "") {

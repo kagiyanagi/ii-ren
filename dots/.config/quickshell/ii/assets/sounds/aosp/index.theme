@@ -1,0 +1,22 @@
+[Sound Theme]
+Name=Android
+Comment=Android's own system sounds, from AOSP
+Inherits=freedesktop
+Directories=stereo
+Example=message-new-instant
+
+[stereo]
+OutputProfile=stereo
+
+# Transcribed from AOSP frameworks/base/data/sounds, Apache-2.0 (LICENSE here):
+#   message-new-instant  notifications/material/ogg/Tethys_48k.ogg
+#   alarm-clock-elapsed  alarms/material/ogg/Timer_48k.ogg
+#   screen-capture       effects/material/ogg/camera_click_48k.ogg
+#   battery-low          effects/material/ogg/LowBattery_48k.ogg
+#   audio-volume-change  effects/ogg/Effect_Tick_48k.ogg
+#   screen-locked        effects/ogg/Lock_48k.ogg
+#   screen-unlocked      effects/ogg/Unlock_48k.ogg
+#   power-plug           effects/ogg/ChargingStarted_48k.ogg
+#   device-added         effects/ogg/Dock.ogg
+#   device-removed       effects/ogg/Undock.ogg
+# Android has no login, unplug or battery-full sound; those inherit freedesktop's.

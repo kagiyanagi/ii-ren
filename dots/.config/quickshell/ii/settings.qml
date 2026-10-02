@@ -60,6 +60,12 @@ ApplicationWindow {
             component: "modules/settings/BatteryConfig.qml"
         },
         {
+            id: "sounds",
+            name: Translation.tr("Sounds"),
+            icon: "volume_up",
+            component: "modules/settings/SoundsConfig.qml"
+        },
+        {
             id: "bar",
             name: Translation.tr("Bar"),
             icon: "toast",

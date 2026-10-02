@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import qs.modules.common
+import qs.services
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -18,7 +19,6 @@ Singleton {
     property PwNode sink: Pipewire.defaultAudioSink
     property PwNode source: Pipewire.defaultAudioSource
     readonly property real hardMaxValue: 2.00 // People keep joking about setting volume to 5172% so...
-    property string audioTheme: Config.options.sounds.theme
     property real value: sink?.audio.volume ?? 0
     
     function friendlyDeviceName(node) {
@@ -328,26 +328,17 @@ Singleton {
         }
     }
 
-    function playSystemSound(soundName) {
-        const ogaPath = `/usr/share/sounds/${root.audioTheme}/stereo/${soundName}.oga`;
-        const oggPath = `/usr/share/sounds/${root.audioTheme}/stereo/${soundName}.ogg`;
-
-        // Try playing .oga first
-        let command = [
-            "ffplay",
-            "-nodisp",
-            "-autoexit",
-            ogaPath
-        ];
-        Quickshell.execDetached(command);
-
-        // Also try playing .ogg (ffplay will just fail silently if file doesn't exist)
-        command = [
-            "ffplay",
-            "-nodisp",
-            "-autoexit",
-            oggPath
-        ];
-        Quickshell.execDetached(command);
+    // The volume tick. The sink's own level only: an app moving its stream makes
+    // no sound, and neither does a mute. NaN is the sink mid-resume, so the step
+    // out of it, like the first value at startup, is not a change anyone made.
+    Connections {
+        target: root.sink?.audio ?? null
+        property real lastVolume: NaN
+        function onVolumeChanged() {
+            const volume = root.sink.audio.volume;
+            if (!isNaN(lastVolume) && !isNaN(volume) && volume !== lastVolume)
+                SoundService.playEvent("volumeChange");
+            lastVolume = volume;
+        }
     }
 }

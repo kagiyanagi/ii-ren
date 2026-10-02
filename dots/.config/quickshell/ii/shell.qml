@@ -36,6 +36,7 @@ ShellRoot {
         Autostart.load()
         Updates.load()
         HermesService.load()
+        SoundService.load()
         if (Config.ready) root.activeFamily = Config.options.panelFamily
     }
 

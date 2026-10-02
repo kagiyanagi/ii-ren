@@ -48,10 +48,10 @@ Singleton {
     // Timer
     function refreshPomodoro() {
         if (getCurrentTimeInSeconds() >= Persistent.states.timer.pomodoro.start + focusTime) {
-            Quickshell.execDetached(["notify-send", "Timer", Translation.tr(`⏰ %1 minutes are up`).arg(Math.floor(focusTime / 60)), "-a", "Shell"]);
-            if (Config.options.sounds.pomodoro) {
-                Audio.playSystemSound("alarm-clock-elapsed")
-            }
+            // The timer's own sound stands in for the notification's when it is on.
+            const quiet = Config.options.sounds.enable && Config.options.sounds.pomodoro ? ["--hint=boolean:suppress-sound:true"] : [];
+            Quickshell.execDetached(["notify-send", "Timer", Translation.tr(`⏰ %1 minutes are up`).arg(Math.floor(focusTime / 60)), "-a", "Shell", ...quiet]);
+            SoundService.playEvent("pomodoro");
             resetPomodoro();
             return;
         }

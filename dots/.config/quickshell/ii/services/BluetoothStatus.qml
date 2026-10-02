@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Io
 import QtQuick
+import qs.services
 
 Singleton {
     id: root
@@ -14,6 +15,14 @@ Singleton {
     readonly property BluetoothDevice firstActiveDevice: Bluetooth.defaultAdapter?.devices.values.find(device => device.connected) ?? null
     readonly property int activeDeviceCount: Bluetooth.defaultAdapter?.devices.values.filter(device => device.connected).length ?? 0
     readonly property bool connected: Bluetooth.devices.values.some(d => d.connected)
+
+    // Connect and disconnect chimes, off the count: switching the adapter off
+    // drops every device at once, and that is one sound, not one each.
+    property int lastDeviceCount: 0
+    onActiveDeviceCountChanged: {
+        SoundService.playEvent("devices", activeDeviceCount > lastDeviceCount ? "device-added" : "device-removed");
+        lastDeviceCount = activeDeviceCount;
+    }
 
     function toggle(): void {
         if (Bluetooth.defaultAdapter)

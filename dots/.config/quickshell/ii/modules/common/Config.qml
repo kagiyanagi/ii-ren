@@ -2025,13 +2025,24 @@ Singleton {
                 property bool alarm: true
                 property bool alarmFadeIn: false
                 property int alarmFadeInSeconds: 30
+                // A file of the user's own in place of the theme's, for the
+                // categories that play one sound. SoundService reads any key here.
                 property JsonObject custom: JsonObject {
                     property string alarm: ""
-                    property string battery: ""
+                    property string notifications: ""
+                    property string pomodoro: ""
                 }
-                property bool battery: false
+                // One switch per SoundService.events category.
+                property bool notifications: true
                 property bool pomodoro: false
-                property string theme: "freedesktop"
+                property bool session: false
+                property bool lock: true
+                property bool volumeChange: true
+                property bool screenshot: true
+                property bool charging: true
+                property bool battery: false
+                property bool devices: false
+                property string theme: "aosp"
             }
 
             property JsonObject time: JsonObject {

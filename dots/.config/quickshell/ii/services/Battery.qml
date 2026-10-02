@@ -171,7 +171,7 @@ Singleton {
             "--hint=boolean:suppress-sound:true",
         ])
 
-        SoundService.playEvent("battery", ["battery-low", "dialog-warning"]);
+        SoundService.playEvent("battery");
     }
 
     onIsCriticalAndNotChargingChanged: {
@@ -189,7 +189,8 @@ Singleton {
             "--hint=boolean:suppress-sound:true",
         ]);
 
-        SoundService.playEvent("battery", ["battery-caution", "suspend-error", "dialog-error"]);
+        // A theme with no caution sound of its own still has its low one.
+        SoundService.playEvent("battery", ["battery-caution", "battery-low", "suspend-error", "dialog-error"]);
     }
 
     // Hibernate falls back to suspend: a failed one would leave nothing between
@@ -222,11 +223,7 @@ Singleton {
             if (PowerProfiles.profile === PowerProfile.PowerSaver) PowerProfiles.profile = root.profileBeforeSaver;
             root.profileBeforeSaver = -1;
         }
-        if (isPluggedIn) {
-            SoundService.playEvent("battery", "power-plug");
-        } else {
-            SoundService.playEvent("battery", "power-unplug");
-        }
+        SoundService.playEvent("charging", isPluggedIn ? "power-plug" : "power-unplug");
     }
 
     // Shorter idle timeouts on battery. hypridle's own still run, so whichever is
