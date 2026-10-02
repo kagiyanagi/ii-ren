@@ -20,6 +20,7 @@ import qs.modules.ii.background.widgets
 import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.weather
 import qs.modules.ii.background.widgets.media
+import "../../common/functions/wallpaperFraming.js" as Framing
 
 Scope {
     id: backgroundScope
@@ -80,6 +81,13 @@ Variants {
         property int wallpaperHeight: modelData.height // Some reasonable init value, to be updated
         property real movableXSpace: ((wallpaperWidth / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.width) / 2
         property real movableYSpace: ((wallpaperHeight / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.height) / 2
+        // How this wallpaper fits, zooms and pans, framed from its preview on the
+        // Background settings page. Images only: a video is mpvpaper's to draw,
+        // and mpvpaper fits it its own way.
+        readonly property var framing: Framing.entry(bgRoot.wallpaperIsVideo ? null : Persistent.states.wallpaperFraming,
+            CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath))
+        readonly property var framedRect: Framing.rect(bgRoot.framing, bgRoot.wallpaperWidth, bgRoot.wallpaperHeight,
+            screen.width, screen.height, bgRoot.effectiveWallpaperScale)
 
         readonly property bool parallaxEnabled: Config.options.background.parallax.enableWorkspace
             || Config.options.background.parallax.enableSidebar
@@ -154,26 +162,18 @@ Variants {
                     bgRoot.wallpaperWidth = width;
                     bgRoot.wallpaperHeight = height;
 
-                    let scale;
-                    if (width <= screenWidth || height <= screenHeight) {
-                        // Undersized/perfectly sized wallpapers
-                        scale = Math.max(screenWidth / width, screenHeight / height);
-                    } else {
-                        // Oversized = can be zoomed for parallax, yay
-                        scale = Math.min(bgRoot.preferredWallpaperScale, width / screenWidth, height / screenHeight);
-                    }
-
                     // Parallax pans the wallpaper about inside the screen, so it
                     // needs a wallpaper bigger than the screen to pan. One that
                     // matches the screen exactly covers it and leaves nothing to
                     // move, and parallax then does nothing at all with no hint
                     // as to why - which is every 1920x1080 wallpaper on a
                     // 1920x1080 panel, and most video wallpapers, since they are
-                    // usually cut to the panel. Give those the same zoom an
-                    // oversized wallpaper gets; anything that already has room
-                    // keeps the room it has.
-                    bgRoot.effectiveWallpaperScale = (bgRoot.parallaxEnabled && scale <= 1)
-                        ? bgRoot.preferredWallpaperScale : scale;
+                    // usually cut to the panel. baseZoom gives those the same zoom
+                    // an oversized wallpaper gets; anything that already has room
+                    // keeps the room it has. The settings preview runs the same
+                    // function, which is why it lives there and not here.
+                    bgRoot.effectiveWallpaperScale = Framing.baseZoom(width, height, screenWidth, screenHeight,
+                        bgRoot.preferredWallpaperScale, bgRoot.parallaxEnabled);
                 }
             }
         }
@@ -529,6 +529,22 @@ Variants {
                     }
                 }
 
+                // The bars round a wallpaper framed smaller than the screen, in
+                // the palette's own background so they read as the desktop's.
+                // Judged on the rect as drawn, not the one it is heading for: from
+                // Fit to Fill the target covers on the first frame while the
+                // picture is still growing into it.
+                Rectangle {
+                    anchors.fill: parent
+                    visible: !bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered
+                        && !Framing.covers(Qt.rect(wallpaper.x, wallpaper.y, wallpaper.width, wallpaper.height),
+                            bgRoot.screen.width, bgRoot.screen.height)
+                    color: Appearance.colors.colLayer0Base
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+                }
+
                 // Wallpaper
                 Item {
                     id: wallpaper
@@ -564,8 +580,10 @@ Variants {
                 }
                 property real effectiveValueX: Math.max(0, Math.min(1, valueX)) + sidebarOffsetX
                 property real effectiveValueY: Math.max(0, Math.min(1, valueY))
-                x: -(bgRoot.movableXSpace) - (effectiveValueX - 0.5) * 2 * bgRoot.movableXSpace
-                y: -(bgRoot.movableYSpace) - (effectiveValueY - 0.5) * 2 * bgRoot.movableYSpace
+                // Parallax swings the framed rect about wherever the framing put
+                // it; unframed, this is the old symmetric pan over movableXSpace.
+                x: Framing.travel(bgRoot.framedRect.x, bgRoot.framedRect.width, bgRoot.screen.width, -(effectiveValueX - 0.5) * 2)
+                y: Framing.travel(bgRoot.framedRect.y, bgRoot.framedRect.height, bgRoot.screen.height, -(effectiveValueY - 0.5) * 2)
 
                 // The same spec the widget canvas parallaxes on, and one spec for
                 // all four: movableXSpace is derived from the wallpaper's size, so a
@@ -584,15 +602,18 @@ Variants {
                 Behavior on height {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
-                width: bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
-                height: bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
+                width: bgRoot.framedRect.width
+                height: bgRoot.framedRect.height
 
                 TransitionImage {
                     anchors.fill: parent
                     visible: !bgRoot.wallpaperIsVideo
                     imageSource: bgRoot.wallpaperSafetyTriggered ? "" : bgRoot.wallpaperPath
                     animated: true
-                    fillMode: Image.PreserveAspectCrop
+                    // The rect already has the picture's shape except when
+                    // stretched; crop stays the rule so a wallpaper swap, which
+                    // resizes the rect over time, never squashes either image.
+                    fillMode: bgRoot.framing.mode === "stretch" ? Image.Stretch : Image.PreserveAspectCrop
                 }
 
                 MediaPlayer {
@@ -690,6 +711,22 @@ Variants {
             }
             }
 
+            // The wallpaper's rect before framing, on the wallpaper's own spec.
+            // The widget canvas is sized by this rather than by `wallpaper`, so
+            // zooming or panning the picture never moves a widget.
+            Item {
+                id: unframedWallpaper
+                visible: false
+                width: bgRoot.wallpaperWidth / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
+                height: bgRoot.wallpaperHeight / bgRoot.wallpaperToScreenRatio * bgRoot.effectiveWallpaperScale
+                Behavior on width {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+                Behavior on height {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+            }
+
             WidgetCanvas {
                 id: widgetCanvas
                 gridOverlayEnabled: Config.options.background.widgets.enableGrid ?? false
@@ -719,8 +756,8 @@ Variants {
                 Behavior on y {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
-                width: wallpaper.width
-                height: wallpaper.height
+                width: unframedWallpaper.width
+                height: unframedWallpaper.height
                 states: State {
                     name: "centered"
                     when: GlobalStates.screenLocked || bgRoot.wallpaperSafetyTriggered
@@ -796,13 +833,39 @@ Variants {
 
                     Image {
                         id: stillCutout
-                        anchors.fill: parent
+                        // The model's cutout takes the same rect, aspect and fill
+                        // rule as the wallpaper underneath: that is what registers
+                        // it to the pixels it was cut from. One of your own sits
+                        // wherever it was dragged to, fitted into its box, so a
+                        // sticker of any shape keeps its proportions.
+                        // The placement glides on the plane's own spec, as the
+                        // wallpaper does when it is reframed. Its fractions are
+                        // what animate, not its pixels, so it cannot lag the
+                        // plane it rides on while that resizes.
+                        readonly property var subject: bgRoot.framing.subject
+                        property real placeX: subject ? subject.x : 0.5
+                        property real placeY: subject ? subject.y : 0.5
+                        property real placeZoom: subject ? subject.zoom : 1
+                        Behavior on placeX {
+                            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        }
+                        Behavior on placeY {
+                            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        }
+                        Behavior on placeZoom {
+                            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        }
+                        readonly property var box: subject
+                            ? Framing.subjectRect({ x: placeX, y: placeY, zoom: placeZoom }, parent.width, parent.height)
+                            : Qt.rect(0, 0, parent.width, parent.height)
+                        x: box.x
+                        y: box.y
+                        width: box.width
+                        height: box.height
                         visible: !bgRoot.depthVideo
                         source: bgRoot.wallpaperSafetyTriggered ? "" : WallpaperSubject.source
-                        // Same rect, same aspect and same fill rule as the
-                        // wallpaper underneath: that is what registers the
-                        // subject to the pixels it was cut from.
-                        fillMode: Image.PreserveAspectCrop
+                        fillMode: bgRoot.framing.mode === "stretch" ? Image.Stretch
+                            : bgRoot.framing.subject ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                         asynchronous: true
                         // Read from disk every time the path is set. The cutout
                         // is rewritten in place whenever it is regenerated, and

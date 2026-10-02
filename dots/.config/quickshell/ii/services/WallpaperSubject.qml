@@ -6,6 +6,7 @@ import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../modules/common/functions/wallpaperFraming.js" as Framing
 
 /**
  * Subject depth: the wallpaper's foreground subject, cut out so the shell can
@@ -25,8 +26,11 @@ Singleton {
     id: root
 
     // The cutout is one shared resource, so it is worth having the moment
-    // either desktop or lock screen wants it.
-    readonly property bool enabled: Config.ready
+    // either desktop or lock screen wants it. Persistent too: until it has
+    // loaded there is no telling whether this wallpaper has a cutout of the
+    // user's own, and a bake started in the meantime may be fetching a 176MB
+    // model nobody needs.
+    readonly property bool enabled: Config.ready && Persistent.ready
         && (Config.options.background.depth.desktop.enable
             || (Config.options.background.depth.lock.sync
                 ? Config.options.background.depth.desktop.enable
@@ -54,15 +58,24 @@ Singleton {
     // from a wallpaper we have already moved on from.
     property string pendingOutput: ""
 
+    // A cutout of the user's own, picked on the Background settings page and
+    // placed from its preview there. It wins outright: no model, no bake, and
+    // no coverage test - a sticker filling most of the frame is still exactly
+    // what was asked for. Still images only, like the rest of framing.
+    readonly property string customPath: root.wallpaperIsVideo ? ""
+        : (Framing.entry(Persistent.states.wallpaperFraming, root.wallpaperFile).subject?.path ?? "")
+    readonly property bool custom: root.customPath.length > 0
+
     // A subject that is the whole frame, or none of it, has no depth in it. The
     // ROMs quietly fall back to a flat wallpaper in both cases and so do we.
-    readonly property bool hasSubject: root.cutoutPath.length > 0
-        && root.coverage > 0.01 && root.coverage < 0.92
+    readonly property bool hasSubject: root.custom || (root.cutoutPath.length > 0
+        && root.coverage > 0.01 && root.coverage < 0.92)
 
     readonly property bool ready: root.enabled && root.hasSubject
 
     // What the background draws for a still wallpaper: an RGBA cutout.
-    readonly property string source: (root.ready && !root.wallpaperIsVideo) ? `file://${root.cutoutPath}` : ""
+    readonly property string source: (!root.ready || root.wallpaperIsVideo) ? ""
+        : `file://${root.custom ? root.customPath : root.cutoutPath}`
 
     // What it draws for a video: the packed file, every frame stacked over its
     // own matte. The shell plays this instead of the original, which is also
@@ -80,7 +93,7 @@ Singleton {
     // is a run that failed outright - usually the first one, which has a 176MB
     // model to fetch - and that leaves no cache entry to get in the way.
     function generate(force = false): void {
-        if (!root.enabled || !root.wallpaperUsable)
+        if (!root.enabled || !root.wallpaperUsable || root.custom)
             return;
         if (root.declined && !force)
             return;
@@ -193,6 +206,9 @@ Singleton {
     // Reselecting a declined wallpaper must not quietly restart it, and neither
     // must a shell restart - generate() checks `declined` on every path in.
     onDeclinedChanged: if (root.declined) root.stopWork()
+    // Picking your own stops a bake that would only be thrown away; dropping it
+    // brings the model's back, which is a cache hit if it was ever cut.
+    onCustomChanged: root.custom ? root.stopWork() : root.generate()
     Component.onCompleted: root.generate()
 
     // ── mpvpaper handover ────────────────────────────────────────────────────

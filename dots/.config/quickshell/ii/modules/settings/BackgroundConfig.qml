@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -17,6 +18,22 @@ ContentPage {
 
     property bool allowHeavyLoads: false
     Component.onCompleted: Qt.callLater(() => page.allowHeavyLoads = true)
+
+    // A cutout of your own for subject depth: anything with transparency round
+    // the subject. Same pickers as the photo widget's.
+    property bool subjectPickerMissing: false
+    Process {
+        id: subjectPicker
+        command: ["bash", "-c", "if command -v kdialog >/dev/null; then kdialog --getopenfilename \"$HOME\" '*.png *.webp *.PNG *.WEBP'; elif command -v zenity >/dev/null; then zenity --file-selection --file-filter='Cutouts | *.png *.webp *.PNG *.WEBP'; else exit 127; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const path = this.text.trim();
+                if (path.length > 0)
+                    framePreview.setSubject(path);
+            }
+        }
+        onExited: exitCode => page.subjectPickerMissing = exitCode === 127
+    }
 
     ContentSection {
         icon: "sync_alt"
@@ -203,6 +220,27 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.background.rightClickMenu = checked;
             }
+        }
+    }
+
+    // One wallpaper's framing is wrong for the next, so it is remembered per
+    // file. The crop editor is the whole section: picture, frame and toolbar.
+    ContentSection {
+        icon: "fit_screen"
+        title: Translation.tr("Wallpaper fit")
+        tooltip: Translation.tr("How this wallpaper sits on the screen. Drag the preview to move it; Ctrl+scroll, pinch or the slider zooms.\nRemembered for each wallpaper, and the same on the desktop and the lock screen.")
+
+        StyledText {
+            visible: framePreview.isVideo
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: Appearance.colors.colSubtext
+            text: Translation.tr("A video wallpaper is drawn by mpvpaper, which always fills the screen with it. This applies to image wallpapers.")
+        }
+
+        WallpaperFramePreview {
+            id: framePreview
+            Layout.fillWidth: true
         }
     }
 
@@ -520,7 +558,7 @@ ContentPage {
     DepthSection {
         icon: "filter_center_focus"
         title: Translation.tr("Subject depth")
-        tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nEach widget picks its own side from its right-click menu; behind is the default.")
+        tooltip: Translation.tr("Cuts the foreground subject out of the wallpaper and draws it back on top of the widgets, so a clock can sit behind a shoulder.\nThe cutout is found by a segmentation model that runs once per wallpaper, on the CPU, and is cached afterwards. A video wallpaper is matted frame by frame, which takes minutes rather than seconds, and the shell plays it in place of mpvpaper so the matte cannot drift from the frame.\nOn an image you can use a cutout of your own instead, and drag it anywhere on the Wallpaper fit preview.\nEach widget picks its own side from its right-click menu; behind is the default.")
         desktopOpt: Config.options.background.depth.desktop
         lockOpt: Config.options.background.depth.lock
 
@@ -541,6 +579,12 @@ ContentPage {
                     text: {
                         if (!WallpaperSubject.wallpaperUsable)
                             return Translation.tr("No wallpaper to cut a subject out of yet.");
+                        if (page.subjectPickerMissing)
+                            return Translation.tr("Picking an image needs kdialog or zenity, and neither is installed.");
+                        if (WallpaperSubject.custom && framePreview.subjectStatus === Image.Error)
+                            return Translation.tr("Couldn't read your cutout at %1.").arg(WallpaperSubject.customPath);
+                        if (WallpaperSubject.custom)
+                            return Translation.tr("Using your own cutout. Drag it into place on the Wallpaper fit preview.");
                         if (WallpaperSubject.declined)
                             return Translation.tr("Cancelled for this wallpaper. It stays uncut - reselecting it or restarting the shell will not start it again.");
                         if (WallpaperSubject.working && WallpaperSubject.wallpaperIsVideo) {
@@ -590,7 +634,7 @@ ContentPage {
                 // Only a failed run is worth retrying on its own. A wallpaper
                 // the model simply found nothing in will find nothing again.
                 RippleButtonWithIcon {
-                    visible: WallpaperSubject.error.length > 0 && !WallpaperSubject.working
+                    visible: WallpaperSubject.error.length > 0 && !WallpaperSubject.working && !WallpaperSubject.custom
                     materialIcon: "refresh"
                     mainText: Translation.tr("Try again")
                     onClicked: WallpaperSubject.generate()
@@ -599,11 +643,31 @@ ContentPage {
                 // The way back from a cancel, and the way to redo a cutout you
                 // are not happy with.
                 RippleButtonWithIcon {
-                    visible: !WallpaperSubject.working
+                    visible: !WallpaperSubject.working && !WallpaperSubject.custom
                         && (WallpaperSubject.declined || WallpaperSubject.hasSubject)
                     materialIcon: "restart_alt"
                     mainText: Translation.tr("Rebake")
                     onClicked: WallpaperSubject.rebake()
+                }
+
+                // A cutout made elsewhere - a phone's lift-subject, an editor -
+                // in place of the model's, or with no model installed at all.
+                // Still images only, like the rest of framing.
+                RippleButtonWithIcon {
+                    visible: !WallpaperSubject.custom && WallpaperSubject.wallpaperUsable && !WallpaperSubject.wallpaperIsVideo
+                    materialIcon: "add_photo_alternate"
+                    mainText: Translation.tr("Use your own")
+                    onClicked: {
+                        subjectPicker.running = false;
+                        subjectPicker.running = true;
+                    }
+                }
+
+                RippleButtonWithIcon {
+                    visible: WallpaperSubject.custom
+                    materialIcon: "auto_awesome"
+                    mainText: Translation.tr("Find automatically")
+                    onClicked: framePreview.setSubject("")
                 }
             }
 

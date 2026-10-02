@@ -184,6 +184,18 @@ Singleton {
             property JsonObject wallpaper: JsonObject {
                 property list<string> favourites: []
             }
+
+            // Per-wallpaper fit, zoom, pan and custom subject, keyed by path;
+            // wallpaperFraming.js reads and writes it. A wallpaper still at the
+            // defaults has no entry. Rebuilt whole on every change, since
+            // JsonAdapter only notices a new value.
+            //
+            // It belongs in `wallpaper` above and has to live out here: JsonAdapter
+            // deserializes a `var` by reading and writing it on the adapter rather
+            // than on the JsonObject that holds it, so one nested anywhere below
+            // this level writes into the wrong object and crashes the shell on
+            // every load of this file.
+            property var wallpaperFraming: ({})
         }
     }
 }
