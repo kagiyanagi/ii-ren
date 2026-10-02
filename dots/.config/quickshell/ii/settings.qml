@@ -10,6 +10,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import qs.services
 import qs.modules.common
@@ -354,54 +355,77 @@ ApplicationWindow {
                 Behavior on implicitWidth {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-                // The rail grows every time a page is added, so it scrolls
-                // instead of clipping the last tabs off the bottom.
-                StyledFlickable {
+                NavigationRail {
+                    id: navRail
                     anchors.fill: parent
-                    contentWidth: width
-                    contentHeight: navRail.implicitHeight
+                    expanded: root.width > 900
 
-                    NavigationRail {
-                        id: navRail
-                        width: parent.width
-                        expanded: root.width > 900
+                    NavigationRailExpandButton {
+                        focus: root.visible
+                    }
 
-                        NavigationRailExpandButton {
-                            focus: root.visible
+                    FloatingActionButton {
+                        id: fab
+                        property bool justCopied: false
+                        iconText: justCopied ? "check" : "edit"
+                        buttonText: justCopied ? Translation.tr("Path copied") : Translation.tr("Config file")
+                        expanded: navRail.expanded
+                        downAction: () => {
+                            Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`);
+                        }
+                        altAction: () => {
+                            Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
+                            fab.justCopied = true;
+                            revertTextTimer.restart()
                         }
 
-                        FloatingActionButton {
-                            id: fab
-                            property bool justCopied: false
-                            iconText: justCopied ? "check" : "edit"
-                            buttonText: justCopied ? Translation.tr("Path copied") : Translation.tr("Config file")
-                            expanded: navRail.expanded
-                            downAction: () => {
-                                Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`);
+                        Timer {
+                            id: revertTextTimer
+                            interval: 1500
+                            onTriggered: {
+                                fab.justCopied = false;
                             }
-                            altAction: () => {
-                                Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
-                                fab.justCopied = true;
-                                revertTextTimer.restart()
-                            }
+                        }
 
-                            Timer {
-                                id: revertTextTimer
-                                interval: 1500
-                                onTriggered: {
-                                    fab.justCopied = false;
+                        StyledToolTip {
+                            text: Translation.tr("Open the shell config file\nAlternatively right-click to copy path")
+                        }
+                    }
+
+                    // The rail grows every time a page is added, so the tabs scroll
+                    // under the pinned header instead of clipping off the bottom.
+                    // Each edge fades in step with how far content runs past it.
+                    StyledFlickable {
+                        id: tabFlick
+                        readonly property real fadeLength: 24
+                        readonly property real topFade: Math.max(0, Math.min(contentY, fadeLength))
+                        readonly property real bottomFade: Math.max(0, Math.min(contentHeight - height - contentY, fadeLength))
+                        // Tighter than the shared default so every tab fits in
+                        // the window's starting height without scrolling.
+                        Layout.topMargin: 10
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        contentWidth: width
+                        contentHeight: tabArray.implicitHeight
+
+                        layer.enabled: contentHeight > height
+                        layer.effect: OpacityMask {
+                            maskSource: Rectangle {
+                                width: tabFlick.width
+                                height: tabFlick.height
+                                gradient: Gradient {
+                                    GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 1 - tabFlick.topFade / tabFlick.fadeLength) }
+                                    GradientStop { position: tabFlick.fadeLength / tabFlick.height; color: "black" }
+                                    GradientStop { position: 1 - tabFlick.fadeLength / tabFlick.height; color: "black" }
+                                    GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 1 - tabFlick.bottomFade / tabFlick.fadeLength) }
                                 }
-                            }
-
-                            StyledToolTip {
-                                text: Translation.tr("Open the shell config file\nAlternatively right-click to copy path")
                             }
                         }
 
                         NavigationRailTabArray {
-                            // Tighter than the shared default so every tab fits in
-                            // the window's starting height without scrolling.
-                            Layout.topMargin: 10
+                            id: tabArray
+                            width: parent.width
                             currentIndex: root.currentPage
                             expanded: navRail.expanded
                             Repeater {
