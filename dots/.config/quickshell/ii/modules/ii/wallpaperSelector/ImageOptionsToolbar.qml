@@ -25,6 +25,15 @@ Toolbar {
         id: motion
         target: imageToolbar
     }
+    // The toolbar is filled with primary, so the states are on-primary on it,
+    // not the dark layer-1 film a button brings by default.
+    component OnPrimaryButton: IconToolbarButton {
+        colText: Appearance.colors.colOnPrimary
+        colStateLayer: Appearance.colors.colOnPrimary
+        colBackgroundHover: Appearance.colors.colPrimaryHover
+        colRipple: Appearance.colors.colPrimaryActive
+    }
+
     Connections {
         target: wallpaperSelectorContent
         function onMoreOptionsModelDataChanged() {
@@ -32,9 +41,7 @@ Toolbar {
         }
     }
 
-    IconToolbarButton {
-        implicitWidth: height
-        colText: Appearance.colors.colOnPrimary
+    OnPrimaryButton {
         property string wallhavenId: wallpaperSelectorContent.getWallhavenId(modelData?.fileUrl) ?? ""
         visible: !!wallpaperSelectorContent.browserService && wallhavenId.length > 0
         onClicked: {
@@ -45,9 +52,7 @@ Toolbar {
             text: Translation.tr("Search for similar images")
         }
     }
-    IconToolbarButton {
-        implicitWidth: height
-        colText: Appearance.colors.colOnPrimary
+    OnPrimaryButton {
         visible: !wallpaperSelectorContent.browserMode
         onClicked: {
             wallpaperSelectorContent.toggleFavourite(modelData.filePath);
@@ -58,18 +63,14 @@ Toolbar {
             text: Translation.tr("Favourite this wallpaper")
         }
     }
-    IconToolbarButton {
-        implicitWidth: height
-        colText: Appearance.colors.colOnPrimary
+    OnPrimaryButton {
         onClicked: wallpaperSelectorContent.activate(modelData)
         text: "wallpaper"
         StyledToolTip {
             text: Translation.tr("Set as wallpaper")
         }
     }
-    IconToolbarButton {
-        implicitWidth: height
-        colText: Appearance.colors.colOnPrimary
+    OnPrimaryButton {
         visible: wallpaperSelectorContent.browserMode
         // Into the folder wallpapers are kept in. The URL and name come from a remote
         // API, so they are arguments, never part of the script.
@@ -85,9 +86,7 @@ Toolbar {
             text: Translation.tr("Download")
         }
     }
-    IconToolbarButton {
-        implicitWidth: height
-        colText: Appearance.colors.colOnPrimary
+    OnPrimaryButton {
         visible: (modelData?.fileUrl ?? "").length > 0
         onClicked: {
             Qt.openUrlExternally(modelData?.fileUrl)
