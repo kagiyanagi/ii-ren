@@ -366,6 +366,17 @@ Scope {
                     }
                 }
 
+                // Sleep locks on the way down, and the lock surface is see-through
+                // to the wallpaper: left up, this black is the lock screen's wallpaper,
+                // and the input that would clear it goes to the lock instead.
+                Connections {
+                    target: GlobalStates
+                    function onScreenLockedChanged() {
+                        if (GlobalStates.screenLocked && blackout.armed)
+                            root.blackout = false;
+                    }
+                }
+
                 NumberAnimation {
                     id: fadeIn
                     target: blackout
