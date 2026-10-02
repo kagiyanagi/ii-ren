@@ -10,8 +10,9 @@ import Quickshell
 /**
  * Side work: background turns, `btw` questions, and the current turn's
  * delegated children -- everything running off to the side of the main
- * conversation rather than in it. The Live tab of HermesWorkPanel, which draws
- * the sheet and the header and refreshes this when it is shown.
+ * conversation rather than in it -- then the saved delegation runs, newest
+ * first. The page of HermesWorkPanel, which draws the sheet and the header,
+ * refreshes this when it is shown and opens a run's detail.
  */
 Item {
     id: root
@@ -19,7 +20,12 @@ Item {
     readonly property var sideTasks: HermesService.sideTasks ?? []
     readonly property var subagents: HermesService.subagents ?? []
     readonly property var processes: HermesService.agentProcesses ?? []
+    readonly property var runs: (HermesService.spawnTrees ?? []).slice().sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0))
     readonly property bool hasFinishedSideTasks: root.sideTasks.some(task => task.done)
+
+    // The run whose detail is being fetched, so its row can say so.
+    property string loadingRunPath: ""
+    signal runOpened(var entry)
 
     // Per-child UI state, keyed by subagent_id on root rather than held on the
     // row: the rows are keyed now and survive a poll, but a child that drops
@@ -72,13 +78,23 @@ Item {
         root.setSteerDraft(id, "");
     }
 
+    /** "2h 05m", "45s" -- a process's uptime and a saved run's length. */
     function elapsedSeconds(secs: real): string {
-        const whole = Math.max(0, Math.round(secs));
+        const whole = Math.max(0, Math.round(secs ?? 0));
         if (whole < 60)
             return Translation.tr("%1s").arg(whole);
         if (whole < 3600)
             return Translation.tr("%1m %2s").arg(Math.floor(whole / 60)).arg(whole % 60);
-        return Translation.tr("%1h %2m").arg(Math.floor(whole / 3600)).arg(Math.floor((whole % 3600) / 60));
+        if (whole < 86400)
+            return Translation.tr("%1h %2m").arg(Math.floor(whole / 3600)).arg(Math.floor((whole % 3600) / 60));
+        return Translation.tr("%1d %2h").arg(Math.floor(whole / 86400)).arg(Math.floor((whole % 86400) / 3600));
+    }
+
+    function formatTimestamp(unixSeconds: real): string {
+        const stamp = unixSeconds ?? 0;
+        if (stamp <= 0)
+            return Translation.tr("Unknown time");
+        return Qt.formatDateTime(new Date(stamp * 1000), "MMM d, HH:mm");
     }
 
     function elapsed(startedAt: real): string {
@@ -129,6 +145,23 @@ Item {
                 "kind": "process",
                 "key": "process:" + (process.session_id || i),
                 "process": process
+            }));
+        }
+        if (root.runs.length > 0) {
+            // Saved runs under an empty live list would read as running work.
+            if (out.length === 0)
+                out.push({
+                    "kind": "idle",
+                    "key": "idle"
+                });
+            out.push({
+                "kind": "runsHeader",
+                "key": "runsHeader"
+            });
+            root.runs.forEach((run, i) => out.push({
+                "kind": "run",
+                "key": "run:" + (run.path || i),
+                "run": run
             }));
         }
         return out;
@@ -210,6 +243,79 @@ Item {
                     roleValue: "processesHeader"
                     SectionHeader {
                         text: Translation.tr("Background processes")
+                    }
+                }
+
+                DelegateChoice {
+                    roleValue: "idle"
+                    StyledText {
+                        required property var modelData
+                        width: listView.width
+                        leftPadding: 4
+                        text: Translation.tr("Nothing running right now")
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.small
+                    }
+                }
+
+                DelegateChoice {
+                    roleValue: "runsHeader"
+                    SectionHeader {
+                        text: Translation.tr("Past delegation runs")
+                    }
+                }
+
+                DelegateChoice {
+                    roleValue: "run"
+                    RippleButton {
+                        id: runRow
+                        required property var modelData
+                        readonly property var run: runRow.modelData.run
+                        readonly property bool loadingThis: root.loadingRunPath.length > 0 && root.loadingRunPath === (runRow.run.path ?? "")
+
+                        width: listView.width
+                        implicitHeight: runContent.implicitHeight + 20
+                        buttonRadius: Appearance.rounding.small
+                        colBackground: Appearance.colors.colLayer2
+                        colBackgroundHover: Appearance.colors.colLayer2Hover
+                        colRipple: Appearance.colors.colLayer2Active
+
+                        releaseAction: () => root.runOpened(runRow.run)
+
+                        contentItem: RowLayout {
+                            id: runContent
+                            spacing: 10
+
+                            MaterialSymbol {
+                                Layout.leftMargin: 2
+                                text: "account_tree"
+                                iconSize: Appearance.font.pixelSize.larger
+                                color: Appearance.colors.colOnLayer2
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                spacing: 2
+
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
+                                    text: (runRow.run.label ?? "").length > 0 ? runRow.run.label : root.formatTimestamp(runRow.run.started_at ?? 0)
+                                    color: Appearance.colors.colOnLayer2
+                                    font.pixelSize: Appearance.font.pixelSize.small
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    elide: Text.ElideRight
+                                    text: runRow.loadingThis ? Translation.tr("Loading…") : [Translation.tr("%1 subagents").arg(runRow.run.count ?? 0), root.elapsedSeconds((runRow.run.finished_at ?? 0) - (runRow.run.started_at ?? 0))].join("  ·  ")
+                                    color: Appearance.colors.colSubtext
+                                    font.pixelSize: Appearance.font.pixelSize.smaller
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -543,7 +649,8 @@ Item {
             shown: root.rows.length === 0
             icon: "device_hub"
             title: Translation.tr("Nothing running")
-            description: Translation.tr("Background turns, side questions and delegated agents show up here.")
+            description: Translation.tr("Background turns, side questions and delegated agents show up here, and their runs stay afterwards.")
+            descriptionHorizontalAlignment: Text.AlignHCenter
         }
     }
 

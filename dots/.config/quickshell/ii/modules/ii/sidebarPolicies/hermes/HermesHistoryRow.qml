@@ -16,6 +16,7 @@ RippleButton {
 
     required property var session
     property bool current: false
+    property bool showSource: true
 
     signal openRequested()
 
@@ -97,7 +98,7 @@ RippleButton {
                         parts.push(root.startedText);
                     if (count > 0)
                         parts.push(Translation.tr("%1 messages").arg(count));
-                    if (source.length > 0)
+                    if (root.showSource && source.length > 0)
                         parts.push(source);
                     return parts.join("  ·  ");
                 }
@@ -107,6 +108,18 @@ RippleButton {
         HermesIconButton {
             id: deleteButton
             Layout.rightMargin: 6
+            // A bin on every row was the loudest thing on the sheet, ten times
+            // over. It shows for the row under the pointer or the keyboard, and
+            // keeps its slot meanwhile so the title never re-elides under it.
+            readonly property bool shown: root.hovered || deleteButton.hovered || root.activeFocus || deleteButton.activeFocus || root.confirmingDelete
+            opacity: shown ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: deleteButton.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
+            }
             symbol: root.confirmingDelete ? "delete_forever" : "delete"
             tooltip: root.confirmingDelete ? Translation.tr("Press again to delete") : Translation.tr("Delete this chat")
             iconColor: root.confirmingDelete ? Appearance.m3colors.m3onErrorContainer : Appearance.colors.colSubtext

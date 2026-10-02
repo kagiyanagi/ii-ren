@@ -12,7 +12,10 @@ None of this shows in a still frame:
 - The run list <-> run detail swap flipped `showingDetail` before the animation
   started, so both pages' `visible` changed on frame 1: the old page vanished and
   the new one faded out and back in. Pages now follow `shownPage`, which only the
-  animation's midpoint moves, and the Live / History tabs go through the same swap.
+  animation's midpoint moves.
+- Live and History were two tabs, and Live was empty nearly every time, so the
+  sheet opened on a void. Saved runs are now a section under the running work,
+  with one quiet "nothing running" line above them when there is none.
 - The sheets scaled from `Item.Top` while their buttons sit at the right end of the
   composer row, below them.
 - The subagent card animated its own height on top of the Revealer inside it, which
@@ -69,16 +72,22 @@ poll = lambda: {
     "sideTasks": [{"taskId": "bg_1", "done": False}, {"taskId": "", "done": True}],
     "subagents": [{"subagent_id": "a", "depth": 0}, {"subagent_id": "b", "depth": 1}],
     "processes": [{"session_id": "p1"}],
+    "runs": [{"path": "/r/2"}, {"path": "/r/1"}],
 }
 first, second = run_rows(live, [poll(), poll()])
 assert keys(first) == keys(second), "Live: two polls of the same work produced different keys, so the rows rebuild"
 assert len(set(keys(first))) == len(first), f"Live: duplicate keys {keys(first)}"
 assert keys(first) == ["tasksHeader", "task:bg_1", "task:1", "subagentsHeader", "subagent:a", "subagent:b",
-                       "processesHeader", "process:p1"], f"Live: keys drifted: {keys(first)}"
+                       "processesHeader", "process:p1", "runsHeader", "run:/r/2", "run:/r/1"], \
+    f"Live: keys drifted: {keys(first)}"
 # Running side work sits above finished, whatever order the service appended it in.
 (ordered,) = run_rows(live, [{"sideTasks": [{"taskId": "old", "done": True}, {"taskId": "new", "done": False}],
-                              "subagents": [], "processes": []}])
+                              "subagents": [], "processes": [], "runs": []}])
 assert keys(ordered) == ["tasksHeader", "task:new", "task:old"], f"Live: finished work sits above running: {keys(ordered)}"
+(idle,) = run_rows(live, [{"sideTasks": [], "subagents": [], "processes": [], "runs": [{"path": "/r/1"}]}])
+assert keys(idle) == ["idle", "runsHeader", "run:/r/1"], f"Live: saved runs alone must say nothing is running: {keys(idle)}"
+(empty,) = run_rows(live, [{"sideTasks": [], "subagents": [], "processes": [], "runs": []}])
+assert empty == [], "Live: with nothing at all the list must be empty, so the placeholder shows"
 # A child finishing above another must not re-key the one below it.
 fewer = poll()
 fewer["subagents"].pop(0)
@@ -105,6 +114,9 @@ sessions = [{"id": "s1", "title": "one", "started_at": 2e9}, {"id": "s2", "title
 first, second = run_rows(history, [{"sessions": sessions}, {"sessions": json.loads(json.dumps(sessions))}])
 assert keys(first) == keys(second) == ["header:Today", "session:s1", "header:Older", "session:s2"], \
     f"History: keys drifted: {keys(first)}"
+(shuffled,) = run_rows(history, [{"sessions": [sessions[1], {"id": "s3", "started_at": 2}, sessions[0]]}])
+assert keys(shuffled) == ["header:Today", "session:s1", "header:Older", "session:s3", "session:s2"], \
+    f"History: rows in last-active order repeat a day header: {keys(shuffled)}"
 (filtered,) = run_rows(history, [{"sessions": sessions, "query": "two"}])
 assert keys(filtered) == ["header:Older", "session:s2"], "History: a filtered row changed its key"
 
@@ -131,10 +143,9 @@ assert "elementMoveEnter" in enter_half and "elementMoveFast" in enter_half, \
     "PageSwap: the new page arrives with its shift on elementMoveEnter and its opacity on elementMoveFast"
 bad = re.findall(r"visible:[^\n]*(?:currentIndex|showingDetail)", work)
 assert not bad, f"Work: a page's visibility reads the request ({bad}), so it changes on frame 1"
-assert len(re.findall(r"visible:\s*\w+\.shownPage === \d", work)) == 4, \
-    "Work: all four pages (two tabs, list and detail) must follow a PageSwap's shownPage"
-m = re.search(r"model:\s*ScriptModel\s*\{([^}]*)\}", work)
-assert m and 'objectProp: "path"' in m.group(1), "Work: the saved-run list is not keyed on `path`"
+assert len(re.findall(r"visible:\s*\w+\.shownPage === \d", work)) == 2, \
+    "Work: both pages (list and detail) must follow a PageSwap's shownPage"
+assert "TabBar" not in work, "Work: the Live / History tabs are back; runs are a section of the one list"
 
 # ── One icon button, and sheets that grow out of their buttons ─────────────
 for name, src in (("HermesWorkPanel", work), ("HermesSideTasksPanel", live), ("HermesHistoryPanel", history)):

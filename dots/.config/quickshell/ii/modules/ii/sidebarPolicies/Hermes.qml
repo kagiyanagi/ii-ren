@@ -777,7 +777,9 @@ Item {
             Layout.fillWidth: true
             Layout.maximumWidth: 330
             Layout.alignment: Qt.AlignHCenter
-            readonly property bool shown: HermesService.messageIDs.length === 0 && HermesService.providers.length > 0
+            // Not under a history or work sheet either: it has nothing to do with
+            // them, and the sheet gets its height back.
+            readonly property bool shown: HermesService.messageIDs.length === 0 && HermesService.providers.length > 0 && !root.historyShown && !root.workShown
 
             // Collapsed rather than dropped: this goes the instant the first
             // message is sent, which is exactly when the eye is on the transcript

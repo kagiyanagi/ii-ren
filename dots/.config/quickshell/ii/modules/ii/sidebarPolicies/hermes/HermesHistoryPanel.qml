@@ -40,15 +40,23 @@ Rectangle {
     onSessionsChanged: root.answered = true
     readonly property bool loading: !root.answered && root.sessions.length === 0
 
+    // "tui" on every row says nothing; the source is worth a word only once
+    // there is more than one.
+    readonly property bool mixedSources: new Set(root.sessions.map(session => session.source ?? "")).size > 1
+
     /**
      * Flat list of section headers and sessions, so one ListView renders both.
      * `key` is what the ScriptModel matches a refresh's fresh objects on.
      */
     readonly property var rows: {
         const needle = root.query.trim().toLowerCase();
-        const matched = needle.length === 0 ? root.sessions : root.sessions.filter(session =>
-            (session.title ?? "").toLowerCase().includes(needle)
-            || (session.preview ?? "").toLowerCase().includes(needle));
+        // session.list orders by last activity but reports only the start, so
+        // a resumed old chat split "Yesterday" in two with "Earlier this month"
+        // between. The headers and the row times are the start; so is the order.
+        const matched = root.sessions.filter(session => needle.length === 0
+            || (session.title ?? "").toLowerCase().includes(needle)
+            || (session.preview ?? "").toLowerCase().includes(needle))
+            .sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0));
 
         let out = [];
         let group = "";
@@ -100,9 +108,16 @@ Rectangle {
             Layout.fillWidth: true
             spacing: 4
 
-            MaterialTextField {
+            // A filled search bar, as in Messages and Gmail. The outlined field
+            // stood a head taller than the buttons beside it and drew a frame
+            // around what is the sheet's one control.
+            ToolbarTextField {
                 id: searchField
                 Layout.fillWidth: true
+                Layout.fillHeight: false
+                implicitHeight: 40
+                leftPadding: 40
+                colBackground: Appearance.colors.colLayer2
                 placeholderText: root.loading ? Translation.tr("Search conversations…") : Translation.tr("Search %1 conversations…").arg(root.sessions.length)
                 onTextChanged: root.query = text
                 // Esc backs out of the search before it backs out of the panel, so a
@@ -112,6 +127,15 @@ Rectangle {
                         text = "";
                     else
                         root.requestClose();
+                }
+
+                MaterialSymbol {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "search"
+                    iconSize: Appearance.font.pixelSize.larger
+                    color: Appearance.colors.colSubtext
                 }
             }
 
@@ -172,6 +196,7 @@ Rectangle {
                             width: listView.width
                             session: sessionRow.modelData.session
                             current: sessionRow.modelData.session.id === root.currentId
+                            showSource: root.mixedSources
                             onOpenRequested: {
                                 HermesService.resumeSession(sessionRow.modelData.session.id);
                                 root.requestClose();
@@ -222,6 +247,7 @@ Rectangle {
 
             PagePlaceholder { // Nothing to show, for one of two quite different reasons
                 shown: !root.loading && root.rows.length === 0
+                descriptionHorizontalAlignment: Text.AlignHCenter
                 icon: root.sessions.length === 0 ? "forum" : "search_off"
                 title: root.sessions.length === 0 ? Translation.tr("No conversations yet") : Translation.tr("No matches")
                 description: root.sessions.length === 0 ? Translation.tr("Chats are saved as soon as you send a message.") : Translation.tr("Nothing matching “%1”.").arg(root.query)

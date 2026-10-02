@@ -8,12 +8,12 @@ import QtQuick.Layouts
 import Quickshell
 
 /**
- * Everything Hermes has in flight, and what it did before.
+ * Everything Hermes has in flight, and what it did before, on one page.
  *
- * Live holds the three kinds of work that outlive a message -- background
- * turns, side questions, delegated children and anything the agent left
- * running -- and History holds saved delegation runs. Account and vault used
- * to be a third tab here; they are settings, and live in the settings app now.
+ * Live and History used to be two tabs, and Live was empty nearly every time
+ * the sheet opened, so the first thing it showed was a void with the saved
+ * runs one click away. Now the running work leads and the saved delegation
+ * runs follow it; a run opens its detail page over the list.
  */
 Rectangle {
     id: root
@@ -28,54 +28,33 @@ Rectangle {
     color: root.panelColor
     radius: Appearance.rounding.normal
 
-    readonly property var tabs: [
-        {
-            icon: "play_circle",
-            name: Translation.tr("Live")
-        },
-        {
-            icon: "history",
-            name: Translation.tr("History")
-        }
-    ]
+    property string loadingPath: ""
+    property var loadedTree: null // { session_id, started_at, finished_at, label, subagents }
+    property bool showingDetail: false
 
-    function refreshActiveTab(): void {
-        // Live refreshes itself -- it owns the polling that only runs while a
-        // turn is in flight, which this button must not bypass.
-        if (tabBar.currentIndex === 0) {
-            liveTab.refreshAll();
-            return;
-        }
+    function refresh(): void {
+        // Live owns the polling that only runs while a turn is in flight;
+        // this asks once and leaves that alone.
+        liveTab.refreshAll();
         HermesService.refreshSpawnTrees();
     }
 
     // A permanent child of Hermes.qml whose visibility follows its opacity, so
     // the false -> true edge is the open.
     onVisibleChanged: if (root.visible)
-        root.refreshActiveTab()
+        root.refresh()
 
-    /** "2h 05m", "45s" -- a process's uptime and a spawn tree's run length are
-     * the same kind of number, so both go through this. */
-    function formatDuration(seconds: real): string {
-        const total = Math.max(0, Math.floor(seconds ?? 0));
-        const days = Math.floor(total / 86400);
-        const hours = Math.floor((total % 86400) / 3600);
-        const minutes = Math.floor((total % 3600) / 60);
-        const secs = total % 60;
-        if (days > 0)
-            return Translation.tr("%1d %2h").arg(days).arg(hours);
-        if (hours > 0)
-            return Translation.tr("%1h %2m").arg(hours).arg(minutes);
-        if (minutes > 0)
-            return Translation.tr("%1m %2s").arg(minutes).arg(secs);
-        return Translation.tr("%1s").arg(secs);
-    }
-
-    function formatTimestamp(unixSeconds: real): string {
-        const stamp = unixSeconds ?? 0;
-        if (stamp <= 0)
-            return Translation.tr("Unknown time");
-        return Qt.formatDateTime(new Date(stamp * 1000), "MMM d, HH:mm");
+    function openEntry(entry: var): void {
+        if (!entry || (entry.path ?? "").length === 0)
+            return;
+        root.loadingPath = entry.path;
+        HermesService.loadSpawnTree(entry.path, payload => {
+            root.loadingPath = "";
+            if (!payload)
+                return;
+            root.loadedTree = payload;
+            root.showingDetail = true;
+        });
     }
 
     /**
@@ -123,7 +102,7 @@ Rectangle {
             HermesIconButton {
                 symbol: "refresh"
                 tooltip: Translation.tr("Refresh")
-                onReleased: root.refreshActiveTab()
+                onReleased: root.refresh()
             }
 
             HermesIconButton {
@@ -133,157 +112,23 @@ Rectangle {
             }
         }
 
-        SecondaryTabBar {
-            id: tabBar
-            onCurrentIndexChanged: root.refreshActiveTab()
-
-            Repeater {
-                model: root.tabs
-                delegate: SecondaryTabButton {
-                    required property var modelData
-                    buttonIcon: modelData.icon
-                    buttonText: modelData.name
-                }
-            }
-        }
-
         PageSwap {
-            id: tabSwap
+            id: pageSwap
             Layout.fillWidth: true
             Layout.fillHeight: true
-            page: tabBar.currentIndex
+            page: root.showingDetail ? 1 : 0
 
             HermesSideTasksPanel {
                 id: liveTab
                 anchors.fill: parent
-                visible: tabSwap.shownPage === 0
-            }
-            SpawnTreesTab {
-                anchors.fill: parent
-                visible: tabSwap.shownPage === 1
-            }
-        }
-    }
-
-    // ── Tab 2: saved delegation runs ────────────────────────────────────
-
-    component SpawnTreesTab: Item {
-        id: treeTab
-
-        readonly property var entries: {
-            const list = (HermesService.spawnTrees ?? []).slice();
-            list.sort((a, b) => (b.started_at ?? 0) - (a.started_at ?? 0));
-            return list;
-        }
-
-        property string loadingPath: ""
-        property var loadedTree: null // { session_id, started_at, finished_at, label, subagents }
-        property bool showingDetail: false
-
-        function openEntry(entry: var): void {
-            if (!entry || (entry.path ?? "").length === 0)
-                return;
-            treeTab.loadingPath = entry.path;
-            HermesService.loadSpawnTree(entry.path, payload => {
-                treeTab.loadingPath = "";
-                if (!payload)
-                    return;
-                treeTab.loadedTree = payload;
-                treeTab.showingDetail = true;
-            });
-        }
-
-        PageSwap {
-            id: detailSwap
-            anchors.fill: parent
-            page: treeTab.showingDetail ? 1 : 0
-
-            Item {
-                anchors.fill: parent
-                visible: detailSwap.shownPage === 0
-
-                Item {
-                    anchors.fill: parent
-                    visible: treeTab.entries.length > 0
-
-                    StyledListView {
-                        id: treeList
-                        anchors.fill: parent
-                        clip: true
-                        spacing: 8
-                        // Every save replaces spawnTrees; keyed, a new run is one insert.
-                        model: ScriptModel {
-                            objectProp: "path"
-                            values: treeTab.entries
-                        }
-
-                        delegate: RippleButton {
-                            id: treeRow
-                            required property var modelData
-                            width: treeList.width
-                            implicitHeight: treeContent.implicitHeight + 20
-                            buttonRadius: Appearance.rounding.small
-                            colBackground: Appearance.colors.colLayer2
-                            colBackgroundHover: Appearance.colors.colLayer2Hover
-
-                            readonly property bool loadingThis: treeTab.loadingPath.length > 0 && treeTab.loadingPath === (treeRow.modelData.path ?? "")
-
-                            releaseAction: () => treeTab.openEntry(treeRow.modelData)
-
-                            contentItem: RowLayout {
-                                id: treeContent
-                                spacing: 10
-
-                                MaterialSymbol {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    text: "account_tree"
-                                    iconSize: Appearance.font.pixelSize.larger
-                                    color: Appearance.colors.colOnLayer2
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.minimumWidth: 0
-                                    spacing: 2
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        elide: Text.ElideRight
-                                        text: (treeRow.modelData.label ?? "").length > 0 ? treeRow.modelData.label : root.formatTimestamp(treeRow.modelData.started_at ?? 0)
-                                        color: Appearance.colors.colOnLayer2
-                                        font.pixelSize: Appearance.font.pixelSize.smallie
-                                    }
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        elide: Text.ElideRight
-                                        text: treeRow.loadingThis ? Translation.tr("Loading…") : [Translation.tr("%1 subagents").arg(treeRow.modelData.count ?? 0), root.formatDuration((treeRow.modelData.finished_at ?? 0) - (treeRow.modelData.started_at ?? 0))].join("  ·  ")
-                                        color: Appearance.colors.colSubtext
-                                        font.pixelSize: Appearance.font.pixelSize.small
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    anchors.fill: parent
-                    visible: treeTab.entries.length === 0
-
-                    PagePlaceholder {
-                        shown: treeTab.entries.length === 0
-                        icon: "account_tree"
-                        title: Translation.tr("No delegation runs yet")
-                        description: Translation.tr("Runs are saved here once the agent spawns subagents.")
-                    }
-                }
+                visible: pageSwap.shownPage === 0
+                loadingRunPath: root.loadingPath
+                onRunOpened: entry => root.openEntry(entry)
             }
 
             ColumnLayout {
                 anchors.fill: parent
-                visible: detailSwap.shownPage === 1
+                visible: pageSwap.shownPage === 1
                 spacing: 8
 
                 RowLayout {
@@ -293,7 +138,7 @@ Rectangle {
                     HermesIconButton {
                         symbol: "arrow_back"
                         tooltip: Translation.tr("Back to runs")
-                        onReleased: treeTab.showingDetail = false
+                        onReleased: root.showingDetail = false
                     }
 
                     ColumnLayout {
@@ -305,7 +150,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
-                            text: (treeTab.loadedTree?.label ?? "").length > 0 ? treeTab.loadedTree.label : root.formatTimestamp(treeTab.loadedTree?.started_at ?? 0)
+                            text: (root.loadedTree?.label ?? "").length > 0 ? root.loadedTree.label : liveTab.formatTimestamp(root.loadedTree?.started_at ?? 0)
                             font.weight: Font.DemiBold
                             color: Appearance.colors.colOnLayer1
                         }
@@ -313,7 +158,7 @@ Rectangle {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
-                            text: root.formatDuration((treeTab.loadedTree?.finished_at ?? 0) - (treeTab.loadedTree?.started_at ?? 0))
+                            text: liveTab.elapsedSeconds((root.loadedTree?.finished_at ?? 0) - (root.loadedTree?.started_at ?? 0))
                             font.pixelSize: Appearance.font.pixelSize.small
                             color: Appearance.colors.colSubtext
                         }
@@ -329,7 +174,7 @@ Rectangle {
                         anchors.fill: parent
                         clip: true
                         spacing: 4
-                        model: root.subagentRowsFor(treeTab.loadedTree)
+                        model: root.subagentRowsFor(root.loadedTree)
 
                         delegate: RowLayout {
                             id: subRow
