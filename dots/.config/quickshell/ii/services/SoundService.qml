@@ -172,9 +172,90 @@ Singleton {
         const url = root._customUrl(category) || root.resolve(events);
         if (url === "") return;
         root._lastPlayed[category] = now;
-        // Volume blips restart a dedicated player: rapid changes cut the
-        // previous tick short instead of stacking overlapping ones.
+        // A repeat restarts its effect: rapid volume ticks cut the last one short.
+        const fx = root._fx[url];
+        if (fx?.status === SoundEffect.Ready) {
+            fx.stop();
+            fx.play();
+            return;
+        }
+        root._convert([url]);
         root._playUrl(url, category === "volumeChange" ? "blip" : "");
+    }
+
+    // ── Low latency ───────────────────────────────────────────────────────
+    // MediaPlayer opens a stream and decodes the file on every play, ~40ms before
+    // the first sample. A SoundEffect keeps the samples and a corked stream, so
+    // play() is an uncork (~4ms), and a corked stream still lets the sink
+    // suspend: an idle one costs nothing. It reads only WAV, so each sound is
+    // converted once into the cache; until then the MediaPlayer pool plays it.
+    property var _fx: ({}) // source url -> SoundEffect
+    property list<string> _converting: []
+    readonly property string _wavCache: FileUtils.trimFileProtocol(`${Directories.cache}/sounds`)
+    // The other half of a pair, warmed with its category; the callers own these lists.
+    readonly property var _secondEvents: ({
+        lock: ["screen-unlocked", "service-login"],
+        recording: ["screen-recording-stop", "complete"],
+        charging: ["power-unplug"],
+        devices: ["device-removed"]
+    })
+    // Every sound an enabled category can play right now; the alarm loops on MediaPlayer.
+    readonly property list<string> _wanted: {
+        if (!root.live || !root.indexReady || !(root.themes.length > 0 || root.themesFailed)) return [];
+        if (!Config.ready || !Config.options.sounds.enable) return [];
+        const cats = Object.keys(root.events).filter(c => c !== "alarm" && Config.options.sounds[c]);
+        const urls = cats.map(c => root.urlFor(c)).concat(cats.map(c => root._secondEvents[c]).filter(Boolean).map(e => root.resolve(e)));
+        return [...new Set(urls)].filter(u => u !== "");
+    }
+    on_WantedChanged: {
+        // A theme switch retires the old theme's streams, and its conversions.
+        root._converting = root._converting.filter(u => root._wanted.includes(u));
+        for (const url of Object.keys(root._fx)) {
+            if (root._wanted.includes(url)) continue;
+            root._fx[url].destroy();
+            delete root._fx[url];
+        }
+        root._convert(root._wanted);
+    }
+
+    function _convert(urls) {
+        const todo = urls.filter(u => !root._fx[u] && !root._converting.includes(u));
+        if (todo.length === 0) return;
+        root._converting = root._converting.concat(todo);
+        if (!wavProc.running) root._startConverting();
+    }
+
+    function _startConverting() {
+        wavProc.batch = root._converting;
+        wavProc.running = true;
+    }
+
+    Process {
+        id: wavProc
+        property list<string> batch: []
+        // Keyed by path and mtime, so an edited file converts again.
+        command: ["bash", "-c", `
+            mkdir -p "$0" || exit
+            for f; do
+                out="$0/$(printf %s "$f" | md5sum | cut -c1-16)-$(stat -c %Y "$f").wav"
+                [ -s "$out" ] || { ffmpeg -nostdin -loglevel error -y -i "$f" -c:a pcm_s16le "$out.part.wav" && mv "$out.part.wav" "$out"; } || continue
+                printf '%s\t%s\n' "$f" "$out"
+            done
+        `, root._wavCache, ...batch.map(u => FileUtils.trimFileProtocol(u))]
+        stdout: SplitParser {
+            onRead: line => {
+                const [src, wav] = line.split("\t");
+                const url = "file://" + src;
+                if (root._fx[url] || !root._converting.includes(url)) return;
+                const players = root._ensurePlayers();
+                root._fx[url] = players.fx.createObject(players, { source: "file://" + wav });
+            }
+        }
+        onExited: {
+            // A failed conversion leaves its sound on MediaPlayer; asked again, it retries.
+            root._converting = root._converting.filter(u => !batch.includes(u));
+            if (root._converting.length > 0) root._startConverting();
+        }
     }
 
     property int _poolIndex: 0
@@ -240,9 +321,8 @@ Singleton {
     }
 
     // Instantiating MediaPlayer/MediaDevices links QtMultimedia's backend — ffmpeg, VA-API and
-    // libpulse — and starts an audio thread, none of which is needed until a sound actually
-    // plays. The pool is therefore built on first playback and then kept for the rest of the
-    // session, exactly as if it had been created at startup.
+    // libpulse — and starts an audio thread, none of which is needed while every sound is off.
+    // The pool is therefore built when the first effect is warmed or played, then kept.
     component EventPlayer: MediaPlayer {
         id: eventPlayer
 
@@ -262,6 +342,12 @@ Singleton {
         readonly property MediaPlayer blipPlayer: blip
         readonly property MediaPlayer loopPlayer: loop
         readonly property NumberAnimation loopFadeAnim: loopFade
+        readonly property Component fx: Component {
+            SoundEffect {
+                audioDevice: mediaDevices.defaultAudioOutput
+                volume: root.volume
+            }
+        }
 
         MediaDevices {
             id: mediaDevices
