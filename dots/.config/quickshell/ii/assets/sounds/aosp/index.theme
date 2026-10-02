@@ -19,4 +19,7 @@ OutputProfile=stereo
 #   power-plug           effects/ogg/ChargingStarted_48k.ogg
 #   device-added         effects/ogg/Dock.ogg
 #   device-removed       effects/ogg/Undock.ogg
+#   dialog-error         effects/ogg/KeypressInvalid_48k.ogg
+#   screen-recording-start  effects/material/ogg/VideoRecord_48k.ogg
+#   screen-recording-stop   effects/material/ogg/VideoStop_48k.ogg
 # Android has no login, unplug or battery-full sound; those inherit freedesktop's.

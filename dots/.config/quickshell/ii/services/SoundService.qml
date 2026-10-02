@@ -42,6 +42,7 @@ Singleton {
         notifications: 500,
         volumeChange: 150,
         screenshot: 300,
+        authFailed: 500,
         devices: 1000
     })
     // Suppress categories that misfire while services settle on startup:
@@ -53,6 +54,7 @@ Singleton {
         charging: 5000,
         devices: 10000,
         lock: 10000,
+        recording: 5000,
         volumeChange: 5000
     })
 
@@ -67,6 +69,9 @@ Singleton {
         lock: ["screen-locked", "service-logout"],
         volumeChange: ["audio-volume-change"],
         screenshot: ["screen-capture", "camera-shutter"],
+        // No freedesktop name for these; a theme that has none plays a bell and a done chime.
+        recording: ["screen-recording-start", "bell"],
+        authFailed: ["dialog-error"],
         charging: ["power-plug"],
         battery: ["battery-low", "dialog-warning"],
         devices: ["device-added"]
@@ -311,6 +316,26 @@ Singleton {
             root.playEvent("lock", GlobalStates.screenLocked
                 ? ["screen-locked", "service-logout"]
                 : ["screen-unlocked", "service-login"]);
+        }
+    }
+
+    // A wrong password on the lock screen. Polkit's prompts are PolkitService's
+    // to report: reaching it from here would start a polkit agent in the settings app.
+    Connections {
+        target: GlobalStates
+        function onScreenUnlockFailedChanged() {
+            if (GlobalStates.screenUnlockFailed) root.playEvent("authFailed");
+        }
+    }
+
+    // Recording start and stop: record.sh writes this state, whoever started it.
+    // The grace covers the state file arriving with a recording already running.
+    Connections {
+        target: Persistent.states?.screenRecord ?? null
+        function onActiveChanged() {
+            root.playEvent("recording", Persistent.states.screenRecord.active
+                ? root.events.recording
+                : ["screen-recording-stop", "complete"]);
         }
     }
 

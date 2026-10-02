@@ -31,6 +31,8 @@ ContentPage {
         lock: "lock",
         volumeChange: "volume_up",
         screenshot: "screenshot_region",
+        recording: "screen_record",
+        authFailed: "password",
         charging: "power",
         battery: "battery_alert",
         devices: "devices_other"
@@ -489,6 +491,24 @@ ContentPage {
             checked: page.opts.screenshot
             onCheckedChanged: Config.options.sounds.screenshot = checked
             trailing: PlayButton { category: "screenshot" }
+        }
+        ConfigSwitch {
+            buttonIcon: page.icons.recording
+            text: Translation.tr("Screen recording")
+            summary: page.summary("recording", Translation.tr("When a recording starts and stops"))
+            enabled: page.opts.enable
+            checked: page.opts.recording
+            onCheckedChanged: Config.options.sounds.recording = checked
+            trailing: PlayButton { category: "recording" }
+        }
+        ConfigSwitch {
+            buttonIcon: page.icons.authFailed
+            text: Translation.tr("Wrong password")
+            summary: page.summary("authFailed", Translation.tr("On the lock screen and in password prompts"))
+            enabled: page.opts.enable
+            checked: page.opts.authFailed
+            onCheckedChanged: Config.options.sounds.authFailed = checked
+            trailing: PlayButton { category: "authFailed" }
         }
     }
 

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Services.Polkit
+import qs.services
 
 Singleton {
     id: root
@@ -40,5 +41,12 @@ Singleton {
 
     PolkitAgent {
         id: polkitAgent
+    }
+
+    Connections {
+        target: root.flow ?? null
+        function onAuthenticationFailed() {
+            SoundService.playEvent("authFailed");
+        }
     }
 }

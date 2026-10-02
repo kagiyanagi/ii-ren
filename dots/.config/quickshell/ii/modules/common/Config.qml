@@ -2039,6 +2039,8 @@ Singleton {
                 property bool lock: true
                 property bool volumeChange: true
                 property bool screenshot: true
+                property bool recording: true
+                property bool authFailed: true
                 property bool charging: true
                 property bool battery: false
                 property bool devices: false
