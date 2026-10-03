@@ -30,7 +30,6 @@ Singleton {
     }
 
     function refresh() {
-        readProc.buffer = []
         readProc.running = true
     }
 
@@ -128,19 +127,14 @@ Singleton {
 
     Process {
         id: readProc
-        property list<string> buffer: []
-
         command: [root.cliphistBinary, "list"]
-
-        stdout: SplitParser {
-            onRead: (line) => {
-                readProc.buffer.push(line)
-            }
-        }
+        // One split at the end: a push per line onto a list property copied the
+        // whole list each time, quadratic in the history's 750 entries.
+        stdout: StdioCollector { id: readOut }
 
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 0) {
-                root.entries = readProc.buffer
+                root.entries = readOut.text.split("\n").filter(line => line.length > 0)
             } else {
                 console.error("[Cliphist] Failed to refresh with code", exitCode, "and status", exitStatus)
             }
