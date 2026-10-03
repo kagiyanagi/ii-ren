@@ -238,6 +238,10 @@ Scope { // Scope
                         font.pixelSize: Appearance.font.pixelSize.title
                         text: "close"
                     }
+
+                    StyledToolTip {
+                        text: Translation.tr("Close")
+                    }
                 }
 
                 // Mounted on the card, not inside the Keybinds tab, so its scrim
@@ -249,11 +253,25 @@ Scope { // Scope
                     id: keybindEditorLoader
                     anchors.fill: parent
                     z: 1
-                    active: GlobalStates.cheatsheetKeybindEditorOpen
+                    // Not bound to the flag: unloading on close cut the exit short,
+                    // and the release below would then have broken the binding.
+                    // The sidebar's ToggleDialog latch.
+                    active: false
                     sourceComponent: KeybindEditor {
                         // The sheet's corner, not a dialog's own, so the scrim
                         // does not square off inside a rounded card.
                         radius: cheatsheetBackground.radius
+                    }
+                    readonly property bool wanted: GlobalStates.cheatsheetKeybindEditorOpen
+                    onWantedChanged: {
+                        if (!wanted) {
+                            if (item) item.show = false;
+                        } else if (active) {
+                            item.show = true;
+                            item.forceActiveFocus();
+                        } else {
+                            active = true;
+                        }
                     }
                     onActiveChanged: if (active) {
                         item.show = true;
@@ -262,7 +280,6 @@ Scope { // Scope
                     Connections {
                         target: keybindEditorLoader.item
                         function onDismiss() {
-                            keybindEditorLoader.item.show = false;
                             GlobalStates.cheatsheetKeybindEditorOpen = false;
                         }
                         function onVisibleChanged() {

@@ -1261,7 +1261,7 @@ Item {
                     }
                     ConfigSwitch {
                         buttonIcon: "done_outline"
-                        text: Translation.tr("To Do")
+                        text: Translation.tr("To do")
                         checked: bottomWidgets.shown.todo
                         enabled: !checked || bottomWidgets.count > 1
                         onCheckedChanged: Config.options.sidebar.bottomGroup.todo = checked

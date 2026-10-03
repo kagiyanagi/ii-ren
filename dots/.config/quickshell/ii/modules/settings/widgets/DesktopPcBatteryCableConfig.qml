@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("PC Battery Cable Options")
+    title: Translation.tr("PC battery cable options")
 
     ContentSection {
-        title: Translation.tr("PC Battery Cable Settings")
+        title: Translation.tr("PC battery cable settings")
         icon: "power"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "power"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("PC Battery Cable disabled")
+                title: Translation.tr("PC battery cable disabled")
                 description: Translation.tr("Enable the PC Battery Cable in Desktop Widgets settings to use this page.")
             }
         }

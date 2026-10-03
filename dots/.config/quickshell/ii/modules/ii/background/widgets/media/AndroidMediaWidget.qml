@@ -31,7 +31,7 @@ AbstractBackgroundWidget {
     readonly property bool playing: player ? player.playbackState === MprisPlaybackState.Playing : false
     readonly property string artUrl: MprisController.artUrl
     readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("No media")
-    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown artist")
     readonly property string identity: player ? (player.identity ?? "") : ""
     readonly property bool hasTrack: (player?.trackTitle ?? "").length > 0
 

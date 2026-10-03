@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs.services
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
@@ -125,6 +126,10 @@ Rectangle {
                 }
 
                 onClicked: root.remove()
+
+                StyledToolTip {
+                    text: Translation.tr("Remove")
+                }
             }
         }
 

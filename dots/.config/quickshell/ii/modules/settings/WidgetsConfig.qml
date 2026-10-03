@@ -58,9 +58,9 @@ Item {
 
     readonly property var categoriesList: [
         { id: "clock", title: Translation.tr("Clocks"), icon: "schedule", widgets: widgetCategories.Clock },
-        { id: "media", title: Translation.tr("Media Players"), icon: "play_circle", widgets: widgetCategories.Media },
+        { id: "media", title: Translation.tr("Media players"), icon: "play_circle", widgets: widgetCategories.Media },
         { id: "weather", title: Translation.tr("Weather"), icon: "cloud", widgets: widgetCategories.Weather },
-        { id: "date", title: Translation.tr("Date & Calendar"), icon: "calendar_today", widgets: widgetCategories.Date },
+        { id: "date", title: Translation.tr("Date & calendar"), icon: "calendar_today", widgets: widgetCategories.Date },
         { id: "photo", title: Translation.tr("Photo"), icon: "image", widgets: widgetCategories.Photo },
         { id: "bluetooth", title: Translation.tr("Devices & Bluetooth"), icon: "devices", widgets: widgetCategories.Bluetooth },
         { id: "utility", title: Translation.tr("Utility"), icon: "build", widgets: widgetCategories.Utility },
@@ -176,7 +176,7 @@ Item {
 
         // ── 1. Desktop Widgets Configuration ─────────────────────────────────
         ContentSection {
-            title: Translation.tr("Desktop Widgets")
+            title: Translation.tr("Desktop widgets")
             icon: "widgets"
 
             ConfigSwitch {
@@ -248,7 +248,7 @@ Item {
                 active: widgetsConfigRoot.colorSchemeActive
                 asynchronous: true
                 sourceComponent: ContentSubsection {
-                    title: Translation.tr("Widget Color Scheme")
+                    title: Translation.tr("Widget color scheme")
                     Layout.fillWidth: true
 
                     Rectangle {
@@ -360,7 +360,7 @@ Item {
 
         // ── 2. Widget Catalog (Categorized Gallery) ──────────────────────────
         ContentSection {
-            title: Translation.tr("Widget Catalog")
+            title: Translation.tr("Widget catalog")
             icon: "dashboard_customize"
             tooltip: Translation.tr("Browse, preview, and configure widgets across all categories")
 
@@ -377,7 +377,7 @@ Item {
 
         // ── 3. Widget Extensions ─────────────────────────────────────────────
         ContentSection {
-            title: Translation.tr("Widget Extensions")
+            title: Translation.tr("Widget extensions")
             icon: "extension"
             collapsible: true
             expanded: widgetsConfigRoot.extensionsExpanded
@@ -835,7 +835,7 @@ Item {
                                 color: cardItem.isActive ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
                             }
                             StyledText {
-                                text: cardItem.isActive ? Translation.tr("Remove from Desktop") : Translation.tr("Add to Desktop")
+                                text: cardItem.isActive ? Translation.tr("Remove from desktop") : Translation.tr("Add to desktop")
                                 font.pixelSize: Appearance.font.pixelSize.smallie
                                 font.weight: Font.DemiBold
                                 color: cardItem.isActive ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
@@ -989,6 +989,10 @@ Item {
                             text: "arrow_back"
                             iconSize: Appearance.font.pixelSize.large
                             color: Appearance.colors.colOnSecondaryContainer
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Back")
                         }
                     }
 

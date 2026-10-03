@@ -87,7 +87,7 @@ WindowDialog {
                 }
             }
 
-            Card {
+            DialogCard {
                 visible: root.effect === "nightLight"
                 SwitchRow {
                     first: true
@@ -115,7 +115,7 @@ WindowDialog {
                 }
             }
 
-            Card {
+            DialogCard {
                 visible: root.effect === "comfortView"
                 SwitchRow {
                     first: true
@@ -139,7 +139,7 @@ WindowDialog {
                 }
             }
 
-            Card {
+            DialogCard {
                 visible: root.effect === "readingMode"
                 SwitchRow {
                     first: true
@@ -167,7 +167,7 @@ WindowDialog {
                 }
             }
 
-            Card {
+            DialogCard {
                 visible: root.effect === "antiFlashbang"
                 SwitchRow {
                     first: true
@@ -210,20 +210,6 @@ WindowDialog {
         DialogButton {
             buttonText: Translation.tr("Done")
             onClicked: root.dismiss()
-        }
-    }
-
-    component Card: Rectangle {
-        default property alias rows: cardColumn.data
-        Layout.fillWidth: true
-        implicitHeight: cardColumn.implicitHeight
-        radius: Appearance.rounding.large
-        color: Appearance.colors.colSurfaceContainerHigh
-
-        ColumnLayout {
-            id: cardColumn
-            anchors.fill: parent
-            spacing: 0
         }
     }
 

@@ -188,22 +188,22 @@ Singleton {
         const codeInt = parseInt(code);
         const descriptions = {
             "113": Translation.tr("Clear"),
-            "116": Translation.tr("Partly Cloudy"),
+            "116": Translation.tr("Partly cloudy"),
             "119": Translation.tr("Cloudy"),
             "122": Translation.tr("Overcast"),
             "143": Translation.tr("Mist"),
-            "176": Translation.tr("Patchy Rain"),
-            "200": Translation.tr("Thundery Outbreaks"),
+            "176": Translation.tr("Patchy rain"),
+            "200": Translation.tr("Thundery outbreaks"),
             "248": Translation.tr("Fog"),
-            "266": Translation.tr("Light Drizzle"),
-            "296": Translation.tr("Light Rain"),
-            "302": Translation.tr("Moderate Rain"),
-            "308": Translation.tr("Heavy Rain"),
-            "326": Translation.tr("Light Snow"),
-            "332": Translation.tr("Moderate Snow"),
-            "338": Translation.tr("Heavy Snow"),
-            "353": Translation.tr("Light Rain Shower"),
-            "389": Translation.tr("Heavy Rain with Thunder")
+            "266": Translation.tr("Light drizzle"),
+            "296": Translation.tr("Light rain"),
+            "302": Translation.tr("Moderate rain"),
+            "308": Translation.tr("Heavy rain"),
+            "326": Translation.tr("Light snow"),
+            "332": Translation.tr("Moderate snow"),
+            "338": Translation.tr("Heavy snow"),
+            "353": Translation.tr("Light rain shower"),
+            "389": Translation.tr("Heavy rain with thunder")
         };
 
         if (descriptions[code]) {
@@ -535,7 +535,7 @@ Singleton {
                 fallbackTimer.stop();
                 root.location.valid = false;
                 root.gpsActive = false;
-                Quickshell.execDetached(["notify-send", Translation.tr("Weather Service"), Translation.tr("Cannot find a GPS service. Using the fallback method instead."), "-a", "Shell"]);
+                Quickshell.execDetached(["notify-send", Translation.tr("Weather service"), Translation.tr("Cannot find a GPS service. Using the fallback method instead."), "-a", "Shell"]);
                 console.error("[WeatherService] Could not aquire a valid backend plugin.");
                 root.getData(true);
             }

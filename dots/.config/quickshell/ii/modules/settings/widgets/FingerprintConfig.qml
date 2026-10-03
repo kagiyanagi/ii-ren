@@ -296,6 +296,10 @@ Item {
                                 iconSize: 20
                                 color: Appearance.colors.colPrimary
                             }
+
+                            StyledToolTip {
+                                text: Translation.tr("Save")
+                            }
                         }
 
                         RippleButton {

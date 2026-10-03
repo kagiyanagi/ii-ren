@@ -458,7 +458,7 @@ StyledPopup {
         Component {
             id: timerOffText
             StyledText {
-                text: Translation.tr("Timer Off")
+                text: Translation.tr("Timer off")
                 font.pixelSize: Appearance.font.pixelSize.large
                 font.family: Appearance.font.family.title
                 font.weight: Font.Bold

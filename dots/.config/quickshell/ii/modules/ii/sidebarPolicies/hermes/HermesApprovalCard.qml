@@ -54,8 +54,16 @@ Rectangle {
         return choice;
     }
 
-    implicitHeight: root.shown ? contentColumn.implicitHeight + 12 * 2 : 0
-    opacity: root.shown ? 1 : 0
+    property AnimSpec implicitHeightSpec: Appearance.animation.elementMoveEnter
+    implicitHeight: {
+        root.implicitHeightSpec = root.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+        return root.shown ? contentColumn.implicitHeight + 12 * 2 : 0;
+    }
+    property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+    opacity: {
+        root.opacitySpec = root.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+        return root.shown ? 1 : 0;
+    }
     visible: implicitHeight > 0
     clip: true
 
@@ -67,17 +75,17 @@ Rectangle {
     // must not, so the two run on different specs.
     Behavior on implicitHeight {
         NumberAnimation {
-            duration: root.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.shown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+            duration: root.implicitHeightSpec.duration
+            easing.type: root.implicitHeightSpec.type
+            easing.bezierCurve: root.implicitHeightSpec.bezierCurve
         }
     }
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            duration: root.opacitySpec.duration
+            easing.type: root.opacitySpec.type
+            easing.bezierCurve: root.opacitySpec.bezierCurve
         }
     }
 

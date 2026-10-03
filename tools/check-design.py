@@ -165,6 +165,24 @@ def rule_spatial_on_effects(lines):
                       "-- it overshoots and clips; use elementMoveFast or elementMoveExit")
 
 
+# `duration: shown ? enter : exit` inside the Behavior itself. The Behavior bakes
+# its duration and curve when the binding that writes the property runs, which
+# can be before this one re-reads `shown`, so the exit plays on the enter spec
+# (DESIGN.md 2.9). Behavior.targetValue is set first, so reading it is fine.
+DIRECTION_TERNARY = re.compile(r"^\s*(duration|easing\.bezierCurve|easing\.type)\s*:[^\n]*\?", re.M)
+
+
+def rule_direction_in_behavior(lines):
+    """A Behavior that picks its enter or exit spec from a binding."""
+    for i, ln in enumerate(lines):
+        if not re.search(r"Behavior on [\w.]+", ln) or cited(lines, i):
+            continue
+        block = re.sub(r"//.*", "", behavior_block(lines, i))
+        if DIRECTION_TERNARY.search(block) and "targetValue" not in block:
+            yield i, ("Behavior chooses its spec with a ternary -- the exit can run on the "
+                      "enter spec; assign the AnimSpec inside the binding that drives it (DESIGN.md 2.9)")
+
+
 def rule_spring_animation(lines):
     for i, ln in enumerate(lines):
         if "SpringAnimation" in ln and not ln.lstrip().startswith("//"):
@@ -259,6 +277,7 @@ RULES = [
     ("bare-text", "warn", rule_bare_text),
     ("anim-type-mismatch", "error", rule_anim_type_mismatch),
     ("spatial-on-effects", "error", rule_spatial_on_effects),
+    ("direction-in-behavior", "error", rule_direction_in_behavior),
     ("spring-animation", "error", rule_spring_animation),
     ("shadowed-property", "error", rule_shadowed_property),
     ("async-connections", "warn", rule_async_connections),

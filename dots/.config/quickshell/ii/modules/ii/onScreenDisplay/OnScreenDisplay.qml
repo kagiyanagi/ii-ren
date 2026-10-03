@@ -291,7 +291,7 @@ Scope {
                         Rectangle {
                             id: protectionMessageBackground
                             anchors.centerIn: parent
-                            color: Appearance.m3colors.m3error
+                            color: Appearance.colors.colError
                             property real padding: 10
                             implicitHeight: protectionMessageRowLayout.implicitHeight + padding * 2
                             implicitWidth: protectionMessageRowLayout.implicitWidth + padding * 2
@@ -304,12 +304,12 @@ Scope {
                                     id: protectionMessageIcon
                                     text: "dangerous"
                                     iconSize: Appearance.font.pixelSize.hugeass
-                                    color: Appearance.m3colors.m3onError
+                                    color: Appearance.colors.colOnError
                                 }
                                 StyledText {
                                     id: protectionMessageTextWidget
                                     horizontalAlignment: Text.AlignHCenter
-                                    color: Appearance.m3colors.m3onError
+                                    color: Appearance.colors.colOnError
                                     wrapMode: Text.Wrap
                                     text: root.protectionMessage
                                 }

@@ -21,10 +21,4 @@ OsdMaterialValueIndicator {
         return "brightness_high";
     }
     shape: MaterialShape.Shape.SoftBurst
-
-    onMoved: function(newValue) {
-        if (root.brightnessMonitor) {
-            root.brightnessMonitor.setBrightness(newValue);
-        }
-    }
 }

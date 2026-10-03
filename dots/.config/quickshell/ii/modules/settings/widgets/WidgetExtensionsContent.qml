@@ -123,7 +123,7 @@ ColumnLayout {
             id: extInstallInput
             Layout.fillWidth: true
             implicitHeight: 40
-            placeholderText: Translation.tr("GitHub URL or local absolute path...")
+            placeholderText: Translation.tr("GitHub URL or local absolute path")
             font.pixelSize: Appearance.font.pixelSize.normal
             // 3.7: Enter accepts a text field.
             onAccepted: root.install(extInstallInput.text)
@@ -270,7 +270,7 @@ ColumnLayout {
                             colRipple: extCard.isWidgetActive ? Appearance.colors.colErrorContainerActive : Appearance.colors.colPrimaryContainerActive
                             colText: extCard.isWidgetActive ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
                             materialIcon: extCard.isWidgetActive ? "delete" : "add"
-                            mainText: extCard.isWidgetActive ? Translation.tr("Remove") : Translation.tr("Add to Desktop")
+                            mainText: extCard.isWidgetActive ? Translation.tr("Remove") : Translation.tr("Add to desktop")
                             // A disabled control is 0.4 and still there (3.1);
                             // RippleButton applies that itself.
                             enabled: extCard.isEnabled
@@ -374,13 +374,13 @@ ColumnLayout {
         // Loading: the registry is still being read.
         PendingCard {
             visible: !WidgetExtensionManager.ready
-            label: Translation.tr("Reading installed extensions...")
+            label: Translation.tr("Reading installed extensions…")
         }
 
         // Install in flight: the row for it is already in the list.
         PendingCard {
             visible: WidgetExtensionManager.loading && root.pendingInstall !== ""
-            label: Translation.tr("Installing %1...").arg(root.pendingInstall)
+            label: Translation.tr("Installing %1…").arg(root.pendingInstall)
         }
     }
 

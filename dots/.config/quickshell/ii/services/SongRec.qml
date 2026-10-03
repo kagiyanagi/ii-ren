@@ -83,7 +83,7 @@ Singleton {
         running: false
         command: [
             "notify-send",
-            Translation.tr("Music Recognized"), 
+            Translation.tr("Music recognized"), 
             root.recognizedTrack.title + " - " + root.recognizedTrack.subtitle, 
             "-A", "Shazam",
             "-A", "YouTube",

@@ -26,7 +26,7 @@ Item {
     // a second caller does not.
     readonly property string artUrl: MprisController.artUrlFor(player)
     readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("No media")
-    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown artist")
     readonly property string identity: player ? (player.identity ?? "") : ""
 
     property bool isLocalArt: artUrl.startsWith("file://")
@@ -536,6 +536,10 @@ Item {
                             fill: 1
                         }
                     }
+
+                    StyledToolTip {
+                        text: root.playing ? Translation.tr("Pause") : Translation.tr("Play")
+                    }
                 }
             }
 
@@ -576,6 +580,10 @@ Item {
                         iconSize: Appearance.font.pixelSize.normal
                         fill: 1
                         color: Appearance.colors.colOnSurface
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Previous")
                     }
                 }
 
@@ -650,6 +658,10 @@ Item {
                         iconSize: Appearance.font.pixelSize.normal
                         fill: 1
                         color: Appearance.colors.colOnSurface
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Next")
                     }
                 }
             }

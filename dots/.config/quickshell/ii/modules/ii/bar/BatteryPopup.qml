@@ -161,12 +161,12 @@ StyledPopup {
                 StyledText {
                     text: {
                         if (Battery.chargeState === 4)
-                            return Translation.tr("Fully Charged");
+                            return Translation.tr("Fully charged");
                         if (Battery.chargeLimitReached)
                             return Translation.tr("Charge limit reached");
                         if (Battery.isCharging)
-                            return Translation.tr("Charging...");
-                        return Translation.tr("Discharging...");
+                            return Translation.tr("Charging");
+                        return Translation.tr("Discharging");
                     }
                     font.pixelSize: Appearance.font.pixelSize.large
                     font.family: Appearance.font.family.title
@@ -195,7 +195,7 @@ StyledPopup {
                     StyledText {
                         text: {
                             if (!root.hasTimeData && Battery.chargeState !== 4 && !Battery.chargeLimitReached)
-                                return Translation.tr("Calculating...");
+                                return Translation.tr("Calculating…");
                             if (Battery.chargeState === 4 || Battery.chargeLimitReached)
                                 return "";
                             const time = root.formatTime(Battery.isCharging ? Battery.timeToFullEffective : Battery.timeToEmpty);

@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Nagasaki Text Clock Options")
+    title: Translation.tr("Nagasaki text clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Nagasaki Text Clock disabled")
+                title: Translation.tr("Nagasaki text clock disabled")
                 description: Translation.tr("Enable the Nagasaki Text Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "format_size"
-                text: Translation.tr("Font Size")
+                text: Translation.tr("Font size")
                 value: Config.options.background.widgets.nagasaki_text.size ?? 200
                 from: 100
                 to: 400

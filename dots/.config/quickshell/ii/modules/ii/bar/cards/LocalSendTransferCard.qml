@@ -5,7 +5,7 @@ import QtQuick
 import QtQuick.Layouts
 
 SectionCard {
-    title: Translation.tr("Current Transfer")
+    title: Translation.tr("Current transfer")
     icon: "devices"
     shapeColor: Appearance.colors.colPrimaryContainer
     symbolColor: Appearance.colors.colOnPrimaryContainer

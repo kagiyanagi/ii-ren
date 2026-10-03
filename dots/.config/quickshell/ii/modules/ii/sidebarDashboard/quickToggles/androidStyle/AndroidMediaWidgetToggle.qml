@@ -66,10 +66,10 @@ Item {
     property string tooltipText: {
         var player = MprisController.activePlayer;
         if (player && player.trackTitle) {
-            var artist = player.trackArtist ? player.trackArtist : Translation.tr("Unknown Artist");
+            var artist = player.trackArtist ? player.trackArtist : Translation.tr("Unknown artist");
             return player.trackTitle + " - " + artist;
         }
-        return Translation.tr("Media Player");
+        return Translation.tr("Media player");
     }
 
     readonly property int effectiveSizeW: root.catalogSize[0]
@@ -278,6 +278,10 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
                         onClicked: widgetRoot2x1.player?.togglePlaying()
+
+                        StyledToolTip {
+                            text: widgetRoot2x1.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                        }
                     }
 
                     ColumnLayout {
@@ -295,7 +299,7 @@ Item {
                         }
                         StyledText {
                             Layout.fillWidth: true
-                            text: widgetRoot2x1.player?.trackArtist || Translation.tr("Unknown Artist")
+                            text: widgetRoot2x1.player?.trackArtist || Translation.tr("Unknown artist")
                             color: art2x1.hasArt ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
                             font.pixelSize: Appearance.font.pixelSize.small
                             elide: Text.ElideRight
@@ -343,7 +347,7 @@ Item {
                     }
                     StyledText {
                         Layout.fillWidth: true
-                        text: widgetRoot.player?.trackArtist || Translation.tr("Unknown Artist")
+                        text: widgetRoot.player?.trackArtist || Translation.tr("Unknown artist")
                         color: art2x2.hasArt ? ColorUtils.transparentize("white", 0.3) : Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.small
                         elide: Text.ElideRight
@@ -370,6 +374,10 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             onClicked: widgetRoot.player?.previous()
+
+                            StyledToolTip {
+                                text: Translation.tr("Previous")
+                            }
                         }
                         RippleButton {
                             implicitWidth: 44
@@ -385,6 +393,10 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             onClicked: widgetRoot.player?.togglePlaying()
+
+                            StyledToolTip {
+                                text: widgetRoot.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                            }
                         }
                         RippleButton {
                             implicitWidth: 32
@@ -398,6 +410,10 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                             }
                             onClicked: widgetRoot.player?.next()
+
+                            StyledToolTip {
+                                text: Translation.tr("Next")
+                            }
                         }
                     }
                 }

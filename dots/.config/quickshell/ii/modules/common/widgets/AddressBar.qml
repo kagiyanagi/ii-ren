@@ -41,6 +41,10 @@ Rectangle {
                 text: "drive_folder_upload"
                 iconSize: Appearance.font.pixelSize.larger
             }
+
+            StyledToolTip {
+                text: Translation.tr("Parent folder")
+            }
         }
 
         Item {

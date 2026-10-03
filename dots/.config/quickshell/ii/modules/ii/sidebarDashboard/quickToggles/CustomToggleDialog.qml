@@ -36,6 +36,10 @@ WindowDialog {
         return matches.filter(name => name.startsWith(root.query)).concat(matches.filter(name => !name.startsWith(root.query)));
     }
 
+    // Delete takes a second press, as a chat in Hermes' history does: the toggle
+    // and its commands are gone for good, with no undo.
+    property bool confirmingDelete: false
+
     readonly property bool canSave: nameField.text.trim().length > 0 && startCommandField.text.trim().length > 0
 
     function loadData() {
@@ -45,6 +49,7 @@ WindowDialog {
         startCommandField.text = data?.commandStart ?? "";
         stopCommandField.text = data?.commandStop ?? "";
         searchField.text = "";
+        root.confirmingDelete = false;
         iconGrid.positionViewAtBeginning();
         nameField.forceActiveFocus();
     }
@@ -224,9 +229,13 @@ WindowDialog {
     WindowDialogButtonRow {
         DialogButton {
             visible: root.isEditing
-            buttonText: Translation.tr("Delete")
+            buttonText: root.confirmingDelete ? Translation.tr("Press again to delete") : Translation.tr("Delete")
             colEnabled: Appearance.colors.colError
             onClicked: {
+                if (!root.confirmingDelete) {
+                    root.confirmingDelete = true;
+                    return;
+                }
                 CustomToggles.removeToggle(root.toggleId);
                 root.dismiss();
             }

@@ -711,8 +711,10 @@ element over a busy background or one being lifted.
 Elevation *changes* — hover lifting a card, a drag picking an item up — animate
 on an effects spec, never a spatial one.
 
-A modal surface dims what is behind it with `colScrim`, faded on
-`elementMoveFast`. (`colScrim` is 50%; M3's scrim is 32% — open, M3.md §1.2.)
+A modal surface dims what is behind it with `colScrim` (50%), faded on
+`elementMoveFast`. A surface that takes the whole screen (the power menu) dims
+further, `m3scrim` at 65%, so what is behind it recedes more than under a dialog.
+M3 says 32% for both; this is the owner's call (2026-10-03, M3.md §1.1).
 
 ---
 
@@ -723,6 +725,7 @@ px scale (M3.md §1.1); this is where each M3 style lands on it:
 
 | M3 style (size/line) | Repo token | Notes |
 |---|---|---|
+| display large 57/64 | `displayLarge` 57 | a page's hero number only: the battery level, the keep-awake readout, the temperature |
 | display small 36/44 | `display` 36 | one per page at most (the Hermes greeting), short text or numerals |
 | headline small 24/32 | `hugeass` 23 | `font.family.title`; dialog titles |
 | title large 22/28 | `huge` 22 | `font.family.title`; page and panel titles |
@@ -733,8 +736,9 @@ px scale (M3.md §1.1); this is where each M3 style lands on it:
 | label large 14/20 | `smallie` 13 | buttons, chips, menu items |
 | label small 11/16 | `smallest` 10 | badges only |
 
-Display medium/large and headline medium/large have no token: nothing in a
-shell this dense earns them. Don't add one for a single surface.
+Display medium and headline medium/large have no token: nothing in a shell this
+dense earns them. Don't add one for a single surface. `displayLarge` exists because
+three surfaces each invented a hero number size (45, 66, 69); they share it now.
 
 M3's **emphasized** styles — same size, heavier — mark selection, unread items,
 the primary action. Here that is `font.variableAxes.title` (wght 550) on text

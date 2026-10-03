@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Weather Icon Shape Options")
+    title: Translation.tr("Weather icon shape options")
 
     ContentSection {
-        title: Translation.tr("Weather Settings")
+        title: Translation.tr("Weather settings")
         icon: "cloud"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "cloud_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Weather Icon Shape disabled")
+                title: Translation.tr("Weather icon shape disabled")
                 description: Translation.tr("Enable the Weather Icon Shape in Desktop Widgets settings to use this page.")
             }
         }

@@ -153,9 +153,9 @@ Singleton {
 		this.activeTrack = {
 			uniqueId: this.activePlayer?.uniqueId ?? 0,
 			artUrl: this.activePlayer?.trackArtUrl ?? "",
-			title: this.activePlayer?.trackTitle || Translation.tr("Unknown Title"),
-			artist: this.activePlayer?.trackArtist || Translation.tr("Unknown Artist"),
-			album: this.activePlayer?.trackAlbum || Translation.tr("Unknown Album"),
+			title: this.activePlayer?.trackTitle || Translation.tr("Unknown title"),
+			artist: this.activePlayer?.trackArtist || Translation.tr("Unknown artist"),
+			album: this.activePlayer?.trackAlbum || Translation.tr("Unknown album"),
 		};
 
 		this.trackChanged(__reverse);

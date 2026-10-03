@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Month Clock Options")
+    title: Translation.tr("Month clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Month Clock disabled")
+                title: Translation.tr("Month clock disabled")
                 description: Translation.tr("Enable the Month Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -38,7 +38,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text:  Translation.tr("Widget Size")
+                text:  Translation.tr("Widget size")
                 value: Config.options.background.widgets.month_clock.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.month_clock.widgetSize = value
@@ -49,47 +49,47 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "calendar_today"
-                text:    Translation.tr("Month Ring")
+                text:    Translation.tr("Month ring")
                 checked: Config.options.background.widgets.month_clock.showMonthRing ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showMonthRing = checked
             }
             ConfigSwitch {
                 buttonIcon: "event"
-                text:    Translation.tr("Day Ring")
+                text:    Translation.tr("Day ring")
                 checked: Config.options.background.widgets.month_clock.showDayRing ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showDayRing = checked
             }
             ConfigSwitch {
                 buttonIcon: "date_range"
-                text:    Translation.tr("Weekday Ring")
+                text:    Translation.tr("Weekday ring")
                 checked: Config.options.background.widgets.month_clock.showWeekRing ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showWeekRing = checked
             }
 
             // ── Pill indicators ───────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Pill Indicators") }
+            ContentSubsectionLabel { text: Translation.tr("Pill indicators") }
 
             ConfigSwitch {
                 buttonIcon: "label"
-                text:    Translation.tr("Month Pill")
+                text:    Translation.tr("Month pill")
                 checked: Config.options.background.widgets.month_clock.showMonthPill ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showMonthPill = checked
             }
             ConfigSwitch {
                 buttonIcon: "label"
-                text:    Translation.tr("Day Pill")
+                text:    Translation.tr("Day pill")
                 checked: Config.options.background.widgets.month_clock.showDayPill ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showDayPill = checked
             }
             ConfigSwitch {
                 buttonIcon: "label"
-                text:    Translation.tr("Weekday Pill")
+                text:    Translation.tr("Weekday pill")
                 checked: Config.options.background.widgets.month_clock.showWeekPill ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showWeekPill = checked
             }
 
             // ── Analog Hands ──────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Analog Hands") }
+            ContentSubsectionLabel { text: Translation.tr("Analog hands") }
 
             ContentSubsection {
                 title: Translation.tr("Hour hand style")
@@ -150,29 +150,29 @@ ContentPage {
             }
 
             // ── Style ─────────────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Style & Appearance") }
+            ContentSubsectionLabel { text: Translation.tr("Style & appearance") }
 
             ConfigSwitch {
                 buttonIcon: "density_medium"
-                text:    Translation.tr("Show Tick Marks")
+                text:    Translation.tr("Show tick marks")
                 checked: Config.options.background.widgets.month_clock.showTickMarks ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.showTickMarks = checked
             }
             ConfigSwitch {
                 buttonIcon: "format_bold"
-                text:    Translation.tr("Bold Font")
+                text:    Translation.tr("Bold font")
                 checked: Config.options.background.widgets.month_clock.boldFont ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.boldFont = checked
             }
             ConfigSwitch {
                 buttonIcon: "contrast"
-                text:    Translation.tr("Black Background")
+                text:    Translation.tr("Black background")
                 checked: Config.options.background.widgets.month_clock.useBlackBg ?? true
                 onCheckedChanged: Config.options.background.widgets.month_clock.useBlackBg = checked
             }
             ConfigSwitch {
                 buttonIcon: "wb_twilight"
-                text:    Translation.tr("Glass Reflection")
+                text:    Translation.tr("Glass reflection")
                 checked: Config.options.background.widgets.month_clock.enableGlassReflection ?? false
                 onCheckedChanged: Config.options.background.widgets.month_clock.enableGlassReflection = checked
             }

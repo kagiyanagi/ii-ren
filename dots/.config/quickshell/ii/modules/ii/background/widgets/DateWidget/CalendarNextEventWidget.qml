@@ -230,7 +230,7 @@ AbstractBackgroundWidget {
 
                             StyledText {
                                 text: {
-                                    if (modelData.allDay) return Translation.tr("All Day");
+                                    if (modelData.allDay) return Translation.tr("All day");
                                     let st = Qt.formatDateTime(new Date(modelData.startDate), "h:mm");
                                     let et = Qt.formatDateTime(new Date(modelData.endDate), "h:mm A");
                                     return st + " - " + et;
@@ -269,7 +269,7 @@ AbstractBackgroundWidget {
 
                                 StyledText {
                                     Layout.alignment: Qt.AlignHCenter
-                                    text: Translation.tr("No Events Scheduled Today")
+                                    text: Translation.tr("No events scheduled today")
                                     font {
                                         pixelSize: 13
                                         weight: Font.Medium

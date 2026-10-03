@@ -126,7 +126,7 @@ AbstractBackgroundWidget {
     readonly property int btnPlayWidth: 44
 
     readonly property string trackTitle: player?.trackTitle || Translation.tr("No media")
-    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown artist")
     readonly property string artUrl: MprisController.artUrl
     readonly property bool isLocalArt: artUrl.startsWith("file://")
     

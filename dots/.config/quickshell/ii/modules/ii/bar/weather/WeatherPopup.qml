@@ -192,7 +192,7 @@ StyledPopup {
             visible: !root.hasReading
             Layout.minimumWidth: 240
             loading: root.forecastLoading && !root.fetchStalled
-            loadingText: root.city === "" ? Translation.tr("Finding your location...") : Translation.tr("Getting weather for %1...").arg(root.city)
+            loadingText: root.city === "" ? Translation.tr("Finding your location…") : Translation.tr("Getting weather for %1…").arg(root.city)
             emptyText: Translation.tr("No weather right now. Hover again to retry.")
 
             opacity: 0

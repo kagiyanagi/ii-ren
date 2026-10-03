@@ -10,7 +10,8 @@ import Quickshell.Widgets
 
 WindowDialog {
     id: root
-    backgroundHeight: 600
+    // The sidebar dialogs' fixed height (TASTE 4.1).
+    backgroundHeight: Math.round(root.height * 0.6)
 
     // Refreshing restarts discovery: it starts again only once BlueZ has confirmed the
     // stop, since a StartDiscovery sent while it is still stopping is refused.
@@ -34,11 +35,6 @@ WindowDialog {
     WindowDialogTitle {
         text: Translation.tr("Bluetooth devices")
     }
-    StyledIndeterminateProgressBar {
-        visible: Bluetooth.defaultAdapter?.discovering ?? false
-        Layout.fillWidth: true
-        Layout.bottomMargin: -8
-    }
     // ClippingRectangle: plain `clip` only clips to the bounding box, so a
     // row's hover fill would square off the card's corners.
     ClippingRectangle {
@@ -46,6 +42,29 @@ WindowDialog {
         Layout.fillHeight: true
         radius: Appearance.rounding.large
         color: Appearance.colors.colSurfaceContainerHigh
+
+        // On the card's top edge, over the list's top margin (M3: a linear
+        // indicator sits on its container's edge). It used to be a row of its
+        // own that came and went with every scan and moved the list 12px.
+        StyledIndeterminateProgressBar {
+            id: scanBar
+            readonly property bool scanning: Bluetooth.defaultAdapter?.discovering ?? false
+            property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            z: 1
+            opacity: {
+                scanBar.fadeSpec = scanBar.scanning ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                return scanBar.scanning ? 1 : 0;
+            }
+            visible: opacity > 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: scanBar.fadeSpec.duration
+                    easing.type: scanBar.fadeSpec.type
+                    easing.bezierCurve: scanBar.fadeSpec.bezierCurve
+                }
+            }
+        }
 
         StyledListView {
             // Pull to refresh: let go after dragging the list 80px past its top

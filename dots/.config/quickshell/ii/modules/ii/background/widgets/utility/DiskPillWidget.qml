@@ -48,7 +48,7 @@ AbstractBackgroundWidget {
         if (root.isWide && root.showDetails)
             return Translation.tr("Disk") + " · " + root.diskUsedGb + "/" + root.diskTotalGb + " GB";
         if (root.isWide)
-            return Translation.tr("Disk Usage");
+            return Translation.tr("Disk usage");
         return Translation.tr("Disk");
     }
     readonly property string valueText: Math.round(root.diskUsagePct * 100) + "%"

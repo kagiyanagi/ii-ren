@@ -93,7 +93,7 @@ ContentPage {
     // Wallpaper selection
     ContentSection {
         icon: "format_paint"
-        title: Translation.tr("Wallpaper & Colors")
+        title: Translation.tr("Wallpaper & colors")
         tooltip: Translation.tr("Favourite your wallpapers from wallpaper selector for them to be visible in the carousel")
         Layout.fillWidth: true
 

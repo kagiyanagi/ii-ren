@@ -313,6 +313,10 @@ Rectangle {
                     onClicked: {
                         root.deleteMode = !root.deleteMode;
                     }
+
+                    StyledToolTip {
+                        text: root.deleteMode ? Translation.tr("Done deleting") : Translation.tr("Delete alarms")
+                    }
                 }
 
                 // Add (blue) button
@@ -351,6 +355,10 @@ Rectangle {
 
                     onClicked: {
                         root.openAdd();
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Add alarm")
                     }
                 }
             }
@@ -600,6 +608,10 @@ Rectangle {
                             onClicked: {
                                 AlarmService.deleteAlarm(alarmCard.index);
                             }
+
+                            StyledToolTip {
+                                text: Translation.tr("Delete alarm")
+                            }
                         }
                     }
 
@@ -635,7 +647,7 @@ Rectangle {
             visible: root.mode !== "list"
 
             StyledText {
-                text: root.mode === "add" ? Translation.tr("Add Alarm") : Translation.tr("Edit Alarm")
+                text: root.mode === "add" ? Translation.tr("Add alarm") : Translation.tr("Edit alarm")
                 font.weight: Font.Bold
                 font.pixelSize: Appearance.font.pixelSize.normal
                 color: Appearance.colors.colOnSurface
@@ -680,7 +692,7 @@ Rectangle {
                     id: labelInput
                     Layout.fillWidth: true
                     Layout.minimumWidth: 80
-                    placeholderText: Translation.tr("Alarm Label")
+                    placeholderText: Translation.tr("Alarm label")
                     text: root.editLabel
                     wrapMode: TextEdit.NoWrap
                 }
@@ -760,6 +772,10 @@ Rectangle {
                     onClicked: {
                         AlarmService.deleteAlarm(root.editingIndex);
                         root.mode = "list";
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Delete alarm")
                     }
                 }
 

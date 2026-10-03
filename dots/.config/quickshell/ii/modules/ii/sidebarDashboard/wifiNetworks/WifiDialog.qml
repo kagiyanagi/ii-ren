@@ -23,11 +23,6 @@ WindowDialog {
     WindowDialogTitle {
         text: Translation.tr("Connect to Wi-Fi")
     }
-    StyledIndeterminateProgressBar {
-        visible: Network.wifiScanning
-        Layout.fillWidth: true
-        Layout.bottomMargin: -8
-    }
     // ClippingRectangle: plain `clip` only clips to the bounding box, so a
     // row's hover fill would square off the card's corners.
     ClippingRectangle {
@@ -35,6 +30,29 @@ WindowDialog {
         Layout.fillHeight: true
         radius: Appearance.rounding.large
         color: Appearance.colors.colSurfaceContainerHigh
+
+        // On the card's top edge, over the list's top margin (M3: a linear
+        // indicator sits on its container's edge). It used to be a row of its
+        // own that came and went with every scan and moved the list 12px.
+        StyledIndeterminateProgressBar {
+            id: scanBar
+            readonly property bool scanning: Network.wifiScanning
+            property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            z: 1
+            opacity: {
+                scanBar.fadeSpec = scanBar.scanning ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                return scanBar.scanning ? 1 : 0;
+            }
+            visible: opacity > 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: scanBar.fadeSpec.duration
+                    easing.type: scanBar.fadeSpec.type
+                    easing.bezierCurve: scanBar.fadeSpec.bezierCurve
+                }
+            }
+        }
 
         StyledListView {
             // Pull to refresh: let go after dragging the list 80px past its top

@@ -121,8 +121,8 @@ Scope {
                 if (FastPair.candidate?.connected)
                     return Translation.tr("Connected");
                 if (FastPair.candidate?.paired)
-                    return Translation.tr("Connecting...");
-                return Translation.tr("Pairing...");
+                    return Translation.tr("Connecting…");
+                return Translation.tr("Pairing…");
             }
 
             readonly property var snoozePresets: [

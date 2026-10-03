@@ -137,7 +137,7 @@ AbstractBackgroundWidget {
             // Bottom Estimated Time Text
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: root.hoursRemaining > 0 ? ("~ " + root.hoursRemaining + " " + Translation.tr("hours")) : Translation.tr("Calculating...")
+                text: root.hoursRemaining > 0 ? ("~ " + root.hoursRemaining + " " + Translation.tr("hours")) : Translation.tr("Calculating…")
                 color: ColorUtils.applyAlpha(root.activeAccentColor, 0.70)
                 font {
                     pixelSize: 17

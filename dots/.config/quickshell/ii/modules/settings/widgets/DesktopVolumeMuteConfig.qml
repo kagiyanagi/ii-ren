@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Volume Mute Pill Options")
+    title: Translation.tr("Volume mute pill options")
 
     ContentSection {
-        title: Translation.tr("Volume Mute Pill Settings")
+        title: Translation.tr("Volume mute pill settings")
         // Not `music_note` like the six media pages: this is a system mute
         // toggle, not a player, and the placeholder has to name what is off.
         icon: "volume_off"
@@ -25,7 +25,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "volume_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Volume Mute Pill disabled")
+                title: Translation.tr("Volume mute pill disabled")
                 description: Translation.tr("Enable the Volume Mute Pill in Desktop Widgets settings to use this page.")
             }
         }

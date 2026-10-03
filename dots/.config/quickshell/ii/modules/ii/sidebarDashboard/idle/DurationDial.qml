@@ -78,6 +78,8 @@ Item {
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) root.pick(root.shown - 1);
         else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) root.pick(root.shown + 1);
+        else if (event.key === Qt.Key_Home) root.pick(0); // M3 slider keys
+        else if (event.key === Qt.Key_End) root.pick(root.last);
         else return;
         event.accepted = true;
     }
@@ -238,7 +240,7 @@ Item {
                 id: bigNumber
                 visible: readout.minutes > 0
                 animateChange: !root.dragging
-                font.pixelSize: Appearance.font.pixelSize.huge * 3
+                font.pixelSize: Appearance.font.pixelSize.displayLarge
                 font.family: Appearance.font.family.numbers
                 font.variableAxes: ({})
                 font.features: ({ "tnum": 1 })
@@ -249,7 +251,7 @@ Item {
                 id: infinity
                 anchors.verticalCenter: parent.verticalCenter
                 visible: readout.minutes === 0
-                iconSize: Appearance.font.pixelSize.huge * 3
+                iconSize: Appearance.font.pixelSize.displayLarge
                 color: Appearance.colors.colOnSurface
                 text: "all_inclusive"
             }

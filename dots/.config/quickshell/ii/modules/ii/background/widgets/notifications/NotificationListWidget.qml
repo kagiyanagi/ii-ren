@@ -121,7 +121,7 @@ AbstractBackgroundWidget {
                 {
                     "notificationId": -3,
                     "summary": Translation.tr("Standup"),
-                    "body": Translation.tr("In 10 minutes · Meeting room 2"),
+                    "body": Translation.tr("In 10 minutes · meeting room 2"),
                     "appName": "Calendar",
                     "appIcon": "",
                     "image": "",

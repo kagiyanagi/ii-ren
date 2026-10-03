@@ -15,7 +15,7 @@ Singleton {
     // Usando propriedades de getter ou ligadas diretamente às propriedades do Appearance.colors
     readonly property var schemes: ({
         "default": {
-            "name": Translation.tr("Default Surface"),
+            "name": Translation.tr("Default surface"),
             "cardBgColor": Appearance.m3colors.m3surfaceContainerHigh,
             "textColorOnBg": Appearance.colors.colOnSurfaceVariant,
             "accentColor": Appearance.colors.colPrimary,
@@ -34,7 +34,7 @@ Singleton {
             "surfaceVariantColor": Appearance.m3colors.m3surfaceVariant
         },
         "expressive_primary": {
-            "name": Translation.tr("Expressive Primary"),
+            "name": Translation.tr("Expressive primary"),
             "cardBgColor": Appearance.colors.colPrimaryContainer,
             "textColorOnBg": Appearance.colors.colOnPrimaryContainer,
             "accentColor": Appearance.colors.colPrimary,
@@ -53,7 +53,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "expressive_secondary": {
-            "name": Translation.tr("Expressive Secondary"),
+            "name": Translation.tr("Expressive secondary"),
             "cardBgColor": Appearance.colors.colSecondaryContainer,
             "textColorOnBg": Appearance.colors.colOnSecondaryContainer,
             "accentColor": Appearance.colors.colSecondary,
@@ -72,7 +72,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colSecondaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "expressive_tertiary": {
-            "name": Translation.tr("Expressive Tertiary"),
+            "name": Translation.tr("Expressive tertiary"),
             "cardBgColor": Appearance.colors.colTertiaryContainer,
             "textColorOnBg": Appearance.colors.colOnTertiaryContainer,
             "accentColor": Appearance.colors.colTertiary,
@@ -91,7 +91,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colTertiaryContainer, Appearance.m3colors.m3surfaceContainerHigh, 0.5)
         },
         "hero_primary": {
-            "name": Translation.tr("Hero Primary"),
+            "name": Translation.tr("Hero primary"),
             "cardBgColor": Appearance.colors.colPrimary,
             "textColorOnBg": Appearance.colors.colOnPrimary,
             "accentColor": Appearance.colors.colPrimaryContainer,
@@ -110,7 +110,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colOnPrimary, 0.2)
         },
         "vibrant_mix": {
-            "name": Translation.tr("Vibrant Mix"),
+            "name": Translation.tr("Vibrant mix"),
             "cardBgColor": ColorUtils.mix(Appearance.colors.colPrimaryContainer, Appearance.colors.colTertiaryContainer, 0.4),
             "textColorOnBg": Appearance.colors.colOnPrimaryContainer,
             "accentColor": Appearance.colors.colTertiary,
@@ -129,7 +129,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.2)
         },
         "muted_surface": {
-            "name": Translation.tr("Muted Low Surface"),
+            "name": Translation.tr("Muted low surface"),
             "cardBgColor": Appearance.m3colors.m3surfaceContainerLow,
             "textColorOnBg": Appearance.colors.colOnSurface,
             "accentColor": Appearance.colors.colSecondary,
@@ -148,7 +148,7 @@ Singleton {
             "surfaceVariantColor": Appearance.m3colors.m3surfaceVariant
         },
         "secondary_fixed": {
-            "name": Translation.tr("Secondary Fixed"),
+            "name": Translation.tr("Secondary fixed"),
             "cardBgColor": Appearance.m3colors.m3secondaryFixed,
             "textColorOnBg": Appearance.m3colors.m3onSecondaryFixed,
             "accentColor": Appearance.colors.colSecondary,
@@ -167,7 +167,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.m3colors.m3secondaryFixed, Appearance.m3colors.m3onSecondaryFixed, 0.15)
         },
         "tertiary_showcase": {
-            "name": Translation.tr("Tertiary Showcase"),
+            "name": Translation.tr("Tertiary showcase"),
             "cardBgColor": Appearance.colors.colTertiaryContainer,
             "textColorOnBg": Appearance.colors.colOnTertiaryContainer,
             "accentColor": Appearance.colors.colTertiary,
@@ -186,7 +186,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colTertiaryContainer, 0.2)
         },
         "error_alert": {
-            "name": Translation.tr("Error Alert"),
+            "name": Translation.tr("Error alert"),
             "cardBgColor": Appearance.colors.colErrorContainer,
             "textColorOnBg": Appearance.colors.colOnErrorContainer,
             "accentColor": Appearance.colors.colError,
@@ -205,7 +205,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.colors.colError, Appearance.colors.colErrorContainer, 0.2)
         },
         "inverse_surface": {
-            "name": Translation.tr("Inverse Surface"),
+            "name": Translation.tr("Inverse surface"),
             "cardBgColor": Appearance.m3colors.m3inverseSurface,
             "textColorOnBg": Appearance.m3colors.m3inverseOnSurface,
             "accentColor": Appearance.m3colors.m3inversePrimary,
@@ -224,7 +224,7 @@ Singleton {
             "surfaceVariantColor": ColorUtils.mix(Appearance.m3colors.m3inverseSurface, Appearance.m3colors.m3inverseOnSurface, 0.15)
         },
         "tri_blend": {
-            "name": Translation.tr("Tri-Color Blend"),
+            "name": Translation.tr("Tri-color blend"),
             "cardBgColor": Appearance.m3colors.m3surfaceContainerHigh,
             "textColorOnBg": Appearance.colors.colOnPrimaryContainer,
             "accentColor": Appearance.colors.colSecondary,

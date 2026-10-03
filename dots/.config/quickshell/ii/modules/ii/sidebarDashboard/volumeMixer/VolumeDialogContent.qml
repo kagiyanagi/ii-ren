@@ -42,7 +42,7 @@ StyledFlickable {
         height: Math.max(implicitHeight, root.height)
         spacing: 12
 
-        Card {
+        DialogCard {
             Repeater {
                 model: ScriptModel {
                     values: root.devices
@@ -170,7 +170,7 @@ StyledFlickable {
             }
         }
 
-        Card { // stretches, like the Wi-Fi dialog's list card
+        DialogCard { // stretches, like the Wi-Fi dialog's list card
             padding: 8
             Layout.fillHeight: true
 
@@ -198,25 +198,6 @@ StyledFlickable {
                 verticalAlignment: Text.AlignVCenter
                 text: root.isSink ? Translation.tr("No apps are playing sound") : Translation.tr("No apps are recording")
             }
-        }
-    }
-
-    component Card: Rectangle {
-        id: card
-        default property alias rows: cardColumn.data
-        property real padding: 0
-        Layout.fillWidth: true
-        implicitHeight: cardColumn.implicitHeight + padding * 2
-        radius: Appearance.rounding.large
-        color: Appearance.colors.colSurfaceContainerHigh
-
-        ColumnLayout {
-            id: cardColumn
-            anchors {
-                fill: parent
-                margins: card.padding
-            }
-            spacing: 0
         }
     }
 

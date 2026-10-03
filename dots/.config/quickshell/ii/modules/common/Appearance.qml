@@ -269,6 +269,10 @@ Singleton {
             property int hugeass: 23
             property int title: huge
             property int display: 36 // M3 displaySmall: the one greeting-sized line on a page
+            // M3 displayLarge (57/64): a page's hero number and nothing else -- the
+            // battery level, the keep-awake readout, the temperature. Three pages
+            // had each invented their own (45, 66, 69).
+            property int displayLarge: 57
         }
     }
 

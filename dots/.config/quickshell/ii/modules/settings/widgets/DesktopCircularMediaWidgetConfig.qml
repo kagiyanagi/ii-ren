@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Circular Media (Watch) Options")
+    title: Translation.tr("Circular media (watch) options")
 
     ContentSection {
-        title: Translation.tr("Circular Media (Watch) Settings")
+        title: Translation.tr("Circular media (watch) settings")
         icon: "music_note"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "music_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Circular Media (Watch) disabled")
+                title: Translation.tr("Circular media (watch) disabled")
                 description: Translation.tr("Enable the Circular Media (Watch) in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.circular_media.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -72,7 +72,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "blur_on"
-                text: Translation.tr("Enable Glass Reflection")
+                text: Translation.tr("Enable glass reflection")
                 checked: Config.options.background.widgets.circular_media.enableGlassReflection ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.circular_media.enableGlassReflection = checked;

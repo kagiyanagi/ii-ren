@@ -172,7 +172,7 @@ AbstractBackgroundWidget {
             opacity: Config.options.background.widgets.media.glow.enable ? (0.01 * Config.options.background.widgets.media.glow.brightness) : 0
 
             Behavior on opacity {
-                animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
+                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
             }
         }
 

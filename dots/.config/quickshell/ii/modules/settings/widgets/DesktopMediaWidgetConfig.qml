@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Circular Media Options")
+    title: Translation.tr("Circular media options")
 
     ContentSection {
-        title: Translation.tr("Circular Media Settings")
+        title: Translation.tr("Circular media settings")
         icon: "music_note"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "music_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Circular Media disabled")
+                title: Translation.tr("Circular media disabled")
                 description: Translation.tr("Enable the Circular Media in Desktop Widgets settings to use this page.")
             }
         }

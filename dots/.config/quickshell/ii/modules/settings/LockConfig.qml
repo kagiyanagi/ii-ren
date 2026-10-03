@@ -44,7 +44,7 @@ Item {
 
         ContentSection {
             icon: "lock"
-            title: Translation.tr("Lock Screen")
+            title: Translation.tr("Lock screen")
 
             ConfigSwitch {
                 buttonIcon: "lock"

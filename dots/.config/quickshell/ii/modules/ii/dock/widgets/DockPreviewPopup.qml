@@ -297,6 +297,10 @@ PopupWindow {
                                 color: "#ffffff" // design-ok
                             }
                             onClicked: windowButton.modelData?.close()
+
+                            StyledToolTip {
+                                text: Translation.tr("Close window")
+                            }
                         }
                     }
                 }

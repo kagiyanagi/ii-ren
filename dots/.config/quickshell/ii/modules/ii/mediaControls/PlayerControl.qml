@@ -339,6 +339,10 @@ Item { // Player instance
                                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                             }
                         }
+
+                        StyledToolTip {
+                            text: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                        }
                     }
 
                     TrackChangeButton {

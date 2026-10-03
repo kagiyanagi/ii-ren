@@ -48,7 +48,7 @@ AbstractBackgroundWidget {
         if (root.isWide && root.showDetails)
             return Translation.tr("RAM") + " · " + root.ramUsedGb + "/" + root.ramTotalGb + " GB";
         if (root.isWide)
-            return Translation.tr("RAM Usage");
+            return Translation.tr("RAM usage");
         return Translation.tr("RAM");
     }
     readonly property string valueText: Math.round(root.ramUsagePct * 100) + "%"

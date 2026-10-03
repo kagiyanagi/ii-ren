@@ -305,11 +305,10 @@ ContentPage {
                             StyledText {
                                 text: page.hoverT < 0 ? `${Math.round(Battery.percentage * 100)}%`
                                     : page.hoverLevel ? `${Math.round(page.hoverLevel.v)}%` : "–"
-                                // M3 Display Medium (45sp): Appearance.font.pixelSize tops out at 23,
-                                // and this is the page's answer.
-                                font.pixelSize: 45
-                                font.family: Appearance.font.family.title
-                                font.variableAxes: Appearance.font.variableAxes.title
+                                // The page's answer. Tabular, since it changes under the pointer.
+                                font.pixelSize: Appearance.font.pixelSize.displayLarge
+                                font.family: Appearance.font.family.numbers
+                                font.variableAxes: Appearance.font.variableAxes.numbers
                                 color: Appearance.colors.colOnSurface
                             }
                             StyledText {
@@ -907,20 +906,20 @@ ContentPage {
                         Config.options.bar.battery.style = newValue;
                     }
                     options: [
-                        { displayName: Translation.tr("Filled (M3 Pill)"), icon: "pill", value: "filled" },
+                        { displayName: Translation.tr("Filled (M3 pill)"), icon: "pill", value: "filled" },
                         { displayName: Translation.tr("Portrait"), icon: "battery_android_full", value: "portrait" },
-                        { displayName: Translation.tr("Landscape (Right)"), icon: "battery_horiz_075", value: "landscape" },
-                        { displayName: Translation.tr("Landscape (Left)"), icon: "battery_horiz_050", value: "landscape_left" },
+                        { displayName: Translation.tr("Landscape (right)"), icon: "battery_horiz_075", value: "landscape" },
+                        { displayName: Translation.tr("Landscape (left)"), icon: "battery_horiz_050", value: "landscape_left" },
                         { displayName: Translation.tr("Landscape (iOS)"), icon: "battery_saver", value: "landscape_ios" },
-                        { displayName: Translation.tr("Landscape (Line)"), icon: "horizontal_rule", value: "landscape_line" },
+                        { displayName: Translation.tr("Landscape (line)"), icon: "horizontal_rule", value: "landscape_line" },
                         { displayName: Translation.tr("Landscape (Musku)"), icon: "shapes", value: "landscape_musku" },
                         { displayName: Translation.tr("Landscape (Origami)"), icon: "polyline", value: "landscape_origami" },
-                        { displayName: Translation.tr("Landscape (Signal)"), icon: "signal_cellular_4_bar", value: "landscape_signal" },
+                        { displayName: Translation.tr("Landscape (signal)"), icon: "signal_cellular_4_bar", value: "landscape_signal" },
                         { displayName: Translation.tr("Circle"), icon: "progress_activity", value: "circle" },
-                        { displayName: Translation.tr("Dotted Circle"), icon: "motion_mode", value: "dotted" },
-                        { displayName: Translation.tr("Filled Circle"), icon: "radio_button_checked", value: "filled_circle" },
-                        { displayName: Translation.tr("Big Circle"), icon: "adjust", value: "big_circle" },
-                        { displayName: Translation.tr("Big Dotted Circle"), icon: "scatter_plot", value: "big_dotted_circle" },
+                        { displayName: Translation.tr("Dotted circle"), icon: "motion_mode", value: "dotted" },
+                        { displayName: Translation.tr("Filled circle"), icon: "radio_button_checked", value: "filled_circle" },
+                        { displayName: Translation.tr("Big circle"), icon: "adjust", value: "big_circle" },
+                        { displayName: Translation.tr("Big dotted circle"), icon: "scatter_plot", value: "big_dotted_circle" },
                         { displayName: Translation.tr("Text only"), icon: "match_case", value: "text" }
                     ]
                 }

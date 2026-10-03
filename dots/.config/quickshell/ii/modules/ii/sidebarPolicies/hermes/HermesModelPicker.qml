@@ -70,7 +70,7 @@ HermesPopover {
         implicitHeight: 40
         leftPadding: 40
         colBackground: Appearance.colors.colLayer2
-        placeholderText: Translation.tr("Search…")
+        placeholderText: Translation.tr("Search models")
         onTextChanged: {
             root.query = text;
             listView.currentIndex = 0;
@@ -183,6 +183,9 @@ HermesPopover {
         horizontalAlignment: Text.AlignHCenter
         font.pixelSize: Appearance.font.pixelSize.small
         color: Appearance.colors.colSubtext
-        text: root.allModels.length === 0 ? Translation.tr("No models available") : Translation.tr("Nothing matching “%1”").arg(root.query)
+        // Loading is said as loading, not as an empty inventory (TASTE 3.5).
+        text: root.allModels.length > 0 ? Translation.tr("Nothing matching “%1”").arg(root.query)
+            : HermesService.providersLoading ? Translation.tr("Loading models…")
+            : Translation.tr("No models available")
     }
 }

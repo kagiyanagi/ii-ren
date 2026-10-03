@@ -112,12 +112,16 @@ RippleButton {
             // over. It shows for the row under the pointer or the keyboard, and
             // keeps its slot meanwhile so the title never re-elides under it.
             readonly property bool shown: root.hovered || deleteButton.hovered || root.activeFocus || deleteButton.activeFocus || root.confirmingDelete
-            opacity: shown ? 1 : 0
+            property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+            opacity: {
+                deleteButton.opacitySpec = deleteButton.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                return shown ? 1 : 0;
+            }
             Behavior on opacity {
                 NumberAnimation {
-                    duration: deleteButton.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    duration: deleteButton.opacitySpec.duration
+                    easing.type: deleteButton.opacitySpec.type
+                    easing.bezierCurve: deleteButton.opacitySpec.bezierCurve
                 }
             }
             symbol: root.confirmingDelete ? "delete_forever" : "delete"

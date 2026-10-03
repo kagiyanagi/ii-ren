@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Nothing Digital Clock Options")
+    title: Translation.tr("Nothing digital clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Nothing Digital Clock disabled")
+                title: Translation.tr("Nothing digital clock disabled")
                 description: Translation.tr("Enable the Nothing Digital Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -34,12 +34,12 @@ ContentPage {
             visible: Config.isWidgetActive("clock_nothing")
 
             ContentSubsectionLabel {
-                text: Translation.tr("Display Elements")
+                text: Translation.tr("Display elements")
             }
 
             ConfigSwitch {
                 buttonIcon: "schedule"
-                text: Translation.tr("Use 24-Hour Format")
+                text: Translation.tr("Use 24-hour format")
                 checked: Config.options.background.widgets.clock_nothing.use24h ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_nothing.use24h = checked;
@@ -48,7 +48,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "label"
-                text: Translation.tr("Show AM/PM Chip (12-Hour Mode)")
+                text: Translation.tr("Show AM/PM chip (12-hour mode)")
                 checked: Config.options.background.widgets.clock_nothing.showAmPmChip ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_nothing.showAmPmChip = checked;
@@ -57,7 +57,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "short_text"
-                text: Translation.tr("Show 'TIME' Top Header")
+                text: Translation.tr("Show 'TIME' top header")
                 checked: Config.options.background.widgets.clock_nothing.showTopLabel ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_nothing.showTopLabel = checked;
@@ -66,7 +66,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "today"
-                text: Translation.tr("Show Date at Bottom")
+                text: Translation.tr("Show date at bottom")
                 checked: Config.options.background.widgets.clock_nothing.showDate ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_nothing.showDate = checked;
@@ -74,12 +74,12 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Style & Appearance")
+                text: Translation.tr("Style & appearance")
             }
 
             ConfigSwitch {
                 buttonIcon: "palette"
-                text: Translation.tr("Use Accent Color on Hours")
+                text: Translation.tr("Use accent color on hours")
                 checked: Config.options.background.widgets.clock_nothing.useAccentColor ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_nothing.useAccentColor = checked;

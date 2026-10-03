@@ -28,12 +28,12 @@ Item {
         id: page
         anchors.fill: parent
         forceWidth: false
-        title: Translation.tr("Cursor Configuration")
+        title: Translation.tr("Cursor configuration")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
 
         ContentSection {
-            title: Translation.tr("Cursor & Pointer")
+            title: Translation.tr("Cursor & pointer")
             icon: "arrow_selector_tool"
             // This was a 40-line explanation card sitting above the options. It
             // is a scope note for the section, and a section already has a place
@@ -132,7 +132,7 @@ Item {
             // Theme Selection -- the primary control, first under the header.
             ContentSubsection {
                 visible: subPageRoot.hasCursorPacks
-                title: Translation.tr("Installed Cursor Packs")
+                title: Translation.tr("Installed cursor packs")
                 icon: "category"
                 Layout.fillWidth: true
                 tooltip: Translation.tr("Select a cursor theme detected from ~/.icons, ~/.local/share/icons, or /usr/share/icons")
@@ -155,7 +155,7 @@ Item {
             // Size: the presets, the exact value and the warning about it are one
             // option, so they share one card run instead of three loose blocks.
             ContentSubsection {
-                title: Translation.tr("Cursor Size")
+                title: Translation.tr("Cursor size")
                 icon: "format_size"
                 Layout.fillWidth: true
                 tooltip: Translation.tr("Select a standard cursor size or use the spin box for custom sizes")
@@ -218,7 +218,7 @@ Item {
             // Custom Theme Name Override -- also the only way out of the empty
             // state, which is why it stays visible when nothing was detected.
             ContentSubsection {
-                title: Translation.tr("Custom Cursor Theme Name")
+                title: Translation.tr("Custom cursor theme name")
                 icon: "edit"
                 Layout.fillWidth: true
                 tooltip: Translation.tr("Manually enter a cursor theme name if you have a custom pack installed")
@@ -229,7 +229,7 @@ Item {
                 // same shared input with an editingFinished to hang that on.
                 MaterialTextField {
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("e.g., Bibata-Modern-Classic")
+                    placeholderText: Translation.tr("e.g., bibata-modern-classic")
                     text: CursorTheme.configuredTheme
                     onEditingFinished: {
                         if (text.trim().length > 0) {

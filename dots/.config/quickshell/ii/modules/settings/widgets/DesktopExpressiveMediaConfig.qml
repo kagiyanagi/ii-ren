@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Expressive Media Options")
+    title: Translation.tr("Expressive media options")
 
     ContentSection {
-        title: Translation.tr("Expressive Media Settings")
+        title: Translation.tr("Expressive media settings")
         icon: "music_note"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "music_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Expressive Media disabled")
+                title: Translation.tr("Expressive media disabled")
                 description: Translation.tr("Enable the Expressive Media in Desktop Widgets settings to use this page.")
             }
         }

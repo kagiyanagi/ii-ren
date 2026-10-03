@@ -182,7 +182,7 @@ SectionCard {
         Layout.preferredHeight: inDayForecastCard.forecastCardHeight
         visible: root.forecastLoading || root.forecastData.length === 0
         loading: root.forecastLoading
-        loadingText: Translation.tr("Loading forecast...")
+        loadingText: Translation.tr("Loading forecast…")
         emptyText: Translation.tr("No forecast data")
         // A fetch ran and came back with nothing: say so, rather than leaving
         // the card reading as "loading forever".

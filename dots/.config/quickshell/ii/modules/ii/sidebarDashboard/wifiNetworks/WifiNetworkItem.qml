@@ -154,6 +154,10 @@ DialogListItem {
                         color: Appearance.colors.colOnSurfaceVariant
                         text: root.showPassword ? "visibility_off" : "visibility"
                     }
+
+                    StyledToolTip {
+                        text: root.showPassword ? Translation.tr("Hide password") : Translation.tr("Show password")
+                    }
                 }
             }
 

@@ -16,8 +16,6 @@ Item {
     property alias minimalFrom: minimalValueProgressBar.from
     property alias minimalTo: minimalValueProgressBar.to
 
-    signal moved(real newValue)
-
     property bool rotateShape: Config.options.osd.material.rotateShape
     property bool shapedValues: Config.options.osd.material.shapedValues
     property bool minimal: Config.options.osd.material.minimal
@@ -117,7 +115,6 @@ Item {
                 stopIndicatorValues: []
                 materialSymbol: ""
                 value: root.value
-                onMoved: root.moved(valueProgressBar.value)
             }
 
             Item {
@@ -203,7 +200,6 @@ Item {
             stopIndicatorValues: []
             visible: root.minimal
             value: root.value
-            onMoved: root.moved(minimalValueProgressBar.value)
         }
     }
 

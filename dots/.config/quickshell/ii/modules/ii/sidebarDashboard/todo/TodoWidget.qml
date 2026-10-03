@@ -87,7 +87,7 @@ Item {
             TaskList {
                 id: unfinishedList
                 emptyPlaceholderIcon: "check_circle"
-                emptyPlaceholderText: Translation.tr("Nothing here!")
+                emptyPlaceholderText: Translation.tr("No tasks. Add one with the + button")
                 taskList: root.tasks.filter(item => !item.done)
             }
 
@@ -134,6 +134,10 @@ Item {
                     text: "add"
                     iconSize: Appearance.font.pixelSize.huge
                     color: Appearance.colors.colOnPrimary
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Add a task")
                 }
             }
         }

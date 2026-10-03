@@ -23,7 +23,7 @@ ColumnLayout {
 
     ConfigSwitch {
         buttonIcon: "wb_sunny"
-        text: Translation.tr("Enable Shadows")
+        text: Translation.tr("Enable shadows")
         checked: Config.options.background.widgets.enableShadows ?? true
         onCheckedChanged: {
             Config.options.background.widgets.enableShadows = checked;
@@ -32,7 +32,7 @@ ColumnLayout {
 
     ConfigSwitch {
         buttonIcon: "blur_on"
-        text: Translation.tr("Enable Inner Shadows")
+        text: Translation.tr("Enable inner shadows")
         checked: Config.options.background.widgets.enableInnerShadow ?? true
         onCheckedChanged: {
             Config.options.background.widgets.enableInnerShadow = checked;

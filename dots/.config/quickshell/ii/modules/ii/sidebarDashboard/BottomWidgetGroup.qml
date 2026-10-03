@@ -72,7 +72,7 @@ Rectangle {
             },
             {
                 "type": "todo",
-                "name": Translation.tr("To Do"),
+                "name": Translation.tr("To do"),
                 "icon": "done_outline",
                 "widget": "todo/TodoWidget.qml",
                 "shown": root.shown.todo

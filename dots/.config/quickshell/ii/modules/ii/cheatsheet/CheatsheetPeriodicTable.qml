@@ -123,6 +123,10 @@ Item {
                             iconSize: Appearance.font.pixelSize.large
                             text: "close"
                         }
+
+                        StyledToolTip {
+                            text: Translation.tr("Clear search")
+                        }
                     }
                 }
             }

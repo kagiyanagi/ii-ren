@@ -426,6 +426,10 @@ OverlayBackground {
                                 color: Appearance.colors.colOnLayer1
                             }
                         }
+
+                        StyledToolTip {
+                            text: copyButton.justCopied ? Translation.tr("Copied") : Translation.tr("Copy")
+                        }
                     }
                 }
             }
@@ -437,7 +441,7 @@ OverlayBackground {
             Layout.margins: 16
             horizontalAlignment: Text.AlignRight
             text: saveDebounce.running || NotesService.writing || NotesService.pendingData !== null
-                ? Translation.tr("Saving...")
+                ? Translation.tr("Saving…")
                 : Translation.tr("Saved    ")
             color: Appearance.colors.colSubtext
         }

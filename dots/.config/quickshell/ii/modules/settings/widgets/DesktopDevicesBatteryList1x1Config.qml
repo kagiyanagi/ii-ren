@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Connected Devices Battery List (1x1) Options")
+    title: Translation.tr("Connected devices battery list (1x1) options")
 
     ContentSection {
-        title: Translation.tr("Connected Devices Battery List (1x1) Settings")
+        title: Translation.tr("Connected devices battery list (1x1) settings")
         icon: "battery_full"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "battery_full"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Connected Devices Battery List (1x1) disabled")
+                title: Translation.tr("Connected devices battery list (1x1) disabled")
                 description: Translation.tr("Enable the Connected Devices Battery List (1x1) in Desktop Widgets settings to use this page.")
             }
         }

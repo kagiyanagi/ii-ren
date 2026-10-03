@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Weather Hourly 2x1 Options")
+    title: Translation.tr("Weather hourly 2x1 options")
 
     ContentSection {
-        title: Translation.tr("Weather Settings")
+        title: Translation.tr("Weather settings")
         icon: "cloud"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "cloud_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Weather Hourly 2x1 disabled")
+                title: Translation.tr("Weather hourly 2x1 disabled")
                 description: Translation.tr("Enable the Weather Hourly 2x1 in Desktop Widgets settings to use this page.")
             }
         }

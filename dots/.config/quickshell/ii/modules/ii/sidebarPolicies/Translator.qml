@@ -303,7 +303,7 @@ Item {
             Layout.fillHeight: true
             Layout.preferredHeight: 1
             isInput: true
-            placeholderText: Translation.tr("Enter text to translate...")
+            placeholderText: Translation.tr("Enter text to translate")
             leading: Component {
                 StyledText {
                     leftPadding: 8
@@ -402,7 +402,7 @@ Item {
         active: false
         z: 9999
         sourceComponent: SelectionDialog {
-            titleText: Translation.tr("Select Language")
+            titleText: Translation.tr("Select language")
             items: root.languages
             searchAliases: root.languageAliases
             defaultChoice: root.languageSelectorTarget ? root.targetLanguage : root.sourceLanguage

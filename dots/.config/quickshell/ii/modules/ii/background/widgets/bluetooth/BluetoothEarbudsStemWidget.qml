@@ -40,7 +40,7 @@ AbstractBackgroundWidget {
     readonly property real batteryLevel: (earbudDevice && earbudDevice.batteryAvailable) ? (earbudDevice.battery ?? 1.0) : 1.0
     readonly property int batteryPercent: Math.round(batteryLevel * 100)
     readonly property int primaryPercent: (devBattery && devBattery.available && devBattery.aggregate !== null) ? devBattery.aggregate : batteryPercent
-    readonly property string fullName: earbudDevice ? (earbudDevice.name ?? Translation.tr("Bluetooth Earbuds")) : ""
+    readonly property string fullName: earbudDevice ? (earbudDevice.name ?? Translation.tr("Bluetooth earbuds")) : ""
 
     // Separate Title line 1 and line 2 for pixel match
     readonly property string titlePart1: {

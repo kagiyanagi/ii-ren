@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Concentric Clock Options")
+    title: Translation.tr("Concentric clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Concentric Clock disabled")
+                title: Translation.tr("Concentric clock disabled")
                 description: Translation.tr("Enable the Concentric Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -40,7 +40,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.concentric_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -72,27 +72,27 @@ ContentPage {
                             value: "concentric"
                         },
                         {
-                            displayName: Translation.tr("Outer Only"),
+                            displayName: Translation.tr("Outer only"),
                             icon: "panorama_fish_eye",
                             value: "outer_only"
                         },
                         {
-                            displayName: Translation.tr("Inner Only"),
+                            displayName: Translation.tr("Inner only"),
                             icon: "adjust",
                             value: "inner_only"
                         },
                         {
-                            displayName: Translation.tr("Pixel Watch 3 Dial"),
+                            displayName: Translation.tr("Pixel Watch 3 dial"),
                             icon: "watch",
                             value: "full_pixel3"
                         },
                         {
-                            displayName: Translation.tr("Full Dense"),
+                            displayName: Translation.tr("Full dense"),
                             icon: "grid_on",
                             value: "full_dense"
                         },
                         {
-                            displayName: Translation.tr("Minimal Arc"),
+                            displayName: Translation.tr("Minimal arc"),
                             icon: "donut_large",
                             value: "minimal_arc"
                         },
@@ -107,7 +107,7 @@ ContentPage {
                             value: "numbers"
                         },
                         {
-                            displayName: Translation.tr("Full Ticks"),
+                            displayName: Translation.tr("Full ticks"),
                             icon: "graphic_eq",
                             value: "full"
                         },
@@ -143,17 +143,17 @@ ContentPage {
                             value: "none"
                         },
                         {
-                            displayName: Translation.tr("Thin Ring"),
+                            displayName: Translation.tr("Thin ring"),
                             icon: "radio_button_unchecked",
                             value: "ring_thin"
                         },
                         {
-                            displayName: Translation.tr("Thick Ring"),
+                            displayName: Translation.tr("Thick ring"),
                             icon: "circle",
                             value: "ring_thick"
                         },
                         {
-                            displayName: Translation.tr("Dot Ring"),
+                            displayName: Translation.tr("Dot ring"),
                             icon: "more_horiz",
                             value: "dot_ring"
                         }
@@ -163,7 +163,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "format_bold"
-                text: Translation.tr("Bold Typography")
+                text: Translation.tr("Bold typography")
                 checked: Config.options.background.widgets.concentric_clock.boldFont ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.boldFont = checked;
@@ -172,7 +172,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "title"
-                text: Translation.tr("Show Hour Text")
+                text: Translation.tr("Show hour text")
                 checked: Config.options.background.widgets.concentric_clock.showHourText ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showHourText = checked;
@@ -181,7 +181,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "more_time"
-                text: Translation.tr("24-Hour Format")
+                text: Translation.tr("24-hour format")
                 checked: Config.options.background.widgets.concentric_clock.use24h ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.use24h = checked;
@@ -194,7 +194,7 @@ ContentPage {
 
             // ── Hands & Marks ──
             ContentSubsectionLabel {
-                text: Translation.tr("Analog Hands & Marks")
+                text: Translation.tr("Analog hands & marks")
             }
 
             ContentSubsection {
@@ -309,7 +309,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "grid_on"
-                text: Translation.tr("Show Inner Hour Marks")
+                text: Translation.tr("Show inner hour marks")
                 checked: Config.options.background.widgets.concentric_clock.showHourMarks ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showHourMarks = checked;
@@ -322,7 +322,7 @@ ContentPage {
 
             // ── Minute Complication ──
             ContentSubsectionLabel {
-                text: Translation.tr("Minute Pill Complication")
+                text: Translation.tr("Minute pill complication")
             }
 
             ContentSubsection {
@@ -347,7 +347,7 @@ ContentPage {
                             value: "pill_round"
                         },
                         {
-                            displayName: Translation.tr("Text Only"),
+                            displayName: Translation.tr("Text only"),
                             icon: "title",
                             value: "text_only"
                         },
@@ -362,7 +362,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "fiber_manual_record"
-                text: Translation.tr("Show Minute Dot on Ring")
+                text: Translation.tr("Show minute dot on ring")
                 checked: Config.options.background.widgets.concentric_clock.showMinuteDot ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showMinuteDot = checked;
@@ -375,12 +375,12 @@ ContentPage {
 
             // ── Sub-Dials & Arcs ──
             ContentSubsectionLabel {
-                text: Translation.tr("Sub-Dials & Arcs")
+                text: Translation.tr("Sub-dials & arcs")
             }
 
             ConfigSwitch {
                 buttonIcon: "rotate_right"
-                text: Translation.tr("Show 24h Progress Arc")
+                text: Translation.tr("Show 24h progress arc")
                 checked: Config.options.background.widgets.concentric_clock.showArc24h ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showArc24h = checked;
@@ -389,7 +389,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "watch"
-                text: Translation.tr("Show Hour Sub-Dial (7:30)")
+                text: Translation.tr("Show hour sub-dial (7:30)")
                 checked: Config.options.background.widgets.concentric_clock.showHourSubDial ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showHourSubDial = checked;
@@ -398,7 +398,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Show Sunset Sub-Dial (Top)")
+                text: Translation.tr("Show sunset sub-dial (top)")
                 checked: Config.options.background.widgets.concentric_clock.showSunsetDial ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.showSunsetDial = checked;
@@ -441,12 +441,12 @@ ContentPage {
 
             // ── Positioning & Offsets ──
             ContentSubsectionLabel {
-                text: Translation.tr("Positioning & Offsets")
+                text: Translation.tr("Positioning & offsets")
             }
 
             ConfigSlider {
                 buttonIcon: "horizontal_distribute"
-                text: Translation.tr("Minute Pill Position X (%)")
+                text: Translation.tr("Minute pill position X (%)")
                 value: Config.options.background.widgets.concentric_clock.minutePillLeftMargin ?? 58
                 from: 20
                 to: 90
@@ -458,7 +458,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "open_in_full"
-                text: Translation.tr("Sub-Dials Margin Offset (%)")
+                text: Translation.tr("Sub-dials margin offset (%)")
                 value: Config.options.background.widgets.concentric_clock.subdialMarginOffset ?? 0
                 from: -10
                 to: 20
@@ -470,7 +470,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "adjust"
-                text: Translation.tr("Dial Rings Margin Offset (%)")
+                text: Translation.tr("Dial rings margin offset (%)")
                 value: Config.options.background.widgets.concentric_clock.dialMarginOffset ?? 0
                 from: -10
                 to: 20
@@ -486,12 +486,12 @@ ContentPage {
 
             // ── Hour Text Styling ──
             ContentSubsectionLabel {
-                text: Translation.tr("Hour Text Dimensions & Font")
+                text: Translation.tr("Hour text dimensions & font")
             }
 
             ConfigSlider {
                 buttonIcon: "format_size"
-                text: Translation.tr("Hour Font Size (% of base)")
+                text: Translation.tr("Hour font size (% of base)")
                 value: Config.options.background.widgets.concentric_clock.hourPixelSize ?? 36
                 from: 10
                 to: 80
@@ -503,7 +503,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "line_weight"
-                text: Translation.tr("Hour Font Weight")
+                text: Translation.tr("Hour font weight")
                 value: Config.options.background.widgets.concentric_clock.hourFontWeight ?? 700
                 from: 100
                 to: 900
@@ -515,7 +515,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "swap_horiz"
-                text: Translation.tr("Hour Font Variable Width (wdth)")
+                text: Translation.tr("Hour font variable width (wdth)")
                 value: Config.options.background.widgets.concentric_clock.hourFontWidth ?? 100
                 from: 50
                 to: 150
@@ -527,7 +527,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "rounded_corner"
-                text: Translation.tr("Hour Font Variable Roundness (ROND)")
+                text: Translation.tr("Hour font variable roundness (ROND)")
                 value: Config.options.background.widgets.concentric_clock.hourFontRound ?? 0
                 from: 0
                 to: 100
@@ -543,12 +543,12 @@ ContentPage {
 
             // ── Quote Settings ──
             ContentSubsectionLabel {
-                text: Translation.tr("Quote Settings")
+                text: Translation.tr("Quote settings")
             }
 
             ConfigSwitch {
                 buttonIcon: "format_quote"
-                text: Translation.tr("Enable Bottom Quote")
+                text: Translation.tr("Enable bottom quote")
                 checked: Config.options.background.widgets.concentric_clock.quoteEnable ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.quoteEnable = checked;
@@ -576,7 +576,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "contrast"
-                text: Translation.tr("Use Black Background (WearOS style)")
+                text: Translation.tr("Use black background (WearOS style)")
                 checked: Config.options.background.widgets.concentric_clock.useBlackBg ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.useBlackBg = checked;
@@ -585,7 +585,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "blur_on"
-                text: Translation.tr("Enable Glass Reflection")
+                text: Translation.tr("Enable glass reflection")
                 checked: Config.options.background.widgets.concentric_clock.enableGlassReflection ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.enableGlassReflection = checked;
@@ -594,7 +594,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Enable Shadows")
+                text: Translation.tr("Enable shadows")
                 checked: Config.options.background.widgets.concentric_clock.enableShadows ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.concentric_clock.enableShadows = checked;

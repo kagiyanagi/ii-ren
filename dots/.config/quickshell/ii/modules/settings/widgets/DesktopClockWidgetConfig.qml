@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Cookie Clock Options")
+    title: Translation.tr("Cookie clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Cookie Clock disabled")
+                title: Translation.tr("Cookie clock disabled")
                 description: Translation.tr("Enable the Cookie Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
                 spacing: 4
 
                 ContentSubsectionLabel {
-                    text: Translation.tr("Cookie Style Settings")
+                    text: Translation.tr("Cookie style settings")
                 }
 
                 ConfigSpinBox {
@@ -378,7 +378,7 @@ ContentPage {
                 spacing: 4
 
                 ContentSubsectionLabel {
-                    text: Translation.tr("Quote Settings")
+                    text: Translation.tr("Quote settings")
                 }
 
                 ConfigSwitch {

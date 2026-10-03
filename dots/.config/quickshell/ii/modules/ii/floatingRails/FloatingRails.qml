@@ -172,12 +172,11 @@ Scope {
                                                                                                            p.y))
 
         // The focused window's rail sits a layer up, as Android lifts the focused
-        // caption; the rest recede to the background tone.
+        // caption; the rest recede to the background tone. A caption is a bar, and
+        // bars take no hover (M3 4.2) -- its buttons do. Only a press or drag shows.
         property color fill: {
             if (dragArea.pressed)
                 return rail.focused ? Appearance.colors.colLayer2Active : Appearance.colors.colLayer1Active;
-            if (dragArea.containsMouse)
-                return rail.focused ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer1Hover;
             return rail.focused ? Appearance.colors.colLayer2 : Appearance.colors.colLayer1;
         }
         Behavior on fill {

@@ -549,7 +549,7 @@ Scope {
                     MenuRow {
                         visible: GlobalStates.desktopMenuWidgetId === null
                         symbolName: "folder_open"
-                        labelText: Translation.tr("Open wallpaper file...")
+                        labelText: Translation.tr("Open wallpaper file")
                         onTriggered: {
                             menuWindow.dismiss();
                             Wallpapers.openFallbackPicker();

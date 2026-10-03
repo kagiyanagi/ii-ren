@@ -10,10 +10,10 @@ ContentPage {
 
     // One page for two registry entries — Default Weather and Expressive
     // Weather both point here, so it names both rather than a single widget.
-    title: Translation.tr("Weather Options")
+    title: Translation.tr("Weather options")
 
     ContentSection {
-        title: Translation.tr("Weather Settings")
+        title: Translation.tr("Weather settings")
         icon: "cloud"
 
         Item {

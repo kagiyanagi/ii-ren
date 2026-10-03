@@ -66,7 +66,7 @@ WindowDialog {
             TextField {
                 id: searchField
                 Layout.fillWidth: true
-                placeholderText: Translation.tr("Search...")
+                placeholderText: Translation.tr("Search")
                 color: Appearance.colors.colOnLayer1
                 placeholderTextColor: Appearance.m3colors.m3outline
                 selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
@@ -101,6 +101,10 @@ WindowDialog {
                     text: "close"
                     iconSize: Appearance.font.pixelSize.normal
                     color: Appearance.colors.colSubtext
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Clear search")
                 }
             }
         }

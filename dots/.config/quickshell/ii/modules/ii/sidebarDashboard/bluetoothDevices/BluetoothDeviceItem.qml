@@ -136,6 +136,10 @@ DialogListItem {
                         animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                     }
                 }
+
+                StyledToolTip {
+                    text: root.expanded ? Translation.tr("Hide options") : Translation.tr("Show options")
+                }
             }
         }
 

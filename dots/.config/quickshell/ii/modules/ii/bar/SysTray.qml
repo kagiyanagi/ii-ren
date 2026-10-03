@@ -155,6 +155,10 @@ Item {
                     }
                 }
             }
+
+            StyledToolTip {
+                text: Translation.tr("Show hidden icons")
+            }
         }
 
         Repeater {

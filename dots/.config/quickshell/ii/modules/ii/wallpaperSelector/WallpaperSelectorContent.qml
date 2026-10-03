@@ -447,7 +447,7 @@ MouseArea {
                             }
                             ConfigSelectionArray {
                                 options: {
-                                    const items = [{ displayName: wallpaperSelectorContent.browserMode ? Translation.tr("Wallpaper Browser") : Translation.tr("Favourites"), isRoot: true }];
+                                    const items = [{ displayName: wallpaperSelectorContent.browserMode ? Translation.tr("Wallpaper browser") : Translation.tr("Favourites"), isRoot: true }];
                                     if (wallpaperSelectorContent.browserMode)
                                         for (const tag of wallpaperSelectorContent.browserService?.currentSearchTags ?? [])
                                             items.push({ displayName: tag, value: tag });

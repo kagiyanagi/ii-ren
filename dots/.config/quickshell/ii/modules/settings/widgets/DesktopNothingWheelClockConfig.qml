@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Nothing Wheel Clock Options")
+    title: Translation.tr("Nothing wheel clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Nothing Wheel Clock disabled")
+                title: Translation.tr("Nothing wheel clock disabled")
                 description: Translation.tr("Enable the Nothing Wheel Clock in Desktop Widgets settings to use this page.")
             }
         }

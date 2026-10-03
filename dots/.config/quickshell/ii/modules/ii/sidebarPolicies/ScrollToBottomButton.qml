@@ -42,22 +42,30 @@ RippleButton {
     // Rises out of the edge it is anchored to. Enter: scale fast spatial (a chip),
     // fade effects;
     // exit: both on the fast exit spec (2.5).
-    opacity: root.shown ? 1 : 0
-    scale: root.shown ? 1 : 0.7
+    property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+    opacity: {
+        root.opacitySpec = root.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+        return root.shown ? 1 : 0;
+    }
+    property AnimSpec scaleSpec: Appearance.animation.elementMoveSmall
+    scale: {
+        root.scaleSpec = root.shown ? Appearance.animation.elementMoveSmall : Appearance.animation.elementMoveExit;
+        return root.shown ? 1 : 0.7;
+    }
     transformOrigin: Item.Bottom
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation {
-            duration: root.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            duration: root.opacitySpec.duration
+            easing.type: root.opacitySpec.type
+            easing.bezierCurve: root.opacitySpec.bezierCurve
         }
     }
     Behavior on scale {
         NumberAnimation {
-            duration: root.shown ? Appearance.animation.elementMoveSmall.duration : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.shown ? Appearance.animation.elementMoveSmall.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+            duration: root.scaleSpec.duration
+            easing.type: root.scaleSpec.type
+            easing.bezierCurve: root.scaleSpec.bezierCurve
         }
     }
 
@@ -83,7 +91,7 @@ RippleButton {
         }
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            text: Translation.tr("Scroll to Bottom")
+            text: Translation.tr("Scroll to bottom")
             font.pixelSize: Appearance.font.pixelSize.smallie
             color: Appearance.colors.colOnSecondary
             verticalAlignment: Text.AlignVCenter

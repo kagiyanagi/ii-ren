@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Scallop Number Clock Options")
+    title: Translation.tr("Scallop number clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Scallop Number Clock disabled")
+                title: Translation.tr("Scallop number clock disabled")
                 description: Translation.tr("Enable the Scallop Number Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.scallop_number_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -48,51 +48,51 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Display Elements")
+                text: Translation.tr("Display elements")
             }
 
             ConfigSwitch {
                 buttonIcon: "schedule"
-                text: Translation.tr("Hour Bubble")
+                text: Translation.tr("Hour bubble")
                 checked: Config.options.background.widgets.scallop_number_clock.showHourHand ?? true
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.showHourHand = checked
             }
 
             ConfigSwitch {
                 buttonIcon: "timer"
-                text: Translation.tr("Minute Bubble")
+                text: Translation.tr("Minute bubble")
                 checked: Config.options.background.widgets.scallop_number_clock.showMinuteBubble ?? true
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.showMinuteBubble = checked
             }
 
             ConfigSwitch {
                 buttonIcon: "tag"
-                text: Translation.tr("Background Numbers")
+                text: Translation.tr("Background numbers")
                 checked: Config.options.background.widgets.scallop_number_clock.showDots ?? true
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.showDots = checked
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Style & Appearance")
+                text: Translation.tr("Style & appearance")
             }
 
             ConfigSwitch {
                 buttonIcon: "format_bold"
-                text: Translation.tr("Bold Font")
+                text: Translation.tr("Bold font")
                 checked: Config.options.background.widgets.scallop_number_clock.boldFont ?? true
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.boldFont = checked
             }
 
             ConfigSwitch {
                 buttonIcon: "contrast"
-                text: Translation.tr("Black Background")
+                text: Translation.tr("Black background")
                 checked: Config.options.background.widgets.scallop_number_clock.useBlackBg ?? true
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.useBlackBg = checked
             }
 
             ConfigSwitch {
                 buttonIcon: "wb_twilight"
-                text: Translation.tr("Glass Reflection")
+                text: Translation.tr("Glass reflection")
                 checked: Config.options.background.widgets.scallop_number_clock.enableGlassReflection ?? false
                 onCheckedChanged: Config.options.background.widgets.scallop_number_clock.enableGlassReflection = checked
             }

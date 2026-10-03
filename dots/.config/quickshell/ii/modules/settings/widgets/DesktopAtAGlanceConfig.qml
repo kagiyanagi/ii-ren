@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("At a Glance Widget Options")
+    title: Translation.tr("At a Glance widget options")
 
     ContentSection {
-        title: Translation.tr("At a Glance Widget Settings")
+        title: Translation.tr("At a Glance widget settings")
         icon: "dashboard"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "dashboard"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("At a Glance Widget disabled")
+                title: Translation.tr("At a Glance widget disabled")
                 description: Translation.tr("Enable the At a Glance Widget in Desktop Widgets settings to use this page.")
             }
         }
@@ -36,12 +36,12 @@ ContentPage {
 
             // ── Layout & Size ───────────────────────────────────────────────
             ContentSubsectionLabel {
-                text: Translation.tr("Layout & Size")
+                text: Translation.tr("Layout & size")
             }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Scale")
+                text: Translation.tr("Widget scale")
                 value: Config.options.background.widgets.at_a_glance.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.at_a_glance.widgetSize = value
@@ -50,22 +50,22 @@ ContentPage {
             ConfigSelectionArray {
                 currentValue: Config.options.background.widgets.at_a_glance.widthCells ?? 3
                 options: [
-                    { displayName: Translation.tr("2x1 Compact"), icon: "view_week", value: 2 },
-                    { displayName: Translation.tr("3x1 Full"), icon: "view_column", value: 3 }
+                    { displayName: Translation.tr("2x1 compact"), icon: "view_week", value: 2 },
+                    { displayName: Translation.tr("3x1 full"), icon: "view_column", value: 3 }
                 ]
                 onSelected: value => Config.options.background.widgets.at_a_glance.widthCells = value
             }
 
             ConfigSwitch {
                 buttonIcon: "view_stream"
-                text: Translation.tr("Dual-Column Mode (display 2 targets)")
+                text: Translation.tr("Dual-column mode (display 2 targets)")
                 checked: Config.options.background.widgets.at_a_glance.dualColumnMode ?? false
                 onCheckedChanged: Config.options.background.widgets.at_a_glance.dualColumnMode = checked
             }
 
             // ── Context Sources ──────────────────────────────────────────────
             ContentSubsectionLabel {
-                text: Translation.tr("Smart Context Sources")
+                text: Translation.tr("Smart context sources")
             }
 
             ConfigSwitch {
@@ -91,7 +91,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "task_alt"
-                text: Translation.tr("Use To-Do context")
+                text: Translation.tr("Use to-do context")
                 checked: Config.options.background.widgets.at_a_glance.enableTodo ?? true
                 onCheckedChanged: Config.options.background.widgets.at_a_glance.enableTodo = checked
             }

@@ -184,7 +184,11 @@ Button {
             animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        layer.enabled: true
+        // The mask is only for the ripple, which is a circle that would spill past
+        // the corners. The fill and the films round themselves, so the offscreen
+        // pass exists only while a ripple shows -- not for every button at rest,
+        // which put one in every list row built on this (DESIGN.md 8).
+        layer.enabled: ripple.opacity > 0
         layer.effect: OpacityMask {
             maskSource: Rectangle {
                 width: buttonBackground.width
@@ -198,10 +202,13 @@ Button {
 
         // Focus is the fourth state DESIGN.md 3.1 requires and the library had
         // nowhere; press lands here too whenever the caller left it to the tokens.
-        // The parent's OpacityMask already clips to the button's corners, so the
-        // film does not repeat them.
+        // Its own corners: the parent's mask is off unless a ripple is showing.
         StateOverlay {
             anchors.fill: parent
+            topLeftRadius: buttonBackground.topLeftRadius
+            topRightRadius: buttonBackground.topRightRadius
+            bottomLeftRadius: buttonBackground.bottomLeftRadius
+            bottomRightRadius: buttonBackground.bottomRightRadius
             focused: root.visualFocus
             press: root.down && !root.ownPressColor
             contentColor: root.colStateLayer

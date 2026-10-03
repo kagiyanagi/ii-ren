@@ -151,9 +151,9 @@ ContentPage {
             links: [
                 ["language", Translation.tr("Website"), SystemInfo.homeUrl],
                 ["auto_stories", Translation.tr("Documentation"), SystemInfo.documentationUrl],
-                ["support", Translation.tr("Help & Support"), SystemInfo.supportUrl],
-                ["bug_report", Translation.tr("Report a Bug"), SystemInfo.bugReportUrl],
-                ["policy", Translation.tr("Privacy Policy"), SystemInfo.privacyPolicyUrl, false]
+                ["support", Translation.tr("Help & support"), SystemInfo.supportUrl],
+                ["bug_report", Translation.tr("Report a bug"), SystemInfo.bugReportUrl],
+                ["policy", Translation.tr("Privacy policy"), SystemInfo.privacyPolicyUrl, false]
             ]
 
             IconImage {
@@ -274,7 +274,7 @@ ContentPage {
             url: "https://github.com/vaguesyntax/ii-vynx"
             links: [
                 ["auto_stories", Translation.tr("Documentation"), "https://github.com/vaguesyntax/ii-vynx/wiki"],
-                ["bug_report", Translation.tr("Known Issues"), "https://github.com/vaguesyntax/ii-vynx/wiki/Known-Issues-and-Limitations"],
+                ["bug_report", Translation.tr("Known issues"), "https://github.com/vaguesyntax/ii-vynx/wiki/Known-Issues-and-Limitations"],
                 ["adjust", Translation.tr("Issues"), "https://github.com/vaguesyntax/ii-vynx/issues", false]
             ]
 

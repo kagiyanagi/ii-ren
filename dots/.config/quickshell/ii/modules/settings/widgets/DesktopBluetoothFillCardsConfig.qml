@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Bluetooth Fill Cards Options")
+    title: Translation.tr("Bluetooth fill cards options")
 
     ContentSection {
-        title: Translation.tr("Bluetooth Fill Cards Settings")
+        title: Translation.tr("Bluetooth fill cards settings")
         icon: "bluetooth"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "bluetooth"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Bluetooth Fill Cards disabled")
+                title: Translation.tr("Bluetooth fill cards disabled")
                 description: Translation.tr("Enable the Bluetooth Fill Cards in Desktop Widgets settings to use this page.")
             }
         }

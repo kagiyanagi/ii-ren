@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Bluetooth Earbuds Stem Options")
+    title: Translation.tr("Bluetooth earbuds stem options")
 
     ContentSection {
-        title: Translation.tr("Bluetooth Earbuds Stem Settings")
+        title: Translation.tr("Bluetooth earbuds stem settings")
         icon: "earbuds"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "earbuds"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Bluetooth Earbuds Stem disabled")
+                title: Translation.tr("Bluetooth earbuds stem disabled")
                 description: Translation.tr("Enable the Bluetooth Earbuds Stem in Desktop Widgets settings to use this page.")
             }
         }

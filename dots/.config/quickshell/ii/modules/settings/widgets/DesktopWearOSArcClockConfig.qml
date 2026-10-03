@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("WearOS Arc Clock Options")
+    title: Translation.tr("WearOS arc clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("WearOS Arc Clock disabled")
+                title: Translation.tr("WearOS arc clock disabled")
                 description: Translation.tr("Enable the WearOS Arc Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -40,7 +40,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.wearos_arc_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -59,7 +59,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "dark_mode"
-                text: Translation.tr("AMOLED Black Background")
+                text: Translation.tr("AMOLED black background")
                 checked: Config.options.background.widgets.wearos_arc_clock.blackBackground ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_arc_clock.blackBackground = checked;
@@ -68,7 +68,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "lens"
-                text: Translation.tr("Enable Glass Reflection")
+                text: Translation.tr("Enable glass reflection")
                 checked: Config.options.background.widgets.wearos_arc_clock.enableGlassReflection ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_arc_clock.enableGlassReflection = checked;
@@ -77,7 +77,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "grid_on"
-                text: Translation.tr("Enable Background Dotted Pattern")
+                text: Translation.tr("Enable background dotted pattern")
                 checked: Config.options.background.widgets.wearos_arc_clock.enableBackgroundPattern ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_arc_clock.enableBackgroundPattern = checked;
@@ -86,7 +86,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "content_copy"
-                text: Translation.tr("Enable Shadows")
+                text: Translation.tr("Enable shadows")
                 checked: Config.options.background.widgets.wearos_arc_clock.enableShadows ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_arc_clock.enableShadows = checked;
@@ -102,7 +102,7 @@ ContentPage {
 
             // Left Complication selection
             ContentSubsection {
-                title: Translation.tr("Left Complication")
+                title: Translation.tr("Left complication")
                 icon: "west"
                 Layout.fillWidth: true
 
@@ -110,13 +110,13 @@ ContentPage {
                     buttonIcon: "star"
                     textRole: "displayName"
                     model: [
-                        { displayName: Translation.tr("Weather Info"), value: "weather" },
-                        { displayName: Translation.tr("Laptop Battery"), value: "battery" },
-                        { displayName: Translation.tr("KdeConnect Phone Battery"), value: "phone_battery" },
-                        { displayName: Translation.tr("Bluetooth Battery"), value: "bluetooth_battery" },
-                        { displayName: Translation.tr("Water Drink Counter"), value: "water_reminder" },
+                        { displayName: Translation.tr("Weather info"), value: "weather" },
+                        { displayName: Translation.tr("Laptop battery"), value: "battery" },
+                        { displayName: Translation.tr("KdeConnect phone battery"), value: "phone_battery" },
+                        { displayName: Translation.tr("Bluetooth battery"), value: "bluetooth_battery" },
+                        { displayName: Translation.tr("Water drink counter"), value: "water_reminder" },
                         { displayName: Translation.tr("CPU Usage"), value: "cpu_usage" },
-                        { displayName: Translation.tr("RAM Memory Usage"), value: "memory_usage" },
+                        { displayName: Translation.tr("RAM memory usage"), value: "memory_usage" },
                         { displayName: Translation.tr("None"), value: "none" }
                     ]
                     currentIndex: {
@@ -132,7 +132,7 @@ ContentPage {
 
             // Right Complication selection
             ContentSubsection {
-                title: Translation.tr("Right Complication")
+                title: Translation.tr("Right complication")
                 icon: "east"
                 Layout.fillWidth: true
 
@@ -140,13 +140,13 @@ ContentPage {
                     buttonIcon: "star"
                     textRole: "displayName"
                     model: [
-                        { displayName: Translation.tr("Weather Info"), value: "weather" },
-                        { displayName: Translation.tr("Laptop Battery"), value: "battery" },
-                        { displayName: Translation.tr("KdeConnect Phone Battery"), value: "phone_battery" },
-                        { displayName: Translation.tr("Bluetooth Battery"), value: "bluetooth_battery" },
-                        { displayName: Translation.tr("Water Drink Counter"), value: "water_reminder" },
+                        { displayName: Translation.tr("Weather info"), value: "weather" },
+                        { displayName: Translation.tr("Laptop battery"), value: "battery" },
+                        { displayName: Translation.tr("KdeConnect phone battery"), value: "phone_battery" },
+                        { displayName: Translation.tr("Bluetooth battery"), value: "bluetooth_battery" },
+                        { displayName: Translation.tr("Water drink counter"), value: "water_reminder" },
                         { displayName: Translation.tr("CPU Usage"), value: "cpu_usage" },
-                        { displayName: Translation.tr("RAM Memory Usage"), value: "memory_usage" },
+                        { displayName: Translation.tr("RAM memory usage"), value: "memory_usage" },
                         { displayName: Translation.tr("None"), value: "none" }
                     ]
                     currentIndex: {
@@ -162,7 +162,7 @@ ContentPage {
 
             // Bottom Complication selection
             ContentSubsection {
-                title: Translation.tr("Bottom Complication")
+                title: Translation.tr("Bottom complication")
                 icon: "south"
                 Layout.fillWidth: true
 
@@ -170,10 +170,10 @@ ContentPage {
                     buttonIcon: "title"
                     textRole: "displayName"
                     model: [
-                        { displayName: Translation.tr("Calendar Next Event"), value: "calendar" },
-                        { displayName: Translation.tr("TickTick Inbox Tasks"), value: "todo" },
-                        { displayName: Translation.tr("Active Media Status"), value: "media" },
-                        { displayName: Translation.tr("Water Reminder Goal"), value: "water" },
+                        { displayName: Translation.tr("Calendar next event"), value: "calendar" },
+                        { displayName: Translation.tr("TickTick inbox tasks"), value: "todo" },
+                        { displayName: Translation.tr("Active media status"), value: "media" },
+                        { displayName: Translation.tr("Water reminder goal"), value: "water" },
                         { displayName: Translation.tr("None"), value: "none" }
                     ]
                     currentIndex: {

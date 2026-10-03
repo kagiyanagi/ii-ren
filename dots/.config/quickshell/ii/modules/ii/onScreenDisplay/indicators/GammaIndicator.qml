@@ -10,9 +10,4 @@ OsdMaterialValueIndicator {
     minimalFrom: Hyprsunset.gammaLowerLimit / 100
     icon: "wb_twilight"
     shape: MaterialShape.Shape.Gem
-
-    onMoved: function(v) {
-        const gamma = Math.max(Hyprsunset.gammaLowerLimit, Math.min(100, v * 100));
-        Hyprsunset.setGamma(gamma);
-    }
 }

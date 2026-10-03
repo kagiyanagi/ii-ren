@@ -78,7 +78,7 @@ AbstractBackgroundWidget {
     }
 
     readonly property string trackTitle: player?.trackTitle || Translation.tr("No media")
-    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown artist")
 
     // --- Colors (WidgetColorScheme with dynamic album colors support) ---
     readonly property color colSectionOne: useDynamicColors ? blendedColors.colPrimaryContainer : WidgetColorScheme.cardBgColor

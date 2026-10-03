@@ -13,7 +13,7 @@ Singleton {
     readonly property var builtinWidgets: [
         {
             "widgetId": "todo",
-            "name": Translation.tr("To-Do List"),
+            "name": Translation.tr("To-do list"),
             "category": "Utility",
             "qmlPath": Qt.resolvedUrl("todo/TodoWidget.qml"),
             "icon": "checklist",
@@ -22,34 +22,34 @@ Singleton {
         },
         {
             "widgetId": "pc_notes",
-            "name": Translation.tr("Legacy Notes (PC)"),
+            "name": Translation.tr("Legacy notes (PC)"),
             "category": "Utility",
             "qmlPath": Qt.resolvedUrl("pc_widgets/notes/NotesWidget.qml"),
             "icon": "edit_note",
-            "description": Translation.tr("Legacy end4-pC Notes"),
+            "description": Translation.tr("Legacy end4-pC notes"),
             "configPage": ""
         },
         {
             "widgetId": "pc_resources",
-            "name": Translation.tr("Legacy Resources (PC)"),
+            "name": Translation.tr("Legacy resources (PC)"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("pc_widgets/resources/ResourcesWidget.qml"),
             "icon": "memory",
-            "description": Translation.tr("Legacy end4-pC Resources"),
+            "description": Translation.tr("Legacy end4-pC resources"),
             "configPage": ""
         },
         {
             "widgetId": "pc_media",
-            "name": Translation.tr("Legacy Media (PC)"),
+            "name": Translation.tr("Legacy media (PC)"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("pc_widgets/media/MediaWidget.qml"),
             "icon": "play_circle",
-            "description": Translation.tr("Legacy end4-pC Media"),
+            "description": Translation.tr("Legacy end4-pC media"),
             "configPage": ""
         },
         {
             "widgetId": "clock_cookie",
-            "name": Translation.tr("Cookie Clock"),
+            "name": Translation.tr("Cookie clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/CookieClockWidget.qml"),
             "icon": "schedule",
@@ -58,7 +58,7 @@ Singleton {
         },
         {
             "widgetId": "clock_nagasaki",
-            "name": Translation.tr("Nagasaki Clock"),
+            "name": Translation.tr("Nagasaki clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/NagasakiClockWidget.qml"),
             "icon": "schedule",
@@ -67,7 +67,7 @@ Singleton {
         },
         {
             "widgetId": "clock_flex",
-            "name": Translation.tr("Flex Clock"),
+            "name": Translation.tr("Flex clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/FlexClock.qml"),
             "icon": "schedule",
@@ -76,7 +76,7 @@ Singleton {
         },
         {
             "widgetId": "clock_hori",
-            "name": Translation.tr("Hori Clock"),
+            "name": Translation.tr("Hori clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/HoriClock.qml"),
             "icon": "schedule",
@@ -85,7 +85,7 @@ Singleton {
         },
         {
             "widgetId": "clock_nothing",
-            "name": Translation.tr("Nothing Digital Clock"),
+            "name": Translation.tr("Nothing digital clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/NothingDigitalClockWidget.qml"),
             "icon": "schedule",
@@ -94,7 +94,7 @@ Singleton {
         },
         {
             "widgetId": "nothing_wheel_clock",
-            "name": Translation.tr("Nothing Wheel Clock"),
+            "name": Translation.tr("Nothing wheel clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/NothingWheelClockWidget.qml"),
             "icon": "schedule",
@@ -103,7 +103,7 @@ Singleton {
         },
         {
             "widgetId": "nagasaki_text",
-            "name": Translation.tr("Nagasaki Text Clock"),
+            "name": Translation.tr("Nagasaki text clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/NagasakiTextClock.qml"),
             "icon": "schedule",
@@ -112,7 +112,7 @@ Singleton {
         },
         {
             "widgetId": "clock_word",
-            "name": Translation.tr("Word Clock"),
+            "name": Translation.tr("Word clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/WordClockWidget.qml"),
             "icon": "schedule",
@@ -121,7 +121,7 @@ Singleton {
         },
         {
             "widgetId": "clock_dial",
-            "name": Translation.tr("Dial Clock"),
+            "name": Translation.tr("Dial clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/DialClockWidget.qml"),
             "icon": "schedule",
@@ -130,7 +130,7 @@ Singleton {
         },
         {
             "widgetId": "clock_wearos",
-            "name": Translation.tr("WearOS Clock (Watch)"),
+            "name": Translation.tr("WearOS clock (watch)"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/WearOSClockWidget.qml"),
             "icon": "schedule",
@@ -139,7 +139,7 @@ Singleton {
         },
         {
             "widgetId": "wearos_arc_clock",
-            "name": Translation.tr("WearOS Arc Clock"),
+            "name": Translation.tr("WearOS arc clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/WearOSArcClockWidget.qml"),
             "icon": "schedule",
@@ -148,7 +148,7 @@ Singleton {
         },
         {
             "widgetId": "concentric_clock",
-            "name": Translation.tr("Concentric Clock"),
+            "name": Translation.tr("Concentric clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/ConcentricClockWidget.qml"),
             "icon": "schedule",
@@ -157,7 +157,7 @@ Singleton {
         },
         {
             "widgetId": "month_clock",
-            "name": Translation.tr("Month Clock"),
+            "name": Translation.tr("Month clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/MonthClockWidget.qml"),
             "icon": "calendar_month",
@@ -166,7 +166,7 @@ Singleton {
         },
         {
             "widgetId": "scallop_dot_clock",
-            "name": Translation.tr("Scallop Dot Clock"),
+            "name": Translation.tr("Scallop dot clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/ScallopDotClockWidget.qml"),
             "icon": "schedule",
@@ -175,7 +175,7 @@ Singleton {
         },
         {
             "widgetId": "scallop_number_clock",
-            "name": Translation.tr("Scallop Number Clock"),
+            "name": Translation.tr("Scallop number clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/ScallopNumberClockWidget.qml"),
             "icon": "schedule",
@@ -184,7 +184,7 @@ Singleton {
         },
         {
             "widgetId": "circle_pointer_clock",
-            "name": Translation.tr("Circle Pointer Clock"),
+            "name": Translation.tr("Circle pointer clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/CirclePointerClockWidget.qml"),
             "icon": "schedule",
@@ -193,7 +193,7 @@ Singleton {
         },
         {
             "widgetId": "triple_ring_clock",
-            "name": Translation.tr("Triple Ring Clock"),
+            "name": Translation.tr("Triple ring clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/TripleRingClockWidget.qml"),
             "icon": "schedule",
@@ -202,7 +202,7 @@ Singleton {
         },
         {
             "widgetId": "clock_expressive_card",
-            "name": Translation.tr("Expressive Card Clock"),
+            "name": Translation.tr("Expressive card clock"),
             "category": "Clock",
             "qmlPath": Qt.resolvedUrl("clock/ExpressiveCardClockWidget.qml"),
             "icon": "schedule",
@@ -210,7 +210,7 @@ Singleton {
         },
         {
             "widgetId": "circular_media",
-            "name": Translation.tr("Circular Media (Watch)"),
+            "name": Translation.tr("Circular media (watch)"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/CircularMediaWidget.qml"),
             "icon": "play_circle",
@@ -219,7 +219,7 @@ Singleton {
         },
         {
             "widgetId": "media_circular",
-            "name": Translation.tr("Circular Media"),
+            "name": Translation.tr("Circular media"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/MediaWidget.qml"),
             "icon": "play_circle",
@@ -228,7 +228,7 @@ Singleton {
         },
         {
             "widgetId": "media_expressive",
-            "name": Translation.tr("Expressive Media"),
+            "name": Translation.tr("Expressive media"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/ExpressiveMediaWidget.qml"),
             "icon": "music_note",
@@ -237,7 +237,7 @@ Singleton {
         },
         {
             "widgetId": "media_android",
-            "name": Translation.tr("Android Media"),
+            "name": Translation.tr("Android media"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/AndroidMediaWidget.qml"),
             "icon": "play_circle",
@@ -245,7 +245,7 @@ Singleton {
         },
         {
             "widgetId": "media_cd",
-            "name": Translation.tr("CD Media 1x1"),
+            "name": Translation.tr("CD media 1x1"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/CdMediaWidget.qml"),
             "icon": "album",
@@ -254,7 +254,7 @@ Singleton {
         },
         {
             "widgetId": "nothing_ring_media",
-            "name": Translation.tr("Nothing Ring Media 1x1"),
+            "name": Translation.tr("Nothing ring media 1x1"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/NothingRingMediaWidget.qml"),
             "icon": "graphic_eq",
@@ -263,7 +263,7 @@ Singleton {
         },
         {
             "widgetId": "weather_default",
-            "name": Translation.tr("Default Weather"),
+            "name": Translation.tr("Default weather"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherWidget.qml"),
             "icon": "cloud",
@@ -272,7 +272,7 @@ Singleton {
         },
         {
             "widgetId": "weather_expressive",
-            "name": Translation.tr("Expressive Weather"),
+            "name": Translation.tr("Expressive weather"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/ExpressiveWeatherWidget.qml"),
             "icon": "sunny",
@@ -281,7 +281,7 @@ Singleton {
         },
         {
             "widgetId": "weather_forecast",
-            "name": Translation.tr("Forecast Weather 2x1"),
+            "name": Translation.tr("Forecast weather 2x1"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherForecast2x1Widget.qml"),
             "icon": "partly_cloudy_day",
@@ -290,7 +290,7 @@ Singleton {
         },
         {
             "widgetId": "weather_card",
-            "name": Translation.tr("Weather Card 1x1"),
+            "name": Translation.tr("Weather card 1x1"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherCard1x1Widget.qml"),
             "icon": "cloud",
@@ -299,7 +299,7 @@ Singleton {
         },
         {
             "widgetId": "weather_icon",
-            "name": Translation.tr("Weather Icon Shape"),
+            "name": Translation.tr("Weather icon shape"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherIconWidget.qml"),
             "icon": "sunny",
@@ -308,7 +308,7 @@ Singleton {
         },
         {
             "widgetId": "weather_pill",
-            "name": Translation.tr("Weather Pill 1x0.5"),
+            "name": Translation.tr("Weather pill 1x0.5"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherPillWidget.qml"),
             "icon": "cloud",
@@ -317,7 +317,7 @@ Singleton {
         },
         {
             "widgetId": "weather_circle",
-            "name": Translation.tr("Weather Circle Cookie"),
+            "name": Translation.tr("Weather circle cookie"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherCircleWidget.qml"),
             "icon": "sunny",
@@ -326,7 +326,7 @@ Singleton {
         },
         {
             "widgetId": "nothing_weather_circle",
-            "name": Translation.tr("Nothing Weather Circle"),
+            "name": Translation.tr("Nothing weather circle"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/NothingWeatherWidget.qml"),
             "icon": "cloud",
@@ -335,7 +335,7 @@ Singleton {
         },
         {
             "widgetId": "volume_mute_pill",
-            "name": Translation.tr("Volume Mute Pill 1x0.5"),
+            "name": Translation.tr("Volume mute pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/VolumeMutePillWidget.qml"),
             "icon": "volume_off",
@@ -344,7 +344,7 @@ Singleton {
         },
         {
             "widgetId": "wifi_pill",
-            "name": Translation.tr("Wi-Fi Pill 1x0.5"),
+            "name": Translation.tr("Wi-Fi pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/WifiPillWidget.qml"),
             "icon": "wifi",
@@ -352,7 +352,7 @@ Singleton {
         },
         {
             "widgetId": "bluetooth_pill",
-            "name": Translation.tr("Bluetooth Pill 1x0.5"),
+            "name": Translation.tr("Bluetooth pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/BluetoothPillWidget.qml"),
             "icon": "bluetooth",
@@ -360,7 +360,7 @@ Singleton {
         },
         {
             "widgetId": "mic_pill",
-            "name": Translation.tr("Microphone Pill 1x0.5"),
+            "name": Translation.tr("Microphone pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/MicPillWidget.qml"),
             "icon": "mic",
@@ -368,7 +368,7 @@ Singleton {
         },
         {
             "widgetId": "dark_mode_pill",
-            "name": Translation.tr("Dark Mode Pill 1x0.5"),
+            "name": Translation.tr("Dark mode pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/DarkModePillWidget.qml"),
             "icon": "dark_mode",
@@ -376,7 +376,7 @@ Singleton {
         },
         {
             "widgetId": "screen_record_pill",
-            "name": Translation.tr("Screen Record Pill 1x0.5"),
+            "name": Translation.tr("Screen record pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/ScreenRecordPillWidget.qml"),
             "icon": "videocam",
@@ -384,7 +384,7 @@ Singleton {
         },
         {
             "widgetId": "easy_effects_pill",
-            "name": Translation.tr("EasyEffects Pill 1x0.5"),
+            "name": Translation.tr("EasyEffects pill 1x0.5"),
             "category": "System",
             "qmlPath": Qt.resolvedUrl("system/EasyEffectsPillWidget.qml"),
             "icon": "graphic_eq",
@@ -392,7 +392,7 @@ Singleton {
         },
         {
             "widgetId": "weather_typography",
-            "name": Translation.tr("Weather Typography"),
+            "name": Translation.tr("Weather typography"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherTypographyWidget.qml"),
             "icon": "cloud",
@@ -401,7 +401,7 @@ Singleton {
         },
         {
             "widgetId": "weather_hourly",
-            "name": Translation.tr("Weather Hourly 2x1"),
+            "name": Translation.tr("Weather hourly 2x1"),
             "category": "Weather",
             "qmlPath": Qt.resolvedUrl("weather/WeatherHourly2x1Widget.qml"),
             "icon": "sunny",
@@ -410,7 +410,7 @@ Singleton {
         },
         {
             "widgetId": "date_default",
-            "name": Translation.tr("Date Card"),
+            "name": Translation.tr("Date card"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/DateWidget.qml"),
             "icon": "calendar_today",
@@ -419,7 +419,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_minimal",
-            "name": Translation.tr("Calendar Minimal 1x1"),
+            "name": Translation.tr("Calendar minimal 1x1"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarMinimalWidget.qml"),
             "icon": "calendar_month",
@@ -428,7 +428,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_grid",
-            "name": Translation.tr("Calendar Month Grid 2x1"),
+            "name": Translation.tr("Calendar month grid 2x1"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarGrid2x1Widget.qml"),
             "icon": "calendar_month",
@@ -437,7 +437,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_agenda",
-            "name": Translation.tr("Calendar Agenda 1x1"),
+            "name": Translation.tr("Calendar agenda 1x1"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarAgendaWidget.qml"),
             "icon": "event",
@@ -446,7 +446,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_next_event",
-            "name": Translation.tr("Calendar Next Event 2x1"),
+            "name": Translation.tr("Calendar next event 2x1"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarNextEventWidget.qml"),
             "icon": "event",
@@ -455,7 +455,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_pill",
-            "name": Translation.tr("Calendar Pill 1x0.5"),
+            "name": Translation.tr("Calendar pill 1x0.5"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarPillWidget.qml"),
             "icon": "calendar_today",
@@ -464,7 +464,7 @@ Singleton {
         },
         {
             "widgetId": "calendar_upcoming_3days",
-            "name": Translation.tr("Calendar Upcoming 3 Days 1x1"),
+            "name": Translation.tr("Calendar upcoming 3 days 1x1"),
             "category": "Date",
             "qmlPath": Qt.resolvedUrl("DateWidget/CalendarUpcoming3DaysWidget.qml"),
             "icon": "calendar_view_day",
@@ -491,7 +491,7 @@ Singleton {
         },
         {
             "widgetId": "photo_weather_2x1",
-            "name": Translation.tr("Photo Weather (2x1)"),
+            "name": Translation.tr("Photo weather (2x1)"),
             "category": "Photo",
             "qmlPath": Qt.resolvedUrl("photo/PhotoWeather2x1Widget.qml"),
             "icon": "image",
@@ -500,7 +500,7 @@ Singleton {
         },
         {
             "widgetId": "photo_pill_2x1",
-            "name": Translation.tr("Photo Pill Badge (2x1)"),
+            "name": Translation.tr("Photo pill badge (2x1)"),
             "category": "Photo",
             "qmlPath": Qt.resolvedUrl("photo/PhotoPill2x1Widget.qml"),
             "icon": "image",
@@ -509,7 +509,7 @@ Singleton {
         },
         {
             "widgetId": "photo_minimal_temp_2x1",
-            "name": Translation.tr("Photo Minimal Temp (2x1)"),
+            "name": Translation.tr("Photo minimal temp (2x1)"),
             "category": "Photo",
             "qmlPath": Qt.resolvedUrl("photo/PhotoMinimalTemp2x1Widget.qml"),
             "icon": "image",
@@ -518,7 +518,7 @@ Singleton {
         },
         {
             "widgetId": "bluetooth_battery",
-            "name": Translation.tr("Bluetooth Device Battery"),
+            "name": Translation.tr("Bluetooth device battery"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/BluetoothBatteryWidget.qml"),
             "icon": "earbuds",
@@ -527,7 +527,7 @@ Singleton {
         },
         {
             "widgetId": "bluetooth_fill_cards",
-            "name": Translation.tr("Bluetooth Fill Cards"),
+            "name": Translation.tr("Bluetooth fill cards"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/BluetoothFillCardsWidget.qml"),
             "icon": "bluetooth",
@@ -536,7 +536,7 @@ Singleton {
         },
         {
             "widgetId": "pc_battery_bars",
-            "name": Translation.tr("PC Battery Bars"),
+            "name": Translation.tr("PC battery bars"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/PcBatteryBarsWidget.qml"),
             "icon": "battery_charging_full",
@@ -545,7 +545,7 @@ Singleton {
         },
         {
             "widgetId": "pc_battery_cable",
-            "name": Translation.tr("PC Battery Cable"),
+            "name": Translation.tr("PC battery cable"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/PcBatteryCableWidget.qml"),
             "icon": "power",
@@ -554,7 +554,7 @@ Singleton {
         },
         {
             "widgetId": "devices_battery_list",
-            "name": Translation.tr("Connected Devices Battery List (2x1)"),
+            "name": Translation.tr("Connected devices battery list (2x1)"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/DevicesBatteryListWidget.qml"),
             "icon": "battery_full",
@@ -563,7 +563,7 @@ Singleton {
         },
         {
             "widgetId": "devices_battery_list_1x1",
-            "name": Translation.tr("Connected Devices Battery List (1x1)"),
+            "name": Translation.tr("Connected devices battery list (1x1)"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/DevicesBatteryList1x1Widget.qml"),
             "icon": "battery_full",
@@ -572,7 +572,7 @@ Singleton {
         },
         {
             "widgetId": "bluetooth_earbuds_stem",
-            "name": Translation.tr("Bluetooth Earbuds Stem"),
+            "name": Translation.tr("Bluetooth earbuds stem"),
             "category": "Devices",
             "qmlPath": Qt.resolvedUrl("bluetooth/BluetoothEarbudsStemWidget.qml"),
             "icon": "earbuds",
@@ -599,7 +599,7 @@ Singleton {
         },
         {
             "widgetId": "compact_media",
-            "name": Translation.tr("Compact Media (2x1)"),
+            "name": Translation.tr("Compact media (2x1)"),
             "category": "Media",
             "qmlPath": Qt.resolvedUrl("media/CompactMediaWidget.qml"),
             "icon": "graphic_eq",
@@ -635,7 +635,7 @@ Singleton {
         },
         {
             "widgetId": "notification_list",
-            "name": Translation.tr("Notification List (Lock Screen)"),
+            "name": Translation.tr("Notification list (lock screen)"),
             "category": "Utility",
             "qmlPath": Qt.resolvedUrl("notifications/NotificationListWidget.qml"),
             "icon": "notifications",
@@ -644,7 +644,7 @@ Singleton {
         },
         {
             "widgetId": "resource_cpu_pill",
-            "name": Translation.tr("CPU Resource Pill"),
+            "name": Translation.tr("CPU resource pill"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/CpuPillWidget.qml"),
             "icon": "memory",
@@ -653,7 +653,7 @@ Singleton {
         },
         {
             "widgetId": "resource_ram_pill",
-            "name": Translation.tr("RAM Resource Pill"),
+            "name": Translation.tr("RAM resource pill"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/RamPillWidget.qml"),
             "icon": "memory_alt",
@@ -662,7 +662,7 @@ Singleton {
         },
         {
             "widgetId": "resource_disk_pill",
-            "name": Translation.tr("Disk Resource Pill"),
+            "name": Translation.tr("Disk resource pill"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/DiskPillWidget.qml"),
             "icon": "hard_drive",
@@ -671,7 +671,7 @@ Singleton {
         },
         {
             "widgetId": "resource_fill_cards",
-            "name": Translation.tr("Resource Fill Cards"),
+            "name": Translation.tr("Resource fill cards"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/ResourceFillCardsWidget.qml"),
             "icon": "donut_large",
@@ -680,7 +680,7 @@ Singleton {
         },
         {
             "widgetId": "resource_nothing_disk",
-            "name": Translation.tr("Nothing Storage Widget"),
+            "name": Translation.tr("Nothing storage widget"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/NothingDiskWidget.qml"),
             "icon": "hard_drive",
@@ -689,7 +689,7 @@ Singleton {
         },
         {
             "widgetId": "resource_nothing_cpu",
-            "name": Translation.tr("Nothing CPU Widget"),
+            "name": Translation.tr("Nothing CPU widget"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/NothingCpuWidget.qml"),
             "icon": "memory",
@@ -698,7 +698,7 @@ Singleton {
         },
         {
             "widgetId": "resource_nothing_ram",
-            "name": Translation.tr("Nothing RAM Widget"),
+            "name": Translation.tr("Nothing RAM widget"),
             "category": "Resources",
             "qmlPath": Qt.resolvedUrl("utility/NothingRamWidget.qml"),
             "icon": "memory_alt",

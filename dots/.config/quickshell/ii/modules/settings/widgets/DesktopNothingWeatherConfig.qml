@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Nothing Weather Circle Options")
+    title: Translation.tr("Nothing weather circle options")
 
     ContentSection {
-        title: Translation.tr("Weather Settings")
+        title: Translation.tr("Weather settings")
         icon: "cloud"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "cloud_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Nothing Weather Circle disabled")
+                title: Translation.tr("Nothing weather circle disabled")
                 description: Translation.tr("Enable the Nothing Weather Circle in Desktop Widgets settings to use this page.")
             }
         }

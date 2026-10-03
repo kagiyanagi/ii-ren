@@ -141,7 +141,7 @@ AbstractBackgroundWidget {
                         spacing: 2
 
                         StyledText {
-                            text: (root.currentData && root.currentData.wDesc) ? root.currentData.wDesc : Translation.tr("Clear Sky")
+                            text: (root.currentData && root.currentData.wDesc) ? root.currentData.wDesc : Translation.tr("Clear sky")
                             color: root.textColorOnBg
                             font.pixelSize: Appearance.font.pixelSize.large
                             font.weight: Font.DemiBold

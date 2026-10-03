@@ -8,7 +8,7 @@ AndroidSliderWidgetBase {
 
     property var brightnessMonitor: Brightness.getTargetMonitor()
 
-    tooltipText: Translation.tr("Gamma / Brightness")
+    tooltipText: Translation.tr("Gamma / brightness")
     // Android swaps the sun between hollow, half and full as the level moves.
     materialSymbol: {
         const val = root.brightnessMonitor?.brightness ?? 0;

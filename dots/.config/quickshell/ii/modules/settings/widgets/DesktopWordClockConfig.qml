@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Word Clock Options")
+    title: Translation.tr("Word clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Word Clock disabled")
+                title: Translation.tr("Word clock disabled")
                 description: Translation.tr("Enable the Word Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.clock_word.size
                 from: 160
                 to: 420

@@ -212,7 +212,7 @@ Singleton {
         if (!event) return
         if (event.error) {
             console.warn("[LocalSend]", event.error)
-            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend Error"), event.error, "-a", "LocalSend"])
+            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend error"), event.error, "-a", "LocalSend"])
             return
         }
         if (!event.event) return
@@ -320,7 +320,7 @@ Singleton {
 
     function startServer(): void {
         if (!root.available) {
-            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend Error"), Translation.tr("The LocalSend helper could not run. It needs <tt>python3</tt>."), "-a", "LocalSend"])
+            Quickshell.execDetached(["notify-send", Translation.tr("LocalSend error"), Translation.tr("The LocalSend helper could not run. It needs <tt>python3</tt>."), "-a", "LocalSend"])
             console.warn("[LocalSend] helper is not available:", root.helperPath)
             return
         }

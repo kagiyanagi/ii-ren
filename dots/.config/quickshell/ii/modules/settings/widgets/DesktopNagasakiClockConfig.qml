@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Nagasaki Clock Options")
+    title: Translation.tr("Nagasaki clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Nagasaki Clock disabled")
+                title: Translation.tr("Nagasaki clock disabled")
                 description: Translation.tr("Enable the Nagasaki Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -34,7 +34,7 @@ ContentPage {
             visible: Config.isWidgetActive("clock_nagasaki")
 
             ContentSubsectionLabel {
-                text: Translation.tr("Style & Appearance")
+                text: Translation.tr("Style & appearance")
             }
 
             ConfigSwitch {

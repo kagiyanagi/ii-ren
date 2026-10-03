@@ -174,6 +174,10 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.title
                         text: "close"
                     }
+
+                    StyledToolTip {
+                        text: Translation.tr("Close")
+                    }
                 }
             }
 

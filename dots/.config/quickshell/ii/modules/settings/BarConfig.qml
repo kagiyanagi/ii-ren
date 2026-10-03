@@ -350,8 +350,8 @@ ContentPage {
                     Config.options.bar.clock.dateFormat = newValue;
                 }
                 options: [
-                    { displayName: Translation.tr("Date First (ddd, dd/MM)"), value: "ddd, dd/MM" },
-                    { displayName: Translation.tr("Month First (ddd, MM/dd)"), value: "ddd, MM/dd" },
+                    { displayName: Translation.tr("Date first (ddd, dd/MM)"), value: "ddd, dd/MM" },
+                    { displayName: Translation.tr("Month first (ddd, MM/dd)"), value: "ddd, MM/dd" },
                     { displayName: Translation.tr("Full (dddd, MMMM dd)"), value: "dddd, MMMM dd" },
                     { displayName: Translation.tr("ISO (yyyy-MM-dd)"), value: "yyyy-MM-dd" }
                 ]
@@ -689,7 +689,7 @@ ContentPage {
         }
 
         ContentSubsection {
-            title: Translation.tr("Performance & Layout")
+            title: Translation.tr("Performance & layout")
 
             ConfigSpinBox {
                 icon: "timer"
@@ -815,7 +815,7 @@ ContentPage {
         }
 
         ContentSubsection {
-            title: Translation.tr("RAM & Swap measurement unit")
+            title: Translation.tr("RAM & swap measurement unit")
 
             ConfigSelectionArray {
                 currentValue: Config.options.bar.resources.ramUnit ?? "percent"
@@ -980,7 +980,7 @@ ContentPage {
             uniform: true
             ConfigSwitch {
                 buttonIcon: "dark_mode"
-                text: Translation.tr("Dark/Light toggle")
+                text: Translation.tr("Dark/light toggle")
                 checked: Config.options.bar.utilButtons.showDarkModeToggle
                 onCheckedChanged: {
                     Config.options.bar.utilButtons.showDarkModeToggle = checked;
@@ -988,7 +988,7 @@ ContentPage {
             }
             ConfigSwitch {
                 buttonIcon: "speed"
-                text: Translation.tr("Performance Profile toggle")
+                text: Translation.tr("Performance profile toggle")
                 checked: Config.options.bar.utilButtons.showPerformanceProfileToggle
                 onCheckedChanged: {
                     Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;

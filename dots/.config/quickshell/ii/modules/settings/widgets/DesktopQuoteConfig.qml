@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Quote Widget Options")
+    title: Translation.tr("Quote widget options")
 
     ContentSection {
-        title: Translation.tr("Quote Widget Settings")
+        title: Translation.tr("Quote widget settings")
         icon: "format_quote"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "format_quote"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Quote Widget disabled")
+                title: Translation.tr("Quote widget disabled")
                 description: Translation.tr("Enable the Quote Widget in Desktop Widgets settings to use this page.")
             }
         }
@@ -34,7 +34,7 @@ ContentPage {
             visible: Config.isWidgetActive("quote")
 
             ContentSubsectionLabel {
-                text: Translation.tr("Quote Source")
+                text: Translation.tr("Quote source")
             }
 
             ConfigSwitch {
@@ -116,7 +116,7 @@ ContentPage {
             ConfigSlider {
                 visible: Config.options.background.widgets.quote.fetchRandom ?? false
                 buttonIcon: "schedule"
-                text: Translation.tr("Auto-Refresh Interval")
+                text: Translation.tr("Auto-refresh interval")
                 from: 1
                 to: 24
                 stepSize: 1
@@ -130,7 +130,7 @@ ContentPage {
 
             ContentSubsectionLabel {
                 visible: !(Config.options.background.widgets.quote.fetchRandom ?? false)
-                text: Translation.tr("Custom Quote")
+                text: Translation.tr("Custom quote")
             }
 
             ConfigTextField {
@@ -138,7 +138,7 @@ ContentPage {
                 visible: !(Config.options.background.widgets.quote.fetchRandom ?? false)
                 Layout.fillWidth: true
                 text: Translation.tr("Your quote")
-                placeholderText: Translation.tr("Enter your favorite quote...")
+                placeholderText: Translation.tr("Your favorite quote")
 
                 Component.onCompleted: {
                     quoteTextField.textField.text = Config.options.background.widgets.quote.quoteText || "";
@@ -153,12 +153,12 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Text Size")
+                text: Translation.tr("Text size")
             }
 
             ConfigSlider {
                 buttonIcon: "format_size"
-                text: Translation.tr("Quote Font Size")
+                text: Translation.tr("Quote font size")
                 from: 10
                 to: 32
                 stepSize: 1

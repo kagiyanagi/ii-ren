@@ -115,14 +115,14 @@ AbstractBackgroundWidget {
                     }
                     readonly property string cardTitle: {
                         if (modelData === "cpu") return Translation.tr("CPU Usage");
-                        if (modelData === "ram") return Translation.tr("RAM Memory");
-                        if (modelData === "disk") return Translation.tr("Disk Storage");
+                        if (modelData === "ram") return Translation.tr("RAM memory");
+                        if (modelData === "disk") return Translation.tr("Disk storage");
                         return "Resource";
                     }
                     readonly property string cardSubtitle: {
                         if (modelData === "cpu") {
                             let temp = ResourceUsage.cpuTemp;
-                            return temp > 0 ? (Math.round(temp) + "°C Thermal") : Translation.tr("Processor Total");
+                            return temp > 0 ? (Math.round(temp) + "°C Thermal") : Translation.tr("Processor total");
                         }
                         if (modelData === "ram") {
                             let ramUsedGb = (ResourceUsage.memoryUsed / (1024 * 1024)).toFixed(1);

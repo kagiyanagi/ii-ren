@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("WearOS Clock (Watch) Options")
+    title: Translation.tr("WearOS clock (watch) options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("WearOS Clock (Watch) disabled")
+                title: Translation.tr("WearOS clock (watch) disabled")
                 description: Translation.tr("Enable the WearOS Clock (Watch) in Desktop Widgets settings to use this page.")
             }
         }
@@ -40,7 +40,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.wearos_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -54,12 +54,12 @@ ContentPage {
 
             // ── Hands ──
             ContentSubsectionLabel {
-                text: Translation.tr("Clock Hands")
+                text: Translation.tr("Clock hands")
             }
 
             ConfigSwitch {
                 buttonIcon: "schedule"
-                text: Translation.tr("Show Minute Hand")
+                text: Translation.tr("Show minute hand")
                 checked: Config.options.background.widgets.wearos_clock.showMinuteHand ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showMinuteHand = checked;
@@ -70,12 +70,12 @@ ContentPage {
 
             // ── Dial Ring ──
             ContentSubsectionLabel {
-                text: Translation.tr("Dial Ring")
+                text: Translation.tr("Dial ring")
             }
 
             ConfigSwitch {
                 buttonIcon: "circle"
-                text: Translation.tr("Show Bezel Ring")
+                text: Translation.tr("Show bezel ring")
                 checked: Config.options.background.widgets.wearos_clock.showBezelRing ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showBezelRing = checked;
@@ -84,7 +84,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "pin"
-                text: Translation.tr("Show Outer Numbers (00-58)")
+                text: Translation.tr("Show outer numbers (00-58)")
                 checked: Config.options.background.widgets.wearos_clock.showOuterNumbers ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showOuterNumbers = checked;
@@ -93,7 +93,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "tag"
-                text: Translation.tr("Show Inner Numbers (05-55)")
+                text: Translation.tr("Show inner numbers (05-55)")
                 checked: Config.options.background.widgets.wearos_clock.showInnerNumbers ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showInnerNumbers = checked;
@@ -109,7 +109,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "android"
-                text: Translation.tr("Show Distro Logo")
+                text: Translation.tr("Show distro logo")
                 checked: Config.options.background.widgets.wearos_clock.showDistroLogo ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showDistroLogo = checked;
@@ -118,7 +118,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Show Sunset Gauge")
+                text: Translation.tr("Show sunset gauge")
                 checked: Config.options.background.widgets.wearos_clock.showSunsetComplication ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showSunsetComplication = checked;
@@ -127,7 +127,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "schedule"
-                text: Translation.tr("Show Digital Time Pill")
+                text: Translation.tr("Show digital time pill")
                 checked: Config.options.background.widgets.wearos_clock.showDigitalTimePill ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showDigitalTimePill = checked;
@@ -136,7 +136,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "battery_full"
-                text: Translation.tr("Show Battery Pill")
+                text: Translation.tr("Show battery pill")
                 checked: Config.options.background.widgets.wearos_clock.showBatteryPill ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showBatteryPill = checked;
@@ -145,7 +145,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "hourglass_bottom"
-                text: Translation.tr("Show Hour Sub-Dial")
+                text: Translation.tr("Show hour sub-dial")
                 checked: Config.options.background.widgets.wearos_clock.showHourSubDial ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showHourSubDial = checked;
@@ -154,7 +154,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "bedtime"
-                text: Translation.tr("Show Bedtime Icon")
+                text: Translation.tr("Show bedtime icon")
                 checked: Config.options.background.widgets.wearos_clock.showBedtimeIcon ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showBedtimeIcon = checked;
@@ -163,7 +163,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "phone_android"
-                text: Translation.tr("Show KDE Connect Status")
+                text: Translation.tr("Show KDE Connect status")
                 checked: Config.options.background.widgets.wearos_clock.showKdeConnect ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showKdeConnect = checked;
@@ -172,7 +172,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "calendar_today"
-                text: Translation.tr("Show Date Complication")
+                text: Translation.tr("Show date complication")
                 checked: Config.options.background.widgets.wearos_clock.showDateComplication ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.showDateComplication = checked;
@@ -188,7 +188,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "blur_on"
-                text: Translation.tr("Enable Glass Reflection")
+                text: Translation.tr("Enable glass reflection")
                 checked: Config.options.background.widgets.wearos_clock.enableGlassReflection ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.enableGlassReflection = checked;
@@ -197,7 +197,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Enable Shadows")
+                text: Translation.tr("Enable shadows")
                 checked: Config.options.background.widgets.wearos_clock.enableShadows ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.wearos_clock.enableShadows = checked;

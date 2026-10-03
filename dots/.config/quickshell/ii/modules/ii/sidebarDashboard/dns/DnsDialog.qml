@@ -103,7 +103,7 @@ WindowDialog {
             spacing: 12
             enabled: Dns.available
 
-            Card {
+            DialogCard {
                 id: providerCard
                 Repeater {
                     model: root.options
@@ -239,7 +239,7 @@ WindowDialog {
 
             // The Wi-Fi and hotspot dialogs' switch row: the row owns the state,
             // and the switch never toggles itself.
-            Card {
+            DialogCard {
                 DialogListItem {
                     id: encryptRow
                     Layout.fillWidth: true
@@ -301,21 +301,6 @@ WindowDialog {
         DialogButton {
             buttonText: Translation.tr("Done")
             onClicked: root.dismiss()
-        }
-    }
-
-    // The audio dialog's list card.
-    component Card: Rectangle {
-        default property alias rows: cardColumn.data
-        Layout.fillWidth: true
-        implicitHeight: cardColumn.implicitHeight
-        radius: Appearance.rounding.large
-        color: Appearance.colors.colSurfaceContainerHigh
-
-        ColumnLayout {
-            id: cardColumn
-            anchors.fill: parent
-            spacing: 0
         }
     }
 }

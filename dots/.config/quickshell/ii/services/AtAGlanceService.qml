@@ -25,8 +25,8 @@ Singleton {
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool mediaAvailable: (options.enableMedia ?? true) && player !== null && String(player.trackTitle || "") !== ""
     readonly property bool mediaPlaying: mediaAvailable && player.playbackState === MprisPlaybackState.Playing
-    readonly property string mediaTitle: mediaAvailable ? String(player.trackTitle || Translation.tr("Unknown Title")) : ""
-    readonly property string mediaArtist: mediaAvailable ? String(player.trackArtist || Translation.tr("Unknown Artist")) : ""
+    readonly property string mediaTitle: mediaAvailable ? String(player.trackTitle || Translation.tr("Unknown title")) : ""
+    readonly property string mediaArtist: mediaAvailable ? String(player.trackArtist || Translation.tr("Unknown artist")) : ""
     readonly property string mediaArtUrl: mediaAvailable ? String(MprisController.artUrl || "") : ""
 
     // ── 3. Calendar ───────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ Singleton {
     readonly property string todoTopTitle: {
         if (!todoAvailable) return "";
         const top = Todo.list.find(item => !(item.done || item.status === 2));
-        return top ? String(top.content || top.title || Translation.tr("To-Do Item")) : Translation.tr("To-Do Task");
+        return top ? String(top.content || top.title || Translation.tr("To-do item")) : Translation.tr("To-do task");
     }
 
     // ── 6. Email Unread ───────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ Singleton {
 
     // ── 7. LocalSend Transfers ────────────────────────────────────────────────
     readonly property bool localSendActive: (options.enableLocalSend ?? true) && LocalSend.available && (LocalSend.currentTransfer !== null || LocalSend.sending)
-    readonly property string localSendTitle: localSendActive ? (LocalSend.sending ? Translation.tr("Sending file...") : Translation.tr("Receiving file...")) : ""
+    readonly property string localSendTitle: localSendActive ? (LocalSend.sending ? Translation.tr("Sending file...") : Translation.tr("Receiving file…")) : ""
 
     // ── 8. KDE Connect Device ─────────────────────────────────────────────────
     readonly property bool kdeConnectActive: (options.enableKdeConnect ?? true) && KdeConnectService.available && KdeConnectService.activeDevice !== null && ((KdeConnectService.activeDevice.isReachable ?? KdeConnectService.activeDevice.reachable) ?? false)
@@ -206,7 +206,7 @@ Singleton {
             return {
                 service: "localsend",
                 title: localSendTitle,
-                subtitle: Translation.tr("LocalSend Active"),
+                subtitle: Translation.tr("LocalSend active"),
                 meta: "",
                 icon: "share",
                 artUrl: ""

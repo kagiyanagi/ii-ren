@@ -5,5 +5,5 @@ import qs.services
 DesktopPhotoWidgetConfig {
     configEntryName: "photo_weather_2x1"
     widgetIdName: "photo_weather_2x1"
-    title: Translation.tr("Photo Weather 2x1 Widget Options")
+    title: Translation.tr("Photo weather 2x1 widget options")
 }

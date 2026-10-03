@@ -115,7 +115,7 @@ ContentPage {
                 textRole: "displayName"
                 model: [
                     {
-                        displayName: Translation.tr("Radial Wipe"),
+                        displayName: Translation.tr("Radial wipe"),
                         icon: "circle",
                         value: "radial"
                     },
@@ -125,27 +125,27 @@ ContentPage {
                         value: "crossfade"
                     },
                     {
-                        displayName: Translation.tr("Linear Wipe"),
+                        displayName: Translation.tr("Linear wipe"),
                         icon: "swap_horiz",
                         value: "wipe"
                     },
                     {
-                        displayName: Translation.tr("Diamond Wipe"),
+                        displayName: Translation.tr("Diamond wipe"),
                         icon: "diamond",
                         value: "diamond"
                     },
                     {
-                        displayName: Translation.tr("Slash Wipe"),
+                        displayName: Translation.tr("Slash wipe"),
                         icon: "timeline",
                         value: "slash"
                     },
                     {
-                        displayName: Translation.tr("Outer Wipe"),
+                        displayName: Translation.tr("Outer wipe"),
                         icon: "radio_button_unchecked",
                         value: "outer"
                     },
                     {
-                        displayName: Translation.tr("Wave Wipe"),
+                        displayName: Translation.tr("Wave wipe"),
                         icon: "water",
                         value: "wave"
                     }
@@ -178,7 +178,7 @@ ContentPage {
                 enabled: !page.wallpaperIsVideo
                 Layout.fillWidth: true
                 icon: "rotate_right"
-                text: Translation.tr("Wipe Angle (0° starts from left side)")
+                text: Translation.tr("Wipe angle (0° starts from left side)")
                 value: Config.options.background.wipeAngle
                 from: 0
                 to: 359
@@ -349,7 +349,7 @@ ContentPage {
             ConfigTextField {
                 Layout.fillWidth: true
                 icon: "palette"
-                text: Translation.tr("Hex Color or @colLayer0")
+                text: Translation.tr("Hex color or @colLayer0")
                 inputText: shapeSection.opt.backgroundColor
                 onInputTextChanged: {
                     if (shapeSection.opt.backgroundColor !== inputText) {

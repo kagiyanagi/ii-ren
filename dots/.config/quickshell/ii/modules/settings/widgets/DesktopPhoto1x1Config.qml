@@ -10,7 +10,7 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Photo 1x1 Widget Options")
+    title: Translation.tr("Photo 1x1 widget options")
 
     FilePickerProcess {
         id: pickImageProc
@@ -20,7 +20,7 @@ ContentPage {
     }
 
     ContentSection {
-        title: Translation.tr("Photo 1x1 Widget Settings")
+        title: Translation.tr("Photo 1x1 widget settings")
         icon: "image"
 
         Item {
@@ -32,7 +32,7 @@ ContentPage {
                 anchors.fill: parent
                 icon:    "image"
                 shape:   MaterialShape.Shape.Circle
-                title:       Translation.tr("Photo 1x1 Widget disabled")
+                title:       Translation.tr("Photo 1x1 widget disabled")
                 description: Translation.tr("Enable the Photo 1x1 Widget in Desktop Widgets settings to use this page.")
             }
         }
@@ -43,12 +43,12 @@ ContentPage {
             visible: Config.isWidgetActive("photo_1x1")
 
             // ── Photo Selection ──────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Photo File") }
+            ContentSubsectionLabel { text: Translation.tr("Photo file") }
 
             RippleButtonWithIcon {
                 Layout.fillWidth: true
                 materialIcon: "folder_open"
-                mainText: Translation.tr("Choose Image")
+                mainText: Translation.tr("Choose image")
                 onClicked: {
                     pickImageProc.pick();
                 }
@@ -67,7 +67,7 @@ ContentPage {
                 Layout.fillWidth: true
                 visible: Config.options.background.widgets.photo_1x1.imagePath && Config.options.background.widgets.photo_1x1.imagePath !== ""
                 materialIcon: "delete"
-                mainText: Translation.tr("Remove Custom Image")
+                mainText: Translation.tr("Remove custom image")
                 onClicked: {
                     Config.options.background.widgets.photo_1x1.imagePath = "";
                 }
@@ -100,7 +100,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text:  Translation.tr("Widget Size")
+                text:  Translation.tr("Widget size")
                 value: Config.options.background.widgets.photo_1x1.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.photo_1x1.widgetSize = value

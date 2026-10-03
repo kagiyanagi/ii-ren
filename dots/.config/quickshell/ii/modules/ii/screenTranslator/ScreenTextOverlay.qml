@@ -37,7 +37,7 @@ Item {
         if (root.empty)
             return Translation.tr("Nothing to translate");
         if (root.localModel)
-            return Translation.tr("Running Local AI Model...");
+            return Translation.tr("Running local AI model…");
         return ocr.state === AsyncTask.State.Processing ? Translation.tr("Reading screen") : Translation.tr("Translating");
     }
 

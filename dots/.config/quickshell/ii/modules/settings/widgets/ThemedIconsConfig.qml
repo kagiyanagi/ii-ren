@@ -30,12 +30,12 @@ Item {
         id: page
         anchors.fill: parent
         forceWidth: false
-        title: Translation.tr("Icon Packs (Apps & Folders)")
+        title: Translation.tr("Icon packs (apps & folders)")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
 
         ContentSection {
-            title: Translation.tr("Icon Packs")
+            title: Translation.tr("Icon packs")
             icon: "category"
             // This was a 40-line explanation card sitting above the options. It
             // is a scope note for the section, and a section already has a place
@@ -180,7 +180,7 @@ Item {
 
             ContentSubsection {
                 visible: subPageRoot.canPreview
-                title: Translation.tr("Light Mode Icon Pack")
+                title: Translation.tr("Light mode icon pack")
                 icon: "light_mode"
                 Layout.fillWidth: true
                 tooltip: Translation.tr("Icon pack applied during Light Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")
@@ -209,7 +209,7 @@ Item {
 
             ContentSubsection {
                 visible: subPageRoot.canPreview
-                title: Translation.tr("Dark Mode Icon Pack")
+                title: Translation.tr("Dark mode icon pack")
                 icon: "dark_mode"
                 Layout.fillWidth: true
                 tooltip: Translation.tr("Icon pack applied during Dark Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")

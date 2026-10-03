@@ -82,7 +82,7 @@ AbstractBackgroundWidget {
             anchors.right: parent.right
             anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            text: root.isActive ? Translation.tr("Dark Mode") : Translation.tr("Light Mode")
+            text: root.isActive ? Translation.tr("Dark mode") : Translation.tr("Light mode")
             font.pixelSize: 24
             font.weight: Font.Bold
             color: root.contentColor

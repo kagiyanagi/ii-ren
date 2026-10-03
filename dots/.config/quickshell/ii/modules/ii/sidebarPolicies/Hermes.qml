@@ -353,22 +353,28 @@ Item {
             implicitHeight: 16
             radius: Appearance.rounding.full
             color: Appearance.colors.colPrimary
-            visible: iconButton.badge > 0
+            // Mapped until the shrink has played; it used to unmap on the frame the
+            // count cleared, so the exit ran to nobody.
+            visible: scale > 0
             // Grows out of the corner it sits in.
             transformOrigin: Item.TopRight
-            scale: iconButton.badge > 0 ? 1 : 0
+            property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
+            scale: {
+                badgeDot.scaleSpec = iconButton.badge > 0 ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                return iconButton.badge > 0 ? 1 : 0;
+            }
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: iconButton.badge > 0 ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: iconButton.badge > 0 ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                    duration: badgeDot.scaleSpec.duration
+                    easing.type: badgeDot.scaleSpec.type
+                    easing.bezierCurve: badgeDot.scaleSpec.bezierCurve
                 }
             }
 
             StyledText {
                 anchors.centerIn: parent
-                text: iconButton.badge
+                text: iconButton.badge || ""
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 color: Appearance.m3colors.m3onPrimary
             }
@@ -646,23 +652,31 @@ Item {
                 // about half the duration (DESIGN.md 2.5). Scale grows from the
                 // bottom right, the corner nearest the composer-row button under the
                 // sheet that opens it (2.6).
-                opacity: root.historyShown ? 1 : 0
-                scale: root.historyShown ? 1 : 0.96
+                property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+                opacity: {
+                    historyPanel.opacitySpec = root.historyShown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                    return root.historyShown ? 1 : 0;
+                }
+                property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
+                scale: {
+                    historyPanel.scaleSpec = root.historyShown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                    return root.historyShown ? 1 : 0.96;
+                }
                 visible: opacity > 0
                 transformOrigin: Item.BottomRight
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: root.historyShown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                        duration: historyPanel.opacitySpec.duration
+                        easing.type: historyPanel.opacitySpec.type
+                        easing.bezierCurve: historyPanel.opacitySpec.bezierCurve
                     }
                 }
                 Behavior on scale {
                     NumberAnimation {
-                        duration: root.historyShown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: root.historyShown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                        duration: historyPanel.scaleSpec.duration
+                        easing.type: historyPanel.scaleSpec.type
+                        easing.bezierCurve: historyPanel.scaleSpec.bezierCurve
                     }
                 }
 
@@ -676,23 +690,31 @@ Item {
 
                 // Same enter/exit pairing and origin as the history panel: both
                 // open from buttons at the right end of the composer row.
-                opacity: root.workShown ? 1 : 0
-                scale: root.workShown ? 1 : 0.96
+                property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+                opacity: {
+                    workPanel.opacitySpec = root.workShown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                    return root.workShown ? 1 : 0;
+                }
+                property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
+                scale: {
+                    workPanel.scaleSpec = root.workShown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                    return root.workShown ? 1 : 0.96;
+                }
                 visible: opacity > 0
                 transformOrigin: Item.BottomRight
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: root.workShown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                        duration: workPanel.opacitySpec.duration
+                        easing.type: workPanel.opacitySpec.type
+                        easing.bezierCurve: workPanel.opacitySpec.bezierCurve
                     }
                 }
                 Behavior on scale {
                     NumberAnimation {
-                        duration: root.workShown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: root.workShown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                        duration: workPanel.scaleSpec.duration
+                        easing.type: workPanel.scaleSpec.type
+                        easing.bezierCurve: workPanel.scaleSpec.bezierCurve
                     }
                 }
 
@@ -722,23 +744,31 @@ Item {
             // This fires on every turn, which makes it the most frequent
             // transition on the page -- the one thing that must not snap. Same
             // pairing as the cards above: height spatial, opacity effects.
-            implicitHeight: activityLine.shown ? activityRow.implicitHeight : 0
-            opacity: activityLine.shown ? 1 : 0
+            property AnimSpec implicitHeightSpec: Appearance.animation.elementMoveEnter
+            implicitHeight: {
+                activityLine.implicitHeightSpec = activityLine.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                return activityLine.shown ? activityRow.implicitHeight : 0;
+            }
+            property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+            opacity: {
+                activityLine.opacitySpec = activityLine.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                return activityLine.shown ? 1 : 0;
+            }
             visible: implicitHeight > 0
             clip: true
 
             Behavior on implicitHeight {
                 NumberAnimation {
-                    duration: activityLine.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: activityLine.shown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
+                    duration: activityLine.implicitHeightSpec.duration
+                    easing.type: activityLine.implicitHeightSpec.type
+                    easing.bezierCurve: activityLine.implicitHeightSpec.bezierCurve
                 }
             }
             Behavior on opacity {
                 NumberAnimation {
-                    duration: activityLine.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    duration: activityLine.opacitySpec.duration
+                    easing.type: activityLine.opacitySpec.type
+                    easing.bezierCurve: activityLine.opacitySpec.bezierCurve
                 }
             }
 

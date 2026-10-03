@@ -40,7 +40,7 @@ Scope {
         { icon: "lock", name: Translation.tr("Lock"), run: () => Session.lock() },
         { icon: "dark_mode", name: Translation.tr("Sleep"), can: "CanSuspend", fade: true, run: () => Session.suspend() },
         { icon: "downloading", name: Translation.tr("Hibernate"), can: "CanHibernate", fade: true, run: () => Session.hibernate() },
-        { icon: "browse_activity", name: Translation.tr("Task Manager"), run: () => Session.launchTaskManager() },
+        { icon: "browse_activity", name: Translation.tr("Task manager"), run: () => Session.launchTaskManager() },
         { icon: "logout", name: Translation.tr("Logout"), fade: true, run: () => Session.logout() },
         { icon: "power_settings_new", name: Translation.tr("Shutdown"), can: "CanPowerOff", fade: true, run: () => Session.poweroff() },
         { icon: "restart_alt", name: Translation.tr("Reboot"), can: "CanReboot", fade: true, run: () => Session.reboot() },

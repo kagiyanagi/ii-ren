@@ -157,6 +157,10 @@ Item {
                 alwaysRunToEnd: false
             })
         }
+
+        StyledToolTip {
+            text: Translation.tr("Remove from shelf")
+        }
     }
 
     // Only the tile that was actually pressed hands its drag to the proxy.

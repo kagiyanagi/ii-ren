@@ -140,7 +140,7 @@ ContentPage {
 
             GroupButtonWithTextField {
                 buttonIcon: "search"
-                buttonText: Translation.tr("Search extensions...")
+                buttonText: Translation.tr("Search extensions")
                 Layout.fillWidth: true
 
                 onTextEdited: text => {
@@ -202,7 +202,7 @@ ContentPage {
             Layout.fillWidth: true
             Layout.topMargin: 20
             visible: page.filteredExtensions.length > 0
-            text: Translation.tr("Browse Extensions")
+            text: Translation.tr("Browse extensions")
             font.pixelSize: Appearance.font.pixelSize.normal
             font.weight: Font.Medium
             color: Appearance.colors.colOnLayer0

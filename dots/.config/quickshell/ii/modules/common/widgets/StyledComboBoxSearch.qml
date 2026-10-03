@@ -301,7 +301,7 @@ ComboBox {
                     TextField {
                         id: searchField
                         Layout.fillWidth: true
-                        placeholderText: Translation.tr("Search...")
+                        placeholderText: Translation.tr("Search")
                         // The colours a bare TextField neglects, the same ones
                         // StyledTextInput fills in -- the placeholder and the
                         // selection were coming from the Qt default palette.

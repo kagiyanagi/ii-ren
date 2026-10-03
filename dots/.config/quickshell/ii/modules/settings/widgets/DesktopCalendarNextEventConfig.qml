@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Calendar Next Event 2x1 Options")
+    title: Translation.tr("Calendar next event 2x1 options")
 
     ContentSection {
-        title: Translation.tr("Calendar Settings")
+        title: Translation.tr("Calendar settings")
         icon: "calendar_month"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "event_busy"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Calendar Next Event 2x1 disabled")
+                title: Translation.tr("Calendar next event 2x1 disabled")
                 description: Translation.tr("Enable the Calendar Next Event 2x1 in Desktop Widgets settings to use this page.")
             }
         }

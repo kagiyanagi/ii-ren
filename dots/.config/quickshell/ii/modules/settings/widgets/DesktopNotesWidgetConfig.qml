@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Notes Widget Options")
+    title: Translation.tr("Notes widget options")
 
     ContentSection {
-        title: Translation.tr("Notes Widget Settings")
+        title: Translation.tr("Notes widget settings")
         icon: "note_stack"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "note_stack"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Notes Widget disabled")
+                title: Translation.tr("Notes widget disabled")
                 description: Translation.tr("Enable the Notes Widget in Desktop Widgets settings to use this page.")
             }
         }

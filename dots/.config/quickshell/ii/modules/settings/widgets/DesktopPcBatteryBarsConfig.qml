@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("PC Battery Bars Options")
+    title: Translation.tr("PC battery bars options")
 
     ContentSection {
-        title: Translation.tr("PC Battery Bars Settings")
+        title: Translation.tr("PC battery bars settings")
         icon: "battery_charging_full"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "battery_charging_full"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("PC Battery Bars disabled")
+                title: Translation.tr("PC battery bars disabled")
                 description: Translation.tr("Enable the PC Battery Bars in Desktop Widgets settings to use this page.")
             }
         }

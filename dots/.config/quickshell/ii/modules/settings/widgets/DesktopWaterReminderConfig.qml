@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Water Reminder Widget Options")
+    title: Translation.tr("Water reminder widget options")
 
     ContentSection {
-        title: Translation.tr("Water Reminder Widget Settings")
+        title: Translation.tr("Water reminder widget settings")
         icon: "water_drop"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "water_drop"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Water Reminder Widget disabled")
+                title: Translation.tr("Water reminder widget disabled")
                 description: Translation.tr("Enable the Water Reminder Widget in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "notifications_active"
-                text: Translation.tr("Enable Water Reminders")
+                text: Translation.tr("Enable water reminders")
                 checked: Config.options.background.widgets.water_reminder.enable ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.water_reminder.enable = checked;
@@ -63,7 +63,7 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Daily Goal")
+                text: Translation.tr("Daily goal")
             }
 
             ConfigSpinBox {
@@ -79,7 +79,7 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Reminder Message")
+                text: Translation.tr("Reminder message")
             }
 
             ConfigTextField {

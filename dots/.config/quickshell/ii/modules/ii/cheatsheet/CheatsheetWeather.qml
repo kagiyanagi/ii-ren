@@ -215,8 +215,8 @@ Item {
         shown: !root.hasReading && root.loading
         sourceComponent: LoadingPlaceholder {
             loading: true
-            loadingText: Weather.city === "" ? Translation.tr("Finding your location...")
-                : Translation.tr("Getting weather for %1...").arg(Weather.city)
+            loadingText: Weather.city === "" ? Translation.tr("Finding your location…")
+                : Translation.tr("Getting weather for %1…").arg(Weather.city)
         }
     }
     PagePlaceholder {
@@ -286,7 +286,7 @@ Item {
                     animateChange: true
                     text: root.unitless(root.d.temp)
                     font.family: Appearance.font.family.numbers
-                    font.pixelSize: Appearance.font.pixelSize.hugeass * 3
+                    font.pixelSize: Appearance.font.pixelSize.displayLarge
                     font.variableAxes: Appearance.font.variableAxes.numbers
                     color: Appearance.colors.colOnPrimaryContainer
                 }
@@ -322,7 +322,8 @@ Item {
                 implicitWidth: placeRow.implicitWidth + 24
                 implicitHeight: placeRow.implicitHeight + 12
                 radius: Appearance.rounding.full
-                color: Appearance.colors.colOnPrimary
+                // Its own pair; it used to fill with colOnPrimary, a content role.
+                color: Appearance.colors.colSecondaryContainer
                 RowLayout {
                     id: placeRow
                     anchors.centerIn: parent
@@ -767,7 +768,7 @@ Item {
                                     width: track.height
                                     height: track.height
                                     radius: Appearance.rounding.full
-                                    color: Appearance.colors.colOnPrimary
+                                    color: Appearance.colors.colSurfaceContainerHighest
                                     border.width: 2
                                     border.color: Appearance.colors.colOnSurface
                                     opacity: root.fill

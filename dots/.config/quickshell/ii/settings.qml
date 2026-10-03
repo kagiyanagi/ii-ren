@@ -125,7 +125,7 @@ ApplicationWindow {
         },
         {
             id: "lock",
-            name: Translation.tr("Lock Screen"),
+            name: Translation.tr("Lock screen"),
             summary: Translation.tr("Appearance, security"),
             icon: "lock",
             component: "modules/settings/LockConfig.qml"

@@ -1,3 +1,4 @@
+import qs.services
 import QtQuick
 import qs.modules.common
 import qs.modules.common.functions
@@ -334,15 +335,23 @@ Item {
     // in: the corner opposite the add/remove badge.
     RippleButton {
         id: editBadge
-        implicitWidth: 20
-        implicitHeight: 20
+        // A 20px badge on a 32px target (DESIGN.md 3.4): the insets shrink the
+        // paint, not the hit area, and the negative anchor margin keeps the badge
+        // where it sat.
+        implicitWidth: 32
+        implicitHeight: 32
         padding: 0
+        topInset: 6
+        bottomInset: 6
+        backgroundBleed: -6
         buttonRadius: Appearance.rounding.full
         colBackground: Appearance.colors.colSecondaryContainer
         colBackgroundHover: Appearance.colors.colSecondaryContainerHover
         colRipple: Appearance.colors.colSecondaryContainerActive
         anchors.top: parent.top
         anchors.left: parent.left
+        anchors.topMargin: -6
+        anchors.leftMargin: -6
         opacity: root.target.isDragging || root.resizing ? 0 : 1
         visible: root.target.buttonData?.type === "custom" && opacity > 0
         z: 10
@@ -357,6 +366,10 @@ Item {
             iconSize: Appearance.font.pixelSize.small
             horizontalAlignment: Text.AlignHCenter
             color: Appearance.colors.colOnSecondaryContainer
+        }
+
+        StyledToolTip {
+            text: Translation.tr("Edit custom toggle")
         }
     }
 

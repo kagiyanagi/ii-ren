@@ -119,7 +119,7 @@ StyledOverlayWidget {
                     StyledText {
                         id: mediaActor
                         Layout.fillWidth: true
-                        text: root.currentPlayer?.trackArtist || Translation.tr("Unknown Artist")
+                        text: root.currentPlayer?.trackArtist || Translation.tr("Unknown artist")
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         elide: Text.ElideRight
@@ -128,7 +128,7 @@ StyledOverlayWidget {
                     StyledText {
                         id: mediaTitle
                         Layout.fillWidth: true
-                        text: root.currentPlayer?.trackTitle || Translation.tr("Unknown Title")
+                        text: root.currentPlayer?.trackTitle || Translation.tr("Unknown title")
                         font.pixelSize: Appearance.font.pixelSize.large
                         elide: Text.ElideRight
                     }

@@ -79,7 +79,7 @@ AbstractBackgroundWidget {
             anchors.right: parent.right
             anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            text: root.isMuted ? Translation.tr("Mic Muted") : Translation.tr("Microphone")
+            text: root.isMuted ? Translation.tr("Mic muted") : Translation.tr("Microphone")
             font.pixelSize: 24
             font.weight: Font.Bold
             color: root.contentColor

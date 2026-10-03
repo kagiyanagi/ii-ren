@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Dial Clock Options")
+    title: Translation.tr("Dial clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Dial Clock disabled")
+                title: Translation.tr("Dial clock disabled")
                 description: Translation.tr("Enable the Dial Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -114,12 +114,12 @@ ContentPage {
 
             // ── Other Hands ──
             ContentSubsectionLabel {
-                text: Translation.tr("Other Hands")
+                text: Translation.tr("Other hands")
             }
 
             ConfigSwitch {
                 buttonIcon: "schedule"
-                text: Translation.tr("Show Minute Hand")
+                text: Translation.tr("Show minute hand")
                 checked: Config.options.background.widgets.clock_dial.showMinuteHand ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.showMinuteHand = checked;
@@ -128,7 +128,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "timer"
-                text: Translation.tr("Show Second Hand")
+                text: Translation.tr("Show second hand")
                 checked: Config.options.background.widgets.clock_dial.showSecondHand ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.showSecondHand = checked;
@@ -139,12 +139,12 @@ ContentPage {
 
             // ── Dial Elements ──
             ContentSubsectionLabel {
-                text: Translation.tr("Dial Elements")
+                text: Translation.tr("Dial elements")
             }
 
             ConfigSwitch {
                 buttonIcon: "reorder"
-                text: Translation.tr("Show Dial Ticks")
+                text: Translation.tr("Show dial ticks")
                 checked: Config.options.background.widgets.clock_dial.showTicks ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.showTicks = checked;
@@ -153,7 +153,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "pin"
-                text: Translation.tr("Show Number Ring (12, 3, 6, 9)")
+                text: Translation.tr("Show number ring (12, 3, 6, 9)")
                 checked: Config.options.background.widgets.clock_dial.showNumberRing ?? false
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.showNumberRing = checked;
@@ -169,7 +169,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Enable Shadows")
+                text: Translation.tr("Enable shadows")
                 checked: Config.options.background.widgets.clock_dial.enableShadows ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.enableShadows = checked;
@@ -178,7 +178,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "blur_on"
-                text: Translation.tr("Enable Inner Shadow")
+                text: Translation.tr("Enable inner shadow")
                 checked: Config.options.background.widgets.clock_dial.enableInnerShadow ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.clock_dial.enableInnerShadow = checked;

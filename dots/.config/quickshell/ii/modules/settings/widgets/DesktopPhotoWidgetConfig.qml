@@ -12,7 +12,7 @@ ContentPage {
 
     property string configEntryName: "photo"
     property string widgetIdName: "photo"
-    title: Translation.tr("Photo Widget Options")
+    title: Translation.tr("Photo widget options")
 
     FilePickerProcess {
         id: pickImageProc
@@ -29,7 +29,7 @@ ContentPage {
     }
 
     ContentSection {
-        title: Translation.tr("Photo Widget Settings")
+        title: Translation.tr("Photo widget settings")
         icon: "image"
 
         Item {
@@ -41,7 +41,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "image"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Photo Widget disabled")
+                title: Translation.tr("Photo widget disabled")
                 description: Translation.tr("Enable the Photo Widget in Desktop Widgets settings to use this page.")
             }
         }
@@ -52,13 +52,13 @@ ContentPage {
             visible: Config.isWidgetActive(root.widgetIdName)
 
             ContentSubsectionLabel {
-                text: Translation.tr("Photo File")
+                text: Translation.tr("Photo file")
             }
 
             RippleButtonWithIcon {
                 Layout.fillWidth: true
                 materialIcon: "folder_open"
-                mainText: Translation.tr("Choose Image")
+                mainText: Translation.tr("Choose image")
                 onClicked: {
                     pickImageProc.pick();
                 }
@@ -87,7 +87,7 @@ ContentPage {
                     return entry && entry.imagePath && entry.imagePath !== "";
                 }
                 materialIcon: "delete"
-                mainText: Translation.tr("Remove Image")
+                mainText: Translation.tr("Remove image")
                 onClicked: {
                     let entry = Config.options.background.widgets[root.configEntryName];
                     if (entry) entry.imagePath = "";
@@ -101,7 +101,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "subtitles"
-                text: Translation.tr("Show Info Overlay/Badge")
+                text: Translation.tr("Show info overlay/badge")
                 visible: root.configEntryName !== "photo"
                 checked: {
                     let entry = Config.options.background.widgets[root.configEntryName];

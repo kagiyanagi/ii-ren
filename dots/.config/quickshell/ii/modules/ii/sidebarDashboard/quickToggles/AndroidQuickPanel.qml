@@ -466,6 +466,10 @@ AbstractQuickPanel {
                             color: Appearance.colors.colOnSurface
                             horizontalAlignment: Text.AlignHCenter
                         }
+
+                        StyledToolTip {
+                            text: Translation.tr("Previous page")
+                        }
                     }
 
                     Rectangle {
@@ -510,6 +514,10 @@ AbstractQuickPanel {
                             iconSize: Appearance.font.pixelSize.large
                             color: Appearance.colors.colOnSurface
                             horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        StyledToolTip {
+                            text: Translation.tr("Next page")
                         }
                     }
 

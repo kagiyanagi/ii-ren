@@ -178,7 +178,7 @@ Rectangle {
             StyledText {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
-                text: root.player?.trackArtist || Translation.tr("Unknown Artist")
+                text: root.player?.trackArtist || Translation.tr("Unknown artist")
                 font.pixelSize: Appearance.font.pixelSize.normal
                 color: root.scheme.subtext
                 elide: Text.ElideRight

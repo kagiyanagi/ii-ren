@@ -464,6 +464,10 @@ Item {
                         color: sendButton.enabled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2Disabled
                         text: "arrow_upward"
                     }
+
+                    StyledToolTip {
+                        text: Translation.tr("Send")
+                    }
                 }
             }
 

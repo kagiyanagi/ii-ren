@@ -83,7 +83,7 @@ WindowDialog {
                 width: parent.width
                 spacing: 12
 
-                Card {
+                DialogCard {
                     Repeater {
                         model: ScriptModel {
                             // Keyed, so a poll replacing every object rebuilds no row (TASTE 4.2).
@@ -119,22 +119,23 @@ WindowDialog {
                     }
                 }
 
-                // Tailscale's own fix for its "Access denied", offered where it was refused.
+                // Tailscale's own fix for its "Access denied", offered where it was
+                // refused. A notice, not a row: it used to pose as a selected tunnel
+                // to get the accent (TASTE 10).
                 Revealer {
                     vertical: true
                     reveal: Vpn.needsOperator
                     Layout.fillWidth: true
 
-                    Card {
+                    NoticeBox {
                         width: parent.width
-                        TunnelRow {
-                            first: true
-                            last: true
-                            symbol: "admin_panel_settings"
-                            name: Translation.tr("Allow Tailscale control")
-                            note: Vpn.pending["operator"] ? Translation.tr("Waiting for your password…")
-                                : Translation.tr("Asks for your password once")
-                            selected: true
+                        materialIcon: "admin_panel_settings"
+                        text: Vpn.pending["operator"] ? Translation.tr("Waiting for your password…")
+                            : Translation.tr("Tailscale needs your permission to be controlled from here. It asks for your password once")
+                        // Busy is not "can't" (TASTE 3.6): it stays at full strength and
+                        // the line above says what it is doing.
+                        DialogButton {
+                            buttonText: Translation.tr("Allow")
                             onClicked: if (!Vpn.pending["operator"]) Vpn.allowOperator()
                         }
                     }
@@ -154,7 +155,7 @@ WindowDialog {
                             text: Translation.tr("Exit node")
                         }
 
-                        Card {
+                        DialogCard {
                             TunnelRow {
                                 first: true
                                 last: (root.ts?.exitNodes.length ?? 0) === 0
@@ -219,21 +220,7 @@ WindowDialog {
         }
     }
 
-    // The DNS dialog's list card and row.
-    component Card: Rectangle {
-        default property alias rows: cardColumn.data
-        Layout.fillWidth: true
-        implicitHeight: cardColumn.implicitHeight
-        radius: Appearance.rounding.large
-        color: Appearance.colors.colSurfaceContainerHigh
-
-        ColumnLayout {
-            id: cardColumn
-            anchors.fill: parent
-            spacing: 0
-        }
-    }
-
+    // The DNS dialog's row.
     component TunnelRow: DialogListItem {
         id: row
         property bool first: false

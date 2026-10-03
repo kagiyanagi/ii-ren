@@ -7,7 +7,7 @@ import QtQuick.Layouts
 
 SectionCard {
     id: rootCard
-    title: Translation.tr("Dropped Files")
+    title: Translation.tr("Dropped files")
     icon: "attach_file"
     shapeColor: Appearance.colors.colPrimaryContainer
     symbolColor: Appearance.colors.colOnPrimaryContainer
@@ -79,6 +79,10 @@ SectionCard {
                                     color: removeBtn.hovered ? Appearance.colors.colOnErrorContainer : Appearance.colors.colSubtext
                                 }
                             }
+
+                            StyledToolTip {
+                                text: Translation.tr("Remove")
+                            }
                         }
                     }
                 }
@@ -121,7 +125,7 @@ SectionCard {
                             color: Appearance.colors.colOnSecondaryContainer
                         }
                         StyledText {
-                            text: Translation.tr("Add Files...")
+                            text: Translation.tr("Add files")
                             color: Appearance.colors.colOnSecondaryContainer
                             font.pixelSize: Appearance.font.pixelSize.small
                             font.weight: Font.Bold
@@ -293,7 +297,7 @@ SectionCard {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: Translation.tr("Sending files... Check receiver device.")
+                    text: Translation.tr("Sending files… Check the other device")
                     font.pixelSize: Appearance.font.pixelSize.small
                     font.weight: Font.Bold
                     color: Appearance.colors.colOnPrimaryContainer

@@ -1,3 +1,4 @@
+import qs.services
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.common
@@ -64,6 +65,9 @@ StyledFlickable {
                     color: Appearance.colors.colOnSecondaryContainer
                 }
 
+                StyledToolTip {
+                    text: Translation.tr("Back")
+                }
             }
 
             StyledText {

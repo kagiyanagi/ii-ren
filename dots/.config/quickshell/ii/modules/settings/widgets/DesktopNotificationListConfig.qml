@@ -8,12 +8,12 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Notification List Options")
+    title: Translation.tr("Notification list options")
 
     readonly property var conf: Config.options.background.widgets.notification_list
 
     ContentSection {
-        title: Translation.tr("Notification List Settings")
+        title: Translation.tr("Notification list settings")
         icon: "notifications"
 
         Item {
@@ -25,7 +25,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "notifications"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Notification List disabled")
+                title: Translation.tr("Notification list disabled")
                 description: Translation.tr("Enable the Notification List in Desktop Widgets settings to use this page. Set its lock screen behaviour to Keep or Lock screen only to get it on the lock screen.")
             }
         }

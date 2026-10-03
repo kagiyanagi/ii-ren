@@ -220,6 +220,10 @@ Item {
                     iconSize: Appearance.font.pixelSize.larger
                     color: Appearance.colors.colSubtext
                 }
+
+                StyledToolTip {
+                    text: Translation.tr("Dismiss")
+                }
             }
         }
     }

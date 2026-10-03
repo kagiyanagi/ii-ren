@@ -32,8 +32,8 @@ Item {
 
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool isPlaying: player?.isPlaying ?? false
-    readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("Unknown Title")
-    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown Artist")
+    readonly property string trackTitle: StringUtils.cleanMusicTitle(player?.trackTitle) || Translation.tr("Unknown title")
+    readonly property string trackArtist: player?.trackArtist || Translation.tr("Unknown artist")
     readonly property string artUrl: MprisController.artUrlFor(player)
     readonly property bool showLyrics: Config.options?.dock.mediaLyrics ?? false
     onShowLyricsChanged: if (showLyrics) LyricsService.initiliazeLyrics()
@@ -372,6 +372,10 @@ Item {
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                 }
+
+                StyledToolTip {
+                    text: root.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                }
             }
 
             RippleButton {
@@ -389,6 +393,10 @@ Item {
                     iconSize: Appearance.font.pixelSize.large
                     fill: 1
                     color: root.blendedColors.colOnSecondaryContainer
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Next")
                 }
             }
         }

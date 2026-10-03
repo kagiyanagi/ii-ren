@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Disk Resource Pill Options")
+    title: Translation.tr("Disk resource pill options")
 
     ContentSection {
-        title: Translation.tr("Disk Resource Pill Settings")
+        title: Translation.tr("Disk resource pill settings")
         icon: "hard_drive"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "hard_drive"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Disk Resource Pill disabled")
+                title: Translation.tr("Disk resource pill disabled")
                 description: Translation.tr("Enable the Disk Resource Pill in Desktop Widgets settings to use this page.")
             }
         }
@@ -36,8 +36,8 @@ ContentPage {
                 currentValue: Config.options.background.widgets.resource_disk_pill.aspectRatio ?? "2x0.5"
                 onSelected: value => Config.options.background.widgets.resource_disk_pill.aspectRatio = value
                 options: [
-                    { displayName: Translation.tr("1x0.5 (Compact Pill)"), icon: "crop_landscape", value: "1x0.5" },
-                    { displayName: Translation.tr("2x0.5 (Standard Pill)"), icon: "crop_16_9", value: "2x0.5" }
+                    { displayName: Translation.tr("1x0.5 (compact pill)"), icon: "crop_landscape", value: "1x0.5" },
+                    { displayName: Translation.tr("2x0.5 (standard pill)"), icon: "crop_16_9", value: "2x0.5" }
                 ]
             }
         }

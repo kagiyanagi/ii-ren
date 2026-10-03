@@ -1,3 +1,4 @@
+import qs.services
 import QtQuick
 import qs.modules.common
 import qs.modules.common.widgets
@@ -32,6 +33,9 @@ ButtonGroup {
             root.player?.previous()
         }
 
+        StyledToolTip {
+            text: Translation.tr("Previous")
+        }
     }
 
     GroupButton { // Play/Pause button
@@ -59,6 +63,9 @@ ButtonGroup {
             root.player?.togglePlaying()
         }
 
+        StyledToolTip {
+            text: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+        }
     }
 
     GroupButton { // Next button
@@ -77,5 +84,8 @@ ButtonGroup {
             root.player?.next()
         }
 
+        StyledToolTip {
+            text: Translation.tr("Next")
+        }
     }
 }

@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Compact Media Options")
+    title: Translation.tr("Compact media options")
 
     ContentSection {
-        title: Translation.tr("Compact Media Settings")
+        title: Translation.tr("Compact media settings")
         icon: "music_note"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "music_off"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Compact Media disabled")
+                title: Translation.tr("Compact media disabled")
                 description: Translation.tr("Enable the Compact Media in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.compact_media.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -72,7 +72,7 @@ ContentPage {
 
             ConfigSwitch {
                 buttonIcon: "wb_sunny"
-                text: Translation.tr("Enable Shadows")
+                text: Translation.tr("Enable shadows")
                 checked: Config.options.background.widgets.compact_media.enableShadows ?? true
                 onCheckedChanged: {
                     Config.options.background.widgets.compact_media.enableShadows = checked;

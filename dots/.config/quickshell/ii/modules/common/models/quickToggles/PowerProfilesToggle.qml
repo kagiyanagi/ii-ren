@@ -8,7 +8,7 @@ import qs.modules.common.functions
 import qs.modules.common.widgets
 
 QuickToggleModel {
-    name: Translation.tr("Power Profile")
+    name: Translation.tr("Power profile")
     toggled: PowerProfiles.profile !== PowerProfile.Balanced
     icon: switch(PowerProfiles.profile) {
         case PowerProfile.PowerSaver: return "energy_savings_leaf"

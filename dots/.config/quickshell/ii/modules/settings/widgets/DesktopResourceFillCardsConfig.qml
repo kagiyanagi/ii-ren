@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Resource Fill Cards Options")
+    title: Translation.tr("Resource fill cards options")
 
     ContentSection {
-        title: Translation.tr("Resource Fill Cards Settings")
+        title: Translation.tr("Resource fill cards settings")
         icon: "donut_large"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "donut_large"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Resource Fill Cards disabled")
+                title: Translation.tr("Resource fill cards disabled")
                 description: Translation.tr("Enable the Resource Fill Cards in Desktop Widgets settings to use this page.")
             }
         }

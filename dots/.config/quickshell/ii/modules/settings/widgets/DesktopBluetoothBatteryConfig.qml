@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Bluetooth Device Battery Options")
+    title: Translation.tr("Bluetooth device battery options")
 
     ContentSection {
-        title: Translation.tr("Bluetooth Device Battery Settings")
+        title: Translation.tr("Bluetooth device battery settings")
         icon: "earbuds"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "earbuds"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Bluetooth Device Battery disabled")
+                title: Translation.tr("Bluetooth device battery disabled")
                 description: Translation.tr("Enable the Bluetooth Device Battery in Desktop Widgets settings to use this page.")
             }
         }

@@ -171,8 +171,13 @@ Column {
                     id: removeButton
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
-                    implicitWidth: 24
-                    implicitHeight: 24
+                    anchors.rightMargin: -4 // the paint stays flush right
+                    // 24px of paint on a 32px target (DESIGN.md 3.4).
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    topInset: 4
+                    bottomInset: 4
+                    backgroundBleed: -4
                     visible: bindLine.userIndex !== -1
                     // Present but invisible until the row is under the pointer:
                     // a delete on every custom row at rest would be the loudest

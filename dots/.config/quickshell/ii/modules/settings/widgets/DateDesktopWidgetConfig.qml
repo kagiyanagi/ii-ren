@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Date Card Options")
+    title: Translation.tr("Date card options")
 
     ContentSection {
-        title: Translation.tr("Date Settings")
+        title: Translation.tr("Date settings")
         icon: "calendar_today"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "calendar_today"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Date Card disabled")
+                title: Translation.tr("Date card disabled")
                 description: Translation.tr("Enable the Date Card in Desktop Widgets settings to use this page.")
             }
         }

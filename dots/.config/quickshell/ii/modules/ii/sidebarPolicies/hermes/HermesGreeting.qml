@@ -71,13 +71,17 @@ Item {
     }
     onShownChanged: root.replay()
 
-    opacity: root.shown ? 1 : 0
+    property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+    opacity: {
+        root.opacitySpec = root.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+        return root.shown ? 1 : 0;
+    }
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation {
-            duration: root.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+            duration: root.opacitySpec.duration
+            easing.type: root.opacitySpec.type
+            easing.bezierCurve: root.opacitySpec.bezierCurve
         }
     }
 

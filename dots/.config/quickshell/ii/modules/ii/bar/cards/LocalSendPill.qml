@@ -93,7 +93,7 @@ Rectangle {
         StyledText {
             id: statusText
             Layout.fillWidth: true
-            text: LocalSend.serverRunning ? Translation.tr("LocalSend • Running") : Translation.tr("LocalSend • Stopped")
+            text: LocalSend.serverRunning ? Translation.tr("LocalSend • running") : Translation.tr("LocalSend • stopped")
             font.pixelSize: Appearance.font.pixelSize.large
             font.family: Appearance.font.family.title
             font.weight: Font.Bold
@@ -151,6 +151,10 @@ Rectangle {
             iconSize: Appearance.font.pixelSize.huge
             color: LocalSend.serverRunning ? Appearance.colors.colOnPrimary : Appearance.colors.colOnSecondary
             fill: 1
+        }
+
+        StyledToolTip {
+            text: LocalSend.serverRunning ? Translation.tr("Stop receiving") : Translation.tr("Start receiving")
         }
     }
 }

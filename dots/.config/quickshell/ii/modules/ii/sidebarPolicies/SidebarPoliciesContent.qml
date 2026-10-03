@@ -196,8 +196,9 @@ Item {
                 PagePlaceholder {
                     shown: true
                     icon: "view_sidebar"
-                    title: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Enjoy your empty sidebar...")
-                    description: ""
+                    // Closet mode keeps its bare "Nothing": it is the cover the hidden page sits behind.
+                    title: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Nothing in this sidebar")
+                    description: root.animeCloset ? "" : Translation.tr("Turn on Hermes, the translator or Anime in Settings > General > Policies")
                 }
             }
         }

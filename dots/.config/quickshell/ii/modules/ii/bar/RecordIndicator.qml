@@ -188,7 +188,7 @@ Item {
             compactMode: true
             icon: "screen_record"
 
-            title: Translation.tr("Recording...")
+            title: Translation.tr("Recording…")
             subtitle: Persistent.states.screenRecord.paused ? Translation.tr("Paused") : Translation.tr("Click to stop recording")
 
             pillText: indicator.formatTime(Persistent.states.screenRecord.seconds)

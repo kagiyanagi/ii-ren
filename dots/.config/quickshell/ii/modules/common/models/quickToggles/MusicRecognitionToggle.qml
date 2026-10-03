@@ -10,7 +10,7 @@ QuickToggleModel {
     toggled: SongRec.running
     property bool sourceIsMonitor: SongRec.monitorSource === SongRec.MonitorSource.Monitor
 
-    name: Translation.tr("Identify Music")
+    name: Translation.tr("Identify music")
     statusText: toggled ? Translation.tr("Listening...") : sourceIsMonitor ? Translation.tr("System sound") : Translation.tr("Microphone")
     icon: toggled ? "music_cast" : (sourceIsMonitor ? "music_note" : "frame_person_mic")
 

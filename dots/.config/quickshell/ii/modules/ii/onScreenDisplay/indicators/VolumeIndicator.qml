@@ -18,8 +18,4 @@ OsdMaterialValueIndicator {
     }
     shape: MaterialShape.Shape.Cookie7Sided
     maxLimit: (Config.options.audio && Config.options.audio.protection) ? Config.options.audio.protection.maxAllowed / 100 : 1.0
-
-    onMoved: function(newValue) {
-        Audio.setVolume(newValue);
-    }
 }

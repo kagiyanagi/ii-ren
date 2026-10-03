@@ -60,7 +60,7 @@ ContentPage {
         title: Translation.tr("Language")
 
         ContentSubsection {
-            title: Translation.tr("Interface Language")
+            title: Translation.tr("Interface language")
             tooltip: Translation.tr("Select the language for the user interface.\n\"Auto\" will use your system's locale.")
 
             StyledComboBox {
@@ -70,7 +70,7 @@ ContentPage {
 
                 model: [
                     {
-                        displayName: Translation.tr("Auto (System)"),
+                        displayName: Translation.tr("Auto (system)"),
                         value: "auto"
                     },
                     ...Translation.allAvailableLanguages.map(lang => {
@@ -105,7 +105,7 @@ ContentPage {
                         value: "lightweight"
                     },
                     {
-                        displayName: Translation.tr("Local AI Model (Mokuro MangaOCR)"),
+                        displayName: Translation.tr("Local AI model (Mokuro MangaOCR)"),
                         value: "local_model"
                     }
                 ]
@@ -324,11 +324,11 @@ ContentPage {
                 }
                 options: [
                     {
-                        displayName: Translation.tr("Date First dd/MM"),
+                        displayName: Translation.tr("Date first dd/MM"),
                         value: "ddd dd/MM"
                     },
                     {
-                        displayName: Translation.tr("Month First MM/dd"),
+                        displayName: Translation.tr("Month first MM/dd"),
                         value: "ddd MM/dd"
                     },
                     {

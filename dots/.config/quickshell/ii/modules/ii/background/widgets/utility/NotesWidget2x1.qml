@@ -206,7 +206,7 @@ AbstractBackgroundWidget {
 
                                 StyledText {
                                     Layout.fillWidth: true
-                                    text: noteCard.modelData.title || Translation.tr("Untitled Note")
+                                    text: noteCard.modelData.title || Translation.tr("Untitled note")
                                     font.pixelSize: Appearance.font.pixelSize.normal
                                     font.weight: Font.DemiBold
                                     color: root.textColorOnBg

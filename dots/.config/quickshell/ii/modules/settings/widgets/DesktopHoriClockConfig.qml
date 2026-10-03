@@ -8,10 +8,10 @@ ContentPage {
     id: root
     forceWidth: false
 
-    title: Translation.tr("Hori Clock Options")
+    title: Translation.tr("Hori clock options")
 
     ContentSection {
-        title: Translation.tr("Clock Settings")
+        title: Translation.tr("Clock settings")
         icon: "schedule"
 
         Item {
@@ -23,7 +23,7 @@ ContentPage {
                 anchors.fill: parent
                 icon: "watch"
                 shape: MaterialShape.Shape.Circle
-                title: Translation.tr("Hori Clock disabled")
+                title: Translation.tr("Hori clock disabled")
                 description: Translation.tr("Enable the Hori Clock in Desktop Widgets settings to use this page.")
             }
         }
@@ -39,7 +39,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget Size")
+                text: Translation.tr("Widget size")
                 value: Config.options.background.widgets.clock_hori.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -50,7 +50,7 @@ ContentPage {
             }
 
             ContentSubsectionLabel {
-                text: Translation.tr("Style & Appearance")
+                text: Translation.tr("Style & appearance")
             }
 
             ConfigSwitch {

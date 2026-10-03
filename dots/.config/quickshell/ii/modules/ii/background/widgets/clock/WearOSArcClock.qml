@@ -163,7 +163,7 @@ Item {
                 let task = TickTickService.tasks.length > 0 ? TickTickService.tasks[0] : null;
                 return {
                     title: task ? task.title : Translation.tr("No pending tasks"),
-                    subtitle: task ? Translation.tr("TickTick Inbox") : "",
+                    subtitle: task ? Translation.tr("TickTick inbox") : "",
                     icon: "check_box"
                 };
 
@@ -182,7 +182,7 @@ Item {
                 let goal = Config.options.background.widgets.water_reminder?.dailyGoal ?? 8;
                 return {
                     title: drunk + "/" + goal + " " + Translation.tr("glasses"),
-                    subtitle: Translation.tr("Water Intake"),
+                    subtitle: Translation.tr("Water intake"),
                     icon: "water_full"
                 };
             default:

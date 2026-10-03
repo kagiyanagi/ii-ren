@@ -400,32 +400,37 @@ Variants {
                     && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)
 
                 visible: opacity > 0
-                opacity: shown ? 1 : 0
+                property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+                opacity: {
+                    dropHint.opacitySpec = dropHint.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                    return dropHint.shown ? 1 : 0;
+                }
                 // Grows from its own centre, and that origin is deliberate: the card
                 // is pinned to the middle of the screen while the drag it answers can
                 // be anywhere, so there is no corner for it to come out of.
-                scale: shown ? 1 : 0.9
+                property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
+                scale: {
+                    dropHint.scaleSpec = dropHint.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                    return dropHint.shown ? 1 : 0.9;
+                }
 
                 // The one surface in this file that arrives and leaves, so both
                 // directions are spelled out: in on the default spatial curve with
                 // the opacity riding the effects curve, out on fast effects at about
                 // half the time - the drag has already left.
+                // The spec is picked inside the bindings above (DESIGN.md 2.9).
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: dropHint.shown ? Appearance.animation.elementMoveFast.duration
-                            : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                        duration: dropHint.opacitySpec.duration
+                        easing.type: dropHint.opacitySpec.type
+                        easing.bezierCurve: dropHint.opacitySpec.bezierCurve
                     }
                 }
                 Behavior on scale {
                     NumberAnimation {
-                        duration: dropHint.shown ? Appearance.animation.elementMoveEnter.duration
-                            : Appearance.animation.elementMoveExit.duration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: dropHint.shown
-                            ? Appearance.animationCurves.expressiveDefaultSpatial
-                            : Appearance.animationCurves.expressiveEffects
+                        duration: dropHint.scaleSpec.duration
+                        easing.type: dropHint.scaleSpec.type
+                        easing.bezierCurve: dropHint.scaleSpec.bezierCurve
                     }
                 }
 

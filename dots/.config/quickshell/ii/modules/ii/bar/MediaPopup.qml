@@ -23,7 +23,7 @@ StyledPopup {
         anchors.centerIn: parent
         icon: "music_note"
 
-        title: activePlayer?.trackArtist || Translation.tr("Unknown Artist")
+        title: activePlayer?.trackArtist || Translation.tr("Unknown artist")
         subtitle: activePlayer ? activePlayer.trackTitle : Translation.tr("No media")
 
         pillText: activePlayer ? (activePlayer.playbackState == MprisPlaybackState.Playing ? Translation.tr("Playing") : Translation.tr("Paused")) : ""
