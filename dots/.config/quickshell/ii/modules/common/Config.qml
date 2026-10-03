@@ -39,36 +39,6 @@ Singleton {
             root.options.screenRecord[key] = root.screenRecordDefaults[key];
     }
 
-    function setNestedValue(nestedKey, value) {
-        let keys = nestedKey.split(".");
-        let obj = root.options;
-        let parents = [obj];
-
-        // Traverse and collect parent objects
-        for (let i = 0; i < keys.length - 1; ++i) {
-            if (!obj[keys[i]] || typeof obj[keys[i]] !== "object") {
-                obj[keys[i]] = {};
-            }
-            obj = obj[keys[i]];
-            parents.push(obj);
-        }
-
-        // Convert value to correct type using JSON.parse when safe
-        let convertedValue = value;
-        if (typeof value === "string") {
-            let trimmed = value.trim();
-            if (trimmed === "true" || trimmed === "false" || !isNaN(Number(trimmed))) {
-                try {
-                    convertedValue = JSON.parse(trimmed);
-                } catch (e) {
-                    convertedValue = value;
-                }
-            }
-        }
-
-        obj[keys[keys.length - 1]] = convertedValue;
-    }
-
     Timer {
         id: fileReloadTimer
         interval: root.readWriteDelay
@@ -165,7 +135,6 @@ Singleton {
                 property int wrappedFrameThickness: 10
                 property bool sharpMode: false
                 property int defaultBorderRadius: 18
-                property bool toggleWindowRounding: true // Changes Hyprland window rounding to 0 if sharpMode is true
                 property JsonObject fonts: JsonObject {
                     property bool enableCustom: false
                     property string main: "Google Sans Flex"
@@ -273,12 +242,10 @@ Singleton {
                     property JsonObject clock: JsonObject {
                         property bool enable: true
                         property bool disableAnimationOnLock: false
-                        property bool showOnlyWhenLocked: false
                         property string placementStrategy: "leastBusy" // "free", "leastBusy", "mostBusy"
                         property real x: 100
                         property real y: 100
                         property string style: "cookie"        // Options: "cookie", "digital"
-                        property string styleLocked: "cookie"  // Options: "cookie", "digital"
                         property JsonObject cookie: JsonObject {
                             property bool aiStyling: false
                             property string aiStylingModel: "gemini" // Options "gemini", "openrouter"
@@ -294,7 +261,6 @@ Singleton {
                             property bool hourMarks: false
                             property bool dateInClock: true
                             property bool constantlyRotate: false
-                            property bool turnOffRotationOnTiledApps: false
                         }
                         property JsonObject digital: JsonObject {
                             property bool adaptiveAlignment: true
@@ -478,10 +444,6 @@ Singleton {
                         property bool useAlbumColors: true
                         property bool enableGlassReflection: true
                         property bool enableShadows: false
-                        property bool showPrevButton: true
-                        property bool showNextButton: true
-                        property bool showDevicePill: true
-                        property string progressShape: "Cookie9Sided"
                         property int widgetSize: 100
                     }
                     property JsonObject wearos_clock: JsonObject {
@@ -676,21 +638,14 @@ Singleton {
                         property int widgetSize: 100
                         property int widthCells: 3
                         property bool dualColumnMode: false
-                        property list<string> servicePriority: ["media", "calendar", "sports", "todo", "email", "localsend", "kdeconnect", "fallback"]
+                        property list<string> servicePriority: ["media", "calendar", "todo", "localsend", "kdeconnect", "fallback"]
                         property bool enableMedia: true
                         property bool enableCalendar: true
-                        property bool enableSports: true
                         property bool enableTodo: true
-                        property bool enableEmail: true
                         property bool enableLocalSend: true
                         property bool enableKdeConnect: true
                         property bool enableWeather: true
                         property int calendarWindowMinutes: 60
-                        property int sportsWindowHours: 12
-                        property bool showLocation: true
-                        property bool showServiceLabel: false
-                        property bool showSeparators: true
-                        property bool animateContent: true
                     }
                     // Android lock screen notification list, drawn to AOSP's
                     // 2025 notification redesign as it ships on Pixel with
@@ -936,29 +891,6 @@ Singleton {
                         property string placementStrategy: "free"
                         property real x: 200
                         property real y: 200
-                        property bool expressiveColors: false
-                    }
-                    property JsonObject bluetooth_headphone: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool halfSize: true
-                        property bool expressiveColors: false
-                    }
-                    property JsonObject mobile_battery: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property bool expressiveColors: false
-                    }
-                    property JsonObject bluetooth_headphone_cookie: JsonObject {
-                        property bool enable: false
-                        property string placementStrategy: "free"
-                        property real x: 200
-                        property real y: 200
-                        property string materialShape: "Cookie12Sided"
                         property bool expressiveColors: false
                     }
                     property JsonObject bluetooth_fill_cards: JsonObject {
@@ -1332,7 +1264,6 @@ Singleton {
                     property bool useWorkspaceMap: true
                     property list<var> workspaceMap: [0, 10]
                     property int maxWindowCount: 1 // Maximum windows to show in one workspace
-                    property bool useNerdFont: false
                     property int activeIndicatorOpacity: 100 // 0-100
                     property bool dynamicWorkspaces: false
                 }
@@ -1866,7 +1797,6 @@ Singleton {
 
             property JsonObject update: JsonObject {
                 property string scriptPath: ""
-                property string scriptFlags: "--no-backup --no-confirm"
             }
 
             property JsonObject musicRecognition: JsonObject {
@@ -1919,7 +1849,6 @@ Singleton {
                 }
                 property JsonObject booru: JsonObject {
                     property bool allowNsfw: false
-                    property string defaultProvider: "yandere"
                     property int limit: 20
                     property JsonObject zerochan: JsonObject {
                         property string username: "[unset]"
@@ -2062,7 +1991,6 @@ Singleton {
                 // https://doc.qt.io/qt-6/qtime.html#toString
                 property string format: "hh:mm"
                 property string shortDateFormat: "dd/MM"
-                property string longDateFormat: "dd/MM/yyyy"
                 property string dateWithYearFormat: "dd/MM/yyyy"
                 property string dateFormat: "ddd, dd/MM"
                 property int firstDayOfWeek: 0 // 0: Monday, 1: Tuesday, 2: Wednesday, 3: Thursday, 4: Friday, 5: Saturday, 6: Sunday
@@ -2141,24 +2069,20 @@ Singleton {
         return false;
     }
 
-    function getWidgetLockBehavior(widgetId) {
-        let list = root.options.background.activeWidgets || [];
-        for (let i = 0; i < list.length; i++) {
-            if (list[i].widgetId === widgetId)
-                return list[i].lockBehavior || "hide";
-        }
-        return "hide";
+    // Edits a copy of the widget list and writes it back whole, which is what
+    // makes the JsonAdapter notice. `edit` gets the copy and the index of the
+    // first entry `match` accepts; nothing is written when none does.
+    function editWidget(match, edit) {
+        const list = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
+        const i = list.findIndex(match);
+        if (i < 0)
+            return;
+        edit(list, i);
+        root.options.background.activeWidgets = list;
     }
 
     function setWidgetLockBehavior(widgetId, newLockBehavior) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].widgetId === widgetId) {
-                cloned[i].lockBehavior = newLockBehavior;
-                root.options.background.activeWidgets = cloned;
-                return;
-            }
-        }
+        editWidget(w => w.widgetId === widgetId, (list, i) => list[i].lockBehavior = newLockBehavior);
     }
 
     function addWidgetToDesktop(widgetId, defaultX, defaultY) {
@@ -2203,18 +2127,7 @@ Singleton {
     }
 
     function removeWidgetFromDesktop(widgetId) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let indexToRemove = -1;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].widgetId === widgetId) {
-                indexToRemove = i;
-                break;
-            }
-        }
-        if (indexToRemove !== -1) {
-            cloned.splice(indexToRemove, 1);
-            root.options.background.activeWidgets = cloned;
-        }
+        editWidget(w => w.widgetId === widgetId, (list, i) => list.splice(i, 1));
     }
 
     // `forLock` writes the lock screen's own position pair instead. The two are
@@ -2222,89 +2135,14 @@ Singleton {
     // the widget is first moved on the lock screen, and until then it follows
     // wherever it sits on the desktop.
     function updateWidgetPosition(instanceId, newX, newY, forLock) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let found = false;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].id === instanceId) {
-                if (forLock) {
-                    cloned[i].lockX = newX;
-                    cloned[i].lockY = newY;
-                } else {
-                    cloned[i].x = newX;
-                    cloned[i].y = newY;
-                }
-                found = true;
-                break;
-            }
-        }
-        if (found) {
-            root.options.background.activeWidgets = cloned;
-        }
+        editWidget(w => w.id === instanceId, (list, i) => {
+            list[i][forLock ? "lockX" : "x"] = newX;
+            list[i][forLock ? "lockY" : "y"] = newY;
+        });
     }
 
     function updateWidgetScale(instanceId, newScale, forLock) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let found = false;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].id === instanceId) {
-                if (forLock) {
-                    cloned[i].lockScale = newScale;
-                } else {
-                    cloned[i].scale = newScale;
-                }
-                found = true;
-                break;
-            }
-        }
-        if (found) {
-            root.options.background.activeWidgets = cloned;
-        }
-    }
-
-    function updateWidgetPlacementStrategy(instanceId, newStrategy) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let found = false;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].id === instanceId) {
-                cloned[i].placementStrategy = newStrategy;
-                found = true;
-                break;
-            }
-        }
-        if (found) {
-            root.options.background.activeWidgets = cloned;
-        }
-    }
-
-    function updateWidgetLockBehavior(instanceId, newLockBehavior) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let found = false;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].id === instanceId) {
-                cloned[i].lockBehavior = newLockBehavior;
-                found = true;
-                break;
-            }
-        }
-        if (found) {
-            root.options.background.activeWidgets = cloned;
-        }
-    }
-
-    function updateWidgetConfig(instanceId, key, value) {
-        let cloned = JSON.parse(JSON.stringify(root.options.background.activeWidgets || []));
-        let found = false;
-        for (let i = 0; i < cloned.length; i++) {
-            if (cloned[i].id === instanceId) {
-                if (!cloned[i].config) cloned[i].config = {};
-                cloned[i].config[key] = value;
-                found = true;
-                break;
-            }
-        }
-        if (found) {
-            root.options.background.activeWidgets = cloned;
-        }
+        editWidget(w => w.id === instanceId, (list, i) => list[i][forLock ? "lockScale" : "scale"] = newScale);
     }
 
     function osdIndicatorEnabled(indicatorId): bool {

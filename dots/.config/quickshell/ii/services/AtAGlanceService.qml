@@ -67,20 +67,7 @@ Singleton {
         return Qt.formatDateTime(start, Config.options.time.format.includes("ap") || Config.options.time.format.includes("AP") ? "h:mm ap" : "hh:mm");
     }
 
-    // ── 4. Sports ─────────────────────────────────────────────────────────────
-    readonly property var game: {
-        refreshVersion;
-        if (!(options.enableSports ?? true) || !SportsService.enabled)
-            return null;
-        return SportsService.currentGame || (SportsService.allGames && SportsService.allGames.length > 0 ? SportsService.allGames[0] : null);
-    }
-    readonly property bool sportsAvailable: game !== null
-    readonly property bool sportsActive: sportsAvailable && game.state === "in"
-    readonly property string sportsTitle: sportsAvailable ? String(game.home.name + " · " + game.away.name) : ""
-    readonly property string sportsMeta: sportsAvailable ? String(game.state === "in" ? (game.home.score + " – " + game.away.score) : game.status) : ""
-    readonly property string sportsLeague: sportsAvailable ? String(game.league || "") : ""
-
-    // ── 5. To-Do Tasks ────────────────────────────────────────────────────────
+    // ── 4. To-Do Tasks ────────────────────────────────────────────────────────
     readonly property int todoPendingCount: {
         refreshVersion;
         if (!(options.enableTodo ?? true) || !Todo.list) return 0;
@@ -93,32 +80,22 @@ Singleton {
         return top ? String(top.content || top.title || Translation.tr("To-do item")) : Translation.tr("To-do task");
     }
 
-    // ── 6. Email Unread ───────────────────────────────────────────────────────
-    readonly property int emailUnreadCount: {
-        refreshVersion;
-        if (!(options.enableEmail ?? true) || !EmailService.authenticated) return 0;
-        return EmailService.inboxUnreadCount || 0;
-    }
-    readonly property bool emailAvailable: emailUnreadCount > 0
-
-    // ── 7. LocalSend Transfers ────────────────────────────────────────────────
+    // ── 5. LocalSend Transfers ────────────────────────────────────────────────
     readonly property bool localSendActive: (options.enableLocalSend ?? true) && LocalSend.available && (LocalSend.currentTransfer !== null || LocalSend.sending)
     readonly property string localSendTitle: localSendActive ? (LocalSend.sending ? Translation.tr("Sending file...") : Translation.tr("Receiving file…")) : ""
 
-    // ── 8. KDE Connect Device ─────────────────────────────────────────────────
+    // ── 6. KDE Connect Device ─────────────────────────────────────────────────
     readonly property bool kdeConnectActive: (options.enableKdeConnect ?? true) && KdeConnectService.available && KdeConnectService.activeDevice !== null && ((KdeConnectService.activeDevice.isReachable ?? KdeConnectService.activeDevice.reachable) ?? false)
     readonly property string kdeConnectDeviceName: kdeConnectActive ? KdeConnectService.activeDeviceDisplayName : ""
     readonly property int kdeConnectBattery: kdeConnectActive ? (KdeConnectService.activeDevice.batteryCharge ?? -1) : -1
 
-    // ── 9. Active Targets & Helper Functions ──────────────────────────────────
+    // ── 7. Active Targets & Helper Functions ──────────────────────────────────
     readonly property var activeTargetsList: {
         refreshVersion;
         const targets = [];
         if (mediaAvailable && mediaPlaying) targets.push("media");
         if (calendarAvailable && calendarActive) targets.push("calendar");
-        if (sportsAvailable && sportsActive) targets.push("sports");
         if (todoAvailable) targets.push("todo");
-        if (emailAvailable) targets.push("email");
         if (localSendActive) targets.push("localsend");
         if (kdeConnectActive && kdeConnectBattery >= 0 && kdeConnectBattery < 20) targets.push("kdeconnect");
         // Fallback Date & Weather is always available as default
@@ -130,18 +107,14 @@ Singleton {
 
     function chooseService() {
         refreshVersion;
-        const priority = (options && options.servicePriority) ? options.servicePriority : ["media", "calendar", "sports", "todo", "email", "localsend", "kdeconnect", "fallback"];
+        const priority = (options && options.servicePriority) ? options.servicePriority : ["media", "calendar", "todo", "localsend", "kdeconnect", "fallback"];
         for (let i = 0; i < priority.length; i++) {
             const service = priority[i];
             if (service === "media" && mediaAvailable && (mediaPlaying || (options && (options.enableMedia ?? true))))
                 return service;
             if (service === "calendar" && calendarAvailable && calendarActive)
                 return service;
-            if (service === "sports" && sportsAvailable && sportsActive)
-                return service;
             if (service === "todo" && todoAvailable)
-                return service;
-            if (service === "email" && emailAvailable)
                 return service;
             if (service === "localsend" && localSendActive)
                 return service;
@@ -172,16 +145,6 @@ Singleton {
                 artUrl: ""
             };
         }
-        if (serviceName === "sports") {
-            return {
-                service: "sports",
-                title: sportsTitle,
-                subtitle: sportsLeague,
-                meta: sportsMeta,
-                icon: "sports_soccer",
-                artUrl: ""
-            };
-        }
         if (serviceName === "todo") {
             return {
                 service: "todo",
@@ -189,16 +152,6 @@ Singleton {
                 subtitle: String(todoPendingCount) + " " + Translation.tr("items on list"),
                 meta: "",
                 icon: "task_alt",
-                artUrl: ""
-            };
-        }
-        if (serviceName === "email") {
-            return {
-                service: "email",
-                title: String(emailUnreadCount) + " " + Translation.tr("unread emails"),
-                subtitle: EmailService.userEmail || Translation.tr("Inbox"),
-                meta: "",
-                icon: "mail",
                 artUrl: ""
             };
         }
@@ -257,20 +210,8 @@ Singleton {
     }
 
     Connections {
-        target: SportsService
-        function onCurrentGameChanged() { root.refresh(); }
-        function onAllGamesChanged() { root.refresh(); }
-        function onEnabledChanged() { root.refresh(); }
-    }
-
-    Connections {
         target: Todo
         function onListChanged() { root.refresh(); }
-    }
-
-    Connections {
-        target: EmailService
-        function onInboxUnreadCountChanged() { root.refresh(); }
     }
 
     Connections {

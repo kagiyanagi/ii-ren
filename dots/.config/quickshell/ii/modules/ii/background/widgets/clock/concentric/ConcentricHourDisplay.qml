@@ -39,7 +39,7 @@ Item {
         text: root.hourString
         color: root.color
         font {
-            family: root.boldFont ? Appearance.font.family.display : Appearance.font.family.numbers
+            family: root.boldFont ? Appearance.font.family.main : Appearance.font.family.numbers
             pixelSize: Math.round(root.baseWidth * (root.customPixelSize / 100.0))
             weight: root.customWeight
             variableAxes: ({

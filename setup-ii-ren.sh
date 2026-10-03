@@ -177,7 +177,7 @@ ${NC}"
     echo -e "${RED}Enter the subcommand: ${NC}"
     read -r setup_subcommand
     
-    if [[ "$setup_subcommand" == "help" || "$setup_subcommand" == "virtmon" || "$setup_subcommand" == "checkdeps" || "$setup_subcommand" == "uninstall" || "$setup_subcommand" == "resetfirstrun" ]]; then
+    if [[ "$setup_subcommand" == "help" || "$setup_subcommand" == "uninstall" || "$setup_subcommand" == "resetfirstrun" ]]; then
         echo ""
         echo -e "${RED}✗ Setup cancelled, please don't use dev-only subcommands. Or use it with the original script.${NC}"
         exit 1
@@ -211,6 +211,12 @@ install_personal_config() {
     # Paths in the repo copy are stored as "~/..." so they belong to whoever
     # installs, not to whoever committed them. Expand them for this user.
     sed -e "s|\"~/|\"$HOME/|g" -e "s|\"file://~/|\"file://$HOME/|g" "$SRC" > "$DEST"
+    # A Quickshell installed through Nix on another distro can't check a password
+    # against the host's PAM, so its own lock screen would never unlock. Lock with
+    # the distro's locker instead (hyprlock, or swaylock where there is none).
+    if [ -x "$HOME/.nix-profile/bin/qs" ] && [ ! -e /etc/NIXOS ]; then
+        sed -i 's|"useHyprlock": false|"useHyprlock": true|' "$DEST"
+    fi
     echo -e "${GREEN}✓ Installed shell settings: $DEST${NC}"
 }
 

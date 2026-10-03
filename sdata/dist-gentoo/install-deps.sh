@@ -2,6 +2,7 @@ printf "${STY_YELLOW}"
 printf "============WARNING/NOTE (1)============\n"
 printf "Ensure you have a global use flag for elogind or systemd in your make.conf for simplicity\n"
 printf "Or you can manually add the use flags for each package that requires it\n"
+printf "Use a desktop profile (eselect profile set default/linux/amd64/23.0/desktop, or desktop/systemd)\n"
 printf "${STY_RST}"
 pause
 

@@ -44,10 +44,6 @@ Singleton {
     signal sendCompleted()
     signal sendFailed(string message)
 
-    function isReady(): bool {
-        return Config.ready
-    }
-
     function addDroppedFile(fileUrl: string): void {
         const cleanPath = fileUrl.toString().replace(/^file:\/\//, "")
         const name = cleanPath.split("/").pop() || "unknown"
@@ -81,11 +77,6 @@ Singleton {
         const filePaths = root.droppedFiles.map(f => f.path)
         sendProc.command = ["python3", root.helperPath, "send", deviceIp].concat(filePaths)
         sendProc.running = true
-    }
-
-    function cancelSend(): void {
-        sendProc.running = false
-        root.sending = false
     }
 
     // Check that the helper can run at all
@@ -371,14 +362,6 @@ Singleton {
         console.log("[LocalSend] Denying transfer...")
         root.currentTransfer = null
         receiveProc.write("n\n")
-    }
-
-    function getPendingTransfers(): list<var> {
-        return root.pendingTransfers
-    }
-
-    function clearPendingTransfers(): void {
-        root.pendingTransfers = []
     }
 
     onDownloadPathChanged: {

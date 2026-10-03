@@ -85,11 +85,6 @@ Singleton {
         return out;
     }
 
-    /** True when `hyprctl binds` row (modmask, key) is one of ours. */
-    function isCustom(modmask, key) {
-        return root.indexOfBind(modmask, key) !== -1;
-    }
-
     function indexOfBind(modmask, key) {
         const wanted = String(key).toLowerCase();
         for (let i = 0; i < root.binds.length; i++) {

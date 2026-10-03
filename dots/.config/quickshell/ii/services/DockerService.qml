@@ -65,13 +65,6 @@ Singleton {
         _startServiceCheck();
     }
 
-    // Called when the popup opens — refreshes uptime display without spinner
-    function refreshForPopup() {
-        if (!root._enabled) return
-        _silentRefresh();
-        _startMemStats();
-    }
-
     // Called by timers / events — silent, no loading spinner
     function _silentRefresh() {
         if (!root._enabled) return

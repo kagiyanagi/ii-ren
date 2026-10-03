@@ -160,10 +160,10 @@ Item {
                 return { title: Translation.tr("No events today"), subtitle: "", icon: "calendar_today" };
 
             case "todo":
-                let task = TickTickService.tasks.length > 0 ? TickTickService.tasks[0] : null;
+                let task = Todo.list.find(item => !item.done) ?? null;
                 return {
-                    title: task ? task.title : Translation.tr("No pending tasks"),
-                    subtitle: task ? Translation.tr("TickTick inbox") : "",
+                    title: task ? task.content : Translation.tr("No pending tasks"),
+                    subtitle: task ? Translation.tr("To-do list") : "",
                     icon: "check_box"
                 };
 

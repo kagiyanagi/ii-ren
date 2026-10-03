@@ -1,4 +1,4 @@
-# Handle args for subcmd: checkdeps
+# Handle args for subcmd: resetfirstrun
 # shellcheck shell=bash
 
 showhelp(){

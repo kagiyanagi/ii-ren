@@ -157,6 +157,20 @@ function install_google_sans_flex(){
   realpath -se "$target_dir" >> "${INSTALLED_LISTFILE}"
 }
 
+# The shell's monospace font. Arch has it packaged (maplemono-nf-unhinted) and Nix
+# installs it from nixpkgs, so this only downloads where neither put it.
+function install_maple_mono_nf(){
+  local target_dir="${XDG_DATA_HOME}/fonts/illogical-impulse-maple-mono-nf"
+  local zip="$REPO_ROOT/cache/MapleMono-NF-unhinted.zip"
+  if fc-list | grep -qi "Maple Mono NF"; then return; fi
+  x mkdir -p "$REPO_ROOT/cache" "$target_dir"
+  x curl -fL -o "$zip" https://github.com/subframe7536/maple-font/releases/latest/download/MapleMono-NF-unhinted.zip
+  x python3 -m zipfile -e "$zip" "$target_dir"
+  x fc-cache -f "$target_dir"
+  x mkdir -p "$(dirname ${INSTALLED_LISTFILE})"
+  realpath -se "$target_dir" >> "${INSTALLED_LISTFILE}"
+}
+
 #####################################################################################
 # In case some dirs does not exists
 for i in "$XDG_BIN_HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"; do
@@ -246,10 +260,6 @@ case "${SKIP_HYPRLAND}" in
         install_file__auto_backup "dots/.config/hypr/$i" "${XDG_CONFIG_HOME}/hypr/$i"
       fi
     done
-    if [ "$OS_GROUP_ID" = "fedora" ];then
-      v bash -c "printf \"# For fedora to setup polkit\nexec-once = /usr/libexec/kf6/polkit-kde-authentication-agent-1\n\" >> ${XDG_CONFIG_HOME}/hypr/hyprland/execs.conf"
-    fi
-
     install_dir__ignore_existing "dots/.config/hypr/custom" "${XDG_CONFIG_HOME}/hypr/custom"
     ;;
 esac
@@ -260,6 +270,8 @@ if [[ ! "$OS_GROUP_ID" == "fedora" ]]; then
   showfun install_google_sans_flex
   v install_google_sans_flex
 fi
+showfun install_maple_mono_nf
+v install_maple_mono_nf
 
 #####################################################################################
 

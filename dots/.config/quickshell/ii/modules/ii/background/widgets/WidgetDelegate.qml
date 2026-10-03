@@ -130,17 +130,6 @@ Item {
         "resource_nothing_ram": component_resource_nothing_ram
     })
 
-    function getExtUrl(extId) {
-        let entry = WidgetExtensionManager.installedWidgets[extId];
-        if (!entry)
-            return "";
-
-        let wj = entry.widgetJson || {
-        };
-        let qmlFile = wj.component || (wj.widget && wj.widget.component ? wj.widget.component : "main.qml");
-        return "file://" + entry.installedPath + "/" + qmlFile;
-    }
-
     // Static Component Definitions for built-in widgets
     Component {
         id: component_clock_cookie
@@ -1108,8 +1097,7 @@ Item {
         id: widgetLoader
 
         shown: !delegateRoot.lockAnimationActive ? (delegateRoot.lockBehavior !== "lockOnly") : (delegateRoot.lockBehavior === "center" || delegateRoot.lockBehavior === "keep" || delegateRoot.lockBehavior === "lockOnly")
-        source: delegateRoot.widgetId.startsWith("ext:") ? delegateRoot.getExtUrl(delegateRoot.widgetId.substring(4)) : ""
-        sourceComponent: delegateRoot.widgetId.startsWith("ext:") ? null : (delegateRoot.widgetComponentMap[delegateRoot.widgetId] || null)
+        sourceComponent: delegateRoot.widgetComponentMap[delegateRoot.widgetId] || null
 
         Binding {
             target: widgetLoader.item
@@ -1128,27 +1116,6 @@ Item {
                 };
             }
             when: widgetLoader.status == Loader.Ready
-        }
-
-        Binding {
-            target: widgetLoader.item
-            property: "widgetExtensionId"
-            value: delegateRoot.widgetId.startsWith("ext:") ? delegateRoot.widgetId.substring(4) : ""
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-
-        Binding {
-            target: widgetLoader.item
-            property: "widgetConfig"
-            value: {
-                if (!delegateRoot.widgetId.startsWith("ext:"))
-                    return null;
-
-                let extId = delegateRoot.widgetId.substring(4);
-                return WidgetExtensionManager.widgetConfigs[extId] || ({
-                });
-            }
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
         }
 
         Binding {
@@ -1191,41 +1158,6 @@ Item {
                 && widgetLoader.item.hasOwnProperty("exiting")
         }
 
-        Binding {
-            target: widgetLoader.item
-            property: "screenWidth"
-            value: delegateRoot.screenWidth
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-        
-        Binding {
-            target: widgetLoader.item
-            property: "screenHeight"
-            value: delegateRoot.screenHeight
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-        
-        Binding {
-            target: widgetLoader.item
-            property: "scaledScreenWidth"
-            value: delegateRoot.screenWidth
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-        
-        Binding {
-            target: widgetLoader.item
-            property: "scaledScreenHeight"
-            value: delegateRoot.screenHeight
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-        
-        Binding {
-            target: widgetLoader.item
-            property: "wallpaperScale"
-            value: delegateRoot.wallpaperScale
-            when: widgetLoader.status == Loader.Ready && delegateRoot.widgetId.startsWith("ext:")
-        }
-
     }
 
 
@@ -1255,12 +1187,5 @@ Item {
     Component { id: component_pc_notes; PcNotesDir.NotesWidget { screenWidth: delegateRoot.screenWidth; screenHeight: delegateRoot.screenHeight; scaledScreenWidth: delegateRoot.screenWidth; scaledScreenHeight: delegateRoot.screenHeight; wallpaperScale: delegateRoot.wallpaperScale } }
     Component { id: component_pc_resources; PcResourcesDir.ResourcesWidget { screenWidth: delegateRoot.screenWidth; screenHeight: delegateRoot.screenHeight; scaledScreenWidth: delegateRoot.screenWidth; scaledScreenHeight: delegateRoot.screenHeight; wallpaperScale: delegateRoot.wallpaperScale } }
     Component { id: component_pc_media; PcMediaDir.MediaWidget { screenWidth: delegateRoot.screenWidth; screenHeight: delegateRoot.screenHeight; scaledScreenWidth: delegateRoot.screenWidth; scaledScreenHeight: delegateRoot.screenHeight; wallpaperScale: delegateRoot.wallpaperScale } }
-
-    MissingWidgetPlaceholder {
-
-        widgetId: delegateRoot.widgetId
-        widgetX: delegateRoot.widgetX
-        widgetY: delegateRoot.widgetY
-    }
 
 }

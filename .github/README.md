@@ -21,7 +21,14 @@ Window springs lifted from AOSP's motion tokens. Nothing eyeballed.
 
 ## install
 
-Arch, and a Hyprland that reads Lua configs (0.56 here).
+Needs Hyprland 0.56 or later (the config is Lua). The setup installs it, with every other dependency, on:
+
+- **Arch** and Arch-based distros (CachyOS, EndeavourOS)
+- **Fedora 44+**, from the `sdegler/hyprland` COPR
+- **Gentoo**, from GURU and hyproverlay, on a `desktop` or `desktop/systemd` profile
+- **anything else** (Debian, openSUSE…) through Nix and Home Manager. There the lock
+  screen hands off to your distro's hyprlock or swaylock, because a Quickshell
+  installed through Nix can't check passwords against the host's PAM
 
 ```bash
 git clone https://github.com/kagiyanagi/ii-ren.git && cd ii-ren && ./setup-ii-ren.sh --fresh

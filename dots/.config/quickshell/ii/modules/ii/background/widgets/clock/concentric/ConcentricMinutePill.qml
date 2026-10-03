@@ -54,7 +54,7 @@ Item {
             text: root.minuteString
             color: root.textColor
             font {
-                family: root.boldFont ? Appearance.font.family.display : Appearance.font.family.title
+                family: root.boldFont ? Appearance.font.family.main : Appearance.font.family.title
                 pixelSize: mainShape.height * 0.55
                 weight: root.boldFont ? Font.Bold : Font.Normal
             }

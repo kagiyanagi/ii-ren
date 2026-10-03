@@ -23,5 +23,10 @@ RDEPEND="
 	dev-python/jq
 	x11-misc/xdg-user-dirs
 	net-misc/rsync
+	x11-libs/libnotify
+	x11-misc/xdg-utils
+	net-wireless/bluez
+	dev-lang/lua
+	dev-vcs/git
 	app-misc/yq-go
 "

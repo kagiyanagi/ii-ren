@@ -37,11 +37,6 @@ ColumnLayout {
         })
     }
 
-    function addKeyword(word) {
-        if (!word) return
-        stringMap.push(word)
-    }
-
     SearchHandler {
         searchString: root.title
     }

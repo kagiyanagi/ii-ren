@@ -110,13 +110,6 @@ StyledPopup {
         return m + ":" + (s < 10 ? "0" : "") + s;
     }
 
-    function getDayProgressPercent() {
-        const date = DateTime.clock.date
-        const secondsPassed = date.getHours() * 3600 + date.getMinutes() * 60 +date.getSeconds()
-
-        return Math.floor((secondsPassed / 86400) * 100)
-    }
-
     function getUtcTimeForTz(tz, date) {
         try {
             const data = root.timezoneOffsets[tz];

@@ -13,7 +13,7 @@ them:
 
 2. The rail's expand and its collapse are different moves (2.5) and the easy
    "simplification" is one shared spec. The anchor halves take their direction
-   from a state's `to:`; the width and the chevron cannot, so they use 2.9's
+   from a state's `to:`; the width cannot, so it uses 2.9's
    assign-from-the-driving-binding shape, which reads backwards and invites
    being "fixed" into the ternary-inside-the-Behavior that 2.9 exists to
    forbid.
@@ -126,7 +126,7 @@ assert enter_spec and exit_spec and enter_spec != exit_spec, (
 # 2.9: the two animations with no state to read their direction from assign the
 # spec inside the binding that drives them. A ternary in the Behavior instead
 # bakes whichever value happened to be current, which is the trap 2.9 documents.
-for name, driver in (("NavigationRailButton", "railSpec"), ("NavigationRailExpandButton", "turnSpec")):
+for name, driver in (("NavigationRailButton", "railSpec"),):
     src = body(name)
     assert re.search(rf"^\s*root\.{driver}\s*=\s*.*\?", src, re.M), (
         f"{name}: {driver} is not assigned from inside the binding that drives the "

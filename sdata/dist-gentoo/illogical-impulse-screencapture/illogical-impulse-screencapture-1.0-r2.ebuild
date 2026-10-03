@@ -13,9 +13,13 @@ KEYWORDS="~amd64 ~arm64 ~x86"
 DEPEND=""
 RDEPEND="
 	gui-apps/hyprshot
+	gui-apps/grim
+	dev-python/evdev
+	dev-python/xkbcommon
 	gui-apps/slurp
 	gui-apps/swappy
 	app-text/tesseract
+	app-text/tessdata_fast[l10n_en]
 	gui-apps/wf-recorder
 	media-gfx/zbar
 "

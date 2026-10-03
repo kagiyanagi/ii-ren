@@ -83,24 +83,10 @@ ContentPage {
             }
 
             ConfigSwitch {
-                buttonIcon: "sports_soccer"
-                text: Translation.tr("Use sports context")
-                checked: Config.options.background.widgets.at_a_glance.enableSports ?? true
-                onCheckedChanged: Config.options.background.widgets.at_a_glance.enableSports = checked
-            }
-
-            ConfigSwitch {
                 buttonIcon: "task_alt"
                 text: Translation.tr("Use to-do context")
                 checked: Config.options.background.widgets.at_a_glance.enableTodo ?? true
                 onCheckedChanged: Config.options.background.widgets.at_a_glance.enableTodo = checked
-            }
-
-            ConfigSwitch {
-                buttonIcon: "mail"
-                text: Translation.tr("Use email context")
-                checked: Config.options.background.widgets.at_a_glance.enableEmail ?? true
-                onCheckedChanged: Config.options.background.widgets.at_a_glance.enableEmail = checked
             }
 
             ConfigSwitch {
@@ -137,16 +123,6 @@ ContentPage {
                 to: 720
                 stepSize: 15
                 onValueChanged: Config.options.background.widgets.at_a_glance.calendarWindowMinutes = value
-            }
-
-            ConfigSpinBox {
-                icon: "schedule"
-                text: Translation.tr("Sports window (hours)")
-                value: Config.options.background.widgets.at_a_glance.sportsWindowHours ?? 12
-                from: 0
-                to: 168
-                stepSize: 1
-                onValueChanged: Config.options.background.widgets.at_a_glance.sportsWindowHours = value
             }
         }
     }

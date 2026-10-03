@@ -84,12 +84,6 @@ Singleton {
     function dismissAllNotifications(): void {
         root.notifications.filter(n => n.dismissable).forEach(n => root.dismissNotification(n.id));
     }
-    function replyToNotification(replyId: string, message: string): void {
-        root._call("/notifications", "notifications.sendReply", [root._arg(replyId), root._arg(message)]);
-    }
-    function runNotificationAction(notificationId: string, action: string): void {
-        root._call("/notifications", "notifications.sendAction", [root._arg(notificationId), root._arg(action)]);
-    }
 
     /** Opens a file picker and sends whatever is chosen. */
     function pickAndShareFile(): void {

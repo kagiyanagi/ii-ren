@@ -18,13 +18,6 @@ Singleton {
         firstRunFileView.reload()
     }
 
-    function enableNextTime() {
-        Quickshell.execDetached(["rm", "-f", root.firstRunFilePath])
-    }
-    function disableNextTime() {
-        Quickshell.execDetached(["bash", "-c", `echo '${root.firstRunFileContent}' > '${root.firstRunFilePath}'`])
-    }
-
     function handleFirstRun() {
         Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, root.defaultWallpaperPath])
         Quickshell.execDetached(["bash", "-c", `qs -p '${root.welcomeQmlPath}'`])

@@ -62,16 +62,6 @@ Singleton {
             : current.concat([appId])
     }
 
-    function reorderPinnedApp(fromAppId, toAppId) {
-        if (fromAppId === toAppId) return
-        const pinned = Array.from(Config.options.dock.pinnedApps)
-        const fromIdx = pinned.indexOf(fromAppId)
-        const toIdx = pinned.indexOf(toAppId)
-        if (fromIdx === -1 || toIdx === -1) return
-        pinned.splice(toIdx, 0, pinned.splice(fromIdx, 1)[0])
-        Config.options.dock.pinnedApps = pinned
-    }
-
     // ── Pinned file helpers ───────────────────────────────────────────────
     function addPinnedFile(path) {
         const cleanPath = path.toString().replace(/^file:\/\//, "")

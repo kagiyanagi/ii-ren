@@ -33,7 +33,7 @@ in pkgs.stdenv.mkDerivation {
     qt6.qtbase #qt6-base
     qt6.qtdeclarative #qt6-declarative
     qt6.qt5compat #qt6-5compat
-    #qt6-avif-image-plugin (TODO: seems not available as nixpkg)
+    kdePackages.kimageformats #qt6-avif-image-plugin
     qt6.qtimageformats #qt6-imageformats
     qt6.qtmultimedia #qt6-multimedia
     qt6.qtpositioning #qt6-positioning

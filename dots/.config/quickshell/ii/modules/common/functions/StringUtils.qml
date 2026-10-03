@@ -25,16 +25,6 @@ Singleton {
     }
 
     /**
-     * Returns the base url of the passed in url or null
-     * @param { string } url
-     * @returns { string | null }
-     */
-    function getBaseUrl(url) {
-        const match = url.match(/^(https?:\/\/[^\/]+)(\/.*)?$/);
-        return match ? match[1] : null;
-    }
-
-    /**
      * Escapes single quotes in shell commands
      * @param { string } str
      * @returns { string }
@@ -150,15 +140,6 @@ Singleton {
         result.forEach((block, i) => block.key = block.type + "-" + i);
         // console.log(JSON.stringify(result, null, 2));
         return result;
-    }
-
-    /**
-     * Returns the original string with backslashes escaped
-     * @param { string } str
-     * @returns { string }
-     */
-    function escapeBackslashes(str) {
-        return str.replace(/\\/g, '\\\\');
     }
 
     /**

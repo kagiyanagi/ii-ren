@@ -3,12 +3,12 @@
   description = "illogical-impulse";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-25.11";
-    #nixpkgs.url = "nixpkgs/nixos-unstable";
+    # Unstable: ii-ren's Hyprland config is Lua, which needs Hyprland 0.56, and no
+    # release branch has it yet (nixos-26.05 ships 0.55).
+    nixpkgs.url = "nixpkgs/nixos-unstable";
 
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.11";
-      #url = "github:nix-community/home-manager/master";
+      url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     #nixgl.url = "github:nix-community/nixGL";

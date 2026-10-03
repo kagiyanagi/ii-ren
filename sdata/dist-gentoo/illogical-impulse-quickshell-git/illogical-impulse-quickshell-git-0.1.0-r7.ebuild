@@ -48,7 +48,7 @@ RDEPEND="
 	)
 	X? ( x11-libs/libxcb:= )
 	pipewire? ( media-video/pipewire:= )
-	mpris? ( dev-qt/qtdbus:= )
+	mpris? ( dev-qt/qtbase:6=[dbus] )
 	pam? ( sys-libs/pam )
 	bluetooth? ( net-wireless/bluez )
 "

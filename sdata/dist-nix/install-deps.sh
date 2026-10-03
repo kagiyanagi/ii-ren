@@ -32,8 +32,9 @@ function install_home-manager(){
   try source $HOME/.nix-profile/etc/profile.d/hm-session-vars.sh
   command -v $cmd && return
 
-  x nix-channel --add https://nixos.org/channels/nixos-25.11 nixpkgs-home
-  x nix-channel --add https://github.com/nix-community/home-manager/archive/release-25.11.tar.gz home-manager
+  # Same branches as home-manager/flake.nix: Hyprland 0.56 is only on unstable.
+  x nix-channel --add https://nixos.org/channels/nixos-unstable nixpkgs-home
+  x nix-channel --add https://github.com/nix-community/home-manager/archive/master.tar.gz home-manager
   x nix-channel --update
   x env NIX_PATH="nixpkgs=$HOME/.nix-defexpr/channels/nixpkgs-home" nix-shell '<home-manager>' -A install
 
@@ -56,7 +57,8 @@ function hm_deps(){
   x home-manager switch --flake .#illogical_impulse \
     --extra-experimental-features nix-command \
     --extra-experimental-features flakes
-  x sudo /nix/store/*-non-nixos-gpu/bin/non-nixos-gpu-setup
+  # NixOS provides the GPU drivers itself; the helper is for every other distro.
+  [ -e /etc/NIXOS ] || x sudo /nix/store/*-non-nixos-gpu/bin/non-nixos-gpu-setup
   cd $REPO_ROOT
   x git rm -f "${SETUP_USERNAME_NIXFILE}"
 }

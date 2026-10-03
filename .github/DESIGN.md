@@ -591,7 +591,7 @@ Text buttons keep AOSP's asymmetry: 16 leading / 16 trailing on a small button,
   That is where `sidebarWidth`, `dockButtonSize`, `notificationPopupWidth` and
   friends live.
 - Icons: 20 inline/compact, 24 standard, 40–48 for an app icon or tile.
-- Text: never a hard height. Set `elide` or use `MarqueeText`; long strings are
+- Text: never a hard height. Set `elide`; long strings are
   the norm here (app names, notification bodies, MPRIS titles).
 
 ### 5.5 No decorative dividers or separator lines

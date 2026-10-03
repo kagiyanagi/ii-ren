@@ -195,16 +195,6 @@ function copyItems(items) {
     return result;
 }
 
-function moveItem(items, fromIndex, toIndex) {
-    var result = copyItems(items);
-    if (fromIndex < 0 || fromIndex >= result.length || result.length === 0)
-        return result;
-    var target = Math.max(0, Math.min(integerAtLeastOne(toIndex + 1, 1) - 1, result.length - 1));
-    var moved = result.splice(fromIndex, 1)[0];
-    result.splice(target, 0, moved);
-    return result;
-}
-
 function removeItem(items, id) {
     var result = copyItems(items);
     var index = findItem(result, id);
@@ -213,40 +203,11 @@ function removeItem(items, id) {
     return result;
 }
 
-function insertItem(items, item, index) {
-    var result = copyItems(items);
-    var target = Math.max(0, Math.min(integerAtLeastOne(index + 1, 1) - 1, result.length));
-    result.splice(target, 0, cloneObject(item));
-    return result;
-}
-
 function rectanglesOverlap(a, b) {
     return a.row < b.row + b.rowSpan
         && a.row + a.rowSpan > b.row
         && a.column < b.column + b.columnSpan
         && a.column + a.columnSpan > b.column;
-}
-
-function validateNoOverlap(packed, columns) {
-    if (!packed || !Array.isArray(packed.items))
-        return false;
-    var cols = integerAtLeastOne(columns, 1);
-    var ids = Object.create(null);
-    for (var i = 0; i < packed.items.length; i++) {
-        var item = packed.items[i];
-        if (!item || item.row < 0 || item.column < 0 || item.column + item.columnSpan > cols)
-            return false;
-        if (item.id !== undefined) {
-            if (ids[item.id])
-                return false;
-            ids[item.id] = true;
-        }
-        for (var j = i + 1; j < packed.items.length; j++) {
-            if (rectanglesOverlap(item, packed.items[j]))
-                return false;
-        }
-    }
-    return true;
 }
 
 function findInsertionIndex(packedItems, row, column, draggedId, columns) {

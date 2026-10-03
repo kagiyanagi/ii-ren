@@ -45,14 +45,6 @@ CHECKED = ("colors", "m3colors", "animation", "animationCurves", "rounding", "si
 for g in CHECKED + ("variableAxes", "pixelSize", "family"):
     assert GROUPS.get(g), f"Appearance.qml has no `{g}` group any more -- this check is stale"
 
-# Vendored from ii-p3drovfx and rsynced over by tools/p3-widget-port, so a fix here is
-# reverted by the next re-port. Named rather than
-# skipped wholesale, so a new one in that tree still fails.
-KNOWN = {
-    "modules/ii/background/widgets/clock/concentric/ConcentricHourDisplay.qml: Appearance.font.family.display",
-    "modules/ii/background/widgets/clock/concentric/ConcentricMinutePill.qml: Appearance.font.family.display",
-}
-
 bad = []
 for f in sorted(ROOT.rglob("*.qml")):
     if "user_widgets" in f.parts:
@@ -68,7 +60,7 @@ for f in sorted(ROOT.rglob("*.qml")):
         # never existed, and a QVariantMap assigned undefined only says so as a
         # runtime warning naming the widget, not the token.
         for g, name in re.findall(r"\bAppearance\.font\.(variableAxes|pixelSize|family)\.(\w+)", code):
-            if name not in GROUPS[g] and f"{f.relative_to(ROOT)}: Appearance.font.{g}.{name}" not in KNOWN:
+            if name not in GROUPS[g]:
                 bad.append(f"{f.relative_to(ROOT)}:{n}: Appearance.font.{g}.{name} is not declared")
 
 assert not bad, "\n".join(bad)

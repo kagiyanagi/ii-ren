@@ -18,6 +18,7 @@ RDEPEND="
 	net-misc/networkmanager
 	net-wireless/iw
 	kde-plasma/plasma-nm
+	kde-plasma/plasma-integration
 	kde-plasma/polkit-kde-agent
 	kde-apps/dolphin
 	kde-plasma/systemsettings

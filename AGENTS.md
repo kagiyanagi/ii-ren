@@ -118,7 +118,6 @@ modules/
   waffle/       # Waffle panel components
   settings/     # Settings app pages (QuickConfig, BarConfig, etc.)
 services/       # Backend services (Audio, Battery, Network, MprisController, HermesService, etc.)
-user_widgets/   # Installed extensions (see Extension System)
 defaults/       # Shipped default assets/config the shell falls back to
 scripts/        # Shell-invoked helper scripts
 ```
@@ -168,7 +167,8 @@ Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`,
 ## Extension System
 
 Writing one: `.github/EXTENSIONS.md`. How the system works: `.github/EXTENSIONSARCHITECTURE.md`.
-Installed extensions live in `user_widgets/` and load without a shell restart.
+Installed extensions live in `~/.config/illogical-impulse/extensions/installed/` and load
+without a shell restart.
 
 ## Vendored code
 
@@ -176,8 +176,8 @@ Installed extensions live in `user_widgets/` and load without a shell restart.
 submodule). Update it by copying upstream over it.
 
 What came from ii-p3drovfx (the background widgets, the bar popups and cards, the quick
-toggles) arrives only through the port scripts in `tools/p3-*`. Nothing new is imported
-from it (`TASTE.md` 9).
+toggles) was ported once and is ii-ren's own code now: edit it in place, there is no
+re-port. Nothing new is imported from it (`TASTE.md` 9).
 
 ## Design law — applies to every change, unasked
 

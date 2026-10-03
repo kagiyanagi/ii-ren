@@ -31,7 +31,7 @@ SHELL = pathlib.Path(__file__).parent.parent / "dots/.config/quickshell/ii"
 EFFECT = re.compile(
     r"\b(layer\.enabled\s*:\s*(?!false\b)"
     r"|MultiEffect\s*\{|OpacityMask\s*\{|ShaderEffect\s*\{"
-    r"|StyledBlurEffect\s*\{|StyledDropShadow\s*\{|MaskMultiEffect\s*\{|Colorizer\s*\{"
+    r"|StyledBlurEffect\s*\{|StyledDropShadow\s*\{"
     r"|DropShadow\s*\{|GaussianBlur\s*\{|FastBlur\s*\{|RecursiveBlur\s*\{"
     r"|ColorOverlay\s*\{|Glow\s*\{)")
 

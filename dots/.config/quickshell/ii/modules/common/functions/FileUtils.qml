@@ -41,21 +41,6 @@ Singleton {
     }
 
     /**
-     * Removes the file extension from a file path or name
-     * @param {string} str
-     * @returns {string}
-     */
-    function trimFileExt(str) {
-        if (typeof str !== "string") return "";
-        const trimmed = trimFileProtocol(str);
-        const lastDot = trimmed.lastIndexOf(".");
-        if (lastDot > -1 && lastDot > trimmed.lastIndexOf("/")) {
-            return trimmed.slice(0, lastDot);
-        }
-        return trimmed;
-    }
-
-    /**
      * A Material Symbol for a file, by its extension; `draft` for anything unknown.
      * Every name here exists in the older of the two Material Symbols builds, the
      * one Qt resolves the family to.

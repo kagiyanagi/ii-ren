@@ -30,6 +30,7 @@ quickshell, home_attrs, ... }:
   wayland.windowManager.hyprland = {
     ## Make sure home-manager not generate ~/.config/hypr/hyprland.conf
     systemd.enable = false; plugins = []; settings = {}; extraConfig = "";
+    configType = "lua"; # ii-ren's config is Lua; this module writes none of it either way
     enable = true;
     ## Use NixGL
     #package = config.lib.nixGL.wrap pkgs.hyprland;
@@ -43,9 +44,12 @@ quickshell, home_attrs, ... }:
       ## inetutils: provides hostname, ifconfig, ping, etc.
       ## libnotify: provides notify-send
       inetutils libnotify
+      ## lua: `iiren hyprset`, which the shell runs to write Hyprland options
+      ## xdg-utils: xdg-open/xdg-mime; grim: screenshots
+      lua5_4 xdg-utils grim
 
       ##### Other MISC #####
-      dbus xorg.xlsclients # some basic things
+      dbus xlsclients # some basic things
       foot # Used in Quickshell and Hyprland config; its config is also included
       kdePackages.kconfig # provide kwriteconfig6, used in install script
 
@@ -80,6 +84,7 @@ quickshell, home_attrs, ... }:
       ripgrep #ripgrep
       jq #jq
       xdg-user-dirs #xdg-user-dirs
+      bluez #bluez-utils (bluetoothctl)
       rsync #rsync
       yq-go #go-yq
 
@@ -92,7 +97,7 @@ quickshell, home_attrs, ... }:
       adw-gtk3 #adw-gtk-theme-git
       kdePackages.breeze kdePackages.breeze-icons #breeze
       #breeze-plus (TODO: Not available as nixpkg)
-      darkly darkly-qt5 #darkly-bin
+      darkly #darkly-bin
       eza #eza
       #fish (Currently install via system PM; TODO: should install via nix in future when authentication problem fixed)
       fontconfig #fontconfig
@@ -102,7 +107,7 @@ quickshell, home_attrs, ... }:
       starship #starship
       maple-mono.NF #maplemono-nf-unhinted
       material-symbols #ttf-material-symbols-variable-git
-      #ttf-readex-pro (TODO: seems not available as nixpkg)
+      readexpro #ttf-readex-pro
       rubik #ttf-rubik-vf
       twemoji-color-font #ttf-twemoji
 
@@ -119,6 +124,7 @@ quickshell, home_attrs, ... }:
       networkmanager #networkmanager
       iw #iw
       kdePackages.plasma-nm #plasma-nm
+      kdePackages.plasma-integration #plasma-integration (QT_QPA_PLATFORMTHEME=kde)
       #polkit-kde-agent (TODO: Install via system PM instead; should install via nix in future when authentication problem fixed)
       kdePackages.dolphin #dolphin
       kdePackages.systemsettings #systemsettings
@@ -149,10 +155,10 @@ quickshell, home_attrs, ... }:
       hyprshot #hyprshot
       slurp #slurp
       swappy #swappy
-      tesseract #tesseract
-      #tesseract-data-eng (TODO: Seems not available as nixpkg)
+      tesseract #tesseract, tesseract-data-eng (nixpkgs' tesseract carries every language)
       wf-recorder #wf-recorder
       zbar #zbar
+      (python3.withPackages (ps: [ ps.evdev ps.xkbcommon ])) #python-evdev, python-xkbcommon (scripts/videos/keypress_monitor.py)
 
 
       ### illogical-impulse-toolkit

@@ -10,7 +10,7 @@ Singleton {
     id: root
 
     // List of built-in widgets
-    readonly property var builtinWidgets: [
+    readonly property var allWidgets: [
         {
             "widgetId": "todo",
             "name": Translation.tr("To-do list"),
@@ -630,7 +630,7 @@ Singleton {
             "category": "Utility",
             "qmlPath": Qt.resolvedUrl("utility/AtAGlanceWidget.qml"),
             "icon": "dashboard",
-            "description": Translation.tr("Android-inspired context widget combining media, calendar, sports, and current weather."),
+            "description": Translation.tr("Android-inspired context widget combining media, calendar, to-dos and current weather."),
             "configPage": "widgets/DesktopAtAGlanceConfig.qml"
         },
         {
@@ -707,12 +707,6 @@ Singleton {
         },
     ]
 
-    // Extension widgets from WidgetExtensionManager
-    property var extensionWidgets: WidgetExtensionManager.ready ? WidgetExtensionManager.getRegistryEntries() : []
-
-    // Combined list of all available widgets
-    readonly property var allWidgets: (builtinWidgets || []).concat(extensionWidgets || [])
-
     function getWidgetMetadata(widgetId) {
         let list = allWidgets;
         for (let i = 0; i < list.length; i++) {
@@ -723,25 +717,8 @@ Singleton {
         return null;
     }
 
-    function getQmlPath(widgetId) {
-        let meta = getWidgetMetadata(widgetId);
-        return meta ? meta.qmlPath : "";
-    }
-
     function getStyleOverride(widgetId) {
         let meta = getWidgetMetadata(widgetId);
         return meta ? meta.styleOverride : undefined;
-    }
-
-    Connections {
-        target: WidgetExtensionManager
-        function onExtensionsChanged() {
-            root.extensionWidgets = WidgetExtensionManager.getRegistryEntries();
-        }
-    }
-
-    // Refresh function kept for external callers that may exist
-    function refresh() {
-        root.extensionWidgets = WidgetExtensionManager.getRegistryEntries();
     }
 }

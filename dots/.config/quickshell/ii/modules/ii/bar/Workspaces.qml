@@ -155,10 +155,6 @@ Item {
         })
     }
 
-    function hasWindowsInWorkspace(workspaceId) {
-        return HyprlandData.windowList.some(w => w.workspace.id === workspaceId);
-    }
-
     function getWindowCountForWorkspace(workspaceId) {
         return HyprlandData.windowList.filter(w => w.workspace.id === workspaceId && !w.floating).length;
     }

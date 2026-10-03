@@ -345,8 +345,9 @@ The tokens are in `DESIGN.md`. These are the calls about when to use which.
 - **Divider styles** on the dock and bar exist only because the owner's config picked
   them. New code never adds a divider.
 - **No new imports from ii-p3drovfx**: no features, motion or looks, because its feature
-  list is "all bloat". What is vendored from it (the background widgets, the bar popups
-  and cards, the quick toggles) arrives only through the port scripts in `tools/p3-*`.
+  list is "all bloat". What was taken from it once (the background widgets, the bar popups
+  and cards, the quick toggles) is ii-ren's own code now, edited in place; there is no
+  re-port.
 - **No motion retiming** for now (2026-09-27).
 - **A maximized floating window** sits where a lone tiled window would, inside `gaps_out`
   with its border and rounded corners, not edge to edge as KWin's and Mutter's do

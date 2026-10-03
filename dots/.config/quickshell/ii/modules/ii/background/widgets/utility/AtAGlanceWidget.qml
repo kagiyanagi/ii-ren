@@ -66,8 +66,6 @@ AbstractBackgroundWidget {
             calendarIpc.running = true;
         } else if (serviceName === "todo") {
             todoIpc.running = true;
-        } else if (serviceName === "email") {
-            emailIpc.running = true;
         } else if (serviceName === "fallback") {
             Weather.getData(true);
         }
@@ -99,11 +97,6 @@ AbstractBackgroundWidget {
     Process {
         id: todoIpc
         command: ["qs", "ipc", "-c", "ii", "call", "sidebarDashboard", "openTab", "todo"]
-    }
-
-    Process {
-        id: emailIpc
-        command: ["qs", "ipc", "-c", "ii", "call", "cheatsheet", "toggle"]
     }
 
     Item {

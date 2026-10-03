@@ -28,8 +28,6 @@ Item {
     // scroll position keeps that off the per-pixel path: the load/unload
     // margins below are an order of magnitude larger than one step.
     readonly property int scrollStep: Math.floor(widgetsConfigRoot.contentY / 120)
-    // When non-empty, opens the extension config schema sub-page for this extId
-    property string extensionConfigExtId: ""
 
     // Build all category models in one pass. Each individual filter used to
     // walk the complete registry again whenever an extension changed.
@@ -108,7 +106,6 @@ Item {
     // Rich catalog sections are opt-in. This keeps the first page pass limited
     // to the small Desktop Widgets controls and avoids starting network work.
     property bool colorSchemeActive: false
-    property bool extensionsExpanded: false
 
     property var _previewQueue: []
     property bool _previewStaggerActive: false
@@ -371,31 +368,6 @@ Item {
                 Repeater {
                     model: widgetsConfigRoot.categoriesList
                     delegate: categorySectionComponent
-                }
-            }
-        }
-
-        // ── 3. Widget Extensions ─────────────────────────────────────────────
-        ContentSection {
-            title: Translation.tr("Widget extensions")
-            icon: "extension"
-            collapsible: true
-            expanded: widgetsConfigRoot.extensionsExpanded
-            onExpandedChanged: widgetsConfigRoot.extensionsExpanded = expanded
-
-            Loader {
-                id: extensionsContentLoader
-                Layout.fillWidth: true
-                Layout.preferredHeight: item ? item.implicitHeight : 0
-                active: widgetsConfigRoot.extensionsExpanded
-                asynchronous: true
-                source: Qt.resolvedUrl("widgets/WidgetExtensionsContent.qml")
-            }
-
-            Connections {
-                target: extensionsContentLoader.item ?? null
-                function onExtensionConfigRequested(extId) {
-                    widgetsConfigRoot.extensionConfigExtId = extId;
                 }
             }
         }
@@ -899,163 +871,6 @@ Item {
                                     text: modelData.tooltip
                                 }
                             }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Extension config schema sub-page overlay
-    Item {
-        id: extConfigOverlay
-        width: parent.width
-        height: parent.height
-        y: 0
-        z: 11
-
-        property bool isOpen: widgetsConfigRoot.extensionConfigExtId !== ""
-        property bool overlayActive: isOpen
-
-        onXChanged: {
-            if (!isOpen && x >= extConfigOverlay.width - 1)
-                overlayActive = false;
-        }
-        onIsOpenChanged: {
-            if (isOpen)
-                overlayActive = true;
-        }
-
-        // Same motion as ConfigSubPageHost, which this is a second copy of: in
-        // on the spatial spec, out on the exit one. It left on the enter's
-        // curve. The spec is picked inside the x binding for the reason that
-        // file gives (DESIGN.md 2.9).
-        property AnimSpec slideSpec: Appearance.animation.elementMove
-        x: {
-            extConfigOverlay.slideSpec = isOpen ? Appearance.animation.elementMove : Appearance.animation.elementMoveExit;
-            return isOpen ? 0 : extConfigOverlay.width;
-        }
-
-        Behavior on x {
-            NumberAnimation {
-                duration: extConfigOverlay.slideSpec.duration
-                easing.type: extConfigOverlay.slideSpec.type
-                easing.bezierCurve: extConfigOverlay.slideSpec.bezierCurve
-            }
-        }
-
-        enabled: isOpen
-
-        // Inline config schema renderer
-        Rectangle {
-            anchors.fill: parent
-            color: Appearance.colors.colLayer0
-            visible: extConfigOverlay.overlayActive
-
-            // An opaque Rectangle still lets the pointer through, so hover and
-            // clicks reached the gallery underneath the open settings.
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.AllButtons
-            }
-
-            ColumnLayout {
-                anchors {
-                    top: parent.top
-                    left: parent.left
-                    right: parent.right
-                    margins: 16
-                }
-                spacing: 0
-
-                // Header row
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.topMargin: 8
-                    spacing: 12
-
-                    RippleButton {
-                        implicitWidth: implicitHeight
-                        implicitHeight: 40
-                        buttonRadius: Appearance.rounding.full
-                        colBackground: Appearance.colors.colSecondaryContainer
-                        colBackgroundHover: Appearance.colors.colSecondaryContainerHover
-                        colRipple: Appearance.colors.colSecondaryContainerActive
-                        onClicked: widgetsConfigRoot.extensionConfigExtId = ""
-
-                        MaterialSymbol {
-                            anchors.centerIn: parent
-                            text: "arrow_back"
-                            iconSize: Appearance.font.pixelSize.large
-                            color: Appearance.colors.colOnSecondaryContainer
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("Back")
-                        }
-                    }
-
-                    StyledText {
-                        text: {
-                            let extId = widgetsConfigRoot.extensionConfigExtId;
-                            if (!extId)
-                                return "";
-                            let entry = WidgetExtensionManager.installedWidgets[extId];
-                            return entry ? (entry.name + " — " + Translation.tr("Settings")) : Translation.tr("Settings");
-                        }
-                        font.pixelSize: Appearance.font.pixelSize.large
-                        font.family: Appearance.font.family.title
-                        color: Appearance.colors.colOnLayer0
-                    }
-                }
-
-                Item {
-                    implicitHeight: 16
-                }
-
-                // Schema-driven controls via ExtensionWidgetSettingsRenderer
-                Flickable {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Math.min(contentHeight, extConfigOverlay.height - 120)
-                    contentHeight: schemaSection.implicitHeight
-                    clip: true
-
-                    ContentSection {
-                        id: schemaSection
-                        width: parent.width
-                        title: Translation.tr("Configuration")
-                        icon: "tune"
-
-                        Loader {
-                            id: schemaRenderer
-                            Layout.fillWidth: true
-                            asynchronous: true
-                            active: extConfigOverlay.overlayActive
-                            source: Qt.resolvedUrl("widgets/ExtensionWidgetSettingsRenderer.qml")
-                            Layout.preferredHeight: item ? item.implicitHeight : 0
-                        }
-
-                        Binding {
-                            target: schemaRenderer.item
-                            property: "extId"
-                            value: widgetsConfigRoot.extensionConfigExtId
-                            when: schemaRenderer.item !== null
-                        }
-
-                        Binding {
-                            target: schemaRenderer.item
-                            property: "schema"
-                            value: {
-                                let eId = widgetsConfigRoot.extensionConfigExtId;
-                                if (!eId)
-                                    return ({});
-                                let entry = WidgetExtensionManager.installedWidgets[eId];
-                                if (!entry)
-                                    return ({});
-                                return (entry.widgetJson || {}).configSchema || ({});
-                            }
-                            when: schemaRenderer.item !== null
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 # COPR repositories list
 # "solopasha/hyprland" is not up to date to the current Hyprland version, replaced with the fork "sdegler/hyprland"
+# ii-ren reads its Hyprland config as Lua, which needs Hyprland 0.56 or later: sdegler/hyprland has it for Fedora 43+.
 [copr]
 repos = [
   "ririko66z/dots-hyprland",
@@ -9,14 +10,15 @@ repos = [
   "atim/starship"
 ]
 
-# Fedora dependencies list
+# Fedora dependencies list, kept in step with sdata/dist-arch.
 
 # Audio
 [groups.audio]
 packages = [
   "cava",
-  "pavucontrol",
+  "pavucontrol-qt",
   "wireplumber",
+  "pipewire-pulseaudio",
   "libdbusmenu-gtk3-devel",
   "playerctl"
 ]
@@ -38,13 +40,30 @@ packages = [
   "cliphist",
   "cmake",
   "curl",
-  "wget2",
+  "wget",
   "ripgrep",
   "jq",
   "xdg-utils",
+  "xdg-user-dirs",
+  "bluez",
+  "libnotify",
+  "lua",
+  "python3",
   "rsync",
   "yq"
 ]
+
+# Building the hyprbars plugin for floating mode's title bars (scripts/hyprland/hyprbars.sh)
+[groups.hyprbars]
+packages = [
+  "gcc-c++",
+  "make",
+  "patch",
+  "git",
+  "pkgconf-pkg-config",
+  "hyprland-devel"
+]
+install_opts = ["--setopt=install_weak_deps=False"]
 
 # Cursor themes
 [groups.cursor_themes]
@@ -57,11 +76,9 @@ packages = [
 packages = [
   "adw-gtk3-theme",
   "breeze-cursor-theme",
-  "grub2-breeze-theme",
   "breeze-icon-theme",
   "breeze-icon-theme-fedora",
   "kf6-breeze-icons",
-  "sddm-breeze",
   "breeze-plus-icon-theme",
   "darkly",
   "eza",
@@ -98,6 +115,7 @@ packages = [
   "NetworkManager",
   "iw",
   "plasma-nm",
+  "plasma-integration",
   "polkit-kde",
   "dolphin",
   "plasma-systemsettings"
@@ -141,17 +159,40 @@ packages = [
     "matugen"
 ]
 
+# The Qt modules the shell imports (the quickshell-git package itself only needs Qt's core)
+[groups.qt]
+packages = [
+  "qt6-qt5compat",
+  "qt6-qtimageformats",
+  "kf6-kimageformats",
+  "qt6-qtmultimedia",
+  "qt6-qtpositioning",
+  "qt6-qtquicktimeline",
+  "qt6-qtsensors",
+  "qt6-qtsvg",
+  "qt6-qttools",
+  "qt6-qttranslations",
+  "qt6-qtvirtualkeyboard",
+  "qt6-qtwayland",
+  "kf6-kirigami",
+  "kdialog",
+  "kf6-syntax-highlighting"
+]
+
 # Screencapture
 [groups.screencapture]
 packages = [
   "hyprshot",
+  "grim",
   "slurp",
   "swappy",
   "tesseract",
   "tesseract-langpack-eng",
   "tesseract-langpack-chi_sim",
   "wf-recorder",
-  "zbar"
+  "zbar",
+  "python3-evdev",
+  "python3-xkbcommon"
 ]
 
 # Toolkit

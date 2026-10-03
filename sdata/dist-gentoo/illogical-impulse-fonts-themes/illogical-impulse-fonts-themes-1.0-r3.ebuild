@@ -24,6 +24,7 @@ RDEPEND="
 	media-fonts/space-grotesk
 	app-shells/starship
 	media-fonts/jetbrains-mono
+	media-fonts/maple-mono
 	media-fonts/material-symbols-variable
 	media-fonts/readex-pro
 	media-fonts/rubik-vf

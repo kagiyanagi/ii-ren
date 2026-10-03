@@ -240,7 +240,7 @@ def check_reveal():
     # The box is opaque, and that is what erases the text under it. The blur it
     # replaced cost a masked MultiEffect, its mask layer and a second decode of
     # the screenshot, and at 60% the blurred glyphs still showed through.
-    assert not re.search(r"\b(MultiEffect|MaskMultiEffect|layer\.enabled|StyledImage)\b", overlay), \
+    assert not re.search(r"\b(MultiEffect|layer\.enabled|StyledImage)\b", overlay), \
         "the overlay pays for an offscreen pass again -- the opaque box already erases the text"
     assert not re.search(r"transparentize\(", body), "the box is translucent -- the source text shows through it"
 

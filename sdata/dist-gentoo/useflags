@@ -1,4 +1,5 @@
 ################### AUDIO ################### 
+media-video/pipewire sound-server
 media-sound/cava pipewire -pulseaudio
 #media-sound/pavucontrol-qt (no use flags)
 #media-video/wireplumber (no use flags)
@@ -54,7 +55,7 @@ gui-wm/hyprland::hyproverlay X guiutils
 ################### KDE ################### 
 kde-plasma/bluedevil -handbook
 gnome-base/gnome-keyring pam ssh-agent 
-net-misc/networkmanager concheck introspection nss ppp tools wifi -wext -modemmanager
+net-misc/networkmanager concheck introspection nss ppp tools wifi -wext -modemmanager -bluetooth
 #kde-plasma/plasma-nm (nothing needed)
 #kde-plasma/polkit-kde-agent (nothing needed)
 kde-apps/dolphin -handbook
@@ -84,12 +85,14 @@ net-libs/libsoup brotli introspection ssl
 gui-apps/slurp -man
 #gui-apps/swappy (no use flags)
 app-text/tesseract jpeg openmp png webp
+app-text/tessdata_fast l10n_en
 gui-apps/wf-recorder pipewire
 #media-gfx/zbar (zbarimg needs the ImageMagick support it builds with by default)
 
 
 ################### TOOLKIT ###################
 kde-apps/kdialog X
+kde-frameworks/kimageformats avif
 dev-qt/qt5compat gui icu qml
 dev-qt/qtbase X concurrent cups dbus gui icu libinput libproxy network nls opengl sql sqlite ssl udev wayland widgets xml zstd
 dev-qt/qtdeclarative jit network opengl sql ssl svg widgets

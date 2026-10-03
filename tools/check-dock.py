@@ -58,7 +58,7 @@ def passes(s: str) -> list:
 
 EFFECT = re.compile(
     r"\b(layer\.enabled\s*:\s*(?!false\b)|MultiEffect\s*\{|OpacityMask\s*\{"
-    r"|ShaderEffect\s*\{|StyledBlurEffect\s*\{|StyledDropShadow\s*\{|Colorizer\s*\{"
+    r"|ShaderEffect\s*\{|StyledBlurEffect\s*\{|StyledDropShadow\s*\{"
     r"|DropShadow\s*\{|GaussianBlur\s*\{|FastBlur\s*\{|RecursiveBlur\s*\{"
     r"|ColorOverlay\s*\{|Desaturate\s*\{|Glow\s*\{)")
 

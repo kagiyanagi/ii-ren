@@ -175,16 +175,6 @@ Singleton {
         };
     }
 
-    function deleteTab(index: int): bool {
-        const tabs = root.cloneTabs(root.tabsData);
-        if (index < 0 || index >= tabs.length)
-            return false;
-        tabs.splice(index, 1);
-        if (tabs.length === 0)
-            tabs.push({ title: "Tab 1", icon: "article", content: "" });
-        return root.scheduleWrite({ tabs: tabs });
-    }
-
     function safeProvenance(value): var {
         const candidate = value ?? ({});
         return {

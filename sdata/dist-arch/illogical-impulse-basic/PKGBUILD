@@ -1,7 +1,7 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-basic
 pkgver=1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Illogical Impulse Basic Dependencies'
 arch=(any)
 license=(None)
@@ -16,6 +16,7 @@ depends=(
   jq
   xdg-user-dirs
   bluez-utils # bluetoothctl: provides the BlueZ pairing agent the shell borrows
+  lua # iiren hyprset, which writes every Hyprland option the shell sets
   # Used in install script
   rsync
 )

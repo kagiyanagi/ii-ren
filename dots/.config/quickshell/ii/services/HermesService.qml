@@ -536,13 +536,6 @@ Singleton {
         }
     }
 
-    function renameSession(storedId: string, title: string): void {
-        root.call("session.title", { session_id: storedId, title: title }, (result, error) => {
-            if (!error)
-                root.refreshRecentSessions();
-        });
-    }
-
     /**
      * Rebuild the transcript from a resumed session.
      *
@@ -666,15 +659,6 @@ Singleton {
      */
     function runInBackground(text: string): void {
         root._startSideTask("prompt.background", "bg", text);
-    }
-
-    /**
-     * A side question answered over a snapshot of this conversation. The thread's
-     * history, alternation and prompt cache are left untouched, so asking costs
-     * the main turn nothing.
-     */
-    function askBtw(text: string): void {
-        root._startSideTask("prompt.btw", "btw", text);
     }
 
     function _finishSideTask(taskId: string, text: string, question: string): void {
@@ -1503,17 +1487,6 @@ Singleton {
         if (root.remote || model.length === 0 || model === root.currentModel)
             return;
         root.setModel(model, Persistent.states.hermes.provider ?? "", false);
-    }
-
-    function saveApiKey(slug: string, apiKey: string): void {
-        root.call("model.save_key", { slug: slug, api_key: apiKey }, (result, error) => {
-            if (error) {
-                root.addMessage(error.message ?? Translation.tr("Could not save key"), root.interfaceRole);
-                return;
-            }
-            root.addMessage(Translation.tr("Saved API key for %1").arg(result.provider?.name ?? slug), root.interfaceRole);
-            root.refreshProviders(true);
-        });
     }
 
     // ── Voice ──────────────────────────────────────────────────────

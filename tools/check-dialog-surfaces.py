@@ -28,7 +28,7 @@ import pathlib, re, sys
 
 WIDGETS = pathlib.Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules/common/widgets"
 FAMILY = ["DialogListItem", "FullscreenPolkitWindow", "NoticeBox", "PopupToolTip",
-          "SelectionDialog", "ShortcutBox", "StyledToolTip", "StyledToolTipContent",
+          "SelectionDialog", "StyledToolTip", "StyledToolTipContent",
           "WindowDialog", "WindowDialogButtonRow", "WindowDialogParagraph",
           "WindowDialogSectionHeader", "WindowDialogTitle"]
 fails = []

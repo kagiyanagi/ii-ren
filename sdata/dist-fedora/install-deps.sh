@@ -44,7 +44,13 @@ function init_local_repo() {
 # -------------------------
 
 if ! command -v dnf >/dev/null 2>&1; then
-  printf "${STY_RED}[$0]: dnf not found, it seems that the system is not Fedora 42 or later distros. Aborting...${STY_RST}\n"
+  printf "${STY_RED}[$0]: dnf not found, it seems that the system is not Fedora 44 or later distros. Aborting...${STY_RST}\n"
+  exit 1
+fi
+# The prebuilt quickshell-git (the commit the shell is written against) is built for
+# Fedora 44, and the Hyprland 0.56 that reads the Lua config is only packaged for 43+.
+if [[ "$(. /etc/os-release; echo "${VERSION_ID%%.*}")" -lt 44 ]]; then
+  printf "${STY_RED}[$0]: ii-ren needs Fedora 44 or later. Upgrade first, then run this again. Aborting...${STY_RST}\n"
   exit 1
 fi
 
@@ -94,7 +100,7 @@ while IFS= read -r deps_list_key; do
 done < <(echo "$deps_data" | yq '.groups | keys[]? | select(length > 0)')
 
 # Add back versionlock at the end
-[ -n $nolock_qs ] || v sudo dnf versionlock add quickshell-git || true
+[ -n "$nolock_qs" ] || v sudo dnf versionlock add quickshell-git || true
 
 echo -e "\n========================================"
 echo "All installations are completed."
