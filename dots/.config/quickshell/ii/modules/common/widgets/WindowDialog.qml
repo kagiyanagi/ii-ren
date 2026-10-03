@@ -73,7 +73,7 @@ Rectangle {
         onWheel: (event) => event.accepted = true
     }
 
-    // A dialog sits at elevation 5 (DESIGN.md 6.2). Declared before the surface
+    // A dialog sits at elevation 3, M3's dialog level (DESIGN.md 6.2). Declared before the surface
     // so it paints behind it, and cached, so the scrim costs one effect total.
     StyledRectangularShadow {
         target: dialogBackground

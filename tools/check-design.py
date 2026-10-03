@@ -36,8 +36,8 @@ NUMERIC = re.compile(
     r"^(opacity|scale|rotation|x|y|z|width|height|radius|spacing|padding"
     r"|implicit\w+|\w*Margin|\w*Radius|\w*Scale|\w*Size|value|position|angle)$"
 )
-# 4dp grid, plus the 6 and 10 this codebase already uses everywhere.
-ON_GRID = {0, 2, 4, 6, 8, 10} | {n for n in range(12, 201, 4)}
+# 4dp grid plus M3's nested units 2, 6, 10 and 14 (md.sys.measurement.space25..175).
+ON_GRID = {0, 2, 4, 6, 8, 10, 14} | {n for n in range(12, 201, 4)}
 
 
 def cited(lines, i):

@@ -10,6 +10,12 @@ Read this before writing QML. Cited numbers are transcribed from AOSP; the
 primary action, what to delete, its edge states, the owner's recorded calls) is in
 `.github/TASTE.md`. Read both before designing anything.
 
+What Material 3 itself specifies — every component's measurements, the colour
+roles, the type scale, the transition patterns, the writing rules — is distilled in
+`.github/M3.md`, mapped onto this shell's tokens and widgets, with the places this
+shell departs from it on purpose. This file wins over M3.md; TASTE.md §9 wins over
+both. Where this file is silent, M3.md is the default.
+
 ---
 
 ## 0. The four rules that outrank everything else
@@ -53,6 +59,12 @@ curl -s "<url>?format=TEXT" | base64 -d
 Host is `https://android.googlesource.com/platform/<repo>/+/refs/heads/main/<file>`
 (`androidx-main` instead of `main` for `frameworks/support`).
 
+Everything else Google publishes for M3 — guidelines, component specs, and the
+`md.sys.*` / `md.comp.*` token database the Compose files above are generated from —
+is on m3.material.io. `python3 tools/m3-docs.py` mirrors it as text into
+`~/.cache/m3-docs/<version>/` (`pages/*.md`, `tokens/*.txt`); `.github/M3.md` is the
+distilled version.
+
 ### Checking a change against this file
 
 **`/design-check`** is the entry point. It runs the script below for the
@@ -67,8 +79,9 @@ Underneath:
   do not match their property, the crash and shadowing patterns. `--diff` scopes
   it to added lines and exits non-zero on an error; a bare run audits everything
   and counts legacy debt too. `--rule <id>` expands one rule.
-- `tools/check-m3-tokens.py` — asserts the Hyprland spring curves and the state
-  layer mix factors still match AOSP. Run after touching either.
+- `tools/check-m3-tokens.py` — asserts the Hyprland spring curves, the
+  `Appearance` bezier curves and the state layer mix factors still match AOSP and
+  M3. Run after touching any of them.
 - `tools/check-button-states.py`, `tools/check-text-primitives.py` — the shared
   roots' own contracts, for the defaults that are invisible when broken: all four
   button states, and the elide/no-elide split between `StyledText` and
@@ -105,8 +118,12 @@ Source values are `ExpressiveMotionTokens.kt`. Qt has no usable spring
 | Default effects | 1.0 | 1600 | `expressiveEffects` | 200 | `m3DefaultEffects` |
 | Slow effects | 1.0 | 800 | `expressiveEffects` | 280 | `m3SlowEffects` |
 
-The three effects rows share one curve and differ only in duration — that is
-correct, a critically damped spring's shape barely changes with stiffness.
+The spatial curves and durations are M3's own published conversions
+(m3.material.io → Motion → Specs, "Web: convert springs to curves"). The effects
+rows are not: M3 gives fast effects its own curve `0.31, 0.94, 0.34, 1.00` at
+150ms and slow effects `0.34, 0.88, 0.34, 1.00` at 300ms, where `Appearance`
+reuses the default-effects curve at 130 and 280. That is an open owner decision
+(M3.md §1.2), not something to correct in one widget.
 
 Hyprland wants a damping *coefficient*, AOSP publishes a *ratio*:
 `dampening = 2·ζ·√(stiffness·mass)`. That derivation is what
@@ -180,6 +197,18 @@ XLong  700  800  900 1000
 Rule of thumb: ≤200ms for a widget, 300–500ms for a panel, 500ms+ only for
 something screen-sized.
 
+M3's suggested pairs, for when nothing more specific applies: emphasized 500ms
+(begins and ends on screen), emphasizedDecel 400ms (enters), emphasizedAccel
+200ms (exits for good), standard 300 / standardDecel 250 / standardAccel 200 for
+small utility moves. A surface that leaves **temporarily** and can be called
+back — a sidebar, a drawer — exits on plain `emphasized`, coming to rest off
+screen; `emphasizedAccel`, ending at full speed, says "gone for good".
+
+Surfaces on a routine trip do not bounce: M3 rules out "overt style effects like
+bouncy springs" for common transitions. Overshoot is for components reacting to
+input. Which *pattern* a surface change uses — container transform, forward and
+backward, lateral, top level, enter and exit, skeleton — is M3.md §3.3.
+
 ### 2.5 Enter and exit are not symmetric
 
 Entering is slower and decelerating — the user is waiting to see the thing.
@@ -188,6 +217,11 @@ enter on default spatial or `emphasizedDecel`, exit on fast effects or
 `emphasizedAccel`, at roughly half the enter duration. Every new appearing
 surface must specify **both**; a component that fades in over 500ms and
 disappears instantly is the most common motion bug here.
+
+Clean fades (M3): when one content replaces another, fade the old one fully out
+before the new one fades in. A crossfade, if unavoidable, is short and hidden in
+the fastest part of the move. Never slowly fade a whole panel in or out over
+other content — the half-transparent frames are the defect.
 
 ### 2.6 Transform origin
 
@@ -233,7 +267,9 @@ stagger inside a scrolling delegate; the offsets fire on recycle.
 - **`animationMultiplier`** exists (`Appearance.animMultiplier`,
   `Config.options.appearance.animationMultiplier`) but `AnimSpec` does not apply
   it. When a component's motion is long enough to be worth disabling, follow the
-  androidStyle toggles: treat `<= 0.25` as "animations off".
+  androidStyle toggles: treat `<= 0.25` as "animations off". "Off" means what M3's
+  reduced-motion setting means: short fades instead of slides and scales, and no
+  parallax or shape morph — not a jump cut.
 - **Async `Loader` + `Connections`** whose target is not a live QObject
   segfaults in `QQmlConnections::connectSignalsToMethods()`. Guard with
   `target: foo ?? null`, or keep the loader synchronous.
@@ -310,7 +346,20 @@ pressed (mix keeps `p` of the base), and that arithmetic already lives in
 
 Every interactive element needs **hover, focus, pressed and disabled** covered.
 Disabled is `opacity: 0.4` on the whole control (what `RippleButton` does), not
-a greyed-out colour.
+a greyed-out colour. (M3's own split is content at 0.38 and container at 0.10;
+0.4 on the whole is this shell's simplification. A disabled control takes no
+hover, press or drag, and no focus — except a disabled menu item, which still
+focuses.)
+
+From M3's state rules:
+
+- The film is always the **content** colour of what it covers — the `on-` colour
+  of the container — and an element shows **one** state layer at a time.
+- **Containers don't take states; their items do.** A whole bar, panel, menu,
+  dialog or sheet never lights up on hover — the rows and buttons in it do
+  (M3.md §4.2 has the per-component table).
+- Selection reads by **two cues, never colour alone**: fill the icon (or go
+  semibold), add a check, change the shape — as well as the colour.
 
 ### 3.2 Ripple
 
@@ -348,9 +397,10 @@ layout glitch.
 
 ### 3.4 Hit targets
 
-AOSP's minimum touch target is 48dp. This is a pointer-driven desktop shell, so:
-**32px minimum** hit area, 40px where a mis-click is costly. The visual can be
-smaller than the hit area — expand the `MouseArea`, do not inflate the paint.
+AOSP's minimum touch target is 48dp, and M3's pointer target is 44dp, 8dp
+apart. This is a dense pointer-driven desktop shell, so: **32px minimum** hit
+area, 40px where a mis-click is costly. The visual can be smaller than the hit
+area — expand the `MouseArea`, do not inflate the paint.
 
 Cursor: `Qt.PointingHandCursor` on anything clickable (`RippleButton` does this
 via `pointingHandCursor`; `PointingHandInteraction` is the drop-in for
@@ -395,6 +445,18 @@ would fight the ripple's.
 Everything reachable by mouse should be reachable by keyboard. Escape closes any
 popup, dialog or menu. `Enter` accepts a text field. A focused control shows the
 0.10 focus layer — visibly, not just as an `activeFocus` boolean nothing renders.
+
+The M3 keyboard model, which new surfaces follow:
+
+- **Tab** moves between components; **arrow keys** move *inside* one (a button
+  group, a list, a menu, tabs, a chip set); **Space/Enter** activate.
+- **Initial focus** is defined: a dialog's first interactive element, a menu's
+  first item, a list's selected item. A group's container is never a tab stop.
+- Closing a dialog or menu **returns focus** to whatever opened it.
+- Escape in a text field drops the caret, never the typed text.
+- M3 also draws a keyboard focus *ring* — 3dp, in `secondary`, 2dp outside the
+  control. The ii family has none yet; that is an open decision (M3.md §1.2), so
+  do not hand-roll one per widget.
 
 Popups that need typing (search, rename) require
 `WlrKeyboardFocus.OnDemand` on their own `PanelWindow`; an xdg popup on a layer
@@ -445,7 +507,8 @@ mode and looks broken there.
 | Progress track, tiny divider | `unsharpen` |
 
 The nesting rule: a child's radius is smaller than its parent's, by roughly the
-padding between them. Equal radii on nested surfaces reads as a rendering error.
+padding between them — M3's "optical roundness", inner = outer − padding. Equal
+radii on nested surfaces reads as a rendering error.
 
 A surface flush against a screen edge or another panel rounds only its free
 corners — use `topLeftRadius`/`topRightRadius`/`bottomLeftRadius`/`bottomRightRadius`
@@ -456,6 +519,9 @@ rather than a uniform `radius` plus a clip.
 AOSP does morph a pressed button toward a smaller radius, but the target scales
 with the button: `ButtonSmallTokens.PressedContainerShape` is `CornerSmall` (8),
 `ButtonMediumTokens` is `CornerMedium` (12). There is no single universal value.
+
+The full per-size table (resting square, pressed, selected, for XS–XL buttons,
+plus list-item and menu-item morphs) is M3.md §7.3.
 
 `RippleButton.buttonRadiusPressed` defaults to `buttonRadius` — no morph —
 because 58 buttons in this repo rest at `rounding.full` or `height/2`, and
@@ -484,6 +550,11 @@ Multiples of **4**. The de-facto ladder in this repo, by frequency, is
 4 / 8 / 12 / 16, with 6 and 10 also common. Use 6 or 10 only where a sibling in
 the same surface already does. Never 3, 5, 7, 9, 11 — except a deliberate
 optical nudge with a comment saying why.
+
+This is M3's spacing scale (`md.sys.measurement.space*`, base 8): 0, 2, 4, 6, 8,
+10, 12, 14, 16, 20, 24, 32, 36, 40, 48, 56, 64, 72, where 2, 6, 10 and 14 are its
+"nested units". Put padding and gaps on the **parent** (a `Layout`'s `spacing`, a
+container's padding); margins on children are rarely uniform and are a smell.
 
 ### 5.2 Padding by container
 
@@ -603,20 +674,37 @@ the semantic layer. Use the semantic one.
 Roles: `colPrimary` for the single most important action per surface,
 `colSecondary`/`colTertiary` for accents, `colError` for destructive and
 failure, `colSurfaceContainer*` for neutral surfaces, `colOutlineVariant` for
-dividers, `colOnSurfaceVariant` for secondary text.
+decorative edges, `colOnSurfaceVariant` for secondary text.
+
+M3's pairing rules (all 26 roles and what each is for: M3.md §5.2):
+
+- Text and icons on X are on-X. A container role is never a text or icon colour.
+- `colOutline` for an edge someone has to find (a field, a control's border);
+  `colOutlineVariant` only for decoration, or around a control whose contents
+  already carry the contrast.
+- A container on a container must be **more than one step** up the surface ladder
+  to stay visible.
+- Inverse surface (`colTooltip`/`colOnTooltip`) is for tooltips and toasts.
+- Error and success never become dynamic or content-derived colour.
+- Contrast: 4.5:1 small text, 3:1 large text and clustered controls.
 
 ### 6.2 Elevation
 
-`ElevationTokens.kt`: 0, 1, 3, 6, 8, 12 dp.
+`ElevationTokens.kt`: 0, 1, 3, 6, 8, 12 dp. Resting levels per M3's component
+table:
 
 | Level | dp | What |
 |---|---|---|
-| 0 | 0 | flush content |
-| 1 | 1 | a card at rest |
-| 2 | 3 | a raised chip, a search bar |
-| 3 | 6 | a menu, a popup |
-| 4 | 8 | a navigation drawer |
-| 5 | 12 | a dialog, a dragged item |
+| 0 | 0 | flush content, cards and chips on the page, lists, tonal/filled buttons |
+| 1 | 1 | an elevated card or button, a modal sheet or drawer |
+| 2 | 3 | a menu, a popup, a toolbar, a rich tooltip |
+| 3 | 6 | a dialog, a FAB, a search surface, a floating toolbar |
+| 4 | 8 | never at rest: a hovered level-3 item, a dragged item |
+| 5 | 12 | never at rest |
+
+Hover raises a component one level; levels 4 and 5 exist only for interaction.
+By default M3 separates surfaces by **tone**, not shadow; a shadow is for an
+element over a busy background or one being lifted.
 
 `StyledRectangularShadow` renders it (`blur: 0.9 * elevationMargin`, offset
 (0, 1), `cached: true`) and `StyledDropShadow` covers the non-rectangular case.
@@ -624,22 +712,35 @@ Elevation *changes* — hover lifting a card, a drag picking an item up — anim
 on an effects spec, never a spatial one.
 
 A modal surface dims what is behind it with `colScrim`, faded on
-`elementMoveFast`.
+`elementMoveFast`. (`colScrim` is 50%; M3's scrim is 32% — open, M3.md §1.2.)
 
 ---
 
 ## 7. Typography
 
-`Appearance.font.pixelSize.*` only — never a literal. Role mapping:
+`Appearance.font.pixelSize.*` only — never a literal. The shell keeps its own
+px scale (M3.md §1.1); this is where each M3 style lands on it:
 
-| M3 role | Repo token | Notes |
+| M3 style (size/line) | Repo token | Notes |
 |---|---|---|
-| Display | `display` 36 | M3 displaySmall; one per page at most (the Hermes greeting) |
-| Headline | `huge` 22, `hugeass` 23 | with `font.family.title`, wght 550 |
-| Title | `large` 17, `normal` 16 | DemiBold |
-| Body | `normal` 16, `small` 15 | wght 450 |
-| Label | `smallie` 13, `smaller` 12 | buttons, chips, captions |
-| Micro | `smallest` 10 | badges only |
+| display small 36/44 | `display` 36 | one per page at most (the Hermes greeting), short text or numerals |
+| headline small 24/32 | `hugeass` 23 | `font.family.title`; dialog titles |
+| title large 22/28 | `huge` 22 | `font.family.title`; page and panel titles |
+| title medium 16/24, title small 14/20 | `large` 17 / `normal` 16, `small` 15 | title family, wght 550; section heads, tabs. `larger` 19 sits between title medium and large — only where a sibling already uses it |
+| body large 16/24 | `normal` 16 | list labels, input text |
+| body medium 14/20 | `small` 15 | paragraphs, supporting text, dialog body |
+| body small 12/16, label medium 12/16 | `smaller` 12 | tooltips, captions, nav labels |
+| label large 14/20 | `smallie` 13 | buttons, chips, menu items |
+| label small 11/16 | `smallest` 10 | badges only |
+
+Display medium/large and headline medium/large have no token: nothing in a
+shell this dense earns them. Don't add one for a single surface.
+
+M3's **emphasized** styles — same size, heavier — mark selection, unread items,
+the primary action. Here that is `font.variableAxes.title` (wght 550) on text
+that is otherwise `main` (450); don't jump a size to emphasize. Line height runs
+≈1.2× for titles and ≈1.5× for body and labels. Never shrink type to make a
+label fit: elide, wrap, or shorten the copy.
 
 Families: `main` for UI, `title` for headings, `numbers` for anything tabular or
 counting, `monospace` for code and paths, `reading` for long text, `expressive`
@@ -651,7 +752,10 @@ not match.
 
 Icons are `MaterialSymbol`, sized by `iconSize` (which also feeds the `opsz`
 axis). Its `fill` axis animates 0 → 1, and that is the idiomatic way to show
-selection on an icon-only control — animate `fill`, not colour alone.
+selection on an icon-only control — animate `fill`, not colour alone. M3's icon
+rules: an icon matches the size and weight of the text beside it; never below
+weight 200 at 24; a toggle goes outlined → filled; an icon-only control's
+tooltip names the action ("Add to favourites"), not the glyph.
 
 ---
 
@@ -687,11 +791,15 @@ Rules:
 
 ## 9. Component recipes
 
-The short answer to "how should this look". Reuse the named widget.
+The short answer to "how should this look". Reuse the named widget. M3's full
+spec for each — sizes, padding, type, colour roles, states, keyboard — is M3.md
+§11; read the entry before building or changing one of these.
 
 **Button** — `RippleButton` (`RippleButtonWithIcon`, `RippleButtonWithShape`).
 Height 30 compact / 40 standard. `full` radius for pills, `small` for
 rectangular. State layer + ripple; no scale. Icon 20, gap 8, side padding 16.
+Label 1–3 words, sentence case, one line, never narrower than its text; icon
+leading, never two. One filled button per surface.
 
 **Icon button** — `RippleButton` sized square, `rounding.full`, `padding: 0`,
 hit area ≥ 32. `IconToolbarButton` and `ToolbarButton` for toolbar rows.
@@ -705,14 +813,20 @@ toggles are the reference.
 open scale 0.5 → 1.02 over 200ms `emphasizedDecel`, then 1.02 → 1 over 200ms on
 `[0.3, 0, 0.33, 1]`; alpha 0 → 1 linear 83ms. Close scale 1 → 0.5 over 233ms
 `emphasizedAccel`; alpha 1 → 0 over 83ms after a 150ms delay. Origin at the
-corner nearest the click. Radius `verylarge`, elevation 3, gap 10 from the
-anchor, 8 from the screen edge. Dismiss on any outside click and on Escape.
-`DockFolderPopup` and `DesktopMenu` are the worked examples.
+corner nearest the click. Radius `verylarge`, elevation 2 (M3's menu level), gap
+10 from the anchor, 8 from the screen edge. Dismiss on any outside click and on
+Escape. `DockFolderPopup` and `DesktopMenu` are the worked examples. Menu items
+follow M3's expressive menu (M3.md §11.12): icon 20, 12 between icon and label,
+grouped by space rather than lines, focus on the first item, arrows move,
+selection shown by a check as well as colour.
 
 **Dialog** — `WindowDialog` and its `WindowDialogTitle`/`Paragraph`/
-`SectionHeader`/`ButtonRow` parts. Scrim behind, elevation 5, radius `verylarge`,
+`SectionHeader`/`ButtonRow` parts. Scrim behind, elevation 3, radius `verylarge`,
 enter on `emphasizedDecel`, exit `emphasizedAccel` at ~half the duration.
-Confirming action on the right, destructive in `colError`.
+At most two actions: confirming on the right, dismissive to its left, destructive
+in `colError`; a single action only as an acknowledgement. The dismissive action
+is never disabled; the confirming one is disabled until there is something to
+confirm. The title is a specific statement or question — never "Are you sure?".
 
 **Sheet / sidebar** — slides from its edge on default spatial, `verylarge`
 radius on the free corners only, scrim if modal.
@@ -743,7 +857,9 @@ Swipe to dismiss via `SwipeDismissible`, group expansion on default spatial,
 **Progress** — `StyledProgressBar`, `ClippedProgressBar`,
 `CircularProgress`, `MaterialLoadingIndicator` (the morphing-shape M3
 Expressive one) and `StyledIndeterminateProgressBar`. Indeterminate only when
-the duration is genuinely unknown.
+the duration is genuinely unknown. By expected wait (M3): under 200ms show
+nothing, 200ms–5s `MaterialLoadingIndicator`, over 5s a progress bar; one
+indicator for a group, never one per row.
 
 **Dock / taskbar item** — `DockButton`. Hover 1.1 over 300ms `emphasizedDecel`,
 press squish 0.88 multiplied in, ripple off, radius `normal`.
@@ -791,6 +907,10 @@ Each of these has actually shipped and had to be reverted.
 ## 11. Before calling a UI change done
 
 - [ ] Reused an existing widget where one fit.
+- [ ] Anything M3 defines (button, menu, dialog, list, slider…) checked against
+      its M3.md §11 entry; any difference is either a §1 departure or fixed.
+- [ ] A surface change uses the right M3 transition pattern (M3.md §3.3).
+- [ ] Selection and state shown by two cues, never colour alone.
 - [ ] Every duration and curve comes from `Appearance`.
 - [ ] Spatial vs effects chosen correctly; nothing that fades overshoots.
 - [ ] Enter **and** exit both specified, exit faster.
@@ -805,7 +925,10 @@ Each of these has actually shipped and had to be reverted.
 - [ ] Spacing on the 4dp ladder.
 - [ ] Colours from `Appearance.colors`, on the right layer, transparency on and
       off both checked.
-- [ ] Keyboard reachable; Escape closes.
+- [ ] Keyboard reachable — Tab between, arrows within, Escape closes, focus
+      returns to the opener.
+- [ ] Copy follows M3.md §12: sentence case, no period on one line, ellipsis
+      only for "in progress".
 - [ ] No new effect inside a repeated delegate.
 - [ ] `qs -c ii` starts with no new warnings.
 - [ ] Motion changes measured at 60fps, not eyeballed.

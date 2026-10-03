@@ -32,7 +32,7 @@ output to that path yourself.
 ## Step 2 — the half a script cannot see
 
 Read `.github/DESIGN.md` and `.github/TASTE.md` first if they are not already in
-context. Then read the
+context, and the `.github/M3.md` sections for whatever the diff touches. Then read the
 actual changed QML and judge these, which no regex can:
 
 1. **Spatial vs effects.** Position/size/shape on a spatial spec, opacity/colour
@@ -65,7 +65,13 @@ actual changed QML and judge these, which no regex can:
 15. **No separator bars / dividers.** Check that sections and headers are separated
     by whitespace on the 4dp grid and tonal layers rather than hairline divider
     lines of any kind, and that no negative margins are used to compensate.
-16. **Taste.** For anything the diff adds or restructures, answer `TASTE.md` §11's
+16. **M3 spec.** Anything the diff builds that M3 defines (button, icon button,
+    group, menu, dialog, list, tabs, slider, switch, tooltip, progress…) matches
+    its `.github/M3.md` §11 entry — type role, colour roles, radius step, states,
+    keyboard — unless M3.md §1 lists the difference as a departure. Selection
+    shown by two cues; containers don't take hover; surface changes use the right
+    transition pattern (§3.3).
+17. **Taste.** For anything the diff adds or restructures, answer `TASTE.md` §11's
     questions: one primary action and one loud thing, nothing bound to nothing, state
     that tells the truth, nothing moving under the pointer, every edge state designed,
     and none of the owner's recorded calls (§9) undone.

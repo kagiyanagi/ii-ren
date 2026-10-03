@@ -197,6 +197,15 @@ what does not belong on it, how it behaves when it is empty or wrong, and which
 calls the owner has already made. It ends with the questions that every brief and
 every UI audit answers.
 
+**`.github/M3.md` is Material 3 itself**, distilled from all of m3.material.io and
+mapped onto this shell: every component's spec, the colour roles, the type scale,
+the transition patterns, the writing rules, and (§1) where this shell departs on
+purpose. Read the §11 entry before building anything M3 defines. Precedence:
+TASTE §9 > DESIGN > M3. Building or re-auditing a surface against M3 is
+`/m3 build|audit|spec` in Claude Code, the `m3` skill in agy
+(`.agents/skills/m3/SKILL.md`). `python3 tools/m3-docs.py` mirrors the live spec
+and token database for anything M3.md does not cover.
+
 The condensed version, so nothing is missed even without opening that file:
 
 1. **Reuse first.** ~155 widgets live in `modules/common/widgets/`. A button is
@@ -230,5 +239,5 @@ in Claude Code, the `design-check` skill in agy, both driven by
 mechanically checkable rules, then reads the diff for the ones a script cannot
 see — transform origin, spatial-vs-effects, enter/exit pairing, layer nesting,
 effects in delegates, missed reuse.
-`tools/check-m3-tokens.py` asserts the tokens still match AOSP; run it after
-touching motion tokens or state layer values.
+`tools/check-m3-tokens.py` asserts the tokens still match AOSP and M3; run it after
+touching motion tokens, curves or state layer values.

@@ -5,7 +5,12 @@ dampening is a damping *coefficient*, but AOSP publishes a damping *ratio*, so t
 numbers in general.lua are derived: c = 2 * zeta * sqrt(stiffness * mass). A typo there
 silently changes the feel instead of erroring, hence this check.
 
-Source of truth: androidx.compose.material3.tokens.ExpressiveMotionTokens (AOSP).
+It also holds Appearance's bezier curves and durations to the values M3 publishes,
+and the state layer opacities to StateTokens, for the same reason: a wrong digit
+animates fine and just feels off.
+
+Source of truth: androidx.compose.material3.tokens.ExpressiveMotionTokens (AOSP),
+and m3.material.io (mirror it with tools/m3-docs.py; distilled in .github/M3.md).
 Run: python3 tools/check-m3-tokens.py
 """
 import math, pathlib, re, sys
@@ -65,3 +70,44 @@ for state, opacity in cases.items():
     assert abs(float(opacity) - STATE_LAYER[state]) < 1e-9, \
         f"StateLayer {state}: {opacity} != token {STATE_LAYER[state]}"
 print(f"ok: {len(cases)} StateLayer opacities match StateTokens")
+
+# Appearance's bezier curves against M3's published values: the easing tokens
+# (md.sys.motion.easing.*) and the spring->curve conversions on m3.material.io ->
+# Motion -> Specs. Qt's BezierSpline lists control points then the end point, so
+# M3's (x1, y1, x2, y2) is [x1, y1, x2, y2, 1, 1] here. Fast and slow effects are
+# left out on purpose: M3 gives them their own curves (0.31, 0.94, 0.34, 1 @150ms;
+# 0.34, 0.88, 0.34, 1 @300ms), Appearance reuses default effects at 130/280, and
+# that is an open decision (M3.md 1.2), not a typo to assert away.
+CURVES = {
+    "expressiveFastSpatial": [0.42, 1.67, 0.21, 0.90],
+    "expressiveDefaultSpatial": [0.38, 1.21, 0.22, 1.00],
+    "expressiveSlowSpatial": [0.39, 1.29, 0.35, 0.98],
+    "expressiveEffects": [0.34, 0.80, 0.34, 1.00],
+    "emphasizedDecel": [0.05, 0.7, 0.1, 1],
+    "emphasizedAccel": [0.3, 0, 0.8, 0.15],
+    "standard": [0.2, 0, 0, 1],
+    "standardDecel": [0, 0, 0, 1],
+    "standardAccel": [0.3, 0, 1, 1],
+}
+# md.sys.motion.easing.emphasized on Android, a two-segment path.
+EMPHASIZED = [0.05, 0, 0.133333, 0.06, 0.166666, 0.4, 0.208333, 0.82, 0.25, 1, 1, 1]
+DURATIONS = {"expressiveFastSpatialDuration": 350, "expressiveDefaultSpatialDuration": 500,
+             "expressiveSlowSpatialDuration": 650, "expressiveEffectsDuration": 200}
+
+
+def qml_list(name):
+    m = re.search(rf"property list<real> {name}: \[([^\]]*)\]", qml)
+    assert m, f"Appearance.animationCurves.{name} is gone"
+    return [eval(x, {"__builtins__": {}}) for x in m.group(1).split(",")]  # digits and / only
+
+
+for name, points in CURVES.items():
+    got = qml_list(name)
+    assert all(abs(a - b) < 1e-6 for a, b in zip(got, points + [1, 1])) and len(got) == 6, \
+        f"{name}: {got} != M3 {points}"
+got = qml_list("emphasized")
+assert len(got) == 12 and all(abs(a - b) < 1e-5 for a, b in zip(got, EMPHASIZED)), f"emphasized: {got}"
+for name, ms in DURATIONS.items():
+    m = re.search(rf"property real {name}: (\d+)", qml)
+    assert m and int(m.group(1)) == ms, f"{name} != M3's {ms}ms"
+print(f"ok: {len(CURVES) + 1} curves and {len(DURATIONS)} durations match M3")
