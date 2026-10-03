@@ -163,6 +163,13 @@ Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`,
 - **Components:** Use `component` keyword for in-file reusable components
 - **Early return:** Prefer `if (!condition) return; doStuff()` over deep nesting
 - **Conditional loading:** Use `Loader`/`LazyLoader` for anything guarded by config options
+- **Processes** (`modules/common/utils/`): a helper meant to keep running is a
+  `KeepAliveProcess` (restarted if it dies, killed with the shell); a read re-run when
+  something changes is a `RefreshProcess` — `running = true` on a running `Process` is a
+  no-op, and the change that asked for it is lost
+- **Shell commands:** never splice a value into `sh -c` text; pass it as `"$1"`... after the
+  script (`["sh", "-c", 'cmd "$1"', "sh", value]`). Media metadata, file names, model
+  output and extension metadata all reach commands here
 
 ## Extension System
 
