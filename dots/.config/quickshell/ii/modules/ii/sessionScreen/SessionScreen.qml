@@ -123,10 +123,11 @@ Scope {
             }
 
             // The scrim (DESIGN.md 6.2), and a press anywhere off the card puts the
-            // menu away.
+            // menu away. Darker than colScrim's 50%: a power menu takes the whole
+            // screen, so what is behind it should recede further than under a dialog.
             Rectangle {
                 anchors.fill: parent
-                color: Appearance.colors.colScrim
+                color: ColorUtils.transparentize(Appearance.m3colors.m3scrim, 0.35)
                 opacity: window.shown ? 1 : 0
                 Behavior on opacity {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)

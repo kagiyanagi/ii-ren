@@ -104,7 +104,7 @@ shadow = block(src, r"StyledRectangularShadow\s*\{")
 check(shadow and all(re.search(rf"\b{prop}:\s*card\.{prop}\b", shadow) for prop in ("scale", "transformOrigin", "opacity")),
       "the shadow must follow the card's scale, origin and opacity -- it is a sibling, and "
       "otherwise sits full-size under a half-size card")
-scrim = block(src, r"Rectangle\s*\{\s*anchors\.fill:\s*parent\s*color:\s*Appearance\.colors\.colScrim")
+scrim = block(src, r"Rectangle\s*\{\s*anchors\.fill:\s*parent\s*color:\s*ColorUtils\.transparentize\(Appearance\.m3colors\.m3scrim")
 check(scrim and re.search(r"Behavior on opacity\s*\{\s*animation:\s*Appearance\.animation\.elementMoveFast\b", scrim)
       and "onPressed: GlobalStates.sessionOpen = false" in scrim,
       "the scrim fades on elementMoveFast (DESIGN.md 6.2) and a press on it closes the menu")
