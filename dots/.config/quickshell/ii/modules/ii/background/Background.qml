@@ -937,6 +937,9 @@ Variants {
             // transformOrigin on either one slides the weather off the desktop.
             scale: wallpaperItem.scale
             opacity: wallpaperItem.opacity
+            // Frozen on its last frame while windows hide the wallpaper: a full-screen
+            // shader every frame for nobody. The lock screen's workspace has no windows.
+            paused: HyprlandData.wallpaperCovered(bgRoot.modelData.name)
         }
     }
 }

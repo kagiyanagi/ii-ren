@@ -34,15 +34,6 @@ AbstractBackgroundWidget {
     readonly property string identity: player ? (player.identity ?? "") : ""
     readonly property bool hasTrack: (player?.trackTitle ?? "").length > 0
 
-    readonly property bool hasActiveWindows: {
-        var activeWsId = Hyprland.focusedMonitor?.activeWorkspace?.id ?? (HyprlandData.activeWorkspace ? HyprlandData.activeWorkspace.id : 1);
-        if (activeWsId > 1000000)
-            activeWsId = 2147483647 - activeWsId;
-        if (!HyprlandData || !HyprlandData.windowList)
-            return false;
-        return HyprlandData.windowList.some(w => w.workspace && w.workspace.id === activeWsId);
-    }
-
     readonly property string artSource: CoverArt.source(artUrl)
 
     property string activeLyricText: ""
@@ -659,7 +650,7 @@ AbstractBackgroundWidget {
                             active: root.player ? (root.player.canSeek ?? false) : false
                             sourceComponent: StyledSlider {
                                 configuration: StyledSlider.Configuration.Wavy
-                                animateWave: root.playing && root.visible && !root.hasActiveWindows
+                                animateWave: root.playing && root.visible && !root.coveredByWindows
                                 highlightColor: root.accentColor
                                 trackColor: Qt.rgba(1, 1, 1, 0.2)
                                 handleColor: root.accentColor
@@ -679,7 +670,7 @@ AbstractBackgroundWidget {
                             active: root.player ? !(root.player.canSeek ?? false) : false
                             sourceComponent: StyledProgressBar {
                                 wavy: root.player ? root.playing : false
-                                animateWave: root.playing && root.visible && !root.hasActiveWindows
+                                animateWave: root.playing && root.visible && !root.coveredByWindows
                                 highlightColor: root.accentColor
                                 trackColor: Qt.rgba(1, 1, 1, 0.2)
                                 value: (root.player && root.player.length > 0) ? Math.min(1, Math.max(0, root.player.position / root.player.length)) : 0

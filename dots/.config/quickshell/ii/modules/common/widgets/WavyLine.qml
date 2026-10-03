@@ -30,7 +30,11 @@ ShaderEffect {
     // over exactly that keeps the old drift speed to the millisecond. This is
     // ambient motion rather than a transition, which is why it is derived from
     // the behaviour it replaces instead of an Appearance duration token.
-    NumberAnimation on phase {
+    // An animator: the uniform advances on the render thread, so a playing track's wave
+    // costs the GUI thread nothing per frame.
+    UniformAnimator {
+        target: root
+        uniform: "phase"
         running: root.animate && root.visible
         from: 0
         to: 2 * Math.PI

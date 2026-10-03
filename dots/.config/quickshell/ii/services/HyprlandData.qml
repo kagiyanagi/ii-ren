@@ -96,6 +96,15 @@ Singleton {
         updateWorkspaces();
     }
 
+    // True while a tiled or fullscreen window sits on that monitor's active workspace: its
+    // wallpaper is out of sight, and so is everything animating on it. Every frame of a
+    // desktop widget's wave or a weather shader redraws the whole wallpaper surface.
+    // Floating windows leave the desktop partly visible, so they do not count.
+    function wallpaperCovered(monitorName) {
+        const workspace = root.monitors.find(m => m.name === monitorName)?.activeWorkspace?.id;
+        return workspace !== undefined && root.windowList.some(w => w.workspace?.id === workspace && (!w.floating || w.fullscreen > 0));
+    }
+
     function biggestWindowForWorkspace(workspaceId) {
         const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == workspaceId);
         return windowsInThisWorkspace.reduce((maxWin, win) => {

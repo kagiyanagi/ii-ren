@@ -195,16 +195,16 @@ AbstractBackgroundWidget {
                         height: parent.height - 20
                         clip: true
 
-                        // Timer-based rotation for reliable reset control
+                        // Stepped by hand rather than one looping animation, so the reset
+                        // above can unwind it from wherever it stands.
                         property real _rotationAngle: 0
                         rotation: _rotationAngle
 
-                        Timer {
-                            id: rotationTimer
-                            running: root.player?.isPlaying && root.rotateAlbumArt
-                            interval: 16  // ~60fps
-                            repeat: true
-                            onTriggered: albumArtItem._rotationAngle = (albumArtItem._rotationAngle + 0.6) % 360  // 360° in 10s
+                        // 360 degrees in 10s, advanced once per frame drawn: the 16ms Timer
+                        // this replaces ran off the frame clock, and on with nothing drawn.
+                        FrameAnimation {
+                            running: (root.player?.isPlaying ?? false) && root.rotateAlbumArt && !root.coveredByWindows
+                            onTriggered: albumArtItem._rotationAngle = (albumArtItem._rotationAngle + 36 * Math.min(frameTime, 0.1)) % 360
                         }
 
                         Image {
@@ -332,7 +332,7 @@ AbstractBackgroundWidget {
                                     // holds still when the track does - which
                                     // is also what stops it burning a core in
                                     // the background while nothing plays.
-                                    animateWave: root.player?.isPlaying ?? false
+                                    animateWave: (root.player?.isPlaying ?? false) && !root.coveredByWindows
                                     highlightColor: root.colProgressHighlight
                                     trackColor: root.colProgressTrack
                                     handleColor: root.colProgressHighlight

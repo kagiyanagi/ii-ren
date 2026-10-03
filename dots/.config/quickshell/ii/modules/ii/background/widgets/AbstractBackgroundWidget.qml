@@ -6,6 +6,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs.modules.common.widgets.widgetCanvas
+import qs.services
 import qs.modules.ii.background.widgets
 import "WidgetDragMath.js" as WidgetDragMath
 
@@ -19,6 +20,9 @@ AbstractWidget {
     property string configEntryName: ""
     property var widgetInstance: null
     property bool isPreview: false
+    // Hidden behind a window (HyprlandData.wallpaperCovered): ambient motion stops there.
+    // A settings preview never asks, so the settings app starts no hyprctl queries.
+    readonly property bool coveredByWindows: !root.isPreview && HyprlandData.wallpaperCovered(root.QsWindow.window?.screen?.name ?? "")
     property string styleOverride: widgetInstance ? (WidgetsRegistry.getStyleOverride(widgetInstance.widgetId) || "") : ""
 
     property int screenWidth: 1920
