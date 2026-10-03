@@ -20,7 +20,12 @@ Singleton {
     }
 
     function applyColors(fileContent) {
-        const json = JSON.parse(fileContent)
+        let json
+        try {
+            json = JSON.parse(fileContent)
+        } catch (e) {
+            return // read mid-write: delayedFileRead reads it again in a moment
+        }
         for (const key in json) {
             if (json.hasOwnProperty(key)) {
                 // Convert snake_case to CamelCase

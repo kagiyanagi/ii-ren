@@ -156,7 +156,8 @@ Singleton {
                line = line.trim()
                if (!line || line === "[]")
                     continue
-                let dayEvents = JSON.parse(line)
+                let dayEvents
+                try { dayEvents = JSON.parse(line) } catch (e) { continue } // one bad day, not the whole calendar
                 for(let event of dayEvents){
                   let startDateParts = event['start-date'].split('/')
                   let startTimeParts = event['start-time'] 

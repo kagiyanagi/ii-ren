@@ -237,10 +237,13 @@ PanelWindow {
         stdout: StdioCollector {
             id: imageDimensionCollector
             onStreamFinished: {
-                imageRegions = RegionFunctions.filterImageRegions(
-                    JSON.parse(imageDimensionCollector.text),
-                    root.windowRegions
-                );
+                let found;
+                try {
+                    found = JSON.parse(imageDimensionCollector.text);
+                } catch (e) {
+                    return; // no venv or the script failed: windows and layers still snap
+                }
+                imageRegions = RegionFunctions.filterImageRegions(found, root.windowRegions);
             }
         }
     }

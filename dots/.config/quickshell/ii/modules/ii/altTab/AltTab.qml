@@ -136,7 +136,11 @@ Scope {
         running: true
         command: ["hyprctl", "getoption", "cursor:no_warps", "-j"]
         stdout: StdioCollector {
-            onStreamFinished: root.userNoWarps = JSON.parse(text)?.bool === true
+            onStreamFinished: {
+                try {
+                    root.userNoWarps = JSON.parse(text)?.bool === true;
+                } catch (e) {} // hyprctl failed: keep the default
+            }
         }
     }
 

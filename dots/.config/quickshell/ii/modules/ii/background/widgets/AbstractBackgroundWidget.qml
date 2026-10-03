@@ -1229,7 +1229,12 @@ AbstractWidget {
                 const output = leastBusyRegionOutputCollector.text;
                 // console.log("[Background] Least busy region output:", output)
                 if (output.length === 0) return;
-                const parsedContent = JSON.parse(output);
+                let parsedContent;
+                try {
+                    parsedContent = JSON.parse(output);
+                } catch (e) {
+                    return; // the script died mid-line: stay where the widget is
+                }
                 root.dominantColor = parsedContent.dominant_color || Appearance.colors.colPrimary;
                 root.calculatedX = parsedContent.center_x * root.wallpaperScale - root.width / 2;
                 root.calculatedY  = parsedContent.center_y * root.wallpaperScale - root.height / 2;

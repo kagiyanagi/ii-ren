@@ -29,8 +29,13 @@ LockScreen {
         command: ["hyprctl", "animations", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                const all = JSON.parse(text)[0];
-                const a = all.find(a => a.name === "workspaces" && a.overridden) ?? all.find(a => a.name === "global");
+                let all;
+                try {
+                    all = JSON.parse(text)[0];
+                } catch (e) {
+                    return; // hyprctl failed or was cut short: keep the last good spec
+                }
+                const a = all?.find(a => a.name === "workspaces" && a.overridden) ?? all?.find(a => a.name === "global");
                 // Locked again inside a rise: that is the borrowed value, not the user's.
                 if (a && a.bezier !== "iiUnlockRise")
                     root.workspacesAnim = a;

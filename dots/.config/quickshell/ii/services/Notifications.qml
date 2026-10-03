@@ -324,7 +324,13 @@ Singleton {
         path: Qt.resolvedUrl(filePath)
         onLoaded: {
             const fileContents = notifFileView.text()
-            root.list = JSON.parse(fileContents).map((notif) => {
+            let saved = [];
+            try {
+                saved = JSON.parse(fileContents);
+            } catch (e) {
+                console.warn("[Notifications] History file is not valid JSON, starting empty:", e);
+            }
+            root.list = saved.map((notif) => {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,
                     "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
