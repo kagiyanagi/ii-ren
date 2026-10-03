@@ -8,7 +8,6 @@ import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 
 Item {
@@ -27,35 +26,7 @@ Item {
 
     // ── Album art ────────────────────────────────────────────────────────────
     readonly property string artUrl: MprisController.artUrlFor(root.player)
-    readonly property bool isLocalArt: root.artUrl.startsWith("file://")
-    readonly property string artFilePath: `${Directories.coverArt}/${Qt.md5(root.artUrl)}`
-    property bool artDownloaded: false
-    readonly property string artSource: {
-        if (!root.artUrl)
-            return "";
-        if (root.isLocalArt)
-            return root.artUrl;
-        return root.artDownloaded ? Qt.resolvedUrl(root.artFilePath) : "";
-    }
-
-    onArtFilePathChanged: {
-        if (!root.artUrl) {
-            root.artDownloaded = false;
-            return;
-        }
-        if (root.isLocalArt) {
-            root.artDownloaded = true;
-            return;
-        }
-        root.artDownloaded = false;
-        artDownloader.running = true;
-    }
-
-    Process {
-        id: artDownloader
-        command: ["bash", "-c", `[ -f '${root.artFilePath}' ] || (curl -4 -sSL '${root.artUrl}' -o '${root.artFilePath}.tmp' && mv '${root.artFilePath}.tmp' '${root.artFilePath}')`]
-        onExited: exitCode => root.artDownloaded = exitCode === 0
-    }
+    readonly property string artSource: CoverArt.source(root.artUrl)
 
     // ── Colour scheme ────────────────────────────────────────────────────────
     readonly property bool useDynamicColors: root.options.dynamicAlbumColors && root.artSource !== ""

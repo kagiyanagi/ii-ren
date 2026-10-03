@@ -9,18 +9,14 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 
 Item { // Player instance
     id: root
     required property MprisPlayer player
     property var artUrl: MprisController.artUrlFor(player)
-    property string artDownloadLocation: Directories.coverArt
-    property string artFileName: Qt.md5(artUrl)
-    property string artFilePath: `${artDownloadLocation}/${artFileName}`
-    property color artDominantColor: ColorUtils.mix((colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary), Appearance.colors.colPrimaryContainer, 0.8) || Appearance.m3colors.m3secondaryContainer
-    property bool downloaded: false
+    property color artDominantColor: !root.displayedArtFilePath ? Appearance.m3colors.m3secondaryContainer
+        : ColorUtils.mix((colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary), Appearance.colors.colPrimaryContainer, 0.8)
     property list<real> visualizerPoints: []
     property real maxVisualizerValue: 1000 // Max value in the data points
     property int visualizerSmoothing: 2 // Number of points to average for smoothing
@@ -39,7 +35,7 @@ Item { // Player instance
     // row past a hardcoded 160 and knocked the art off centre.
     implicitHeight: Math.max(Appearance.sizes.mediaControlsHeight, infoColumn.implicitHeight + cardPadding * 2 + Appearance.sizes.elevationMargin * 2)
 
-    property string displayedArtFilePath: root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
+    readonly property string displayedArtFilePath: CoverArt.source(root.artUrl)
 
     component TrackChangeButton: RippleButton {
         id: button
@@ -77,30 +73,6 @@ Item { // Player instance
         repeat: true
         onTriggered: {
             root.player.positionChanged()
-        }
-    }
-
-    onArtFilePathChanged: {
-        if (root.artUrl.length == 0) {
-            root.artDominantColor = Appearance.m3colors.m3secondaryContainer
-            return;
-        }
-
-        // Binding does not work in Process
-        coverArtDownloader.targetFile = root.artUrl 
-        coverArtDownloader.artFilePath = root.artFilePath
-        // Download
-        root.downloaded = false
-        coverArtDownloader.running = true
-    }
-
-    Process { // Cover art downloader
-        id: coverArtDownloader
-        property string targetFile: root.artUrl
-        property string artFilePath: root.artFilePath
-        command: [ "bash", "-c", `[ -f ${artFilePath} ] || curl -4 -sSL '${targetFile}' -o '${artFilePath}'` ]
-        onExited: exitCode => {
-            root.downloaded = exitCode === 0
         }
     }
 

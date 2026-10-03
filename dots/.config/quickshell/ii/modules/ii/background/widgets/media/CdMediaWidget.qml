@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
 import qs.services
@@ -28,7 +27,7 @@ AbstractBackgroundWidget {
     readonly property color accentColor: useDynamicColors ? blendedColors.colPrimary : WidgetColorScheme.accentColor
 
     // ── Dynamic album colors (same pattern as MediaWidget) ──
-    readonly property bool useDynamicColors: (Config.options.background.widgets.media_cd.dynamicAlbumColors ?? false) && root.effectiveArtSource !== ""
+    readonly property bool useDynamicColors: (Config.options.background.widgets.media_cd.dynamicAlbumColors ?? false) && root.resolvedArtPath !== ""
 
     ColorQuantizer {
         id: colorQuantizer
@@ -75,41 +74,7 @@ AbstractBackgroundWidget {
         }
     }
 
-    // Direct resolution of artSource (local vs http/https)
-    readonly property bool isLocalArt: root.rawArtUrl.startsWith("file://") || root.rawArtUrl.startsWith("/")
-    property string artDownloadLocation: Directories.coverArt
-    property string artFileName: Qt.md5(root.rawArtUrl)
-    property string artFilePath: `${artDownloadLocation}/${artFileName}`
-    property bool downloaded: false
-
-    readonly property string effectiveArtSource: {
-        if (!root.rawArtUrl || root.rawArtUrl === "") return "";
-        if (root.isLocalArt) return FileUtils.trimFileProtocol(root.rawArtUrl);
-        return root.downloaded ? root.artFilePath : "";
-    }
-
-    readonly property string resolvedArtPath: root.effectiveArtSource !== "" ? Qt.resolvedUrl(root.effectiveArtSource) : ""
-
-    onRawArtUrlChanged: {
-        if (rawArtUrl && rawArtUrl !== "" && !isLocalArt) {
-            coverArtDownloader.targetFile = rawArtUrl;
-            coverArtDownloader.artFilePath = artFilePath;
-            coverArtDownloader.artTempPath = artFilePath + ".tmp";
-            downloaded = false;
-            coverArtDownloader.running = true;
-        }
-    }
-
-    Process {
-        id: coverArtDownloader
-        property string targetFile: root.rawArtUrl
-        property string artFilePath: root.artFilePath
-        property string artTempPath: root.artFilePath + ".tmp"
-        command: ["bash", "-c", `[ -f ${artFilePath} ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-        onExited: exitCode => {
-            root.downloaded = exitCode === 0;
-        }
-    }
+    readonly property string resolvedArtPath: CoverArt.source(root.rawArtUrl)
 
     StyledRectangularShadow {
         id: bgShadow

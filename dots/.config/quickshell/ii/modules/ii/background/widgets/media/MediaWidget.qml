@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 import QtQuick
 import QtQuick.Effects
@@ -53,9 +52,6 @@ AbstractBackgroundWidget {
 
     property MprisPlayer currentPlayer: MprisController.activePlayer
     property var artUrl: MprisController.artUrl
-    property string artDownloadLocation: Directories.coverArt
-    property string artFileName: Qt.md5(artUrl)
-    property string artFilePath: `${artDownloadLocation}/${artFileName}`
 
     property real widgetSize: 240
     property real controlsSize: 55
@@ -83,13 +79,7 @@ AbstractBackgroundWidget {
         };
     }
 
-    property bool downloaded: false
-    readonly property bool isLocalArt: String(root.artUrl ?? "").startsWith("file://")
-    property string displayedArtFilePath: {
-        if (!root.artUrl) return "";
-        if (root.isLocalArt) return root.artUrl;
-        return root.downloaded ? Qt.resolvedUrl(artFilePath) : "";
-    }
+    readonly property string displayedArtFilePath: CoverArt.source(root.artUrl)
 
     property list<real> visualizerPoints: Config.options.background.widgets.media.visualizer.enable ? CavaService.visualizerPoints : []
 
@@ -110,42 +100,9 @@ AbstractBackgroundWidget {
         }
     }
 
-    onArtFilePathChanged: updateArt()
-
     function nextPlayer() {
         root.currentPlayer = root.playerList[(root.playerList.indexOf(root.currentPlayer) + 1) % root.playerList.length];
     }
-
-    function updateArt() {
-        // No art at all hashes to the md5 of an empty string, which is a path
-        // that never exists: nothing to download, nothing to quantize.
-        if (!root.artUrl || root.artUrl.length === 0) {
-            root.downloaded = false;
-            return;
-        }
-        if (root.isLocalArt) {
-            root.downloaded = true;
-            return;
-        }
-        coverArtDownloader.targetFile = root.artUrl;
-        coverArtDownloader.artFilePath = root.artFilePath;
-        coverArtDownloader.artTempPath = root.artFilePath + ".tmp";
-        root.downloaded = false;
-        coverArtDownloader.running = true;
-    }
-
-    Process { // Cover art downloader
-        id: coverArtDownloader
-        property string targetFile: root.artUrl
-        property string artFilePath: root.artFilePath
-        property string artTempPath: root.artFilePath + ".tmp"
-        command: ["bash", "-c", `[ -f ${artFilePath} ] || (curl -4 -sSL '${targetFile}' -o '${artTempPath}' && mv '${artTempPath}' '${artFilePath}')`]
-        onExited: exitCode => {
-            root.downloaded = exitCode === 0;
-        }
-    }
-
-
 
     ColorQuantizer {
         id: colorQuantizer
@@ -203,7 +160,7 @@ AbstractBackgroundWidget {
             sourceComponent: MaterialShapeWrappedMaterialSymbol {
                 fill: 1
                 padding: 20
-                text: root.currentPlayer == null ? "music_off" : !root.downloaded ? "hourglass_bottom" : ""
+                text: root.currentPlayer == null ? "music_off" : !root.displayedArtFilePath ? "hourglass_bottom" : ""
                 anchors.centerIn: parent
                 iconSize: root.widgetSize / 4
                 shape: MaterialShape.Shape.Cookie12Sided

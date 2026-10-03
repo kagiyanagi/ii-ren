@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 import QtQuick
 import QtQuick.Effects
@@ -35,9 +34,6 @@ AbstractBackgroundWidget {
         return MprisController.activePlayer
     }
     property var artUrl: currentPlayer?.trackArtUrl
-    property string artDownloadLocation: Directories.coverArt
-    property string artFileName: Qt.md5(artUrl)
-    property string artFilePath: `${artDownloadLocation}/${artFileName}`
 
     property real buttonSize: 34
     property real buttonIconSize: 18
@@ -92,42 +88,12 @@ AbstractBackgroundWidget {
         animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
     }
 
-    property bool downloaded: false
     property bool showLyrics: false
 
-    property string displayedArtFilePath: {
-        if (!root.downloaded) return ""
-        if (root.artUrl && root.artUrl.startsWith("file://")) return root.artUrl
-        return root.downloaded ? Qt.resolvedUrl(artFilePath) : ""
-    }
+    readonly property string displayedArtFilePath: CoverArt.source(root.artUrl)
 
     implicitHeight: card.implicitHeight
     implicitWidth: card.implicitWidth
-
-    onArtFilePathChanged: updateArt()
-
-    function updateArt() {
-        if (!root.artUrl || root.artUrl.length === 0) {
-            root.downloaded = false
-            return
-        }
-        if (root.artUrl.startsWith("file://")) {
-            root.downloaded = true
-            return
-        }
-        coverArtDownloader.targetFile = root.artUrl
-        coverArtDownloader.artFilePath = root.artFilePath
-        root.downloaded = false
-        coverArtDownloader.running = true
-    }
-
-    Process {
-        id: coverArtDownloader
-        property string targetFile: root.artUrl
-        property string artFilePath: root.artFilePath
-        command: ["bash", "-c", `[ -f ${artFilePath} ] || curl -sSL '${targetFile}' -o '${artFilePath}'`]
-        onExited: exitCode => { root.downloaded = exitCode === 0 }
-    }
 
     StyledRectangularShadow {
         target: card

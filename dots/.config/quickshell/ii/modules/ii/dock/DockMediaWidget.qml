@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import QtQuick.Effects
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
 import qs.services
@@ -41,30 +40,7 @@ Item {
     readonly property bool lyricsMode: showLyrics && LyricsService.hasSyncedLines && LyricsService.currentIndex >= 0
     readonly property string lyricLine: LyricsService.syncedLines[LyricsService.currentIndex]?.text ?? ""
 
-    // ColorQuantizer and the blur need a local file, so remote art gets cached first.
-    readonly property bool isLocalArt: artUrl.startsWith("file://")
-    readonly property string artFilePath: `${Directories.coverArt}/${Qt.md5(artUrl)}`
-    property bool artDownloaded: false
-    readonly property string artSource: {
-        if (!artUrl) return "";
-        if (isLocalArt) return artUrl;
-        return artDownloaded ? Qt.resolvedUrl(artFilePath) : "";
-    }
-
-    onArtFilePathChanged: {
-        if (!artUrl || isLocalArt) {
-            artDownloaded = isLocalArt;
-            return;
-        }
-        artDownloaded = false;
-        artDownloader.running = true;
-    }
-
-    Process {
-        id: artDownloader
-        command: ["bash", "-c", `[ -f '${root.artFilePath}' ] || (curl -4 -sSL '${root.artUrl}' -o '${root.artFilePath}.tmp' && mv '${root.artFilePath}.tmp' '${root.artFilePath}')`]
-        onExited: exitCode => root.artDownloaded = exitCode === 0
-    }
+    readonly property string artSource: CoverArt.source(artUrl)
 
     ColorQuantizer {
         id: colorQuantizer

@@ -8,7 +8,6 @@ import qs.modules.common.functions
 import qs.modules.common.widgets
 import "QuickToggleCatalog.js" as QuickToggleCatalog
 import Quickshell.Services.Mpris
-import Quickshell.Io
 import "../../../mediaControls" as MediaCtrl
 import "../../../bar" as Bar
 
@@ -89,34 +88,16 @@ Item {
 
     // One blurred backdrop for every layout below. `hasArt` is what decides
     // whether the text on top is light or dark.
-    component CoverArt: StyledImage {
+    component ArtBackdrop: StyledImage {
         id: coverArt
-        readonly property string artUrl: MprisController.artUrl
-        readonly property bool isLocalArt: artUrl.startsWith("file://")
-        readonly property bool hasArt: artUrl.length > 0 && !isLocalArt
-        readonly property string artFilePath: hasArt ? `${Directories.coverArt}/${Qt.md5(artUrl)}` : ""
-        property bool cached: false
+        readonly property bool hasArt: source != ""
 
         anchors.fill: parent
-        // Only once the file is on disk: pointing at it mid-download fails the
-        // load, and a failed load is not retried when the file appears.
-        source: isLocalArt ? artUrl : (cached ? `file://${artFilePath}` : "")
+        source: CoverArt.source(MprisController.artUrl)
         fillMode: Image.PreserveAspectCrop
         cache: false
         asynchronous: true
         opacity: 0.8
-
-        onArtUrlChanged: {
-            cached = false;
-            if (!hasArt) return;
-            coverDownloader.running = true;
-        }
-
-        Process {
-            id: coverDownloader
-            command: ["bash", "-c", `[ -f '${coverArt.artFilePath}' ] || (curl -4 -sSL '${coverArt.artUrl}' -o '${coverArt.artFilePath}.tmp' && mv '${coverArt.artFilePath}.tmp' '${coverArt.artFilePath}')`]
-            onExited: exitCode => coverArt.cached = exitCode === 0
-        }
 
         layer.enabled: true
         layer.effect: StyledBlurEffect {
@@ -251,7 +232,7 @@ Item {
 
                 property MprisPlayer player: MprisController.activePlayer
 
-                CoverArt {
+                ArtBackdrop {
                     id: art2x1
                 }
 
@@ -329,7 +310,7 @@ Item {
 
                 property MprisPlayer player: MprisController.activePlayer
 
-                CoverArt {
+                ArtBackdrop {
                     id: art2x2
                 }
 
