@@ -7,6 +7,9 @@ window. So the detector is fed synthetic paths under plain Lua: a back-and-forth
 and a circle wiggle light it; a fast fling across the screen, a slow drag and a still
 pointer do not, and a shake that has stopped stops reading as one. Then the ring is held `hold` ticks past
 the shake, reports only ticks the pointer moved, and ends with exactly one "off".
+
+An idle pointer drops the timer to `idle_tick` (it alone was ~58 compositor wakeups a
+second at 16ms); the first move, or a ring still showing, keeps it at `tick`.
 """
 import pathlib
 import subprocess
@@ -45,6 +48,13 @@ assert(out[1] == "1 1" and out[2] == "same" and out[3] == "3 1", table.concat(ou
 assert(M.step(s, false, 2.6, 1) == "off", "off once the hold runs out")
 assert(M.step(s, false, 9, 9) == nil, "silent after off")
 assert(M.step(s, true, 2.6, 1) == "3 1", "a new shake reports again, even at the old spot")
+-- The pace: slow only after a whole window of stillness with no ring up, fast on the first move.
+local ps = {{ left = 0 }}
+for i = 1, M.cfg.samples do assert(M.pace(ps, 5, 5) == M.cfg.tick, "slowed after " .. i .. " still ticks") end
+assert(M.pace(ps, 5, 5) == M.cfg.idle_tick, "still slow after a still window")
+assert(M.pace(ps, 6, 5) == M.cfg.tick, "the first move brings the fast tick back")
+local held = {{ left = 3 }}
+for _ = 1, M.cfg.samples + 2 do assert(M.pace(held, 1, 1) == M.cfg.tick, "a ring still up keeps the fast tick") end
 print("cursor shake ok")
 """
 

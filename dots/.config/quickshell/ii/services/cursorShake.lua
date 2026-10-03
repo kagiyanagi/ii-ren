@@ -1,7 +1,7 @@
 -- Shake to find the pointer, the half inside Hyprland. Hyprland emits nothing when the
 -- pointer moves, so a timer samples it every frame and tells the shell (modules/ii/
 -- cursorRadar) only while a shake is live: "x y" each tick the pointer moves, then
--- "off". An idle pointer costs a short Lua loop per tick and no IPC at all.
+-- "off". An idle pointer is sampled 10 times a second, with no IPC at all.
 local M = {}
 
 -- A shake is a lot of travel that goes nowhere: over the last `samples` ticks the path
@@ -9,8 +9,8 @@ local M = {}
 -- least `diagonal` across. KWin's Shake Cursor numbers (shakedetector.h,
 -- shakecursorconfig.kcfg: a 1000ms window, sensitivity 4, the 100px floor), the tuning
 -- Plasma ships. Each back-and-forth stroke adds ~1, each lap of a circle ~2.2, a fling stays at ~1.
--- Calibration knobs, in logical px and 16ms ticks.
-M.cfg = { tick = 16, samples = 62, ratio = 4, diagonal = 100, hold = 60, event = "iiCursorShake" }
+-- Calibration knobs, in logical px and 16ms ticks. `idle_tick` is the slow pace below.
+M.cfg = { tick = 16, idle_tick = 100, samples = 62, ratio = 4, diagonal = 100, hold = 60, event = "iiCursorShake" }
 
 -- Fed one position per tick; true while the window of samples reads as a shake.
 function M.detector(cfg)
@@ -52,6 +52,16 @@ function M.step(state, shaking, x, y)
     return s
 end
 
+-- The timeout the timer should run at after this sample. A pointer that has sat still
+-- for a whole window, with no ring up, cannot be shaking: sample it at `idle_tick` and
+-- go back to `tick` on the first move. At 16ms the timer alone woke the compositor ~58
+-- times a second on an idle desktop; the shake that wakes it again lasts most of a second.
+function M.pace(state, x, y)
+    state.still = (x == state.x and y == state.y) and (state.still or 0) + 1 or 0
+    state.x, state.y = x, y
+    return (state.still >= M.cfg.samples and state.left <= 0) and M.cfg.idle_tick or M.cfg.tick
+end
+
 function M.stop()
     if ii_cs_timer then ii_cs_timer:set_enabled(false) end
     ii_cs_timer = nil
@@ -59,12 +69,17 @@ end
 
 function M.install()
     M.stop()
-    local shake, state = M.detector(M.cfg), { left = 0 }
+    local shake, state, tick = M.detector(M.cfg), { left = 0 }, M.cfg.tick
     ii_cs_timer = hl.timer(function()
         local p = hl.get_cursor_pos()
         local out = M.step(state, shake(p.x, p.y), p.x, p.y)
         if out then hl.dispatch(hl.dsp.event(M.cfg.event .. ">>" .. out)) end
-    end, { timeout = M.cfg.tick, type = "repeat" })
+        local want = M.pace(state, p.x, p.y)
+        if want ~= tick then
+            tick = want
+            ii_cs_timer:set_timeout(tick)
+        end
+    end, { timeout = tick, type = "repeat" })
 end
 
 return M
