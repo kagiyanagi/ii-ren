@@ -2,6 +2,10 @@
 //@ pragma Env QS_NO_RELOAD_POPUP=1
 //@ pragma Env QT_QUICK_CONTROLS_STYLE=Basic
 //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
+// Qt 6.11 defaults to its native PipeWire audio backend, whose QAudioContext thread
+// segfaults the shell inside libpipewire-module-protocol-native when sounds play.
+// Its PulseAudio backend (through pipewire-pulse) does not.
+//@ pragma Env QT_AUDIO_BACKEND=pulseaudio
 
 // Remove two slashes below and adjust the value to change the UI scale
 ////@ pragma Env QT_SCALE_FACTOR=1
@@ -25,6 +29,14 @@ ShellRoot {
     ReloadPopup {}
 
     Component.onCompleted: {
+        // Quickshell restarts a crashed shell with __QUICKSHELL_CRASH_* set and never clears
+        // them, so every qs it spawns (settings, ipc calls) boots a second whole shell instead.
+        if (Quickshell.env("__QUICKSHELL_CRASH_DUMP_PID")) {
+            Quickshell.execDetached(["env", "-u", "__QUICKSHELL_CRASH_INFO_FD", "-u", "__QUICKSHELL_CRASH_DUMP_PID",
+                "-u", "__QUICKSHELL_CRASH_SIGNAL", "qs", "-p", Quickshell.shellPath("shell.qml")])
+            Qt.callLater(Qt.quit) // quit is not wired up until the root finishes loading
+            return
+        }
         MaterialThemeLoader.reapplyTheme()
         Hyprsunset.load()
         HyprlandComfortView.load()

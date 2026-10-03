@@ -2,6 +2,10 @@
 //@ pragma Env QS_NO_RELOAD_POPUP=1
 //@ pragma Env QT_QUICK_CONTROLS_STYLE=Basic
 //@ pragma Env QT_QUICK_FLICKABLE_WHEEL_DECELERATION=10000
+// Qt 6.11 defaults to its native PipeWire audio backend, whose QAudioContext thread
+// segfaults the shell inside libpipewire-module-protocol-native when sounds play.
+// Its PulseAudio backend (through pipewire-pulse) does not.
+//@ pragma Env QT_AUDIO_BACKEND=pulseaudio
 
 // Adjust this to make the app smaller or larger
 //@ pragma Env QT_SCALE_FACTOR=1
