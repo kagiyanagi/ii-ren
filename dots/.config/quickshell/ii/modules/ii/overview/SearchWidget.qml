@@ -150,10 +150,15 @@ Item { // Wrapper
                 id: appResults
                 visible: root.showResults && count > 0
                 Layout.fillWidth: true
-                implicitHeight: Math.min(Appearance.sizes.searchResultsMaxHeight, appResults.contentHeight + topMargin + bottomMargin)
+                implicitHeight: Math.min(Appearance.sizes.searchResultsMaxHeight, appResults.contentHeight + topMargin)
                 clip: true
                 topMargin: 12
-                bottomMargin: 12
+                // Layout space, not a scroll `bottomMargin`: a scroll margin only
+                // pads the end of the content, so mid-scroll a row drew to the
+                // card's edge and its flat-clipped corners stuck out past the
+                // 30 radius (rows are inset only 12). Ending the clip 12 above
+                // the edge keeps every row inside the curve.
+                Layout.bottomMargin: 12
                 // Assigning a model destroys every delegate and builds them
                 // again -- QQmlDelegateModel::setModel emits a remove of the old
                 // count and an insert of the new one -- so with the shared list's

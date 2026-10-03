@@ -3,108 +3,186 @@ pragma ComponentBehavior: Bound
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
 
 /**
- * Provider and model selection, fed by the agent's own inventory (`model.options`)
- * rather than a hardcoded list -- so a provider the user configures in Hermes
- * shows up here without a shell change.
+ * Model selection, opened from the composer's model chip: every model of every
+ * provider in one searchable list, fed by the agent's own inventory
+ * (`model.options`) rather than a hardcoded list -- so a provider the user
+ * configures in Hermes shows up here without a shell change.
  *
  * Picking applies with `--session` (see HermesService.setModel): the sidebar
  * remembers the choice itself and re-applies it to each new session, so it never
  * rewrites the model the `hermes` CLI starts on.
  */
-ColumnLayout {
+HermesPopover {
     id: root
 
-    spacing: 8
+    opensUp: true
+    cardWidth: 320
 
-    // Providers with nothing usable behind them would just be dead rows.
-    readonly property var usableProviders: (HermesService.providers ?? []).filter(provider => (provider.models?.length ?? 0) > 0)
+    property string query: ""
 
-    property string selectedSlug: ""
-
-    readonly property var selectedProvider: root.usableProviders.find(provider => provider.slug === root.selectedSlug) ?? null
-
-    readonly property var modelOptions: (root.selectedProvider?.models ?? []).map(model => ({
+    // concat, not flatMap: the list arrives as a QML sequence, which has no flatMap.
+    readonly property var allModels: [].concat(...(HermesService.providers ?? []).map(provider => (provider.models ?? []).map(model => ({
+        key: `${provider.slug}/${model}`,
         name: model,
-        icon: (root.selectedProvider?.capabilities?.[model]?.reasoning ?? false) ? "neurology" : ""
-    }))
+        slug: provider.slug,
+        providerName: provider.name ?? provider.slug,
+        reasoning: provider.capabilities?.[model]?.reasoning ?? false
+    }))))
 
-    function syncFromService(): void {
-        // Prefer the provider actually running the session; fall back to the one
-        // the inventory marks current, then the first usable one.
-        const providers = root.usableProviders;
-        if (providers.length === 0)
+    readonly property var rows: {
+        const q = root.query.trim().toLowerCase();
+        return q.length === 0 ? root.allModels : root.allModels.filter(row => `${row.name} ${row.providerName}`.toLowerCase().includes(q));
+    }
+
+    function pick(row: var): void {
+        if (!row)
             return;
-        const running = providers.find(provider => provider.models.includes(HermesService.currentModel));
-        const current = providers.find(provider => provider.is_current);
-        root.selectedSlug = (running ?? current ?? providers[0]).slug;
+        HermesService.setModel(row.name, row.slug, false);
+        root.close();
     }
 
-    Component.onCompleted: root.syncFromService()
-
-    Connections {
-        target: HermesService
-        function onProvidersChanged() {
-            if (root.selectedSlug.length === 0)
-                root.syncFromService();
+    function openFrom(opener: Item): void {
+        if (root.shown) {
+            root.close();
+            return;
         }
-        function onCurrentModelChanged() {
-            if (root.selectedSlug.length === 0)
-                root.syncFromService();
-        }
+        root.open(opener);
+        searchField.forceActiveFocus();
+        // Opens on the model in use, not the top of a long list.
+        listView.currentIndex = Math.max(0, root.rows.findIndex(row => row.name === HermesService.currentModel));
+        listView.positionViewAtIndex(listView.currentIndex, ListView.Center);
     }
 
-    StyledComboBox {
-        id: providerCombo
+    onShownChanged: {
+        if (!root.shown)
+            searchField.text = "";
+    }
+
+    ToolbarTextField {
+        id: searchField
         Layout.fillWidth: true
+        Layout.fillHeight: false
+        implicitHeight: 40
+        leftPadding: 40
+        colBackground: Appearance.colors.colLayer2
+        placeholderText: Translation.tr("Search…")
+        onTextChanged: {
+            root.query = text;
+            listView.currentIndex = 0;
+        }
+        Keys.onDownPressed: listView.incrementCurrentIndex()
+        Keys.onUpPressed: listView.decrementCurrentIndex()
+        Keys.onReturnPressed: root.pick(root.rows[listView.currentIndex])
+        Keys.onEnterPressed: root.pick(root.rows[listView.currentIndex])
+        // Esc clears a filter before it closes the card.
+        Keys.onEscapePressed: {
+            if (text.length > 0)
+                text = "";
+            else
+                root.close();
+        }
 
-        buttonIcon: "hub"
-        textRole: "name"
-        model: root.usableProviders
-        enabled: root.usableProviders.length > 0
-
-        currentIndex: Math.max(0, root.usableProviders.findIndex(provider => provider.slug === root.selectedSlug))
-
-        onActivated: index => {
-            const provider = root.usableProviders[index];
-            if (!provider)
-                return;
-            root.selectedSlug = provider.slug;
-            // Switching provider without naming a model would leave the session on
-            // a model the new provider does not serve.
-            if (provider.models.length > 0)
-                HermesService.setModel(provider.models[0], provider.slug, false);
+        MaterialSymbol {
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            text: "search"
+            iconSize: Appearance.font.pixelSize.larger
+            color: Appearance.colors.colSubtext
         }
     }
 
-    StyledComboBoxSearch {
-        id: modelCombo
+    StyledListView {
+        id: listView
         Layout.fillWidth: true
+        Layout.preferredHeight: Math.min(contentHeight, 320)
+        visible: root.rows.length > 0
+        clip: true
+        spacing: 2
+        model: root.rows
 
-        buttonIcon: "auto_awesome"
-        textRole: "name"
-        model: root.modelOptions
-        enabled: root.modelOptions.length > 0
+        delegate: RippleButton {
+            id: modelRow
+            required property var modelData
+            required property int index
 
-        currentIndex: Math.max(0, root.modelOptions.findIndex(option => option.name === HermesService.currentModel))
+            readonly property bool selected: modelRow.modelData.name === HermesService.currentModel && [modelRow.modelData.slug, modelRow.modelData.providerName].includes(HermesService.currentProvider)
+            readonly property color onColor: modelRow.selected ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurface
 
-        onActivated: index => {
-            const option = root.modelOptions[index];
-            if (option)
-                HermesService.setModel(option.name, root.selectedSlug, false);
+            width: listView.width
+            implicitHeight: rowContent.implicitHeight + 8 * 2
+            buttonRadius: Appearance.rounding.normal
+
+            colBackground: modelRow.selected ? Appearance.colors.colSecondaryContainer : (modelRow.ListView.isCurrentItem && searchField.text.length > 0 ? ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.92) : "transparent")
+            // Same films over the opaque card as HermesApprovalModeMenu's rows (3.1).
+            colBackgroundHover: modelRow.selected ? Appearance.colors.colSecondaryContainerHover : ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.92)
+            colRipple: ColorUtils.transparentize(modelRow.onColor, 0.9)
+            colStateLayer: modelRow.onColor
+
+            releaseAction: () => root.pick(modelRow.modelData)
+
+            contentItem: RowLayout {
+                id: rowContent
+                spacing: 12
+
+                MaterialSymbol {
+                    Layout.leftMargin: 12
+                    Layout.alignment: Qt.AlignVCenter
+                    text: modelRow.modelData.reasoning ? "neurology" : "auto_awesome"
+                    iconSize: Appearance.font.pixelSize.normal
+                    fill: modelRow.selected ? 1 : 0
+                    color: modelRow.onColor
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    spacing: 0
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        color: modelRow.onColor
+                        text: modelRow.modelData.name
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        elide: Text.ElideRight
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                        text: modelRow.modelData.providerName
+                    }
+                }
+
+                MaterialSymbol {
+                    Layout.rightMargin: 12
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: modelRow.selected
+                    text: "check"
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: modelRow.onColor
+                }
+            }
         }
     }
 
-    StyledText {
+    StyledText { // Empty: still loading, or the filter matched nothing
         Layout.fillWidth: true
-        Layout.minimumWidth: 0
-        visible: (root.selectedProvider?.warning ?? "").length > 0
-        wrapMode: Text.Wrap
-        font.pixelSize: Appearance.font.pixelSize.smaller
+        Layout.topMargin: 8
+        Layout.bottomMargin: 8
+        visible: root.rows.length === 0
+        horizontalAlignment: Text.AlignHCenter
+        font.pixelSize: Appearance.font.pixelSize.small
         color: Appearance.colors.colSubtext
-        text: root.selectedProvider?.warning ?? ""
+        text: root.allModels.length === 0 ? Translation.tr("No models available") : Translation.tr("Nothing matching “%1”").arg(root.query)
     }
 }

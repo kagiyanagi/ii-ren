@@ -126,6 +126,9 @@ Item {
             MouseArea { // Swallows what the dismiss handler underneath would otherwise take
                 anchors.fill: parent
                 acceptedButtons: Qt.AllButtons
+                // A list at its end hands the wheel on, and a MouseArea with no
+                // wheel handler ignores it, so it reached the dismiss and closed the card.
+                onWheel: wheel => wheel.accepted = true
             }
 
             ColumnLayout {

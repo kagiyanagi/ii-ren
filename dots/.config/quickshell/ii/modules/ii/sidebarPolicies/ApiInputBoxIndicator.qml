@@ -79,7 +79,7 @@ Item { // Model indicator
             StyledToolTip {
                 id: toolTip
                 extraVisibleCondition: false
-                alternativeVisibleCondition: mouseArea.containsMouse // Show tooltip when hovered
+                alternativeVisibleCondition: mouseArea.containsMouse && root.tooltipText.length > 0 // Show tooltip when hovered
                 text: root.tooltipText
             }
         }

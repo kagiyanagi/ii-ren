@@ -591,18 +591,30 @@ Item {
                 }
             }
 
-            PagePlaceholder {
+            HermesGreeting {
+                z: 2
+                anchors.fill: parent
+                shown: HermesService.messageIDs.length === 0 && !HermesService.missing
+                topInset: statusBg.implicitHeight + statusBg.anchors.topMargin * 2
+                windowName: root.focusedWindow()
+                commandPrefix: root.commandPrefix
+                onCompose: text => {
+                    messageInputField.text = text;
+                    messageInputField.cursorPosition = text.length;
+                    messageInputField.forceActiveFocus();
+                }
+                onQuote: text => root.quoteToComposer(text)
+            }
+
+            PagePlaceholder { // Only for an install that is not there
                 z: 2
                 icon: "auto_awesome"
                 shape: MaterialShape.Shape.PixelCircle
                 title: Translation.tr("Hermes")
 
                 rotateIconWithShape: true
-                shown: HermesService.messageIDs.length === 0
-                description: HermesService.missing
-                    ? (HermesService.remote ? Translation.tr("hermes-agent was not found in ~/.hermes on %1\nInstall it there, or pick another gateway above").arg(HermesService.gateway.label) : Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab"))
-                    : Translation.tr("Ask anything, or type %1 for commands\nStart a line with ! to run a shell command, or write @window to mean the window you were just in").arg(root.commandPrefix)
-                // Under a centred title. The send keys live in the send button's tooltip.
+                shown: HermesService.messageIDs.length === 0 && HermesService.missing
+                description: HermesService.remote ? Translation.tr("hermes-agent was not found in ~/.hermes on %1\nInstall it there, or pick another gateway above").arg(HermesService.gateway.label) : Translation.tr("hermes-agent was not found in ~/.hermes\nInstall it, then reopen this tab")
                 descriptionHorizontalAlignment: Text.AlignHCenter
 
                 triggerAnimationOn: GlobalStates.policiesPanelOpen
@@ -770,48 +782,6 @@ Item {
         DescriptionBox {
             text: root.suggestionList[suggestions.selectedIndex]?.description ?? ""
             showArrows: root.suggestionList.length > 1
-        }
-
-        Item { // Only worth the room before a conversation starts
-            id: modelPickerSlot
-            Layout.fillWidth: true
-            Layout.maximumWidth: 330
-            Layout.alignment: Qt.AlignHCenter
-            // Not under a history or work sheet either: it has nothing to do with
-            // them, and the sheet gets its height back.
-            readonly property bool shown: HermesService.messageIDs.length === 0 && HermesService.providers.length > 0 && !root.historyShown && !root.workShown
-
-            // Collapsed rather than dropped: this goes the instant the first
-            // message is sent, which is exactly when the eye is on the transcript
-            // waiting for a reply, and ninety pixels leaving at once reads as a jump.
-            implicitHeight: modelPickerSlot.shown ? modelPicker.implicitHeight : 0
-            opacity: modelPickerSlot.shown ? 1 : 0
-            visible: implicitHeight > 0
-            clip: true
-
-            Behavior on implicitHeight {
-                NumberAnimation {
-                    duration: modelPickerSlot.shown ? Appearance.animation.elementMoveEnter.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: modelPickerSlot.shown ? Appearance.animation.elementMoveEnter.bezierCurve : Appearance.animation.elementMoveExit.bezierCurve
-                }
-            }
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: modelPickerSlot.shown ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
-                    easing.type: Easing.BezierSpline
-                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
-                }
-            }
-
-            HermesModelPicker {
-                id: modelPicker
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    top: parent.top
-                }
-            }
         }
 
         FlowButtonGroup {
@@ -1114,23 +1084,18 @@ Item {
                 spacing: 4
 
                 ApiInputBoxIndicator {
+                    id: modelChip
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     Layout.maximumWidth: implicitWidth
                     icon: "auto_awesome"
                     text: HermesService.currentModel
-                    // "below" was only ever true before the first message: the
-                    // picker is gone by the second time anyone reads this.
-                    tooltipText: Translation.tr("Current model: %1\nProvider: %2\nClick to change it").arg(HermesService.currentModel).arg(HermesService.currentProvider)
-                    // Its neighbours in this row open things when pressed. Rather
-                    // than be the one readout that looks the same and does
-                    // nothing, it writes the command whose completions the agent
-                    // itself supplies.
-                    clickAction: () => {
-                        messageInputField.text = `${root.commandPrefix}model `;
-                        messageInputField.cursorPosition = messageInputField.text.length;
-                        messageInputField.forceActiveFocus();
-                    }
+                    tooltipText: modelPicker.shown ? "" : Translation.tr("Current model: %1\nProvider: %2\nClick to change it").arg(HermesService.currentModel).arg(HermesService.currentProvider)
+                    clickAction: () => modelPicker.openFrom(modelChip)
+                }
+
+                HermesModelPicker {
+                    id: modelPicker
                 }
 
                 HermesContextMeter {}

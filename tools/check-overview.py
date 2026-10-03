@@ -28,7 +28,7 @@ that `SearchWidget.qml` does not grow one back.
 `OpacityMask` whose mask rect was `width x width` -- square, stretched over a card
 that is always taller than it is wide. It was also masking nothing, and that is the
 licence for deleting it rather than fixing it: every `SearchItem` is inset
-`horizontalMargin` from the card edge and the list sits on its own margins, so no
+`horizontalMargin` from the card edge and the list ends a layout margin above it, so no
 delegate pixel reaches the corner arc. That is arithmetic over four numbers in three
 files, and if any of them shrinks the delegates start clipping with no gate and no
 mask. It is evaluated here, at both the collapsed radius (which Qt clamps) and the
@@ -202,7 +202,12 @@ collapsed_h = bar_height + bar_margins + padding
 r_collapsed = min(r_expanded, collapsed_h / 2)
 
 inset = int(one(search_item, r"property int horizontalMargin: (\d+)", "the result row's inset"))
-list_gap = int(one(search_widget, r"bottomMargin: (\d+)", "the results list's bottom margin"))
+# Layout space, not ListView's scroll `bottomMargin`: that one only pads the end of
+# the content, so mid-scroll a row still drew to the card's edge and poked out.
+assert not re.search(r"^\s*bottomMargin:", uncommented(search_widget), re.M), \
+    "the results list's bottom gap is a scroll margin again -- it only pads the end of the " \
+    "content, so mid-scroll a hovered row reaches the card's corner arc. Use Layout.bottomMargin"
+list_gap = int(one(search_widget, r"Layout\.bottomMargin: (\d+)", "the results list's bottom margin"))
 
 
 def inside_corner(x: float, y: float, r: float) -> float:

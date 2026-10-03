@@ -268,6 +268,7 @@ Singleton {
             property int huge: 22
             property int hugeass: 23
             property int title: huge
+            property int display: 36 // M3 displaySmall: the one greeting-sized line on a page
         }
     }
 

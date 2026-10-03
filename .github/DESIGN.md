@@ -634,7 +634,8 @@ A modal surface dims what is behind it with `colScrim`, faded on
 
 | M3 role | Repo token | Notes |
 |---|---|---|
-| Display / Headline | `huge` 22, `hugeass` 23 | with `font.family.title`, wght 550 |
+| Display | `display` 36 | M3 displaySmall; one per page at most (the Hermes greeting) |
+| Headline | `huge` 22, `hugeass` 23 | with `font.family.title`, wght 550 |
 | Title | `large` 17, `normal` 16 | DemiBold |
 | Body | `normal` 16, `small` 15 | wght 450 |
 | Label | `smallie` 13, `smaller` 12 | buttons, chips, captions |

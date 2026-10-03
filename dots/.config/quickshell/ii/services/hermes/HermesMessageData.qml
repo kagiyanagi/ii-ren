@@ -26,7 +26,11 @@ QtObject {
     // message.complete usage payload, kept whole so the footer can show any of it
     property var usage: null
 
-    property bool visibleToUser: true
+    // A reply is opened on message.start, before a word of it exists. Until
+    // something lands it stays out of the transcript -- the composer's status
+    // line is already saying it is working -- rather than standing there as an
+    // empty card. `done` first, so a finished turn never re-reads its content.
+    readonly property bool visibleToUser: done || role !== "assistant" || content.length > 0 || reasoning.length > 0 || toolCalls.length > 0 || error.length > 0
 
     /*
      * When this turn was made and when it finished, in ms.
