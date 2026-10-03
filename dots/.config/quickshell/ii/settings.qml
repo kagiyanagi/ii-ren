@@ -440,13 +440,16 @@ ApplicationWindow {
                     // Ctrl+Tab, search and II_SETTINGS_PAGE can open a page whose
                     // row is scrolled away; bring it in so the list always shows
                     // where you are. contentHeight settling is the first moment
-                    // the rows have their final y, which is what the launch case needs.
+                    // the rows have their final y, which is what the launch case needs;
+                    // height settles after it, and a reveal against the half-laid-out
+                    // height leaves the list scrolled a row down, so redo it then.
                     function revealCurrentTab() {
                         const tab = tabRepeater.itemAt(root.currentPage);
                         if (!tab) return;
                         tabFlick.contentY = Math.max(Math.min(tabFlick.contentY, tab.y), tab.y + tab.height - tabFlick.height);
                     }
                     onContentHeightChanged: revealCurrentTab()
+                    onHeightChanged: revealCurrentTab()
 
                     Connections {
                         target: root
