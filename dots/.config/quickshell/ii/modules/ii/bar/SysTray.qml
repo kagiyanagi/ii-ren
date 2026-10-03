@@ -130,6 +130,9 @@ Item {
                 // This widget runs its own HyprlandFocusGrab below, and
                 // Hyprland honours only one grab per client.
                 selfDismiss: false
+                // The items already carry 6px of empty hit area, so 4 more puts
+                // the icons 10px off the edge instead of 16.
+                contentPadding: 4
 
                 GridLayout {
                     id: trayOverflowLayout

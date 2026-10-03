@@ -31,17 +31,19 @@ LazyLoader {
         // Measure with the actual candidate scale. Using baseScale here made
         // the size guard ignore the user multiplier and allowed oversized popup
         // surfaces to exceed the monitor's safe bounds.
-        var scaledHeight = (root.contentItem.implicitHeight + 20) * scale;
-        var scaledWidth = (root.contentItem.implicitWidth + 20) * scale;
+        var scaledHeight = (root.contentItem.implicitHeight + root.contentPadding * 2) * scale;
+        var scaledWidth = (root.contentItem.implicitWidth + root.contentPadding * 2) * scale;
         if (scaledHeight > maxAllowedHeight) {
-            scale = Math.min(scale, Math.max(0.5, maxAllowedHeight / (root.contentItem.implicitHeight + 20)));
+            scale = Math.min(scale, Math.max(0.5, maxAllowedHeight / (root.contentItem.implicitHeight + root.contentPadding * 2)));
         }
         if (scaledWidth > maxAllowedWidth) {
-            scale = Math.min(scale, Math.max(0.5, maxAllowedWidth / (root.contentItem.implicitWidth + 20)));
+            scale = Math.min(scale, Math.max(0.5, maxAllowedWidth / (root.contentItem.implicitWidth + root.contentPadding * 2)));
         }
         return scale;
     }
     property real popupBackgroundMargin: 0
+    // Inset between the surface edge and the content.
+    property real contentPadding: 10
     // DESIGN.md 9, Popup / context menu: an anchored popup surface is verylarge.
     property int popupRadius: Appearance.rounding.verylarge
     property bool animate: true
@@ -524,7 +526,7 @@ LazyLoader {
 
             Rectangle {
                 id: popupBackground
-                readonly property real margin: 10
+                readonly property real margin: root.contentPadding
 
                 readonly property real targetWidth: ((root.contentItem?.implicitWidth ?? 0) + margin * 2) * root.layoutScale
                 readonly property real targetHeight: ((root.contentItem?.implicitHeight ?? 0) + margin * 2) * root.layoutScale
