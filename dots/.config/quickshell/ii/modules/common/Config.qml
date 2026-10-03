@@ -1444,6 +1444,8 @@ Singleton {
                 property int suspend: 3
                 property string criticalAction: "suspend" // "suspend", "hibernate", "poweroff"
                 property bool autoPowerSaver: false // at `low`, until plugged in
+                // Android's charging ripple, from the charger port's side: "off", "bottomLeft", "bottomRight", "center".
+                property string chargingRipple: "center"
                 // On battery, on top of hypridle's timeouts: whichever is sooner wins.
                 property JsonObject idle: JsonObject {
                     property bool enable: false

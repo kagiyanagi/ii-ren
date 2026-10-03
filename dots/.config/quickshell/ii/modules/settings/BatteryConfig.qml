@@ -681,6 +681,25 @@ ContentPage {
                     text: Translation.tr("Notifies when charged to this level. 101 turns it off")
                 }
             }
+            ContentSubsection {
+                title: Translation.tr("Ripple when plugged in")
+                tooltip: Translation.tr("Plays from the side your charger port is on")
+
+                ConfigSelectionArray {
+                    currentValue: Config.options.battery.chargingRipple
+                    onSelected: newValue => {
+                        Config.options.battery.chargingRipple = newValue;
+                        if (newValue !== "off")
+                            Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "chargingRipple", "play", newValue]);
+                    }
+                    options: [
+                        { displayName: Translation.tr("Off"), icon: "block", value: "off" },
+                        { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottomLeft" },
+                        { displayName: Translation.tr("Center"), icon: "filter_center_focus", value: "center" },
+                        { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottomRight" }
+                    ]
+                }
+            }
         }
 
         ContentSection {

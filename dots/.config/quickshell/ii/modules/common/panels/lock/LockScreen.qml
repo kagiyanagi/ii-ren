@@ -55,6 +55,13 @@ Scope {
                 lockContext.unlockOrigins = Object.assign({}, lockContext.unlockOrigins, { [sessionLockSurface.screen.name]: origin });
             }
         }
+
+        // The lock hides ChargingRipple's own overlay, so it plays here.
+        Loader {
+            anchors.fill: parent
+            active: chargingRipple.running
+            sourceComponent: chargingRipple.effect
+        }
     }
 
     Process {
@@ -149,6 +156,10 @@ Scope {
 
     UnlockRipple {
         context: lockContext
+    }
+
+    ChargingRipple {
+        id: chargingRipple
     }
 
     WlSessionLock {
