@@ -12,8 +12,37 @@ WindowDialog {
     id: root
     backgroundHeight: 600
 
-    WindowDialogTitle {
-        text: Translation.tr("Bluetooth devices")
+    // Restarting discovery: start again only once BlueZ has confirmed the stop, since a
+    // StartDiscovery sent while it is still stopping is refused as "In Progress".
+    property bool restartPending: false
+    Connections {
+        target: Bluetooth.defaultAdapter
+        function onDiscoveringChanged() {
+            if (!root.restartPending || Bluetooth.defaultAdapter.discovering) return;
+            root.restartPending = false;
+            Bluetooth.defaultAdapter.discovering = true;
+        }
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+        WindowDialogTitle {
+            text: Translation.tr("Bluetooth devices")
+        }
+        IconToolbarButton {
+            // ToolbarButton fills height, which the row would pass up and stretch the dialog with.
+            Layout.fillHeight: false
+            text: "refresh"
+            enabled: (Bluetooth.defaultAdapter?.enabled ?? false) && !root.restartPending
+            onClicked: {
+                const adapter = Bluetooth.defaultAdapter;
+                root.restartPending = adapter.discovering;
+                adapter.discovering = !adapter.discovering;
+            }
+            StyledToolTip {
+                text: Translation.tr("Rescan")
+            }
+        }
     }
     StyledIndeterminateProgressBar {
         visible: Bluetooth.defaultAdapter?.discovering ?? false
