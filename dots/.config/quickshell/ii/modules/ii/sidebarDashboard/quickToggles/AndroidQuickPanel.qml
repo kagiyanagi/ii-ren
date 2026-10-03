@@ -267,20 +267,48 @@ AbstractQuickPanel {
                     }
 
                     MouseArea {
+                        id: wheelArea
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
+
+                        // One gesture turns exactly one page, however far it travels:
+                        // a notch's worth of scroll (120) turns it, the rest is spent
+                        // until the fingers lift (ScrollEnd) or the stream goes quiet.
+                        property real travelX: 0
+                        property real travelY: 0
+                        property bool spent: false
+
+                        function release() {
+                            travelX = 0;
+                            travelY = 0;
+                            spent = false;
+                        }
+
+                        Timer {
+                            id: gestureQuiet
+                            interval: 300
+                            onTriggered: wheelArea.release()
+                        }
+
                         onWheel: function (wheelEvent) {
-                            // Pages turn from the arrows, not a sideways touchpad swipe.
-                            // Still accepted, or the Flickable scrolls on it and snaps
-                            // to the next page anyway.
-                            if (Math.abs(wheelEvent.angleDelta.x) > Math.abs(wheelEvent.angleDelta.y))
-                                return;
-                            if (wheelEvent.angleDelta.y < 0 && root.currentPage < root.displayPages.length - 1) {
-                                root.goToPage(root.currentPage + 1);
-                            } else if (wheelEvent.angleDelta.y > 0 && root.currentPage > 0) {
-                                root.goToPage(root.currentPage - 1);
-                            }
+                            // Always accepted, or the Flickable scrolls on it and lands
+                            // wherever the swipe ran out.
                             wheelEvent.accepted = root.displayPages.length > 1;
+                            if (wheelEvent.phase === Qt.ScrollEnd) {
+                                gestureQuiet.stop();
+                                release();
+                                return;
+                            }
+                            gestureQuiet.restart();
+                            if (spent)
+                                return;
+                            travelX += wheelEvent.angleDelta.x;
+                            travelY += wheelEvent.angleDelta.y;
+                            const travel = Math.abs(travelX) > Math.abs(travelY) ? travelX : travelY;
+                            if (Math.abs(travel) < 120)
+                                return;
+                            spent = true;
+                            root.goToPage(root.currentPage + (travel < 0 ? 1 : -1));
                         }
                     }
 

@@ -334,7 +334,8 @@ StyledPopup {
 
             MetricCard {
                 title: Translation.tr("Status")
-                symbol: "info"
+                symbol: Battery.isLowAndNotCharging ? "battery_alert"
+                    : Battery.isCharging ? "battery_charging_full" : "battery_full"
                 value: {
                     if (Battery.chargeState === 4)
                         return Translation.tr("Full");
@@ -344,8 +345,8 @@ StyledPopup {
                         return Translation.tr("Charging");
                     return Translation.tr("Discharging");
                 }
-                accentColor: Appearance.colors.colErrorContainer
-                symbolColor: Appearance.colors.colOnErrorContainer
+                accentColor: Battery.isLowAndNotCharging ? Appearance.colors.colErrorContainer : Appearance.colors.colPrimaryContainer
+                symbolColor: Battery.isLowAndNotCharging ? Appearance.colors.colOnErrorContainer : Appearance.colors.colOnPrimaryContainer
                 startAnim: mainLayout.startAnim
                 animDelay: mainLayout.getDelay(4)
             }
