@@ -19,7 +19,7 @@ ColumnLayout {
 
     opacity: root.available ? 1.0 : 0.4
     Behavior on opacity {
-        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(root)
+        animation: Looks.transition.opacity.createObject(root)
     }
 
     required property QuickToggleModel toggleModel

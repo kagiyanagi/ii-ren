@@ -137,16 +137,12 @@ PanelWindow {
         id: content
         anchors.fill: parent
 
-        property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
-        opacity: {
-            content.fadeSpec = root.open ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
-            return root.visible && root.open ? 1 : 0;
-        }
+        opacity: root.visible && root.open ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
-                duration: content.fadeSpec.duration
-                easing.type: content.fadeSpec.type
-                easing.bezierCurve: content.fadeSpec.bezierCurve
+                duration: Looks.duration.fast
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: root.open ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
             }
         }
         onOpacityChanged: {
@@ -241,7 +237,7 @@ PanelWindow {
                     y: root.open && root.visible ? 12 : -implicitHeight - 24
                     Behavior on y {
                         NumberAnimation {
-                            duration: root.open ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                            duration: root.open ? Looks.duration.fast : Looks.duration.fast
                             easing.type: Easing.BezierSpline
                             easing.bezierCurve: root.open ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
                         }

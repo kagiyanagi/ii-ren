@@ -40,7 +40,7 @@ WMouseAreaButton {
     Behavior on scale {
         NumberAnimation {
             id: scaleAnim
-            duration: Appearance.animation.elementMoveFast.duration
+            duration: Looks.duration.fast
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
         }

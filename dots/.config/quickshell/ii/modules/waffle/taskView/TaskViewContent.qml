@@ -42,7 +42,7 @@ Rectangle {
         target: root
         property: "openProgress"
         to: 1
-        duration: Appearance.animation.elementMoveEnter.duration
+        duration: Looks.duration.normal
         easing.type: Easing.BezierSpline
         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     }
@@ -54,7 +54,7 @@ Rectangle {
             target: root
             property: "openProgress"
             to: 0
-            duration: Appearance.animation.elementMoveExit.duration
+            duration: Looks.duration.fast
             easing.type: Easing.BezierSpline
             easing.bezierCurve: Looks.transition.easing.bezierCurve.easeOut
         }

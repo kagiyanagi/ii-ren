@@ -38,7 +38,7 @@ Scope {
 
         Timer {
             id: exitGrace
-            interval: Appearance.animation.elementMoveExit.duration
+            interval: Looks.duration.fast
             onTriggered: root.mapped = false
         }
 
@@ -109,7 +109,7 @@ Scope {
                     property: "opacity"
                     from: 0
                     to: 1
-                    duration: Appearance.animation.elementMoveFast.duration
+                    duration: Looks.duration.fast
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }

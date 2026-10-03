@@ -43,9 +43,9 @@ Item {
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation {
-            duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+            duration: Looks.duration.fast
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
+            easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
         }
     }
 
@@ -92,9 +92,9 @@ Item {
         scale: root.show ? 1.0 : 0.96
         Behavior on scale {
             NumberAnimation {
-                duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveExit.duration
+                duration: Looks.duration.fast
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
+                easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
             }
         }
 

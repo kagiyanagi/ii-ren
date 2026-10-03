@@ -16,52 +16,65 @@ Scope {
         target: GlobalStates
 
         function onSidebarLeftOpenChanged() {
-            if (!GlobalStates.sidebarLeftOpen) {
-                content.close();
+            if (GlobalStates.sidebarLeftOpen) {
+                panelLoader.active = true;
             }
         }
-    }
 
-    PanelWindow {
-        id: panelWindow
-        visible: GlobalStates.sidebarLeftOpen
-        exclusiveZone: 0
-        WlrLayershell.namespace: "quickshell:actionCenter"
-        WlrLayershell.keyboardFocus: GlobalStates.sidebarLeftOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        color: "transparent"
-
-        anchors {
-            bottom: Config.options.waffles.bar.bottom
-            top: !Config.options.waffles.bar.bottom
-            right: true
-        }
-
-        implicitWidth: content.implicitWidth
-        implicitHeight: content.implicitHeight
-
-        HyprlandFocusGrab {
-            id: focusGrab
-            active: GlobalStates.sidebarLeftOpen
-            windows: [panelWindow]
-            onCleared: content.close()
-        }
-
-        ActionCenterContent {
-            id: content
-            anchors.fill: parent
-
-            onClosed: {
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked && GlobalStates.sidebarLeftOpen) {
                 GlobalStates.sidebarLeftOpen = false;
             }
         }
     }
 
-    function toggleOpen() {
-        if (GlobalStates.sidebarLeftOpen) {
-            content.close();
-        } else {
-            GlobalStates.sidebarLeftOpen = true;
+    Loader {
+        id: panelLoader
+        active: false
+        sourceComponent: PanelWindow {
+            id: panelWindow
+            exclusiveZone: 0
+            WlrLayershell.namespace: "quickshell:actionCenter"
+            WlrLayershell.keyboardFocus: GlobalStates.sidebarLeftOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            color: "transparent"
+
+            anchors {
+                bottom: Config.options.waffles.bar.bottom
+                top: !Config.options.waffles.bar.bottom
+                right: true
+            }
+
+            implicitWidth: content.implicitWidth
+            implicitHeight: content.implicitHeight
+
+            HyprlandFocusGrab {
+                id: focusGrab
+                active: GlobalStates.sidebarLeftOpen && !GlobalStates.screenLocked
+                windows: [panelWindow]
+                onCleared: content.close()
+            }
+
+            Connections {
+                target: GlobalStates
+                function onSidebarLeftOpenChanged() {
+                    if (!GlobalStates.sidebarLeftOpen) content.close();
+                }
+            }
+
+            ActionCenterContent {
+                id: content
+                anchors.fill: parent
+
+                onClosed: {
+                    GlobalStates.sidebarLeftOpen = false;
+                    panelLoader.active = false;
+                }
+            }
         }
+    }
+
+    function toggleOpen() {
+        GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
     }
 
     IpcHandler {

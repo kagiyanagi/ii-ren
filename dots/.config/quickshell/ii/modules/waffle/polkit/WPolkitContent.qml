@@ -117,9 +117,9 @@ Item {
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation {
-            duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveFast.duration / 2
+            duration: root.show ? Looks.duration.fast : Looks.duration.faster
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
+            easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
         }
     }
 
@@ -156,9 +156,9 @@ Item {
         scale: root.show ? 1.0 : 1.05
         Behavior on scale {
             NumberAnimation {
-                duration: root.show ? Appearance.animation.elementMoveFast.duration : Appearance.animation.elementMoveFast.duration / 2
+                duration: root.show ? Looks.duration.fast : Looks.duration.faster
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.show ? Appearance.animationCurves.emphasizedDecel : Appearance.animationCurves.emphasizedAccel
+                easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
             }
         }
 
@@ -261,7 +261,7 @@ Item {
                         FluentIcon {
                             implicitSize: 14
                             icon: root.statusIsError ? "alert" : "shield"
-                            color: root.statusIsError ? Looks.colors.danger : Looks.colors.subfg
+                            color: root.statusIsError ? Looks.colors.critical : Looks.colors.subfg
                         }
 
                         WText {
@@ -269,7 +269,7 @@ Item {
                             wrapMode: Text.Wrap
                             horizontalAlignment: Text.AlignLeft
                             font.pixelSize: Looks.font.pixelSize.normal
-                            color: root.statusIsError ? Looks.colors.danger : Looks.colors.subfg
+                            color: root.statusIsError ? Looks.colors.critical : Looks.colors.subfg
                             text: root.status
                         }
                     }

@@ -88,7 +88,7 @@ LockScreen {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.animation.elementMoveFast.duration
+                        duration: Looks.duration.fast
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                     }
@@ -96,7 +96,7 @@ LockScreen {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.animation.elementMove.duration
+                        duration: Looks.duration.normal
                         easing.type: Easing.BezierSpline
                         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                     }
@@ -133,14 +133,14 @@ LockScreen {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
+                    duration: Looks.duration.fast
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
             }
             Behavior on y {
                 NumberAnimation {
-                    duration: Appearance.animation.elementMove.duration
+                    duration: Looks.duration.normal
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
@@ -195,14 +195,14 @@ LockScreen {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
+                    duration: Looks.duration.fast
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
             }
             Behavior on y {
                 NumberAnimation {
-                    duration: Appearance.animation.elementMove.duration
+                    duration: Looks.duration.normal
                     easing.type: Easing.BezierSpline
                     easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
                 }
@@ -492,7 +492,7 @@ LockScreen {
                 FluentIcon {
                     implicitSize: 14
                     icon: passwordGroup.statusIsError ? "warning" : "info"
-                    color: passwordGroup.statusIsError ? Looks.colors.danger : Looks.darkColors.fg1
+                    color: passwordGroup.statusIsError ? Looks.darkColors.critical : Looks.darkColors.fg1
                 }
 
                 WText {
@@ -501,7 +501,7 @@ LockScreen {
                     wrapMode: Text.Wrap
                     horizontalAlignment: Text.AlignHCenter
                     text: passwordGroup.statusText
-                    color: passwordGroup.statusIsError ? Looks.colors.danger : Looks.darkColors.fg1
+                    color: passwordGroup.statusIsError ? Looks.darkColors.critical : Looks.darkColors.fg1
                     font.pixelSize: Appearance.font.pixelSize.smaller
                 }
             }

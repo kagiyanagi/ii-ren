@@ -28,10 +28,10 @@ Switch {
         border.color: root.checked ? root.checkedColor : root.borderColor
 
         Behavior on color {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            animation: Looks.transition.color.createObject(this)
         }
         Behavior on border.color {
-            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            animation: Looks.transition.color.createObject(this)
         }
     }
 

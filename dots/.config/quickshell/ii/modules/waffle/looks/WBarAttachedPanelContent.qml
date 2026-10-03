@@ -15,7 +15,7 @@ Item {
 
     required property Item contentItem
     property real visualMargin: 12
-    property int closeAnimDuration: Appearance.animation.elementMoveExit.duration
+    property int closeAnimDuration: Looks.duration.fast
     property bool revealFromSides: false
     property bool revealFromLeft: true
 
@@ -85,7 +85,7 @@ Item {
     component OpenAnim: PropertyAnimation {
         target: panelContent
         to: root.visualMargin
-        duration: Appearance.animation.elementMoveFast.duration
+        duration: Looks.duration.fast
         easing.type: Easing.BezierSpline
         easing.bezierCurve: Looks.transition.easing.bezierCurve.easeIn
     }

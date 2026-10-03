@@ -14,6 +14,7 @@ Singleton {
     property QtObject radius
     property QtObject font
     property QtObject transition
+    property QtObject duration
     property string iconsPath: `${Directories.assetsPath}/icons/fluent`
     property bool dark: Appearance.m3colors.darkmode
 
@@ -46,8 +47,8 @@ Singleton {
         property color bg2Hover: '#ffffff'
         property color bg2Active: '#eeeeee'
         property color bg2Border: '#E0E0E0'
-        property color subfg: "#5C5C5C"
-        property color fg: "#000000"
+        property color subfg: "#9E000000" // design-ok: WinUI TextFillColorSecondary
+        property color fg: "#E4000000" // design-ok: WinUI TextFillColorPrimary
         property color fg1: "#626262"
         property color inactiveIcon: "#C4C4C4"
         property color controlBgInactive: '#555458'
@@ -56,6 +57,8 @@ Singleton {
         property color controlFg: "#FFFFFF"
         property color accentUnfocused: "#848484"
         property color link: "#235CCF"
+        property color critical: "#C42B1C" // design-ok: WinUI SystemFillColorCritical
+        property color caution: "#9D5D00" // design-ok: WinUI SystemFillColorCaution
         property color inputBg: ColorUtils.transparentize(bg0, 0.4)
     }
     // design-ok: Windows 11 Fluent design token
@@ -76,8 +79,8 @@ Singleton {
         property color bg2Hover: '#363636'
         property color bg2Active: '#2B2B2B'
         property color bg2Border: '#404040'
-        property color subfg: "#CED1D7"
-        property color fg: "#FFFFFF"
+        property color subfg: "#C5FFFFFF" // design-ok: WinUI TextFillColorSecondary
+        property color fg: "#FFFFFF" // design-ok: WinUI TextFillColorPrimary
         property color fg1: "#D1D1D1"
         property color inactiveIcon: "#494949"
         property color controlBgInactive: "#CDCECF"
@@ -86,6 +89,8 @@ Singleton {
         property color controlFg: "#454545"
         property color accentUnfocused: "#989898"
         property color link: "#A7C9FC"
+        property color critical: "#FF99A4" // design-ok: WinUI SystemFillColorCritical
+        property color caution: "#FCE100" // design-ok: WinUI SystemFillColorCaution
         property color inputBg: ColorUtils.transparentize(darkColors.bg0, 0.5)
     }
     colors: QtObject {
@@ -127,12 +132,11 @@ Singleton {
         property color controlBgHover: root.dark ? root.darkColors.controlBgHover : root.lightColors.controlBgHover
         property color controlFg: root.dark ? root.darkColors.controlFg : root.lightColors.controlFg
         property color inputBg: root.dark ? root.darkColors.inputBg : root.lightColors.inputBg
-        // design-ok: Windows 11 Fluent design token
-        property color danger: "#C42B1C"
-        // design-ok: Windows 11 Fluent design token
-        property color dangerActive: "#B62D1F"
-        // design-ok: Windows 11 Fluent design token
-        property color warning: "#FF9900"
+        // Title bar close button, the same red in both themes
+        property color danger: "#C42B1C" // design-ok: Windows 11 caption close button
+        property color dangerActive: "#B62D1F" // design-ok: Windows 11 caption close button
+        property color critical: root.dark ? root.darkColors.critical : root.lightColors.critical
+        property color warning: root.dark ? root.darkColors.caution : root.lightColors.caution
         // Accent
         property color accent: Appearance.colors.colPrimary
         property color accentHover: Appearance.colors.colPrimaryHover
@@ -177,6 +181,15 @@ Singleton {
         }
     }
 
+    // WinUI ControlFaster/Fast/NormalAnimationDuration (microsoft-ui-xaml,
+    // CommonStyles/Common_themeresources_any.xaml): 0.083s, 0.167s, 0.250s
+    duration: QtObject {
+        id: duration
+        property int faster: 83 // design-ok: WinUI ControlFasterAnimationDuration
+        property int fast: 167 // design-ok: WinUI ControlFastAnimationDuration
+        property int normal: 250 // design-ok: WinUI ControlNormalAnimationDuration
+    }
+
     transition: QtObject {
         id: transition
 
@@ -184,16 +197,19 @@ Singleton {
 
         property QtObject easing: QtObject {
             property QtObject bezierCurve: QtObject {
-                readonly property list<real> easeInOut: [0.42,0.00,0.58,1.00,1,1]
-                readonly property list<real> easeIn: [0,1,1,1,1,1]
-                readonly property list<real> easeOut: [1,0,1,1,1,1]
+                // Named for what they do on entry/exit, not CSS: easeIn decelerates.
+                // WinUI ControlFastOutSlowInKeySpline 0,0,0,1 = Fluent 2 curveDecelerateMid
+                readonly property list<real> easeIn: [0,0,0,1,1,1] // design-ok: WinUI/Fluent 2 token
+                // Fluent 2 curveAccelerateMid
+                readonly property list<real> easeOut: [1,0,1,1,1,1] // design-ok: Fluent 2 token
+                // Fluent 2 curveEasyEase
+                readonly property list<real> easeInOut: [0.33,0,0.67,1,1,1] // design-ok: Fluent 2 token
             }
         }
 
         property Component color: Component {
             ColorAnimation {
-                // design-ok: Fluent color animation duration
-                duration: Appearance.animation.elementMoveExit.duration
+                duration: root.duration.faster
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -201,17 +217,15 @@ Singleton {
 
         property Component opacity: Component {
             NumberAnimation {
-                // design-ok: Fluent opacity animation duration
-                duration: Appearance.animation.elementMoveExit.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
         }
 
-        property Component resize: Component { // TODO: better curve needed
+        property Component resize: Component {
             NumberAnimation {
-                // design-ok: Fluent resize animation duration
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -219,8 +233,7 @@ Singleton {
 
         property Component enter: Component {
             NumberAnimation {
-                // design-ok: Fluent enter animation duration
-                duration: Appearance.animation.elementMoveEnter.duration
+                duration: root.duration.normal
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -228,8 +241,7 @@ Singleton {
 
         property Component exit: Component {
             NumberAnimation {
-                // design-ok: Fluent exit animation duration
-                duration: Appearance.animation.elementMoveExit.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeOut
             }
@@ -237,8 +249,7 @@ Singleton {
 
         property Component move: Component {
             NumberAnimation {
-                // design-ok: Fluent move animation duration
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeInOut
             }
@@ -246,8 +257,7 @@ Singleton {
 
         property Component rotate: Component {
             NumberAnimation {
-                // design-ok: Fluent rotate animation duration
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeInOut
             }
@@ -255,8 +265,7 @@ Singleton {
 
         property Component anchor: Component {
             AnchorAnimation {
-                // design-ok: Fluent anchor animation duration
-                duration: Appearance.animation.elementMoveFast.duration
+                duration: root.duration.fast
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -264,8 +273,7 @@ Singleton {
 
         property Component longMovement: Component {
             NumberAnimation {
-                // design-ok: Fluent long movement duration
-                duration: Appearance.animation.elementMoveEnter.duration * 2
+                duration: root.duration.normal * 2
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
@@ -273,11 +281,9 @@ Singleton {
 
         property Component scroll: Component {
             NumberAnimation {
-                // design-ok: Fluent scroll animation duration
-                duration: Appearance.animation.elementMoveEnter.duration
+                duration: root.duration.normal
                 easing.type: Easing.BezierSpline
-                // design-ok: Windows 11 Fluent scroll easing curve
-                easing.bezierCurve: [0.0, 0.0, 0.25, 1.0, 1, 1]
+                easing.bezierCurve: transition.easing.bezierCurve.easeIn
             }
         }
     }
