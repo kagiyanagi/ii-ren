@@ -73,6 +73,9 @@ Rectangle {
 
     PagePlaceholder {
         shown: root.emptyIcon.length > 0 && root.text.length === 0
+        // Narrower than the card, so the description wraps to a readable measure.
+        anchors.leftMargin: 48
+        anchors.rightMargin: 48
         icon: root.emptyIcon
         shape: MaterialShape.Shape.Cookie12Sided
         rotateIconWithShape: true

@@ -330,6 +330,8 @@ Item {
             Layout.fillHeight: true
             Layout.preferredHeight: 1
             isInput: false
+            // No card: the translation sits straight on the page, under the input's.
+            color: "transparent"
             emptyIcon: "translate"
             emptyTitle: Translation.tr("Translation")
             emptyDescription: Translation.tr("Appears here as you type\nPick the same language on both sides to fix spelling and grammar instead")
