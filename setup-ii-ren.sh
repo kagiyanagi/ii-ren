@@ -360,7 +360,7 @@ if [ "$DO_PULL" = true ]; then
     
     if [ -d "$SCRIPT_DIR/.git" ]; then
         log_verbose "Git repository found at $SCRIPT_DIR/.git"
-        cd "$SCRIPT_DIR"
+        cd "$SCRIPT_DIR" || exit 1
         # shapes used to be a submodule; a populated one blocks the pull that vendors it
         [ -e dots/.config/quickshell/ii/modules/common/widgets/shapes/.git ] &&
             git submodule --quiet deinit -f dots/.config/quickshell/ii/modules/common/widgets/shapes

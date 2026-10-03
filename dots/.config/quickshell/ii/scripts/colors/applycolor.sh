@@ -21,11 +21,17 @@ colorstrings=''
 colorlist=()
 colorvalues=()
 
-colornames=$(cat $STATE_DIR/user/generated/material_colors.scss | cut -d: -f1)
-colorstrings=$(cat $STATE_DIR/user/generated/material_colors.scss | cut -d: -f2 | cut -d ' ' -f2 | cut -d ";" -f1)
+colornames=$(cut -d: -f1 "$STATE_DIR/user/generated/material_colors.scss")
+colorstrings=$(cut -d: -f2 "$STATE_DIR/user/generated/material_colors.scss" | cut -d ' ' -f2 | cut -d ";" -f1)
 IFS=$'\n'
 colorlist=($colornames)     # Array of color names
 colorvalues=($colorstrings) # Array of color values
+# Every substitution in one sed program: a sed -i per colour was ~150 processes per
+# theme change, each rewriting the file. Same result, the substitutions are line-local.
+color_sed=""
+for i in "${!colorlist[@]}"; do
+  color_sed+="s/${colorlist[$i]} #/${colorvalues[$i]#\#}/g;"
+done
 
 apply_kitty() {  
   # Check if terminal escape sequence template exists
@@ -37,9 +43,7 @@ apply_kitty() {
   mkdir -p "$STATE_DIR"/user/generated/terminal
   cp "$SCRIPT_DIR/terminal/kitty-theme.conf" "$STATE_DIR"/user/generated/terminal/kitty-theme.conf
   # Apply colors
-  for i in "${!colorlist[@]}"; do
-    sed -i "s/${colorlist[$i]} #/${colorvalues[$i]#\#}/g" "$STATE_DIR"/user/generated/terminal/kitty-theme.conf
-  done
+  sed -i "$color_sed" "$STATE_DIR"/user/generated/terminal/kitty-theme.conf
 
   # Reload
   if ! pgrep -f kitty >/dev/null; then
@@ -58,9 +62,7 @@ apply_anyterm() {
   mkdir -p "$STATE_DIR"/user/generated/terminal
   cp "$SCRIPT_DIR/terminal/sequences.txt" "$STATE_DIR"/user/generated/terminal/sequences.txt
   # Apply colors
-  for i in "${!colorlist[@]}"; do
-    sed -i "s/${colorlist[$i]} #/${colorvalues[$i]#\#}/g" "$STATE_DIR"/user/generated/terminal/sequences.txt
-  done
+  sed -i "$color_sed" "$STATE_DIR"/user/generated/terminal/sequences.txt
 
   sed -i "s/\$alpha/$term_alpha/g" "$STATE_DIR/user/generated/terminal/sequences.txt"
 

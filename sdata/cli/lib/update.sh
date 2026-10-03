@@ -35,7 +35,7 @@ SETUP_FLAGS=""
 [[ "$NO_CONFIRM" == "true" ]]   && SETUP_FLAGS="$SETUP_FLAGS --no-confirm"
 
 if [ -d "$BASE_DIR" ]; then
-    cd "$BASE_DIR"
+    cd "$BASE_DIR" || exit 1
     if [[ "$DO_PULL" == "true" ]]; then
         if [[ "$VERBOSE" == "true" ]]; then
             git pull

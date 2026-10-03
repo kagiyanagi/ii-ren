@@ -78,8 +78,8 @@ check_and_prompt_upscale() {
             img_width=$min_width_desired
             img_height=$min_height_desired
         else
-            img_width=$(identify -format "%w" "$img" 2>/dev/null)
-            img_height=$(identify -format "%h" "$img" 2>/dev/null)
+            # -ping reads the header only (4ms, not a 130ms decode per call); [0] keeps a GIF to one frame.
+            read -r img_width img_height < <(identify -ping -format '%w %h' "${img}[0]" 2>/dev/null)
         fi
         if [[ "$img_width" -lt "$min_width_desired" || "$img_height" -lt "$min_height_desired" ]]; then
             action=$(notify-send "Upscale?" \
@@ -363,7 +363,7 @@ switch() {
         echo "[switchwall.sh] Applied theme: $type_flag"
     else
         matugen "${matugen_args[@]}"
-        source "$(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate"
+        source "$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")/bin/activate"
         python3 "$SCRIPT_DIR/generate_colors_material.py" "${generate_colors_material_args[@]}" \
             > "$STATE_DIR"/user/generated/material_colors.scss
         deactivate
@@ -392,7 +392,7 @@ main() {
     }
     detect_scheme_type_from_image() {
         local img="$1"
-        source "$(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate"
+        source "$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")/bin/activate"
         "$SCRIPT_DIR"/scheme_for_image.py "$img" 2>/dev/null | tr -d '\n'
         deactivate
     }
