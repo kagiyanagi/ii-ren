@@ -621,28 +621,10 @@ Variants {
                     fillMode: bgRoot.framing.mode === "stretch" ? Image.Stretch : Image.PreserveAspectCrop
                 }
 
-                MediaPlayer {
-                    id: videoPlayer
-                    source: {
-                        if (bgRoot.wallpaperSafetyTriggered)
-                            return "";
-                        // The packed copy stands in for the original wholesale:
-                        // its top half is the same frames, so everything
-                        // downstream - effects, lock blur - sees a wallpaper.
-                        if (bgRoot.depthVideo)
-                            return WallpaperSubject.packedVideo;
-                        if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active))
-                            return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
-                        return "";
-                    }
-                    audioOutput: AudioOutput { muted: true }
-                    videoOutput: vidOutput
-                    loops: MediaPlayer.Infinite
-                    autoPlay: true
-                }
-
-                VideoOutput {
-                    id: vidOutput
+                // Only a video wallpaper gets a player: building one costs ~120ms
+                // and a muted audio stream per monitor.
+                Loader {
+                    id: videoLoader
                     // Anchored on three sides with an explicit height, never a
                     // fourth anchor: the packed video is twice as tall as the
                     // wallpaper, and only its top half belongs on screen.
@@ -651,7 +633,32 @@ Variants {
                     anchors.top: parent.top
                     height: bgRoot.depthVideo ? parent.height * 2 : parent.height
                     visible: bgRoot.wallpaperIsVideo
-                    fillMode: VideoOutput.PreserveAspectCrop
+                    active: bgRoot.wallpaperIsVideo || bgRoot.depthVideo
+                    sourceComponent: VideoOutput {
+                        id: vidOutput
+                        readonly property bool playing: videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo
+                        fillMode: VideoOutput.PreserveAspectCrop
+
+                        MediaPlayer {
+                            id: videoPlayer
+                            source: {
+                                if (bgRoot.wallpaperSafetyTriggered)
+                                    return "";
+                                // The packed copy stands in for the original wholesale:
+                                // its top half is the same frames, so everything
+                                // downstream - effects, lock blur - sees a wallpaper.
+                                if (bgRoot.depthVideo)
+                                    return WallpaperSubject.packedVideo;
+                                if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active))
+                                    return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
+                                return "";
+                            }
+                            audioOutput: AudioOutput { muted: true }
+                            videoOutput: vidOutput
+                            loops: MediaPlayer.Infinite
+                            autoPlay: true
+                        }
+                    }
                 }
             }
 
@@ -817,7 +824,7 @@ Variants {
                     // over something real rather than over an empty item, which
                     // is why this is not the usual FadeLoader.
                     readonly property bool showing: bgRoot.depthActive && (bgRoot.depthVideo
-                        ? (videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo)
+                        ? (videoLoader.item?.playing ?? false)
                         : (stillCutout.status === Image.Ready))
 
                     // Opacity is an effect, so both directions take the effects
@@ -887,7 +894,7 @@ Variants {
                         anchors.fill: parent
                         active: bgRoot.depthVideo
                         sourceComponent: SubjectMatte {
-                            source: vidOutput
+                            source: videoLoader.item
                         }
                     }
                 }
