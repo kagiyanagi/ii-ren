@@ -63,15 +63,16 @@ esac
 # Remove version lock
 v sudo dnf versionlock delete quickshell-git 2>/dev/null
 
-# Install yq for parsing config files
-v sudo dnf install yq -y
+# yq parses the package list, jq the COPR list and the release assets, and the copr
+# command comes from a plugin: none of the three is on a minimal Fedora.
+v sudo dnf install -y yq jq 'dnf-command(copr)'
 
 # Install development tools
 r v sudo dnf install createrepo_c -y
 
 # Install COPR repositories
 copr_repos_json=$(yq -o=j '.copr.repos // []' "$deps_data_file")
-eval "$(jq -r '@sh "copr_repos_array+=(\(.[]))"' <<<"$copr_repos_json")" # Fedora distro contains jq
+eval "$(jq -r '@sh "copr_repos_array+=(\(.[]))"' <<<"$copr_repos_json")"
 for copr in ${copr_repos_array[@]}; do
   v sudo dnf copr enable "$copr" -y
 done
