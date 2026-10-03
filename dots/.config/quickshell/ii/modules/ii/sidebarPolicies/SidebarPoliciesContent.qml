@@ -27,24 +27,6 @@ Item {
     // Hermes sits in front of the built-in pages and is focused on open.
     readonly property int pinnedTabIndex: root.hermesEnabled ? 0 : -1
 
-    // Reassigning extensionPages re-runs the contentChildren binding below, which
-    // rebuilds every extension page from a fresh ?_t= URL and throws its state
-    // away. The manager also refreshes on any config write - switching a model,
-    // clearing a chat - so only reassign when the contributions really changed.
-    function syncExtensionPages() {
-        let next = ExtensionManager.getContributionPoint("sidebarLeftPages")
-        if (JSON.stringify(next) === JSON.stringify(root.extensionPages)) return
-        root.extensionPages = next
-    }
-
-    Connections {
-        target: ExtensionManager
-        function onRefreshExtensions() { root.syncExtensionPages() }
-        function onExtensionInstalled() { root.syncExtensionPages() }
-        function onExtensionRemoved() { root.syncExtensionPages() }
-        function onExtensionToggled() { root.syncExtensionPages() }
-    }
-
     Connections {
         target: GlobalStates
         function onPoliciesPanelOpenChanged() {
@@ -66,30 +48,19 @@ Item {
         ...root.extensionPages.map(p => ({icon: p.icon, name: p.title}))
     ]
 
-    function createExtensionPage(page) {
-        let loader = Qt.createQmlObject('import QtQuick; Loader { active: true }', swipeView)
-        loader.source = "file://" + page.fullPath + "?_t=" + Date.now()
-        let setExtId = () => {
-            if (loader.item) {
-                if ("extensionId" in loader.item) {
-                    loader.item.extensionId = page.extensionId
-                } else {
-                    Object.defineProperty(loader.item, "extensionId", {
-                        value: page.extensionId,
-                        writable: true,
-                        configurable: true,
-                        enumerable: true
-                    })
-                }
-            }
-        }
-        if (loader.status === Loader.Ready) {
-            setExtId()
-        } else {
-            loader.loaded.connect(setExtId)
-        }
-        return loader
-    }
+    // Same order as tabButtonList, page for tab. The closet anime page has no tab, so it
+    // goes last, reached by swiping past the last tab. A string, so a re-evaluation that
+    // lands on the same pages (a language load, an extensions-file refresh, any config
+    // write) notifies nothing and the Repeater keeps every page it has.
+    readonly property string pages: JSON.stringify([
+        ...(root.hermesEnabled ? [{kind: "hermes"}] : []),
+        ...(root.translatorEnabled ? [{kind: "translator"}] : []),
+        ...(root.tabButtonList.length === 0 ? [{kind: "placeholder"}] : []),
+        ...((root.animeEnabled && !root.animeCloset) ? [{kind: "anime"}] : []),
+        ...(root.continuityEnabled ? [{kind: "continuity"}] : []),
+        ...root.extensionPages.map(p => ({kind: "extension", path: p.fullPath, extensionId: p.extensionId})),
+        ...(root.animeCloset ? [{kind: "anime"}] : [])
+    ])
 
     Keys.onPressed: (event) => {
         if (event.modifiers === Qt.ControlModifier) {
@@ -166,51 +137,58 @@ Item {
                     }
                 }
 
-                // Same order as tabButtonList, page for tab. The closet anime page has
-                // no tab, so it goes last, reached by swiping past the last tab.
-                contentChildren: [
-                    ...(root.hermesEnabled ? [hermes.createObject()] : []),
-                    ...(root.translatorEnabled ? [translator.createObject()] : []),
-                    ...(root.tabButtonList.length === 0 ? [placeholder.createObject()] : []),
-                    ...((root.animeEnabled && !root.animeCloset) ? [anime.createObject()] : []),
-                    ...(root.continuityEnabled ? [continuity.createObject()] : []),
-                    ...root.extensionPages.map(p => root.createExtensionPage(p)).filter(item => item),
-                    ...(root.animeCloset ? [anime.createObject()] : [])
-                ]
+                // A Repeater, not `contentChildren: [x.createObject(), ...]`. Reassigning
+                // contentChildren only clears the model (Qt 6.11): if the ListView is not
+                // wired to it yet -- the content is still incubating, as after a live
+                // reload -- the old pages stay parented with the view listening, and when
+                // the GC frees them each one walks currentIndex down by one, to -2: every
+                // tab blank until a restart. A Repeater unparents a page while it is
+                // still in the model, so the view removes it properly.
+                Repeater {
+                    model: JSON.parse(root.pages)
+                    // Every page in the view re-evaluates on open, whether or not it is the
+                    // tab being looked at: measured on this machine, Hermes ~40 and
+                    // Continuity ~63 CPU ticks per open, and they add up. Only the current
+                    // tab is kept alive; a page is built when you switch to it and dropped
+                    // when you leave. Extension pages stay up and keep their state.
+                    delegate: Loader {
+                        required property var modelData
+                        // Synchronous on purpose. Incubating these pages crashes Qt 6.11 in
+                        // QQmlConnections::connectSignalsToMethods about half of all launches --
+                        // measured 5/8 with async, 0/8 without. Several pages below have a
+                        // Connections whose target is not a live QObject during incubation
+                        // (`parent`, a Repeater model, a plain JS object); fix those and this can
+                        // go back to async. Costs little: `active` already means only the visible
+                        // tab is ever built.
+                        asynchronous: false
+                        active: SwipeView.isCurrentItem || modelData.kind === "extension"
+                        sourceComponent: ({hermes, translator, anime, continuity, placeholder})[modelData.kind] ?? null
+                        source: modelData.kind === "extension" ? "file://" + modelData.path + "?_t=" + Date.now() : ""
+                        onLoaded: {
+                            if (modelData.kind !== "extension") return
+                            if ("extensionId" in item) item.extensionId = modelData.extensionId
+                            else Object.defineProperty(item, "extensionId", {value: modelData.extensionId, writable: true, configurable: true, enumerable: true})
+                        }
+                    }
+                }
             }
-        }
-
-        // Every page in the view re-evaluates on open, whether or not it is the tab
-        // being looked at: measured on this machine, Hermes ~40 and Continuity ~63 CPU
-        // ticks per open, and they add up. Only the current tab is kept alive; a page is
-        // built when you switch to it and dropped when you leave.
-        component PageSlot: Loader {
-            // Synchronous on purpose. Incubating these pages crashes Qt 6.11 in
-            // QQmlConnections::connectSignalsToMethods about half of all launches --
-            // measured 5/8 with async, 0/8 without. Several pages below have a
-            // Connections whose target is not a live QObject during incubation
-            // (`parent`, a Repeater model, a plain JS object); fix those and this can
-            // go back to async. Costs little: `active` already means only the visible
-            // tab is ever built.
-            asynchronous: false
-            active: SwipeView.isCurrentItem
         }
 
         Component {
             id: hermes
-            PageSlot { sourceComponent: Hermes {} }
+            Hermes {}
         }
         Component {
             id: translator
-            PageSlot { sourceComponent: Translator {} }
+            Translator {}
         }
         Component {
             id: anime
-            PageSlot { sourceComponent: Anime {} }
+            Anime {}
         }
         Component {
             id: continuity
-            PageSlot { sourceComponent: Continuity {} }
+            Continuity {}
         }
         Component {
             id: placeholder

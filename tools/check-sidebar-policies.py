@@ -7,6 +7,11 @@ None of this shows in a still frame of the default config:
   anime (`policies.weeb: 2`) has a page with no tab, and it sat in the middle, so with
   Continuity or any extension enabled every later tab opened the page before it. Both
   arrays are lifted out and evaluated for every policy combination.
+- The pages are a Repeater over a string, never `contentChildren` of createObject()
+  pages. Reassigning contentChildren only clears the model (Qt 6.11); after a live reload
+  the content is still incubating, the ListView is not wired to the model yet, and the old
+  pages stay parented with the view listening. When the GC frees them each one walks the
+  view's currentIndex down by one, to -2, and every tab shows a blank card until a restart.
 - The page mask is load-bearing (a message card cut by the transcript's clip squares off
   outside the card's arc) and must mask at the card's own radius, not a tighter one.
 - Anime's NSFW switch broke its binding twice: the row wrote `checked`, and the switch
@@ -38,23 +43,24 @@ def node(js):
 
 # ── Tab i opens page i ───────────────────────────────────────────────
 tabs = re.search(r"property var tabButtonList: (\[.*?\n    \])", content, re.S)
-pages = re.search(r"contentChildren: (\[.*?\n                \])", content, re.S)
-assert tabs and pages, "SidebarPoliciesContent: tabButtonList / contentChildren not found where expected"
+pages = re.search(r"readonly property string pages: JSON\.stringify\((\[.*?\n    \])\)", content, re.S)
+assert tabs and pages, "SidebarPoliciesContent: tabButtonList / pages not found where expected"
+code = re.sub(r"//.*", "", content)
+assert "contentChildren" not in code and "createObject" not in code, \
+    "SidebarPoliciesContent: pages built into contentChildren go blank after a live reload"
+assert "model: JSON.parse(root.pages)" in content, "SidebarPoliciesContent: the page Repeater must read the string"
 combos = [dict(weeb=w, translator=t, continuity=c, hermes=h, ext=e)
           for w, t, c, h, e in product([0, 1, 2], [0, 1], [0, 1], [0, 1], [0, 1])]
 got = node(f"""
 const out = {json.dumps(combos)}.map(p => {{
-    const page = name => ({{ createObject: () => name }});
-    const [hermes, translator, anime, continuity, placeholder] = ["hermes", "translator", "anime", "continuity", "placeholder"].map(page);
     const Translation = {{ tr: s => s }};
     const root = {{
         hermesEnabled: !!p.hermes, translatorEnabled: !!p.translator, continuityEnabled: !!p.continuity,
         animeEnabled: p.weeb !== 0, animeCloset: p.weeb === 2,
-        extensionPages: p.ext ? [{{ icon: "x", title: "Ext" }}] : [],
-        createExtensionPage: e => "ext:" + e.title,
+        extensionPages: p.ext ? [{{ icon: "x", title: "Ext", fullPath: "/x.qml", extensionId: "Ext" }}] : [],
     }};
     root.tabButtonList = {tabs.group(1)};
-    const pages = {pages.group(1)};
+    const pages = {pages.group(1)}.map(e => e.kind === "extension" ? "ext:" + e.extensionId : e.kind);
     return {{ p, tabs: root.tabButtonList.map(t => t.name), pages }};
 }});
 console.log(JSON.stringify(out));""")
