@@ -601,7 +601,6 @@ Item {
                 z: 2
                 anchors.fill: parent
                 shown: HermesService.messageIDs.length === 0 && !HermesService.missing
-                topInset: statusBg.implicitHeight + statusBg.anchors.topMargin * 2
                 windowName: root.focusedWindow()
                 commandPrefix: root.commandPrefix
                 onCompose: text => {

@@ -15,7 +15,7 @@ import "greeting.js" as Greeting
  * a question, then ways to start: the window you were in, what you copied, a
  * shell command, the command list. Left-aligned and set low, as Gemini on
  * Android sets its own, so the eye ends just above the composer it is about to
- * use. Above it, the last few chats, one press from where they left off.
+ * use.
  *
  * Every open replays the entrance: the lines rise in one after another (2.8)
  * while the mark turns into place and the name's weight swells to rest. Leaving is a plain fade (2.5).
@@ -24,8 +24,6 @@ Item {
     id: root
 
     property bool shown: true
-    // Clear of the gateway and approval pills that float over the page's top.
-    property real topInset: 0
     // "appId — title" of the window `@window` will name, or empty.
     property string windowName: ""
     property string commandPrefix: "/"
@@ -42,9 +40,6 @@ Item {
         const title = cut >= 0 ? root.windowName.slice(cut + 3).trim() : "";
         return title.length > 0 ? title : (cut >= 0 ? root.windowName.slice(0, cut) : root.windowName);
     }
-    readonly property var recent: HermesService.recentSessions
-        .filter(s => s.id !== HermesService.sessionId && (s.message_count ?? 0) > 0)
-        .slice(0, 3)
 
     readonly property date now: DateTime.clock.date
     readonly property var parts: Greeting.parts(root.now, Greeting.displayName(SystemInfo.username))
@@ -60,7 +55,6 @@ Item {
         if (!root.shown)
             return;
         root.clip = (Quickshell.clipboardText ?? "").trim();
-        HermesService.refreshRecentSessions();
         entrance.restart();
     }
 
@@ -120,7 +114,7 @@ Item {
         id: entrance
         ScriptAction {
             script: {
-                for (const line of [mark, leadLine, nameLine, promptLine, starters, recentList]) {
+                for (const line of [mark, leadLine, nameLine, promptLine, starters]) {
                     line.opacity = 0;
                     line.transform[0].y = 16;
                 }
@@ -142,7 +136,6 @@ Item {
             Rise { line: nameLine; shift: nameShift; order: 2 }
             Rise { line: promptLine; shift: promptShift; order: 3 }
             Rise { line: starters; shift: startersShift; order: 4 }
-            Rise { line: recentList; shift: recentShift; order: 5 }
             NumberAnimation {
                 target: root
                 property: "swell"
@@ -190,46 +183,11 @@ Item {
     }
 
     ColumnLayout {
-        id: recentList
-        visible: root.recent.length > 0
-        transform: Translate { id: recentShift }
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-            topMargin: root.topInset
-            leftMargin: 12
-            rightMargin: 12
-        }
-        spacing: 2
-
-        StyledText { // The history sheet's own header style
-            leftPadding: 12
-            bottomPadding: 4
-            text: Translation.tr("Recent chats")
-            color: Appearance.colors.colSubtext
-            font.pixelSize: Appearance.font.pixelSize.smaller
-            font.weight: Font.DemiBold
-        }
-
-        Repeater {
-            model: root.recent
-            delegate: HermesHistoryRow {
-                required property var modelData
-                Layout.fillWidth: true
-                session: modelData
-                showSource: false
-                onOpenRequested: HermesService.resumeSession(modelData.id)
-            }
-        }
-    }
-
-    ColumnLayout {
         anchors {
             left: parent.left
             right: parent.right
             verticalCenter: parent.verticalCenter
-            verticalCenterOffset: parent.height / 8
+            verticalCenterOffset: parent.height / 32
             leftMargin: 24
             rightMargin: 24
         }
