@@ -150,7 +150,7 @@ Singleton {
         if (!Config.options.extensions.enable) { root.error = "Extensions are disabled"; return }
         root.loading = true
         root.error = ""
-        let resolvedPath = localPath.replace(/^~/, Directories.home).replace(/\/+$/, "")
+        let resolvedPath = localPath.replace(/^~/, FileUtils.trimFileProtocol(Directories.home)).replace(/\/+$/, "")
         localReader._pendingPath = resolvedPath
         localReader.path = resolvedPath + "/extension.json"
         localReader.reload()

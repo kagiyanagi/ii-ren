@@ -377,7 +377,7 @@ Item {
                         fillMode: Image.PreserveAspectCrop
                         // Its own fallback chain: StyledImage assigns source
                         // imperatively, which would kill the binding to the setting.
-                        property list<string> candidates: Config.options.sidebar.uptimeIcon.length > 0 ? [Config.options.sidebar.uptimeIcon.replace(/^~\//, Directories.home)] : [Directories.userAvatarPathAccountsService, Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
+                        property list<string> candidates: Config.options.sidebar.uptimeIcon.length > 0 ? [Config.options.sidebar.uptimeIcon.replace(/^~\//, `${Directories.home}/`)] : [Directories.userAvatarPathAccountsService, Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
                         property int candidateIndex: 0
                         onCandidatesChanged: candidateIndex = 0
                         source: candidates[candidateIndex] ?? ""

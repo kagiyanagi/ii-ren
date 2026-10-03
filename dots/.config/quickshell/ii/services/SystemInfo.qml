@@ -13,7 +13,9 @@ Singleton {
     property string distroName: "Unknown"
     property string distroId: "unknown"
     property string distroIcon: "linux-symbolic"
-    property string username: "user"
+    // From the environment, not a whoami round trip: the avatar path and the lock screen
+    // read it at startup, and the "user" placeholder sent them to a file that never exists.
+    readonly property string username: Quickshell.env("USER") || "user"
     property string homeUrl: ""
     property string documentationUrl: ""
     property string supportUrl: ""
@@ -29,7 +31,6 @@ Singleton {
         running: true
         repeat: false
         onTriggered: {
-            getUsername.running = true
             fileOsRelease.reload()
             const textOsRelease = fileOsRelease.text()
 
@@ -83,16 +84,6 @@ Singleton {
                 logo = distroIcon
             }
 
-        }
-    }
-
-    Process {
-        id: getUsername
-        command: ["whoami"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.username = data.trim()
-            }
         }
     }
 
