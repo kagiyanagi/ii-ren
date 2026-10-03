@@ -16,11 +16,13 @@ StyledImage {
     required property string sourcePath
     property string thumbnailSizeName: Images.thumbnailSizeNameForDimensions(sourceSize.width, sourceSize.height)
     property string thumbnailPath: {
-        if (sourcePath.length == 0) return;
-        const resolvedUrlWithoutFileProtocol = FileUtils.trimFileProtocol(`${Qt.resolvedUrl(sourcePath)}`);
-        const encodedUrlWithoutFileProtocol = resolvedUrlWithoutFileProtocol.split("/").map(part => encodeURIComponent(part)).join("/");
-        const md5Hash = Qt.md5(`file://${encodedUrlWithoutFileProtocol}`);
-        return `${Directories.genericCache}/thumbnails/${thumbnailSizeName}/${md5Hash}.png`;
+        if (sourcePath.length == 0) return "";
+        // The md5 of the file uri exactly as GLib writes it, which is what thumbgen.py and
+        // file managers name thumbnails by: encodeURIComponent, minus what GLib leaves alone.
+        // Qt.resolvedUrl is no help here, it half-encodes (a % but not a space).
+        const parts = FileUtils.trimFileProtocol(sourcePath).split("/")
+            .map(part => encodeURIComponent(part).replace(/%(24|26|2B|2C|3D|3A|40)/g, decodeURIComponent));
+        return `${Directories.genericCache}/thumbnails/${thumbnailSizeName}/${Qt.md5(`file://${parts.join("/")}`)}.png`;
     }
     source: thumbnailPath
 
@@ -40,13 +42,11 @@ StyledImage {
     }
     Process {
         id: thumbnailGeneration
-        command: {
-            const thumbFile = FileUtils.trimFileProtocol(root.thumbnailPath);
-            const script = FileUtils.trimFileProtocol(Directories.scriptPath) + "/thumbnails/generate-thumbnails-magick.sh";
-            return ["bash", "-c",
-                `[ -f '${thumbFile}' ] && exit 0 || { '${script}' -f '${root.sourcePath}' -s '${root.thumbnailSizeName}' && exit 1; }`
-            ];
-        }
+        // Arguments, never interpolated: a file name can hold ' and $(.
+        command: ["bash", "-c", '[ -f "$1" ] && exit 0 || { "$2" -f "$3" -s "$4" && exit 1; }', "_",
+            FileUtils.trimFileProtocol(root.thumbnailPath),
+            FileUtils.trimFileProtocol(Directories.scriptPath) + "/thumbnails/generate-thumbnails-magick.sh",
+            FileUtils.trimFileProtocol(root.sourcePath), root.thumbnailSizeName]
         onExited: (exitCode, exitStatus) => {
             if (exitCode === 1) { // Force reload if thumbnail had to be generated
                 root.source = "";

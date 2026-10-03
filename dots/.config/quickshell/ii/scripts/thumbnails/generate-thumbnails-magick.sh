@@ -29,15 +29,14 @@ md5() {
 }
 
 urlencode() {
-    # Percent-encode a string for use in a URI, but do not encode slashes
-    local str="$1"
-    local encoded=""
-    local c
+    # The file uri as GLib writes it, byte by byte: thumbnails are named by its md5, and
+    # ThumbnailImage.qml and thumbgen.py (Gio) have to arrive at the same name.
+    local LC_ALL=C str="$1" encoded="" c i hex
     for ((i=0; i<${#str}; i++)); do
         c="${str:$i:1}"
         case "$c" in
-            [a-zA-Z0-9.~_-]|/|'('|')'|'*') encoded+="$c" ;;
-            *) printf -v hex '%%%02X' "'${c}'"; encoded+="$hex" ;;
+            [a-zA-Z0-9.~_!*\'\(\)\$\&+,=:@/-]) encoded+="$c" ;;
+            *) printf -v hex '%02X' "'$c"; encoded+="%${hex: -2}" ;;
         esac
     done
     echo "$encoded"
@@ -46,7 +45,7 @@ urlencode() {
 generate_thumbnail() {
     local src="$1"
     local abs_path
-    abs_path="$(realpath "$src")"
+    abs_path="$(realpath -s "$src")"  # -s: name it by the path it was asked for, as Gio does
     
     local encoded_path
     encoded_path="$(urlencode "$abs_path")"
@@ -120,8 +119,12 @@ case "$MODE" in
             echo "Directory not found: $TARGET"
             exit 2
         fi
+        # One magick per core at most: one per file at once ran a folder of 4K
+        # wallpapers out of memory.
+        jobs_max=$(nproc)
         for f in "$TARGET"/*; do
             [ -f "$f" ] || continue
+            while (( $(jobs -rp | wc -l) >= jobs_max )); do wait -n; done
             generate_thumbnail "$f" &
         done
         wait
