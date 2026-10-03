@@ -9,6 +9,7 @@ import QtQuick
 import qs.modules.common
 import qs.modules.common.functions
 import qs.services.network
+import qs.modules.common.utils
 
 /**
  * Network service with nmcli.
@@ -252,10 +253,9 @@ Singleton {
         updateHotspotStateProc.running = true;
     }
 
-    Process {
+    KeepAliveProcess {
         id: subscriber
-        running: true
-        command: ["nmcli", "monitor"]
+        args: ["nmcli", "monitor"]
         stdout: SplitParser {
             onRead: root.update()
         }

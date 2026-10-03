@@ -5,6 +5,7 @@ import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.modules.common.utils
 
 /**
  * KDE Connect bridge.
@@ -101,10 +102,10 @@ Singleton {
         onExited: exitCode => root.installed = (exitCode === 0)
     }
 
-    Process {
+    KeepAliveProcess {
         id: monitorProc
-        running: root.installed
-        command: ["python3", root.helperPath]
+        wanted: root.installed
+        args: ["python3", root.helperPath]
         stdout: SplitParser {
             onRead: line => {
                 if (line.trim() === "") return;

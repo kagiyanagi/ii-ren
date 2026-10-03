@@ -8,6 +8,7 @@ import QtQuick
 import QtMultimedia
 import Quickshell
 import Quickshell.Io
+import qs.modules.common.utils
 
 /**
  * XDG sound theme event player (freedesktop sound theme & naming specs, simplified).
@@ -410,9 +411,9 @@ Singleton {
     // just as PipeWire is frozen; the card then loops its buffer until power goes
     // (all of a hibernate's image write). logind says so before the lock lands.
     property bool _sleeping: false
-    Process {
-        running: root.live && Config.options.sounds.enable
-        command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
+    KeepAliveProcess {
+        wanted: root.live && Config.options.sounds.enable
+        args: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
         stdout: SplitParser {
             onRead: line => {
                 const sleeping = line.match(/\.PrepareForSleep \((true|false),\)/)?.[1];
@@ -445,9 +446,9 @@ Singleton {
     // ports included; the devices rate limit folds that burst into one sound.
     // ponytail: internal devices that re-enumerate on resume chime too; filter on
     // sysfs `removable` if that turns out to happen on real hardware.
-    Process {
-        running: root.live && Config.options.sounds.enable && Config.options.sounds.devices
-        command: ["udevadm", "monitor", "--udev", "--subsystem-match=usb/usb_device"]
+    KeepAliveProcess {
+        wanted: root.live && Config.options.sounds.enable && Config.options.sounds.devices
+        args: ["udevadm", "monitor", "--udev", "--subsystem-match=usb/usb_device"]
         stdout: SplitParser {
             onRead: line => {
                 const action = line.match(/^UDEV\s+\[[\d.]+\]\s+(add|remove)\s/)?.[1];

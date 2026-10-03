@@ -7,6 +7,7 @@ import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.common.utils
 
 Singleton {
     id: root
@@ -14,10 +15,10 @@ Singleton {
     property list<real> visualizerPoints: []
     readonly property bool active: MprisController.activePlayer ? MprisController.activePlayer.isPlaying : false
 
-    Process {
+    KeepAliveProcess {
         id: cavaProc
-        running: root.active
-        command: ["cava", "-p", FileUtils.trimFileProtocol(Directories.scriptPath) + "/cava/raw_output_config.txt"]
+        wanted: root.active
+        args: ["cava", "-p", FileUtils.trimFileProtocol(Directories.scriptPath) + "/cava/raw_output_config.txt"]
         stdout: SplitParser {
             onRead: data => {
                 let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));

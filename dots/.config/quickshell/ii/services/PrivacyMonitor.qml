@@ -1,6 +1,7 @@
 pragma Singleton
 pragma ComponentBehavior: Bound
 import qs.modules.common
+import qs.modules.common.utils
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -83,9 +84,9 @@ Singleton {
     }
     readonly property bool anyInUse: root.entries.length > 0
 
-    Process {
-        running: root.watchCamera || root.watchScreen || root.watchLocation
-        command: ["python3", Directories.privacyStateScript]
+    KeepAliveProcess {
+        wanted: root.watchCamera || root.watchScreen || root.watchLocation
+        args: ["python3", Directories.privacyStateScript]
         onRunningChanged: if (!running) {
             root.cameraApps = [];
             root.screenApps = [];
