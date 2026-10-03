@@ -299,6 +299,8 @@ StyledPopup {
             columnSpacing: 12
 
             MetricCard {
+                shapeString: "Circle"
+                radius: Appearance.rounding.large
                 title: Translation.tr("Health")
                 symbol: "health_metrics"
                 value: `${Battery.health.toFixed(0)}%`
@@ -309,6 +311,8 @@ StyledPopup {
             }
 
             MetricCard {
+                shapeString: "Circle"
+                radius: Appearance.rounding.large
                 title: Battery.isCharging ? Translation.tr("Input") : Translation.tr("Draw")
                 symbol: Battery.isCharging ? "electric_bolt" : "power"
                 value: `${Math.abs(Battery.energyRate).toFixed(1)}W`
@@ -319,6 +323,8 @@ StyledPopup {
             }
 
             MetricCard {
+                shapeString: "Circle"
+                radius: Appearance.rounding.large
                 title: Translation.tr("Cycles")
                 symbol: "autorenew"
                 value: {
@@ -333,6 +339,8 @@ StyledPopup {
             }
 
             MetricCard {
+                shapeString: "Circle"
+                radius: Appearance.rounding.large
                 title: Translation.tr("Status")
                 symbol: Battery.isLowAndNotCharging ? "battery_alert"
                     : Battery.isCharging ? "battery_charging_full" : "battery_full"
