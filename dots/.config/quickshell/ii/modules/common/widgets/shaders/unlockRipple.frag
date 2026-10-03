@@ -1,16 +1,17 @@
 #version 450
 
-// Android's unlock ripple: SystemUI's RippleShader (CIRCLE) with its sparkle
-// noise, which AuthRippleView bursts out from wherever the unlock came from.
-// Ported line for line from AOSP frameworks/base, packages/SystemUI/animation/
-// src/com/android/systemui/surfaceeffects/: ripple/RippleShader.kt
-// (SHADER_CIRCLE_MAIN), shaderutil/ShaderUtilLibrary.kt (triangleNoise,
-// sparkles) and shaderutil/SdfShaderLibrary.kt (CIRCLE_SDF, soften, subtract).
+// SystemUI's RippleShader (CIRCLE) with its sparkle noise: the ring Android
+// bursts out of the fingerprint sensor on unlock (AuthRippleView) and out of
+// the charger port when the cable goes in (WiredChargingRippleController).
+// SparkleRipple.qml drives it. Ported line for line from AOSP frameworks/base,
+// packages/SystemUI/animation/src/com/android/systemui/surfaceeffects/:
+// ripple/RippleShader.kt (SHADER_CIRCLE_MAIN), shaderutil/ShaderUtilLibrary.kt
+// (distort, triangleNoise, sparkles) and shaderutil/SdfShaderLibrary.kt
+// (CIRCLE_SDF, soften, subtract).
 // Apache 2.0, (C) 2021 The Android Open Source Project.
 //
-// distort() is left out: the unlock ripple never sets distortionStrength, so
-// it returns p unchanged. Every uniform below is the AGSL one minus `in_`, and
-// all lengths are physical pixels, as on the phone.
+// Every uniform below is the AGSL one minus `in_`, and all lengths are
+// physical pixels, as on the phone.
 
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
@@ -29,9 +30,19 @@ layout(std140, binding = 0) uniform buf {
     float pixelDensity;   // displayMetrics.density; here the screen's scale
     vec4 color;           // straight RGBA
     float sparkleStrength;
+    float distortRadial;
+    float distortXy;
 };
 
 const float PI = 3.1415926535897932384626;
+
+vec2 distort(vec2 p, float time, float distort_amount_radial, float distort_amount_xy) {
+    float angle = atan(p.y, p.x);
+    return p + vec2(sin(angle * 8. + time * 0.003 + 1.641),
+                    cos(angle * 5. + 2.14 + time * 0.00412)) * distort_amount_radial
+        + vec2(sin(p.x * 0.01 + time * 0.00215 + 0.8123),
+               cos(p.y * 0.01 + time * 0.005931)) * distort_amount_xy;
+}
 
 float triangleNoise(vec2 n) {
     n = fract(n * vec2(5.3987, 5.4421));
@@ -77,8 +88,9 @@ float circleRing(vec2 p, float radius) {
 void main() {
     vec2 p = qt_TexCoord0 * resolution;
     float r = max(radius, 1e-3);   // progress 0 is radius 0, which AGSL let divide
-    float sparkleRing = soften(circleRing(p - center, r), blur);
-    float inside = soften(sdCircle(p - center, r * 1.25), blur);
+    vec2 pDistorted = distort(p, time, distortRadial, distortXy);
+    float sparkleRing = soften(circleRing(pDistorted - center, r), blur);
+    float inside = soften(sdCircle(pDistorted - center, r * 1.25), blur);
     float sparkle = sparkles(p - mod(p, pixelDensity * 0.8), time * 0.00175)
         * (1. - sparkleRing) * fadeSparkle;
 

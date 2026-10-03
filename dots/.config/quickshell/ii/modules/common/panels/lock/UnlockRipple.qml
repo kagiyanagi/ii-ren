@@ -10,7 +10,7 @@ import Quickshell.Wayland
  * unlock came from to the edges of the screen, over the desktop coming back.
  * Here it comes out of the password field. Every number is AOSP's
  * AuthRippleView.startUnlockedRipple / AuthRippleController and the
- * RippleShader it drives (shaders/unlockRipple.frag); none were tuned.
+ * RippleShader it drives (SparkleRipple); none were tuned.
  *
  * Its own overlay rather than part of the lock surface, as on the phone where
  * it lives in the shade window: the lock surface is gone a fade after the
@@ -27,30 +27,8 @@ Scope {
     // primary90 on the dark keyguard) at alpha 62.
     readonly property color color: Qt.alpha(Appearance.m3colors.m3primaryFixed, 62 / 255)
 
-    // Linear play fraction; the ValueAnimator's currentPlayTime.
+    // Linear play fraction; SparkleRipple derives the rest from it.
     property real t: 0
-    // The ValueAnimator sets no interpolator, so it is Android's default,
-    // AccelerateDecelerate -- which is exactly InOutSine.
-    readonly property real rawProgress: 0.5 - Math.cos(Math.PI * t) / 2
-    // RippleShader.progress: Interpolators.STANDARD over rawProgress.
-    readonly property real progress: standard(rawProgress)
-
-    // PathInterpolator(0.2, 0, 0, 1). x(u) only rises, so halving the interval
-    // finds u to well under a pixel in 16 steps.
-    function standard(x) {
-        let lo = 0, hi = 1;
-        for (let i = 0; i < 16; i++) {
-            const u = (lo + hi) / 2;
-            if (0.6 * u * (1 - u) * (1 - u) + u * u * u < x) lo = u; else hi = u;
-        }
-        const u = (lo + hi) / 2;
-        return 3 * u * u - 2 * u * u * u;
-    }
-    // RippleShader.getFade: linear in, linear out, on rawProgress.
-    function fade(inStart, inEnd, outStart, outEnd) {
-        const sub = (a, b) => a === b ? (rawProgress > a ? 1 : 0) : (Math.min(Math.max(rawProgress, a), b) - a) / (b - a);
-        return Math.min(sub(inStart, inEnd), 1 - sub(outStart, outEnd));
-    }
 
     Connections {
         target: GlobalStates
@@ -95,24 +73,18 @@ Scope {
                 }
                 mask: Region {}
 
-                ShaderEffect {
+                SparkleRipple {
                     anchors.fill: parent
-                    fragmentShader: Qt.resolvedUrl("../../widgets/shaders/unlockRipple.frag.qsb")
-
-                    property vector2d resolution: Qt.vector2d(width * win.dpr, height * win.dpr)
-                    property vector2d center: Qt.vector2d(win.origin.x * win.dpr, win.origin.y * win.dpr)
+                    t: root.t
+                    duration: root.duration
+                    origin: win.origin
                     // AuthRippleView.radius: 0.9 of the farthest edge from the origin.
-                    property real radius: 0.9 * Math.max(win.origin.x, win.origin.y, width - win.origin.x, height - win.origin.y) * win.dpr * root.progress
-                    property real time: root.t * root.duration
+                    maxRadius: 0.9 * Math.max(win.origin.x, win.origin.y, width - win.origin.x, height - win.origin.y)
+                    dpr: win.dpr
+                    color: root.color
                     // AuthRippleView.updateRippleFadeParams; the sparkle ring keeps RippleShader's default.
-                    property real fadeSparkle: root.fade(0, 0.1, 0.4, 1)
-                    property real fadeFill: root.fade(0, 0.15, 0.15, 0.56)
-                    property real fadeRing: root.fade(0, 0.2, 0.2, 1)
-                    property real blur: 1.25 + (0.5 - 1.25) * root.progress
-                    property real pixelDensity: win.dpr
-                    property color color: root.color
-                    // AuthRippleView's RIPPLE_SPARKLE_STRENGTH
-                    property real sparkleStrength: 0.3
+                    fillFade: [0, 0.15, 0.15, 0.56]
+                    ringFade: [0, 0.2, 0.2, 1]
                 }
             }
         }

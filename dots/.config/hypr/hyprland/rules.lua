@@ -157,6 +157,9 @@ hl.layer_rule({ match = { namespace = "quickshell:floatingRails" }, blur = false
 -- blurring the whole screen behind it every frame would cost more than the shader.
 hl.layer_rule({ match = { namespace = "quickshell:unlockRipple" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:unlockRipple" }, blur = false})
+-- Charging ripple: the same, for 1750ms after the charger goes in.
+hl.layer_rule({ match = { namespace = "quickshell:chargingRipple" }, no_anim = true})
+hl.layer_rule({ match = { namespace = "quickshell:chargingRipple" }, blur = false})
 -- Floating mode's title bars are hyprbars, which the shell loads and turns on. A reload
 -- resets the plugin to "every window gets a bar" until the shell's rules are back, so
 -- start it off here: no bar flashes onto every window on each reload.
