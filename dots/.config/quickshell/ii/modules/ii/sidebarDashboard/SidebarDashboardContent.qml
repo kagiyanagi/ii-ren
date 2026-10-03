@@ -423,18 +423,6 @@ Item {
             QuickToggleButton {
                 iconFill: 1
                 toggled: false
-                buttonIcon: "restart_alt"
-                onClicked: {
-                    Quickshell.execDetached(["hyprctl", "reload"])
-                    Quickshell.reload(true);
-                }
-                StyledToolTip {
-                    text: Translation.tr("Reload Hyprland & Quickshell")
-                }
-            }
-            QuickToggleButton {
-                iconFill: 1
-                toggled: false
                 buttonIcon: "settings"
                 onClicked: {
                     GlobalStates.sidebarRightOpen = false;
