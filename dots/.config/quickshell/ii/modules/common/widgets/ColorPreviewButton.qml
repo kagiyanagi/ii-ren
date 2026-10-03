@@ -18,11 +18,11 @@ RippleButton {
 
     property bool builtInTheme: false
     readonly property string builtInThemeFilePath: builtInThemeDirectory + "/" + colorScheme + ".json"
-    readonly property string builtInThemeCommand: `jq -r '.primary, .primary_container, .secondary' ${builtInThemeFilePath}`
+    readonly property string builtInThemeCommand: `jq -r '.primary, .primary_container, .secondary' '${StringUtils.shellSingleQuoteEscape(builtInThemeFilePath)}'`
 
     property bool customTheme: false
     readonly property string customThemeFilePath: customThemeDirectory + "/" + colorScheme + ".json"
-    readonly property string customThemeCommand: `jq -r '.primary, .primary_container, .secondary' ${customThemeFilePath}`  
+    readonly property string customThemeCommand: `jq -r '.primary, .primary_container, .secondary' '${StringUtils.shellSingleQuoteEscape(customThemeFilePath)}'`  
 
     readonly property string wallpaperPath: Config.options.background.wallpaperPath
     readonly property string scriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/colors/generate_colors_material.py`)
@@ -52,10 +52,10 @@ RippleButton {
     onClicked: {
         if (customTheme) {
             Config.options.appearance.palette.type = root.colorScheme;
-            Quickshell.execDetached(["bash", "-c", `cp ${root.customThemeFilePath} ${Directories.generatedMaterialThemePath}`]);
+            Quickshell.execDetached(["cp", root.customThemeFilePath, Directories.generatedMaterialThemePath]);
         } else if (builtInTheme) {
             Config.options.appearance.palette.type = root.colorScheme;
-            Quickshell.execDetached(["bash", "-c", `cp ${root.builtInThemeFilePath} ${Directories.generatedMaterialThemePath}`]);
+            Quickshell.execDetached(["cp", root.builtInThemeFilePath, Directories.generatedMaterialThemePath]);
         } else {
             Config.options.appearance.palette.type = root.colorScheme;
             Quickshell.execDetached(["bash", "-c", `${Directories.wallpaperSwitchScriptPath} --noswitch`]);

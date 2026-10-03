@@ -15,6 +15,11 @@ Singleton {
 
     property string query: ""
 
+    // A desktop entry's argv as one shell word each, for `terminal -e`.
+    function shellArgs(argv) {
+        return argv.map(arg => `'${StringUtils.shellSingleQuoteEscape(arg)}'`).join(" ");
+    }
+
     function ensurePrefix(prefix) {
         if ([Config.options.search.prefix.action, Config.options.search.prefix.app, Config.options.search.prefix.clipboard, Config.options.search.prefix.emojis, Config.options.search.prefix.math, Config.options.search.prefix.shellCommand, Config.options.search.prefix.webSearch, Config.options.search.prefix.fileSearch].some(i => root.query.startsWith(i))) {
             root.query = prefix + root.query.slice(1);
@@ -320,8 +325,7 @@ Singleton {
                     if (!entry.runInTerminal)
                         entry.execute();
                     else {
-                        // Probably needs more proper escaping, but this will do for now
-                        Quickshell.execDetached(["bash", '-c', `${Config.options.apps.terminal} -e '${StringUtils.shellSingleQuoteEscape(entry.command.join(' '))}'`]);
+                        Quickshell.execDetached(["bash", '-c', `${Config.options.apps.terminal} -e ${root.shellArgs(entry.command)}`]);
                     }
                 },
                 comment: entry.comment,
@@ -346,7 +350,7 @@ Singleton {
                             if (!action.runInTerminal)
                                 action.execute();
                             else {
-                                Quickshell.execDetached(["bash", '-c', `${Config.options.apps.terminal} -e '${StringUtils.shellSingleQuoteEscape(action.command.join(' '))}'`]);
+                                Quickshell.execDetached(["bash", '-c', `${Config.options.apps.terminal} -e ${root.shellArgs(action.command)}`]);
                             }
                         }
                     });
@@ -366,7 +370,7 @@ Singleton {
                 if (cleanedCommand.startsWith(Config.options.search.prefix.shellCommand)) {
                     cleanedCommand = cleanedCommand.slice(Config.options.search.prefix.shellCommand.length);
                 }
-                Quickshell.execDetached(["bash", "-c", root.query.startsWith('sudo') ? `${Config.options.apps.terminal} fish -C '${cleanedCommand}'` : cleanedCommand]);
+                Quickshell.execDetached(["bash", "-c", root.query.startsWith('sudo') ? `${Config.options.apps.terminal} fish -C '${StringUtils.shellSingleQuoteEscape(cleanedCommand)}'` : cleanedCommand]);
             }
         });
         const webSearchResultObject = root.createResult( {

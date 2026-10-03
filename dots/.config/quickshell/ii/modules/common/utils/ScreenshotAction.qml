@@ -73,7 +73,7 @@ Singleton {
                     "bash", "-c",
                     `mkdir -p '${StringUtils.shellSingleQuoteEscape(saveDir)}' && \
                     saveFileName="screenshot-$(date '+%Y-%m-%d_%H.%M.%S').png" && \
-                    savePath="${saveDir}/$saveFileName" && \
+                    savePath='${StringUtils.shellSingleQuoteEscape(saveDir)}'/"$saveFileName" && \
                     ${cropToStdout} | tee >(wl-copy) > "$savePath" && \
                     ${cleanup}`
                 ]

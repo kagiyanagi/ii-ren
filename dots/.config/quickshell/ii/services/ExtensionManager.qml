@@ -365,11 +365,12 @@ Singleton {
         })
 
         updateCheckProc._pendingExtId = extId
+        // Arguments, never spliced in: the repo url and branch come from extension metadata.
         updateCheckProc.exec(["bash", "-c",
-            "local=$(git -C \"" + ext.installedPath + "\" rev-parse HEAD 2>/dev/null) && " +
-            "remote=$(git ls-remote \"" + ext.repoUrl + "\" \"" + ext.defaultBranch + "\" 2>/dev/null | head -1 | awk '{print $1}') && " +
-            "echo \"$local $remote\""
-        ])
+            'local=$(git -C "$1" rev-parse HEAD 2>/dev/null) && '
+            + 'remote=$(git ls-remote -- "$2" "$3" 2>/dev/null | head -1 | awk \'{print $1}\') && '
+            + 'echo "$local $remote"',
+            "_", ext.installedPath, ext.repoUrl, ext.defaultBranch])
     }
 
     function processUpdateCheck(extId, output) {

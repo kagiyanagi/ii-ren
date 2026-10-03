@@ -45,7 +45,8 @@ Singleton {
             // "silent" places the window without dragging the current workspace
             // along with it, which is the whole point of autostart.
             const rule = workspace > 0 ? `[workspace ${workspace} silent] ` : "";
-            Hyprland.dispatch(`hl.dsp.exec_cmd("${rule}${cmd.replace(/"/g, '\\"')}")`);
+            // JSON's string escapes are Lua's for anything a command line holds, \ and " included.
+            Hyprland.dispatch(`hl.dsp.exec_cmd(${JSON.stringify(rule + cmd)})`);
         }
         stepTimer.interval = Math.max(0, (app.delay ?? 0) * 1000);
         stepTimer.restart();
