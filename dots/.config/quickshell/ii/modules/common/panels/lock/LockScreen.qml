@@ -184,7 +184,9 @@ Scope {
 
     function lock() {
         if (Config.options.lock.useHyprlock) {
-            Quickshell.execDetached(["bash", "-c", "pidof hyprlock || hyprlock"]);
+            // swaylock where the distro has no hyprlock (Debian), for Nix installs
+            // whose own lock screen can't reach the host's PAM.
+            Quickshell.execDetached(["bash", "-c", "if command -v hyprlock >/dev/null; then pidof hyprlock || hyprlock; else pidof swaylock || swaylock -c 000000; fi"]);
             return;
         }
         if (GlobalStates.screenLocked) return; // already locked/locking, avoid re-triggering WlSessionLock

@@ -59,7 +59,7 @@
         "networkEthernet": "kcmshell6 kcm_networkmanagement",
         "taskManager": "kitty -1 btop --force-utf",
         "terminal": "kitty -1",
-        "update": "kitty -1 --hold=yes fish -i -c 'pkexec pacman -Syu'",
+        "update": "kitty -1 --hold=yes ~/.config/quickshell/ii/scripts/update-system.sh",
         "volumeMixer": "~/.config/hypr/hyprland/scripts/launch_first_available.sh \"pavucontrol-qt\" \"pavucontrol\""
     },
     "audio": {

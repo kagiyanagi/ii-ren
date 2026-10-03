@@ -89,7 +89,7 @@ check_and_prompt_upscale() {
             if [[ "$action" == "open_upscayl" ]]; then
                 if command -v upscayl &>/dev/null; then
                     nohup upscayl > /dev/null 2>&1 &
-                else
+                elif command -v yay &>/dev/null; then
                     action2=$(notify-send \
                         -a "Wallpaper switcher" \
                         -c "im.error" \
@@ -257,11 +257,13 @@ switch() {
             fi
             if [ ${#missing_deps[@]} -gt 0 ]; then
                 echo "Missing deps: ${missing_deps[*]}"
-                echo "Arch: sudo pacman -S ${missing_deps[*]}"
+                # Only pacman gets an install button: elsewhere the package names differ.
+                install_action=()
+                command -v pacman &>/dev/null && install_action=(-A "install_arch=Install (Arch)")
                 action=$(notify-send \
                     -a "Wallpaper switcher" \
                     -c "im.error" \
-                    -A "install_arch=Install (Arch)" \
+                    "${install_action[@]}" \
                     "Can't switch to video wallpaper" \
                     "Missing dependencies: ${missing_deps[*]}")
                 if [[ "$action" == "install_arch" ]]; then
