@@ -163,6 +163,7 @@ Singleton {
         if (!root.live) return;
         if (!Config.options.sounds.enable) return;
         if (!Config.options.sounds[category]) return;
+        if (root._sleeping) return;
 
         const now = Date.now();
         if (now - root._initTime < (root._startupGraceMs[category] ?? 0)) return;
@@ -402,6 +403,21 @@ Singleton {
             root.playEvent("lock", GlobalStates.screenLocked
                 ? ["screen-locked", "service-logout"]
                 : ["screen-unlocked", "service-login"]);
+        }
+    }
+
+    // Going to sleep, hypridle locks the session, so the lock sound would start
+    // just as PipeWire is frozen; the card then loops its buffer until power goes
+    // (all of a hibernate's image write). logind says so before the lock lands.
+    property bool _sleeping: false
+    Process {
+        running: root.live && Config.options.sounds.enable
+        command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1", "--object-path", "/org/freedesktop/login1"]
+        stdout: SplitParser {
+            onRead: line => {
+                const sleeping = line.match(/\.PrepareForSleep \((true|false),\)/)?.[1];
+                if (sleeping) root._sleeping = sleeping === "true";
+            }
         }
     }
 
