@@ -22,6 +22,53 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
+    // One hyprctl query. Asked again while running, it runs once more when done, so the
+    // answer is never older than the last event; running = true on a running Process was
+    // a no-op, and an event landing mid-query left the stale reply standing. A reply
+    // identical to the last one is dropped, so a title change elsewhere does not re-run
+    // every binding on the window list, and one cut short (a reload) keeps the old data.
+    component Query: Process {
+        id: query
+        property bool again: false
+        property string last: ""
+        signal reply(var data)
+
+        // Hyprland sends most events twice (activewindow and activewindowv2, ...), back to
+        // back: one run answers both.
+        function refresh() {
+            Qt.callLater(query.start);
+        }
+
+        function start() {
+            if (query.running)
+                query.again = true;
+            else
+                query.running = true;
+        }
+
+        stdout: StdioCollector {
+            id: out
+            onStreamFinished: {
+                if (out.text === query.last)
+                    return;
+                let data;
+                try {
+                    data = JSON.parse(out.text);
+                } catch (e) {
+                    return;
+                }
+                query.last = out.text;
+                query.reply(data);
+            }
+        }
+        onRunningChanged: {
+            if (query.running || !query.again)
+                return;
+            query.again = false;
+            query.refresh();
+        }
+    }
+
     // Convenient stuff
 
     function toplevelsForWorkspace(workspace) {
@@ -47,20 +94,20 @@ Singleton {
     // Internals
 
     function updateWindowList() {
-        getClients.running = true;
+        getClients.refresh();
     }
 
     function updateLayers() {
-        getLayers.running = true;
+        getLayers.refresh();
     }
 
     function updateMonitors() {
-        getMonitors.running = true;
+        getMonitors.refresh();
     }
 
     function updateWorkspaces() {
-        getWorkspaces.running = true;
-        getActiveWorkspace.running = true;
+        getWorkspaces.refresh();
+        getActiveWorkspace.refresh();
     }
 
     function updateAll() {
@@ -87,81 +134,71 @@ Singleton {
         target: Hyprland
 
         function onRawEvent(event) {
-            // console.log("Hyprland raw event:", event.name);
             // "custom" is FloatingMode's watcher, up to once a frame: nothing here changes with it.
             if (["openlayer", "closelayer", "screencast", "custom"].includes(event.name)) return;
-            updateAll()
+            // A title changes the window list and nothing anyone here reads - and it is the
+            // event that streams: a terminal or a tab retitling itself.
+            if (event.name === "windowtitle" || event.name === "windowtitlev2") {
+                root.updateWindowList();
+                return;
+            }
+            root.updateAll();
         }
     }
 
-    Process {
+    Query {
         id: getClients
         command: ["hyprctl", "clients", "-j"]
-        stdout: StdioCollector {
-            id: clientsCollector
-            onStreamFinished: {
-                root.windowList = JSON.parse(clientsCollector.text)
-                let tempWinByAddress = {};
-                for (var i = 0; i < root.windowList.length; ++i) {
-                    var win = root.windowList[i];
-                    tempWinByAddress[win.address] = win;
-                }
-                root.windowByAddress = tempWinByAddress;
-                root.addresses = root.windowList.map(win => win.address);
+        onReply: data => {
+            root.windowList = data
+            let tempWinByAddress = {};
+            for (var i = 0; i < root.windowList.length; ++i) {
+                var win = root.windowList[i];
+                tempWinByAddress[win.address] = win;
             }
+            root.windowByAddress = tempWinByAddress;
+            root.addresses = root.windowList.map(win => win.address);
         }
     }
 
-    Process {
+    Query {
         id: getMonitors
         command: ["hyprctl", "monitors", "-j"]
-        stdout: StdioCollector {
-            id: monitorsCollector
-            onStreamFinished: {
-                root.monitors = JSON.parse(monitorsCollector.text);
-            }
+        onReply: data => {
+            root.monitors = data;
         }
     }
 
-    Process {
+    Query {
         id: getLayers
         command: ["hyprctl", "layers", "-j"]
-        stdout: StdioCollector {
-            id: layersCollector
-            onStreamFinished: {
-                root.layers = JSON.parse(layersCollector.text);
-            }
+        onReply: data => {
+            root.layers = data;
         }
     }
 
-    Process {
+    Query {
         id: getWorkspaces
         command: ["hyprctl", "workspaces", "-j"]
-        stdout: StdioCollector {
-            id: workspacesCollector
-            onStreamFinished: {
-                var rawWorkspaces = JSON.parse(workspacesCollector.text);
-                // Filter out invalid workspace ids (e.g. lock-screen temp workspace 2147483647 - N)
-                root.workspaces = rawWorkspaces.filter(ws => ws.id >= 1 && ws.id <= 100);
-                let tempWorkspaceById = {};
-                for (var i = 0; i < root.workspaces.length; ++i) {
-                    var ws = root.workspaces[i];
-                    tempWorkspaceById[ws.id] = ws;
-                }
-                root.workspaceById = tempWorkspaceById;
-                root.workspaceIds = root.workspaces.map(ws => ws.id);
+        onReply: data => {
+            var rawWorkspaces = data;
+            // Filter out invalid workspace ids (e.g. lock-screen temp workspace 2147483647 - N)
+            root.workspaces = rawWorkspaces.filter(ws => ws.id >= 1 && ws.id <= 100);
+            let tempWorkspaceById = {};
+            for (var i = 0; i < root.workspaces.length; ++i) {
+                var ws = root.workspaces[i];
+                tempWorkspaceById[ws.id] = ws;
             }
+            root.workspaceById = tempWorkspaceById;
+            root.workspaceIds = root.workspaces.map(ws => ws.id);
         }
     }
 
-    Process {
+    Query {
         id: getActiveWorkspace
         command: ["hyprctl", "activeworkspace", "-j"]
-        stdout: StdioCollector {
-            id: activeWorkspaceCollector
-            onStreamFinished: {
-                root.activeWorkspace = JSON.parse(activeWorkspaceCollector.text);
-            }
+        onReply: data => {
+            root.activeWorkspace = data;
         }
     }
 }
