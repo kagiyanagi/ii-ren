@@ -131,9 +131,17 @@ Item {
         root.showSearchRow(root.searchHits[root.searchIndex]);
     }
 
-    // The gateway boots a Python agent and its MCP fleet, so it starts when this
-    // page is first built rather than at login.
-    Component.onCompleted: {
+    // The gateway boots a Python agent and its MCP fleet, and tts.py a voice model, so
+    // both start the first time this page is on screen - not when it is built: the
+    // sidebar is kept loaded, so built meant login, ~250 MB of Python resident for a
+    // chat not yet opened. Its window, not the sidebar flag, so a detached one counts.
+    readonly property bool onScreen: root.QsWindow.window?.visible ?? false
+    onOnScreenChanged: root.startBackends()
+    Component.onCompleted: root.startBackends()
+
+    function startBackends(): void {
+        if (!root.onScreen)
+            return;
         HermesService.ensureStarted();
         HermesService.prewarmTts();
     }
