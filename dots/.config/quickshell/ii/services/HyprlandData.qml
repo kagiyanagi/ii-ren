@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import qs.modules.common.utils
 
 /**
  * Provides access to some Hyprland data not available in Quickshell.Hyprland.
@@ -22,29 +23,13 @@ Singleton {
     property var monitors: []
     property var layers: ({})
 
-    // One hyprctl query. Asked again while running, it runs once more when done, so the
-    // answer is never older than the last event; running = true on a running Process was
-    // a no-op, and an event landing mid-query left the stale reply standing. A reply
-    // identical to the last one is dropped, so a title change elsewhere does not re-run
-    // every binding on the window list, and one cut short (a reload) keeps the old data.
-    component Query: Process {
+    // One hyprctl query, re-run per change (RefreshProcess). A reply identical to the last
+    // one is dropped, so a title change elsewhere does not re-run every binding on the
+    // window list, and one cut short (a reload) keeps the old data.
+    component Query: RefreshProcess {
         id: query
-        property bool again: false
         property string last: ""
         signal reply(var data)
-
-        // Hyprland sends most events twice (activewindow and activewindowv2, ...), back to
-        // back: one run answers both.
-        function refresh() {
-            Qt.callLater(query.start);
-        }
-
-        function start() {
-            if (query.running)
-                query.again = true;
-            else
-                query.running = true;
-        }
 
         stdout: StdioCollector {
             id: out
@@ -60,12 +45,6 @@ Singleton {
                 query.last = out.text;
                 query.reply(data);
             }
-        }
-        onRunningChanged: {
-            if (query.running || !query.again)
-                return;
-            query.again = false;
-            query.refresh();
         }
     }
 

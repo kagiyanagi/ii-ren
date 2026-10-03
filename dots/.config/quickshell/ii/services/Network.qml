@@ -245,12 +245,14 @@ Singleton {
     }
 
     // Status update
+    // Once per nmcli monitor line, and a connection change prints dozens: each read is a
+    // RefreshProcess, so a burst is one run each and the last line is never missed.
     function update() {
-        updateConnectionType.startCheck();
-        wifiStatusProcess.running = true
-        updateNetworkName.running = true;
-        updateNetworkStrength.running = true;
-        updateHotspotStateProc.running = true;
+        updateConnectionType.refresh();
+        wifiStatusProcess.refresh();
+        updateNetworkName.refresh();
+        updateNetworkStrength.refresh();
+        updateHotspotStateProc.refresh();
     }
 
     KeepAliveProcess {
@@ -261,22 +263,17 @@ Singleton {
         }
     }
 
-    Process {
+    // Its own collector, not a shared buffer: the old startCheck() emptied the buffer of a
+    // run still in flight, which then read a device line as the connectivity state.
+    RefreshProcess {
         id: updateConnectionType
-        property string buffer
         command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
         running: true
-        function startCheck() {
-            buffer = "";
-            updateConnectionType.running = true;
-        }
-        stdout: SplitParser {
-            onRead: data => {
-                updateConnectionType.buffer += data + "\n";
-            }
+        stdout: StdioCollector {
+            id: connectionTypeOut
         }
         onExited: (exitCode, exitStatus) => {
-            const lines = updateConnectionType.buffer.trim().split('\n');
+            const lines = connectionTypeOut.text.trim().split('\n');
             const connectivity = lines.pop() // none, limited, full
             let hasEthernet = false;
             let hasWifi = false;
@@ -311,7 +308,7 @@ Singleton {
         }
     }
 
-    Process {
+    RefreshProcess {
         id: updateNetworkName
         command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
         running: true
@@ -322,10 +319,10 @@ Singleton {
         }
     }
 
-    Process {
+    RefreshProcess {
         id: updateNetworkStrength
         running: true
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
+        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi list --rescan no | awk '/^\\*/{if (NR!=1) {print $2}}'"]
         stdout: SplitParser {
             onRead: data => {
                 root.networkStrength = parseInt(data);
@@ -333,7 +330,7 @@ Singleton {
         }
     }
 
-    Process {
+    RefreshProcess {
         id: wifiStatusProcess
         command: ["nmcli", "radio", "wifi"]
         Component.onCompleted: running = true
@@ -432,7 +429,7 @@ Singleton {
         }
     }
 
-    Process {
+    RefreshProcess {
         id: updateHotspotStateProc
         running: true
         command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show --active | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli -g connection.id,802-11-wireless.ssid c show \"$u\"; exit 0; fi; done"]
@@ -460,7 +457,7 @@ Singleton {
         id: startHotspotProc
         command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli connection up \"$u\" && exit 0; fi; done; nmcli dev wifi hotspot"]
         onExited: (exitCode, exitStatus) => {
-            updateHotspotStateProc.running = true;
+            updateHotspotStateProc.refresh();
             if (exitCode !== 0) {
                 Quickshell.execDetached(["notify-send",
                     Translation.tr("Hotspot"),
@@ -475,7 +472,7 @@ Singleton {
         id: stopHotspotProc
         command: ["sh", "-c", "for u in $(nmcli -t -f UUID,TYPE c show --active | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then nmcli connection down \"$u\"; fi; done; nmcli connection down Hotspot 2>/dev/null || true"]
         onExited: (exitCode, exitStatus) => {
-            updateHotspotStateProc.running = true;
+            updateHotspotStateProc.refresh();
         }
     }
 
@@ -525,7 +522,7 @@ Singleton {
         command: ["bash", "-c", "UUID=$(for u in $(nmcli -t -f UUID,TYPE c show | awk -F: '$2==\"802-11-wireless\"{print $1}'); do if [ \"$(nmcli -g 802-11-wireless.mode c show \"$u\" 2>/dev/null)\" = \"ap\" ]; then echo \"$u\"; exit 0; fi; done); if [ -n \"$UUID\" ]; then nmcli connection modify \"$UUID\" 802-11-wireless.ssid \"$NEW_SSID\" 802-11-wireless.band \"$NEW_BAND\"; if [ \"$NEW_SEC\" = \"none\" ]; then nmcli connection modify \"$UUID\" 802-11-wireless-security.key-mgmt none 802-11-wireless-security.psk \"\"; else nmcli connection modify \"$UUID\" 802-11-wireless-security.key-mgmt \"$NEW_SEC\" 802-11-wireless-security.psk \"$NEW_PASS\"; fi; if [ \"$(nmcli -g GENERAL.STATE c show \"$UUID\" 2>/dev/null)\" = \"activated\" ]; then nmcli connection up \"$UUID\"; fi; else nmcli connection add type wifi ifname \"*\" con-name \"Hotspot\" autoconnect no ssid \"$NEW_SSID\" 802-11-wireless.mode ap 802-11-wireless.band \"$NEW_BAND\" ipv4.method shared; if [ \"$NEW_SEC\" = \"none\" ]; then nmcli connection modify \"Hotspot\" 802-11-wireless-security.key-mgmt none; else nmcli connection modify \"Hotspot\" 802-11-wireless-security.key-mgmt \"$NEW_SEC\" 802-11-wireless-security.psk \"$NEW_PASS\"; fi; fi"]
         onExited: (exitCode, exitStatus) => {
             fetchHotspotConfigProc.running = true;
-            updateHotspotStateProc.running = true;
+            updateHotspotStateProc.refresh();
             if (exitCode === 0) {
                 Quickshell.execDetached(["notify-send",
                     Translation.tr("Hotspot"),

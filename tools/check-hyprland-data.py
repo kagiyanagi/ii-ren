@@ -8,7 +8,8 @@ reply also replaced the arrays every dock, overview and workspace binding reads,
 when hyprctl said exactly what it said last time. And a refresh asked for while a query
 was running was dropped, so an event landing mid-query left a stale list standing.
 
-This runs the file's own Query logic and event filter under node with a fake Process:
+This runs RefreshProcess (modules/common/utils), which every such read now goes
+through, plus the Query reply handling and event filter, under node with a fake Process:
 two refreshes in one tick start one run; a refresh mid-run gets exactly one more run
 after it; an identical or broken reply changes nothing; a title event refreshes the
 window list alone.
@@ -17,23 +18,20 @@ import re
 import subprocess
 from pathlib import Path
 
-QML = (Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/services/HyprlandData.qml").read_text()
+II = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii"
+QML = (II / "services/HyprlandData.qml").read_text()
+REFRESH = (II / "modules/common/utils/RefreshProcess.qml").read_text()
 
-def body(name):
-    m = re.search(rf"function {name}\(([^)]*)\) \{{\n(.*?)\n {{8}}\}}\n", QML, re.S)
-    assert m, f"HyprlandData.qml: no function {name}"
-    return m.group(1), m.group(2)
+def block(src, head, indent):
+    m = re.search(rf"\n {{{indent}}}{head} \{{\n(.*?)\n {{{indent}}}\}}\n", src, re.S)
+    assert m, f"no `{head}` block"
+    return m.group(1).replace("root.", "query.")
 
-def handler(name):
-    m = re.search(rf"\n {{8}}{name}: (?:\w+ => )?\{{\n(.*?)\n {{8}}\}}\n", QML, re.S) or \
-        re.search(rf"\n {{12}}{name}: \{{\n(.*?)\n {{12}}\}}\n", QML, re.S)
-    assert m, f"HyprlandData.qml: no {name} handler"
-    return m.group(1)
-
-_, refresh = body("refresh")
-_, start = body("start")
-running_changed = handler("onRunningChanged")
-stream_finished = handler("onStreamFinished")
+refresh = block(REFRESH, r"function refresh\(\)", 4)
+start = block(REFRESH, r"function _start\(\)", 4)
+running_changed = block(REFRESH, "onRunningChanged:", 4)
+assert "component Query: RefreshProcess" in QML, "HyprlandData's queries no longer go through RefreshProcess"
+stream_finished = block(QML, "onStreamFinished:", 12)
 ev = re.search(r"function onRawEvent\(event\) \{\n(.*?)\n {8}\}\n", QML, re.S)
 assert ev, "HyprlandData.qml: no onRawEvent"
 
@@ -43,7 +41,7 @@ let later = [];
 const Qt = {{ callLater: f => {{ if (!later.includes(f)) later.push(f); }} }};
 const tick = () => {{ const fs = later; later = []; fs.forEach(f => f()); }};
 function makeQuery() {{
-    const query = {{ again: false, last: "", runs: 0, replies: [], _running: false }};
+    const query = {{ _again: false, last: "", runs: 0, replies: [], _running: false }};
     const out = {{ text: "" }};
     Object.defineProperty(query, "running", {{
         get() {{ return this._running; }},
@@ -51,7 +49,7 @@ function makeQuery() {{
     }});
     query.reply = d => query.replies.push(d);
     query.refresh = function () {{ {refresh} }};
-    query.start = function () {{ {start} }};
+    query._start = function () {{ {start} }};
     query.onRunningChanged = function () {{ {running_changed} }};
     query.finish = function (text) {{ out.text = text; (function () {{ {stream_finished} }})(); this.running = false; }};
     return query;
