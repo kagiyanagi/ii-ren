@@ -61,6 +61,107 @@ Variants {
         // Subject depth on a video means we play it here, packed with its matte,
         // instead of letting mpvpaper have it.
         readonly property bool depthVideo: WallpaperSubject.packedVideo.length > 0
+
+        // mpvpaper draws a video wallpaper on its own layer under this one. Once this
+        // window plays the video itself (effects, weather, subject depth) it covers
+        // mpvpaper completely, and mpvpaper went on decoding and drawing the same video
+        // for nobody. So mpvpaper stands down once our copy is actually playing, and
+        // comes back through switchwall.sh's restore script when ours is not needed.
+        // `mpvpaperDown` holds from the moment it is stopped until its layer is back on
+        // screen, and our copy plays on, plain, through all of it: dropping ours first
+        // left the desktop black for the second mpvpaper takes to return.
+        // Decided only while unlocked: the lock's blur plays the video too, and comes
+        // and goes with every lock.
+        readonly property bool ownsVideo: bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered
+            && (bgRoot.depthVideo || wallpaperEffects.takesOver || weatherEffects.takesOver)
+        readonly property bool shellPlaysVideo: videoLoader.item?.playing ?? false
+        readonly property bool videoHandoverSettled: bgRoot.wallpaperIsVideo && !GlobalStates.screenLocked && !blurLoader.active
+        property bool mpvpaperDown: false
+        // Our copy fades in over mpvpaper and out over it again; mpvpaper only stands
+        // down under a copy that is fully there, and comes back under one that is
+        // still there. A cut either way showed the empty compositor for a few frames.
+        property bool videoCopyLeaving: false
+        readonly property bool videoCopyShown: bgRoot.shellPlaysVideo
+            && (bgRoot.ownsVideo || (bgRoot.mpvpaperDown && !bgRoot.videoCopyLeaving))
+        readonly property bool videoCopyOpaque: wallpaper.opacity >= 1
+        function syncMpvpaper() {
+            if (!bgRoot.videoHandoverSettled)
+                return;
+            if (bgRoot.ownsVideo) {
+                bgRoot.videoCopyLeaving = false;
+                if (!bgRoot.shellPlaysVideo || !bgRoot.videoCopyOpaque)
+                    return;
+                bgRoot.mpvpaperDown = true;
+                mpvpaperBack.stop();
+                Quickshell.execDetached(["pkill", "-x", "mpvpaper"]);
+            } else if (bgRoot.mpvpaperDown) {
+                bgRoot.restoreMpvpaper();
+            }
+        }
+        // Fade our copy out over the mpvpaper now under it; the hold ends at opacity 0
+        // (onOpacityChanged on the wallpaper item), or now if it is not showing at all.
+        function releaseVideoCopy() {
+            mpvpaperGiveUp.stop();
+            if (wallpaper.opacity > 0) {
+                bgRoot.videoCopyLeaving = true;
+                return;
+            }
+            bgRoot.videoCopyLeaving = false;
+            bgRoot.mpvpaperDown = false;
+        }
+        function restoreMpvpaper() {
+            mpvpaperGiveUp.restart();
+            Quickshell.execDetached(["bash", Directories.videoWallpaperRestoreScript]);
+        }
+        onOwnsVideoChanged: bgRoot.syncMpvpaper()
+        onShellPlaysVideoChanged: bgRoot.syncMpvpaper()
+        onVideoHandoverSettledChanged: bgRoot.syncMpvpaper()
+        onVideoCopyOpaqueChanged: bgRoot.syncMpvpaper()
+
+        Connections {
+            target: Hyprland
+            function onRawEvent(event) {
+                if (event.name !== "openlayer" || event.data !== "mpvpaper")
+                    return;
+                // Started while we own the video - by switchwall.sh, a config reload -
+                // stands down again; otherwise it is back, and ours lets go once its
+                // frames are up. The layer maps first and the decoder delivers 0.3-0.7s
+                // later, measured; ponytail: a fixed grace, not a frame signal, since
+                // mpvpaper exposes none - a longer hold only costs a second of decode.
+                if (bgRoot.ownsVideo && bgRoot.shellPlaysVideo)
+                    bgRoot.syncMpvpaper();
+                else
+                    mpvpaperBack.restart();
+            }
+        }
+        Timer {
+            id: mpvpaperBack
+            interval: 1200
+            onTriggered: bgRoot.releaseVideoCopy()
+        }
+        // An mpvpaper that never maps (gone, or no restore script) must not keep ours forever.
+        Timer {
+            id: mpvpaperGiveUp
+            interval: 5000
+            onTriggered: bgRoot.releaseVideoCopy()
+        }
+        // A shell that stood mpvpaper down and then died leaves the desktop with
+        // neither: once our own player has had its chance, check, and bring it back.
+        Timer {
+            interval: 3000
+            running: true
+            onTriggered: if (bgRoot.videoHandoverSettled && !bgRoot.ownsVideo) mpvpaperCheck.running = true
+        }
+        Process {
+            id: mpvpaperCheck
+            command: ["pgrep", "-x", "mpvpaper"]
+            onExited: exitCode => {
+                if (exitCode !== 1)
+                    return;
+                bgRoot.mpvpaperDown = true;
+                bgRoot.restoreMpvpaper();
+            }
+        }
         // Desktop and lock screen decide independently whether the cutout
         // actually draws, same as the shape mask - the cutout itself is one
         // shared resource (WallpaperSubject.enabled), this is who gets to see it.
@@ -557,7 +658,30 @@ Variants {
                 // The packed video is double height, and the bottom half is the
                 // matte. Without this it paints over the lower desktop.
                 clip: bgRoot.depthVideo
-                opacity: (bgRoot.wallpaperIsVideo && !bgRoot.depthVideo && !wallpaperEffects.takesOver && !weatherEffects.takesOver && !blurLoader.active) ? 0 : 1
+                // A video is ours to show only once our copy is actually playing (or
+                // while mpvpaper is down): until then mpvpaper is still underneath, and
+                // showing an empty player over it blinked the desktop black.
+                opacity: (bgRoot.wallpaperIsVideo && !blurLoader.active && !bgRoot.videoCopyShown) ? 0 : 1
+                // Opacity is an effect: effects curve, no overshoot, a screen-sized
+                // surface arriving on slow effects and leaving at exit speed - the
+                // subject layer's spec below. Only for the mpvpaper handover: the
+                // lock's blur reads this item and must never see it half there.
+                Behavior on opacity {
+                    enabled: bgRoot.videoHandoverSettled
+                    NumberAnimation {
+                        duration: bgRoot.videoCopyShown
+                            ? Appearance.animationCurves.expressiveSlowEffectsDuration
+                            : Appearance.animation.elementMoveExit.duration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                    }
+                }
+                onOpacityChanged: {
+                    if (opacity > 0 || !bgRoot.videoCopyLeaving)
+                        return;
+                    bgRoot.videoCopyLeaving = false;
+                    bgRoot.mpvpaperDown = false;
+                }
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
                 property int lower: Math.floor(bgRoot.firstWorkspaceId / chunkSize) * chunkSize
@@ -636,8 +760,19 @@ Variants {
                     active: bgRoot.wallpaperIsVideo || bgRoot.depthVideo
                     sourceComponent: VideoOutput {
                         id: vidOutput
-                        readonly property bool playing: videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo
+                        // Playing means a frame has arrived, not just the state: the
+                        // player reports Playing a few frames before it has a picture.
+                        readonly property bool playing: videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo && vidOutput.hasFrame
+                        property bool hasFrame: false
                         fillMode: VideoOutput.PreserveAspectCrop
+
+                        Connections {
+                            target: vidOutput.videoSink ?? null
+                            enabled: !vidOutput.hasFrame
+                            function onVideoFrameChanged() {
+                                vidOutput.hasFrame = true;
+                            }
+                        }
 
                         MediaPlayer {
                             id: videoPlayer
@@ -649,7 +784,7 @@ Variants {
                                 // downstream - effects, lock blur - sees a wallpaper.
                                 if (bgRoot.depthVideo)
                                     return WallpaperSubject.packedVideo;
-                                if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active))
+                                if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active || bgRoot.mpvpaperDown))
                                     return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
                                 return "";
                             }
@@ -657,6 +792,7 @@ Variants {
                             videoOutput: vidOutput
                             loops: MediaPlayer.Infinite
                             autoPlay: true
+                            onSourceChanged: vidOutput.hasFrame = false
                         }
                     }
                 }
@@ -718,8 +854,9 @@ Variants {
                 anchors.fill: wallpaper
                 wallpaper: wallpaper
                 isVideo: bgRoot.wallpaperIsVideo
-                // The lock screen runs its own blur; don't stack the two.
-                visible: !blurLoader.active
+                // The lock screen runs its own blur; don't stack the two. And a video's
+                // effects wait for frames, like the wallpaper item they read.
+                visible: !blurLoader.active && (!bgRoot.wallpaperIsVideo || bgRoot.shellPlaysVideo || bgRoot.mpvpaperDown)
             }
             }
 

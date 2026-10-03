@@ -211,19 +211,8 @@ Singleton {
     onCustomChanged: root.custom ? root.stopWork() : root.generate()
     Component.onCompleted: root.generate()
 
-    // ── mpvpaper handover ────────────────────────────────────────────────────
-    // A video wallpaper is normally drawn by mpvpaper, on its own layer below
-    // the shell. Subject depth needs the shell to draw it instead, because the
-    // matte has to come out of the same decoder as the frame it belongs to. So
-    // while depth owns a video, mpvpaper stands down; the moment it does not,
-    // switchwall.sh's own restore script puts it back exactly as it was.
-    onPackedVideoChanged: {
-        if (root.packedVideo.length > 0) {
-            Quickshell.execDetached(["pkill", "-f", "-9", "mpvpaper"]);
-        } else if (root.wallpaperIsVideo) {
-            Quickshell.execDetached(["bash", Directories.videoWallpaperRestoreScript]);
-        }
-    }
+    // The mpvpaper handover lives in modules/ii/background/Background.qml: it stands
+    // mpvpaper down whenever the shell plays the video itself, depth or not.
 
     Connections {
         target: Config.options.background
