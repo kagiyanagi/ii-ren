@@ -2,6 +2,7 @@ pragma Singleton
 
 import qs.modules.common
 import qs.modules.common.functions
+import QtQuick
 import Quickshell
 
 /**
@@ -38,14 +39,26 @@ Singleton {
         }
     ]
 
-    // Deduped list to fix double icons
-    readonly property list<DesktopEntry> list: Array.from(DesktopEntries.applications.values)
-        .filter((app, index, self) => 
-            index === self.findIndex((t) => (
-                t.id === app.id
-            ))
-    )
-    
+    // Deduped list to fix double icons. Rebuilt once the database settles: it announces
+    // every entry as it lands, ~600 times over startup, and each rebuild re-prepares the
+    // fuzzy indexes below and re-runs every guessIcon() binding.
+    property list<DesktopEntry> list: []
+
+    Timer {
+        id: rebuildList
+        interval: 100
+        running: true
+        onTriggered: {
+            const seen = new Set();
+            root.list = DesktopEntries.applications.values.filter(app => !seen.has(app.id) && seen.add(app.id));
+        }
+    }
+
+    Connections {
+        target: DesktopEntries.applications
+        function onValuesChanged() { rebuildList.restart() }
+    }
+
     readonly property var preppedNames: list.map(a => ({
         name: Fuzzy.prepare(`${a.name} `),
         entry: a
