@@ -678,6 +678,15 @@ Item {
                 }
             }
 
+            ConfigSwitch {
+                buttonIcon: "smart_toy"
+                text: Translation.tr("Notify when Hermes replies and its tab isn't visible")
+                checked: Config.options.hermes.notifyWhenAway
+                onCheckedChanged: {
+                    Config.options.hermes.notifyWhenAway = checked;
+                }
+            }
+
             ConfigNavRow {
                 buttonIcon: "manage_history"
                 text: Translation.tr("Browse notification history")

@@ -138,13 +138,6 @@ ApplicationWindow {
             component: "modules/settings/AdvancedConfig.qml"
         },
         {
-            id: "hermes",
-            name: Translation.tr("Hermes"),
-            summary: Translation.tr("Dictation, persona, display"),
-            icon: "smart_toy",
-            component: "modules/settings/HermesConfig.qml"
-        },
-        {
             id: "profiles",
             name: Translation.tr("Profiles"),
             summary: Translation.tr("Saved setups"),

@@ -168,11 +168,8 @@ Singleton {
     property bool compressing: false
     property var contextBreakdown: null
 
-    // ── Account / vault / processes ──────────────────────────────────────
+    // ── Processes ────────────────────────────────────────────────────────
 
-    property var billing: null
-    property var vaultItems: []
-    property var vaultSources: []
     property var agentProcesses: []
     property var spawnTrees: []
 
@@ -850,13 +847,6 @@ Singleton {
 
     // ── Settings the gateway owns ─────────────────────────────────────────
 
-    function getConfig(key: string, callback: var): void {
-        root.call("config.get", { key: key, session_id: root.sessionId }, (result, error) => {
-            if (callback)
-                callback(error ? null : result);
-        });
-    }
-
     function setConfig(key: string, value: var, callback: var): void {
         root.call("config.set", { key: key, value: value, session_id: root.sessionId }, (result, error) => {
             if (error)
@@ -896,47 +886,12 @@ Singleton {
         });
     }
 
-    // ── Account, vault, processes ─────────────────────────────────────────
-
-    function refreshBilling(): void {
-        root.call("billing.state", {}, (result, error) => {
-            root.billing = error ? null : result;
-        });
-    }
+    // ── Processes ─────────────────────────────────────────────────────────
 
     function refreshAgentProcesses(): void {
         root.call("agents.list", {}, (result, error) => {
             root.agentProcesses = error ? [] : (result.processes ?? []);
         });
-    }
-
-    function refreshVault(): void {
-        root.call("vault.list", {}, (result, error) => {
-            root.vaultItems = error ? [] : (result.items ?? []);
-        });
-        root.call("vault.sources", {}, (result, error) => {
-            root.vaultSources = error ? [] : (result.sources ?? []);
-        });
-    }
-
-    function setVaultSource(name: string, enabled: bool): void {
-        root.call("vault.source.set", { name: name, enabled: enabled }, () => root.refreshVault());
-    }
-
-    function unlockVaultSource(name: string, password: string, callback: var): void {
-        root.call("vault.unlock", { name: name, password: password }, (result, error) => {
-            root.refreshVault();
-            if (callback)
-                callback(!error, error ? (error.message ?? "") : "");
-        });
-    }
-
-    function lockVaultSource(name: string): void {
-        root.call("vault.lock", name.length > 0 ? { name: name } : {}, () => root.refreshVault());
-    }
-
-    function removeVaultItem(itemId: string): void {
-        root.call("vault.remove", { id: itemId }, () => root.refreshVault());
     }
 
     // ── Per-message actions ────────────────────────────────────────

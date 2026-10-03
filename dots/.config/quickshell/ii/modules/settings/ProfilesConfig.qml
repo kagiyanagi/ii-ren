@@ -16,7 +16,7 @@ import qs.modules.common.widgets
  */
 ContentPage {
     id: page
-    readonly property int index: 14
+    readonly property int index: 13
     property bool register: parent.register ?? false
     forceWidth: true
 
