@@ -161,6 +161,9 @@ Item {
             // No layer mask here. It masked to `swipeView`, an id that lives in
             // SidebarPoliciesContent.qml and so resolves to nothing from this
             // file, and that page's SwipeView already rounds and clips every tab.
+            // That clip is the whole page, though: without this one the images
+            // scroll on under the composer and show round its corners.
+            clip: true
 
             ScrollEdgeFade {
                 z: 1
@@ -486,11 +489,17 @@ Item {
                 ]
 
                 ApiInputBoxIndicator { // Tool indicator
+                    id: providerChip
                     icon: "api"
                     text: Booru.providers[Booru.currentProvider].name
-                    tooltipText: Translation.tr("Current API endpoint: %1\nSet it with %2mode PROVIDER")
+                    tooltipText: providerPicker.shown ? "" : Translation.tr("Current API endpoint: %1\nClick to change it, or use %2mode PROVIDER")
                         .arg(Booru.providers[Booru.currentProvider].url)
                         .arg(root.commandPrefix)
+                    clickAction: () => providerPicker.toggle(providerChip)
+                }
+
+                BooruProviderPicker {
+                    id: providerPicker
                 }
 
                 MouseArea { // NSFW toggle
