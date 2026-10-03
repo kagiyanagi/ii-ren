@@ -313,7 +313,9 @@ Window {
             }
         }
 
-        Component.onCompleted: initStars()
+        // The window lays its content out after it is shown, so stars seeded at
+        // radius 0 all sat on one point per plane: four dots, not a field.
+        onRadiusChanged: initStars()
     }
 
     // ---------------------------------------------------------------
