@@ -12,9 +12,15 @@ WindowDialog {
     id: root
     backgroundHeight: 600
 
-    // Restarting discovery: start again only once BlueZ has confirmed the stop, since a
-    // StartDiscovery sent while it is still stopping is refused as "In Progress".
+    // Refreshing restarts discovery: it starts again only once BlueZ has confirmed the
+    // stop, since a StartDiscovery sent while it is still stopping is refused.
     property bool restartPending: false
+    function restartDiscovery(): void {
+        const adapter = Bluetooth.defaultAdapter;
+        if (!adapter?.enabled) return;
+        root.restartPending = adapter.discovering;
+        adapter.discovering = !adapter.discovering;
+    }
     Connections {
         target: Bluetooth.defaultAdapter
         function onDiscoveringChanged() {
@@ -23,26 +29,10 @@ WindowDialog {
             Bluetooth.defaultAdapter.discovering = true;
         }
     }
+    onRefreshRequested: root.restartDiscovery()
 
-    RowLayout {
-        Layout.fillWidth: true
-        WindowDialogTitle {
-            text: Translation.tr("Bluetooth devices")
-        }
-        IconToolbarButton {
-            // ToolbarButton fills height, which the row would pass up and stretch the dialog with.
-            Layout.fillHeight: false
-            text: "refresh"
-            enabled: (Bluetooth.defaultAdapter?.enabled ?? false) && !root.restartPending
-            onClicked: {
-                const adapter = Bluetooth.defaultAdapter;
-                root.restartPending = adapter.discovering;
-                adapter.discovering = !adapter.discovering;
-            }
-            StyledToolTip {
-                text: Translation.tr("Rescan")
-            }
-        }
+    WindowDialogTitle {
+        text: Translation.tr("Bluetooth devices")
     }
     StyledIndeterminateProgressBar {
         visible: Bluetooth.defaultAdapter?.discovering ?? false
@@ -58,6 +48,9 @@ WindowDialog {
         color: Appearance.colors.colSurfaceContainerHigh
 
         StyledListView {
+            // Pull to refresh: let go after dragging the list 80px past its top
+            // (AOSP PullToRefreshDefaults.PositionalThreshold).
+            onDragEnded: if (-verticalOvershoot >= 80) root.restartDiscovery()
             anchors.fill: parent
             topMargin: 8
             bottomMargin: 8

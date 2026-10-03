@@ -18,21 +18,10 @@ WindowDialog {
 
     Component.onCompleted: if (Config.options.networking.wifiPowerSave.enable) Network.fetchWifiPowerSave()
 
-    RowLayout {
-        Layout.fillWidth: true
-        WindowDialogTitle {
-            text: Translation.tr("Connect to Wi-Fi")
-        }
-        IconToolbarButton {
-            // ToolbarButton fills height, which the row would pass up and stretch the dialog with.
-            Layout.fillHeight: false
-            text: "refresh"
-            enabled: Network.wifiEnabled && !Network.wifiScanning
-            onClicked: Network.rescanWifi()
-            StyledToolTip {
-                text: Translation.tr("Rescan")
-            }
-        }
+    onRefreshRequested: Network.rescanWifi()
+
+    WindowDialogTitle {
+        text: Translation.tr("Connect to Wi-Fi")
     }
     StyledIndeterminateProgressBar {
         visible: Network.wifiScanning
@@ -48,6 +37,9 @@ WindowDialog {
         color: Appearance.colors.colSurfaceContainerHigh
 
         StyledListView {
+            // Pull to refresh: let go after dragging the list 80px past its top
+            // (AOSP PullToRefreshDefaults.PositionalThreshold).
+            onDragEnded: if (-verticalOvershoot >= 80) Network.rescanWifi()
             anchors.fill: parent
             topMargin: 8
             bottomMargin: 8

@@ -30,9 +30,14 @@ Rectangle {
     property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
 
     signal dismiss()
+    // Ctrl+R; a dialog with a list to reload handles it, the rest ignore it.
+    signal refreshRequested()
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Escape) {
             root.dismiss();
+            event.accepted = true;
+        } else if (event.key === Qt.Key_R && (event.modifiers & Qt.ControlModifier)) {
+            root.refreshRequested();
             event.accepted = true;
         }
     }
