@@ -23,6 +23,7 @@ parser.add_argument('--term_fg_boost', type=float , default=0.35, help='Make ter
 parser.add_argument('--blend_bg_fg', action='store_true', default=False, help='Shift terminal background or foreground towards accent')
 parser.add_argument('--cache', type=str, default=None, help='file path to store the generated color')
 parser.add_argument('--preview', action='store_true', help='preview the generated colorscheme and returns three accent colors to be previewed in the UI')
+parser.add_argument('--preview-all', type=str, default=None, help='comma-separated schemes: one JSON object of three preview colors per scheme, from one read of the image')
 args = parser.parse_args()
 
 rgba_to_hex = lambda rgba: "#{:02X}{:02X}{:02X}".format(rgba[0], rgba[1], rgba[2])
@@ -80,26 +81,39 @@ elif args.color is not None:
     argb = hex_to_argb(args.color)
     hct = Hct.from_int(argb)
 
-if args.scheme == 'scheme-fruit-salad':
-    from materialyoucolor.scheme.scheme_fruit_salad import SchemeFruitSalad as Scheme
-elif args.scheme == 'scheme-expressive':
-    from materialyoucolor.scheme.scheme_expressive import SchemeExpressive as Scheme
-elif args.scheme == 'scheme-monochrome':
-    from materialyoucolor.scheme.scheme_monochrome import SchemeMonochrome as Scheme
-elif args.scheme == 'scheme-rainbow':
-    from materialyoucolor.scheme.scheme_rainbow import SchemeRainbow as Scheme
-elif args.scheme == 'scheme-tonal-spot':
-    from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot as Scheme
-elif args.scheme == 'scheme-neutral':
-    from materialyoucolor.scheme.scheme_neutral import SchemeNeutral as Scheme
-elif args.scheme == 'scheme-fidelity':
-    from materialyoucolor.scheme.scheme_fidelity import SchemeFidelity as Scheme
-elif args.scheme == 'scheme-content':
-    from materialyoucolor.scheme.scheme_content import SchemeContent as Scheme
-elif args.scheme == 'scheme-vibrant':
-    from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant as Scheme
-else:
-    from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot as Scheme
+def scheme_class(name):
+    if name == 'scheme-fruit-salad':
+        from materialyoucolor.scheme.scheme_fruit_salad import SchemeFruitSalad as Scheme
+    elif name == 'scheme-expressive':
+        from materialyoucolor.scheme.scheme_expressive import SchemeExpressive as Scheme
+    elif name == 'scheme-monochrome':
+        from materialyoucolor.scheme.scheme_monochrome import SchemeMonochrome as Scheme
+    elif name == 'scheme-rainbow':
+        from materialyoucolor.scheme.scheme_rainbow import SchemeRainbow as Scheme
+    elif name == 'scheme-tonal-spot':
+        from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot as Scheme
+    elif name == 'scheme-neutral':
+        from materialyoucolor.scheme.scheme_neutral import SchemeNeutral as Scheme
+    elif name == 'scheme-fidelity':
+        from materialyoucolor.scheme.scheme_fidelity import SchemeFidelity as Scheme
+    elif name == 'scheme-content':
+        from materialyoucolor.scheme.scheme_content import SchemeContent as Scheme
+    elif name == 'scheme-vibrant':
+        from materialyoucolor.scheme.scheme_vibrant import SchemeVibrant as Scheme
+    else:
+        from materialyoucolor.scheme.scheme_tonal_spot import SchemeTonalSpot as Scheme
+    return Scheme
+
+if args.preview_all:
+    previews = {}
+    for name in args.preview_all.split(","):
+        s = scheme_class(name)(hct, darkmode, 0.0)
+        previews[name] = {key: rgba_to_hex(getattr(MaterialDynamicColors, attr).get_hct(s).to_rgba())
+                          for key, attr in (("primary", "primary"), ("primary_container", "primaryContainer"), ("secondary", "secondary"))}
+    print(json.dumps(previews))
+    exit(0)
+
+Scheme = scheme_class(args.scheme)
 # Generate
 scheme = Scheme(hct, darkmode, 0.0)
 

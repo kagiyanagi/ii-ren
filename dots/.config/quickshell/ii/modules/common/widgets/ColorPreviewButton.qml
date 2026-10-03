@@ -24,10 +24,18 @@ RippleButton {
     readonly property string customThemeFilePath: customThemeDirectory + "/" + colorScheme + ".json"
     readonly property string customThemeCommand: `jq -r '.primary, .primary_container, .secondary' '${StringUtils.shellSingleQuoteEscape(customThemeFilePath)}'`  
 
-    readonly property string wallpaperPath: Config.options.background.wallpaperPath
-    readonly property string scriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/colors/generate_colors_material.py`)
-
-    property string fullCommand: `python3 ${root.scriptPath} --path ${root.wallpaperPath} --scheme ${root.colorScheme} --preview`
+    // A wallpaper scheme's three colours, handed in by ColorPreviewGrid, which reads them
+    // for every scheme in one run instead of a python per button.
+    property var wallpaperPreview: null
+    onWallpaperPreviewChanged: {
+        if (!root.wallpaperPreview)
+            return;
+        root.primaryColor = root.wallpaperPreview.primary || "transparent";
+        root.secondaryColor = root.wallpaperPreview.primary_container || "transparent";
+        root.tertiaryColor = root.wallpaperPreview.secondary || "transparent";
+        root.loaded = true;
+        myCanvas.requestPaint();
+    }
 
     // these are not actually primary, secondary and tertiary, they are just the three colors we get from the script
     property color primaryColor: "transparent"
@@ -62,12 +70,10 @@ RippleButton {
         }
     }
 
-    property var effectiveCommand:  root.customTheme ? root.customThemeCommand
-                                    : root.builtInTheme ? root.builtInThemeCommand
-                                    : root.fullCommand
+    property var effectiveCommand: root.customTheme ? root.customThemeCommand : root.builtInThemeCommand
 
     onShouldLoadChanged: {
-        if (shouldLoad && !loaded) {
+        if (shouldLoad && !loaded && (customTheme || builtInTheme)) {
             colorFetchProcess.running = true
         }
     }
@@ -82,26 +88,12 @@ RippleButton {
                 // Nothing on stdout is a command that had nothing to say -- every
                 // settings launch logged a parse error for it.
                 if (this.text.trim().length === 0) return;
-                try {
-                    //console.log("[ColorPreviewButton] Command:", root.effectiveCommand)
-                    if (root.customTheme || root.builtInTheme) {
-                        const colors = this.text.trim().split("\n")
-                        root.primaryColor   = colors[0] || "transparent"
-                        root.secondaryColor = colors[1] || "transparent"
-                        root.tertiaryColor  = colors[2] || "transparent"
-                    } else {
-                        const data = JSON.parse(this.text)
-
-                        root.primaryColor   = data.primary   || "transparent"
-                        root.secondaryColor = data.primary_container || "transparent"
-                        root.tertiaryColor  = data.secondary  || "transparent"
-                    }
-
-                    root.loaded = true
-                    myCanvas.requestPaint()
-                } catch (e) {
-                    console.log("[ColorPreviewButton] Parse error:", this.text)
-                }
+                const colors = this.text.trim().split("\n")
+                root.primaryColor   = colors[0] || "transparent"
+                root.secondaryColor = colors[1] || "transparent"
+                root.tertiaryColor  = colors[2] || "transparent"
+                root.loaded = true
+                myCanvas.requestPaint()
             }
         }
     }

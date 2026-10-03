@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import qs.services
 import qs.modules.common
+import qs.modules.common.functions
 
 /*
     Almost all of the custom color schemes (latte.json, samurai.json etc.) are gotten from https://github.com/snowarch/quickshell-ii-niri/blob/main/modules/common/ThemePresets.qml
@@ -46,6 +48,25 @@ GridLayout {
             builtInTheme: root.builtInTheme
             
             shouldLoad: index < root.loadedCount
+            wallpaperPreview: root.wallpaperPreviews[modelData] ?? null
+        }
+    }
+
+    // Every wallpaper scheme from one read of the image, in the venv the colour scripts
+    // need: a plain python3 per button lacked materialyoucolor and failed nine times
+    // over, so these never showed a colour. The path is an argument, not shell text.
+    property var wallpaperPreviews: ({})
+    Process {
+        running: !root.customTheme && !root.builtInTheme && Config.options.background.wallpaperPath.length > 0
+        command: ["bash", "-c", 'source "$(eval echo "$ILLOGICAL_IMPULSE_VIRTUAL_ENV")/bin/activate" && exec python3 "$@"', "_",
+            FileUtils.trimFileProtocol(`${Directories.scriptPath}/colors/generate_colors_material.py`),
+            "--path", Config.options.background.wallpaperPath, "--preview-all", root.wallpaperColorSchemes.join(",")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.wallpaperPreviews = JSON.parse(this.text);
+                } catch (e) {} // a video wallpaper or no venv: the buttons keep their names
+            }
         }
     }
 
