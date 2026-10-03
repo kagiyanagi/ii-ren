@@ -360,149 +360,160 @@ Item {
             show: root.showPinButton && (root.hasApps || root.hasMedia || root.showAppsButton)
         }
 
-        Flickable {
-            id: scrollArea
+        // Overflowing apps scroll; the ends fade so it reads as more past the edge.
+        Item {
             Layout.fillWidth: !root.isVertical
             Layout.fillHeight: root.isVertical
             Layout.preferredWidth: Math.max(1, root.isVertical ? root.buttonSlotSize : middleContent.implicitWidth)
             Layout.preferredHeight: Math.max(1, root.isVertical ? middleContent.implicitHeight : root.buttonSlotSize)
-            clip: true
-            contentWidth: middleContent.width
-            contentHeight: middleContent.height
-            interactive: root.isVertical ? contentHeight > height : contentWidth > width
-            flickableDirection: root.isVertical ? Flickable.VerticalFlick : Flickable.HorizontalFlick
 
-            WheelHandler {
-                onWheel: event => {
-                    let d = (event.angleDelta.y !== 0) ? event.angleDelta.y : event.angleDelta.x;
-                    if (root.isVertical)
-                        scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - d));
-                    else
-                        scrollArea.contentX = Math.max(0, Math.min(scrollArea.contentWidth - scrollArea.width, scrollArea.contentX - d));
-                    event.accepted = true;
-                }
-            }
+            Flickable {
+                id: scrollArea
+                anchors.fill: parent
+                clip: true
+                contentWidth: middleContent.width
+                contentHeight: middleContent.height
+                interactive: root.isVertical ? contentHeight > height : contentWidth > width
+                flickableDirection: root.isVertical ? Flickable.VerticalFlick : Flickable.HorizontalFlick
 
-            GridLayout {
-                id: middleContent
-                width: implicitWidth
-                height: implicitHeight
-                flow: root.isVertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
-                rows: root.isVertical ? -1 : 1
-                columns: root.isVertical ? 1 : -1
-                rowSpacing: 0
-                columnSpacing: 0
-
-                DockListView {
-                    id: pinnedListView
-                    modelValues: root.processedPinnedApps
-                    listLayoutDirection: root.isVertical ? Qt.LeftToRight : Qt.RightToLeft
-                    listVerticalLayoutDirection: root.isVertical ? ListView.BottomToTop : ListView.TopToBottom
-                    delegateComp: Component {
-                        DockAppButton {
-                            required property var modelData
-                            required property int index
-                            appToplevel: modelData.appData
-                            dockContent: root
-                            delegateIndex: index
-                        }
-                    }
-                    DropArea {
-                        anchors.fill: parent
-                        keys: ["dock-reorder"]
-                        enabled: !root.externalDragOver
-                        onPositionChanged: drag => {
-                            if (!root.isAppDrag || !TaskbarApps.isPinned(root.draggedAppId))
-                                return;
-                            let pos = root.isVertical ? pinnedListView.height - drag.y : pinnedListView.width - drag.x;
-                            root.dropTargetIndex = Math.max(0, Math.min(root.processedPinnedApps.length - 1, Math.floor(pos / root.buttonSlotSize)));
-                        }
+                WheelHandler {
+                    onWheel: event => {
+                        let d = (event.angleDelta.y !== 0) ? event.angleDelta.y : event.angleDelta.x;
+                        if (root.isVertical)
+                            scrollArea.contentY = Math.max(0, Math.min(scrollArea.contentHeight - scrollArea.height, scrollArea.contentY - d));
+                        else
+                            scrollArea.contentX = Math.max(0, Math.min(scrollArea.contentWidth - scrollArea.width, scrollArea.contentX - d));
+                        event.accepted = true;
                     }
                 }
 
-                SectionSeparator {
-                    show: root.processedFolders.length > 0 && root.processedPinnedApps.length > 0
-                }
-
-                DockListView {
-                    modelValues: root.processedFolders
-                    delegateComp: Component {
-                        DockFolderButton {
-                            required property var modelData
-                            folder: modelData.folder
-                            folderIndex: modelData.folderIndex
-                            dockContent: root
-                        }
-                    }
-                }
-
-                SectionSeparator {
-                    show: root.processedRunningApps.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0)
-                }
-
-                DockListView {
-                    modelValues: root.processedRunningApps
-                    delegateComp: Component {
-                        DockAppButton {
-                            required property var modelData
-                            required property int index
-                            appToplevel: modelData.appData
-                            dockContent: root
-                            delegateIndex: index
-                        }
-                    }
-                }
-
-                SectionSeparator {
-                    show: root.processedFiles.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0 || root.processedRunningApps.length > 0)
-                }
-
-                Item {
-                    id: fileListWrapper
-                    Layout.alignment: Qt.AlignCenter
-                    Layout.preferredWidth: root.isVertical ? root.buttonSlotSize : (root.processedFiles.length > 0 ? fileListView.contentWidth : 0)
-                    Layout.preferredHeight: root.isVertical ? (root.processedFiles.length > 0 ? fileListView.contentHeight : 0) : root.buttonSlotSize
-                    opacity: root.processedFiles.length > 0 ? 1.0 : 0.0
-                    visible: root.processedFiles.length > 0 || opacity > 0.01
-                    clip: true
-
-                    Behavior on opacity {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
-                    Behavior on Layout.preferredWidth {
-                        enabled: !root.suppressSizeAnimation && !root.isVertical
-                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                    }
-                    Behavior on Layout.preferredHeight {
-                        enabled: !root.suppressSizeAnimation && root.isVertical
-                        animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
-                    }
+                GridLayout {
+                    id: middleContent
+                    width: implicitWidth
+                    height: implicitHeight
+                    flow: root.isVertical ? GridLayout.TopToBottom : GridLayout.LeftToRight
+                    rows: root.isVertical ? -1 : 1
+                    columns: root.isVertical ? 1 : -1
+                    rowSpacing: 0
+                    columnSpacing: 0
 
                     DockListView {
-                        id: fileListView
-                        modelValues: root.processedFiles
+                        id: pinnedListView
+                        modelValues: root.processedPinnedApps
+                        listLayoutDirection: root.isVertical ? Qt.LeftToRight : Qt.RightToLeft
+                        listVerticalLayoutDirection: root.isVertical ? ListView.BottomToTop : ListView.TopToBottom
                         delegateComp: Component {
-                            DockFileButton {
+                            DockAppButton {
                                 required property var modelData
                                 required property int index
-                                filePath: modelData.path
+                                appToplevel: modelData.appData
                                 dockContent: root
                                 delegateIndex: index
                             }
                         }
                         DropArea {
                             anchors.fill: parent
-                            keys: ["dock-file-reorder"]
+                            keys: ["dock-reorder"]
                             enabled: !root.externalDragOver
                             onPositionChanged: drag => {
-                                if (!root.isFileDrag)
+                                if (!root.isAppDrag || !TaskbarApps.isPinned(root.draggedAppId))
                                     return;
-                                let pos = root.isVertical ? drag.y : drag.x;
-                                root.fileDropIndex = Math.max(0, Math.min(root.processedFiles.length - 1, Math.floor(pos / root.buttonSlotSize)));
+                                let pos = root.isVertical ? pinnedListView.height - drag.y : pinnedListView.width - drag.x;
+                                root.dropTargetIndex = Math.max(0, Math.min(root.processedPinnedApps.length - 1, Math.floor(pos / root.buttonSlotSize)));
+                            }
+                        }
+                    }
+
+                    SectionSeparator {
+                        show: root.processedFolders.length > 0 && root.processedPinnedApps.length > 0
+                    }
+
+                    DockListView {
+                        modelValues: root.processedFolders
+                        delegateComp: Component {
+                            DockFolderButton {
+                                required property var modelData
+                                folder: modelData.folder
+                                folderIndex: modelData.folderIndex
+                                dockContent: root
+                            }
+                        }
+                    }
+
+                    SectionSeparator {
+                        show: root.processedRunningApps.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0)
+                    }
+
+                    DockListView {
+                        modelValues: root.processedRunningApps
+                        delegateComp: Component {
+                            DockAppButton {
+                                required property var modelData
+                                required property int index
+                                appToplevel: modelData.appData
+                                dockContent: root
+                                delegateIndex: index
+                            }
+                        }
+                    }
+
+                    SectionSeparator {
+                        show: root.processedFiles.length > 0 && (root.processedPinnedApps.length > 0 || root.processedFolders.length > 0 || root.processedRunningApps.length > 0)
+                    }
+
+                    Item {
+                        id: fileListWrapper
+                        Layout.alignment: Qt.AlignCenter
+                        Layout.preferredWidth: root.isVertical ? root.buttonSlotSize : (root.processedFiles.length > 0 ? fileListView.contentWidth : 0)
+                        Layout.preferredHeight: root.isVertical ? (root.processedFiles.length > 0 ? fileListView.contentHeight : 0) : root.buttonSlotSize
+                        opacity: root.processedFiles.length > 0 ? 1.0 : 0.0
+                        visible: root.processedFiles.length > 0 || opacity > 0.01
+                        clip: true
+
+                        Behavior on opacity {
+                            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                        }
+                        Behavior on Layout.preferredWidth {
+                            enabled: !root.suppressSizeAnimation && !root.isVertical
+                            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        }
+                        Behavior on Layout.preferredHeight {
+                            enabled: !root.suppressSizeAnimation && root.isVertical
+                            animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                        }
+
+                        DockListView {
+                            id: fileListView
+                            modelValues: root.processedFiles
+                            delegateComp: Component {
+                                DockFileButton {
+                                    required property var modelData
+                                    required property int index
+                                    filePath: modelData.path
+                                    dockContent: root
+                                    delegateIndex: index
+                                }
+                            }
+                            DropArea {
+                                anchors.fill: parent
+                                keys: ["dock-file-reorder"]
+                                enabled: !root.externalDragOver
+                                onPositionChanged: drag => {
+                                    if (!root.isFileDrag)
+                                        return;
+                                    let pos = root.isVertical ? drag.y : drag.x;
+                                    root.fileDropIndex = Math.max(0, Math.min(root.processedFiles.length - 1, Math.floor(pos / root.buttonSlotSize)));
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            ScrollEdgeFade {
+                target: scrollArea
+                vertical: root.isVertical
+                color: Appearance.colors.colLayer0
             }
         }
 

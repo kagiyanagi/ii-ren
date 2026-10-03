@@ -29,31 +29,24 @@ Scope {
 
     function computeSizes(opts) {
         const gapsOut = opts.gapsOut
-        const barConflicts = opts.barActive && (opts.isVertical !== opts.barIsVertical)
-        
-        const barOffset = barConflicts ? (opts.isVertical ? opts.barThickness : 0) : 0
-        const barOffsetH = barConflicts ? (!opts.isVertical ? opts.barThickness : 0) : 0
 
-        const maxW = Math.max(1, opts.availableW - gapsOut * 2 - barOffsetH)
-        const maxH = Math.max(1, opts.availableH - gapsOut * 2 - barOffset)
+        // availableLength is the window's own length: the compositor has already
+        // taken out whatever the bar or a pinned sidebar reserve. Each end also
+        // keeps clear of the screen's rounded corner before the apps start to scroll.
+        const maxLength = Math.max(1, opts.availableLength - (gapsOut + opts.endInset) * 2)
 
-        const unloadedW = maxW
-        const unloadedH = maxH
-
-        const contentW = opts.isLoaded ? opts.contentVisualWidth : (opts.isVertical ? 60 : unloadedW)
-        const contentH = opts.isLoaded ? opts.contentVisualHeight : (opts.isVertical ? unloadedH : 60)
+        const contentW = opts.isLoaded ? opts.contentVisualWidth : (opts.isVertical ? 60 : maxLength)
+        const contentH = opts.isLoaded ? opts.contentVisualHeight : (opts.isVertical ? maxLength : 60)
         // Attached to the edge: only the inner gap is left, the outer one goes.
         const crossGaps = opts.attached ? gapsOut : gapsOut * 2
         // Curved into the edge: each end needs room for its flare.
         const mainGaps = Math.max(gapsOut, opts.flare) * 2
         return {
-            maxWidth: maxW,
-            maxHeight: maxH,
-            dockWidth: opts.isVertical ? contentW + crossGaps : Math.min(contentW + mainGaps, maxW),
-            dockHeight: opts.isVertical ? Math.min(contentH + mainGaps, maxH) : contentH + crossGaps,
+            dockWidth: opts.isVertical ? contentW + crossGaps : Math.min(contentW + mainGaps, maxLength),
+            dockHeight: opts.isVertical ? Math.min(contentH + mainGaps, maxLength) : contentH + crossGaps,
             dockThickness: opts.isVertical ? contentW + crossGaps : contentH + crossGaps,
-            backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxW - mainGaps)),
-            backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxH - mainGaps) : contentH)
+            backgroundWidth:  Math.max(1, opts.isVertical ? contentW : Math.min(contentW, maxLength - mainGaps)),
+            backgroundHeight: Math.max(1, opts.isVertical ? Math.min(contentH, maxLength - mainGaps) : contentH)
         }
     }
 
@@ -76,11 +69,6 @@ Scope {
             visible: !GlobalStates.screenLocked && !positionChanging 
             // using a flag for positionChanging is not really necessary, but it prevents some graphical issues caused by qml when the dock is moving
 
-            readonly property real availableW: screen?.width ?? 1920
-            readonly property real availableH: screen?.height ?? 1080
-            readonly property bool barActive: GlobalStates.barOpen
-            readonly property bool barIsVertical: Config.options?.bar?.vertical ?? false
-            readonly property real barThickness: barActive ? (barIsVertical ? (Config.options?.bar?.sizes?.width ?? Appearance.sizes.verticalBarWidth) : (Config.options?.bar?.sizes?.height ?? Appearance.sizes.barHeight)) : 0
 
             readonly property bool isVertical: dock.isVertical
             readonly property real dockThickness: isVertical ? dockRoot.sizing.dockWidth : dockRoot.sizing.dockHeight
@@ -128,21 +116,20 @@ Scope {
 
             readonly property var sizing: dock.computeSizes({
                 gapsOut: Appearance.sizes.hyprlandGapsOut,
+                endInset: Appearance.rounding.screenRounding,
                 attached: dockRoot.attachedToEdge,
                 flare: dockRoot.curvedEdge ? dockRoot.cornerRadius : 0,
                 isVertical: dock.isVertical,
-                barActive: dockRoot.barActive,
-                barIsVertical: dockRoot.barIsVertical,
-                barThickness: dockRoot.barThickness,
-                availableW: dockRoot.availableW,
-                availableH: dockRoot.availableH,
+                availableLength: dock.isVertical ? dockRoot.height : dockRoot.width,
                 isLoaded: dockLoader.activeAsync,
                 contentVisualWidth: dockLoader.item?.contentVisualWidth ?? 0,
                 contentVisualHeight: dockLoader.item?.contentVisualHeight ?? 0
             })
 
-            implicitWidth: Math.max(1, dockRoot.sizing.dockWidth)
-            implicitHeight: Math.max(1, dockRoot.sizing.dockHeight)
+            // The anchored axis is the compositor's call, and sizing reads it back,
+            // so it must not depend on sizing (a binding loop otherwise).
+            implicitWidth: isVertical ? Math.max(1, dockRoot.sizing.dockWidth) : (screen?.width ?? 1920)
+            implicitHeight: isVertical ? (screen?.height ?? 1080) : Math.max(1, dockRoot.sizing.dockHeight)
 
             anchors {
                 top: dock.dockEffectivePosition !== "bottom"
