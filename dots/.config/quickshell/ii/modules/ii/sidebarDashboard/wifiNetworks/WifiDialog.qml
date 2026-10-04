@@ -124,8 +124,8 @@ WindowDialog {
                         elide: Text.ElideRight
                         // "" is no station to set it on: no adapter, or the hotspot has it.
                         text: !powerSaveRow.enabled ? Translation.tr("Unavailable")
-                            : powerSaveRow.saving ? Translation.tr("Saves battery, adds latency")
-                            : Translation.tr("Full speed, uses more battery")
+                            : powerSaveRow.saving ? Translation.tr("Lets Wi-Fi sleep when idle")
+                            : Translation.tr("Keeps Wi-Fi awake when idle")
                     }
                 }
                 StyledSwitch {
