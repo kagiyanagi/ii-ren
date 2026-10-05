@@ -1,4 +1,5 @@
 pragma ComponentBehavior: Bound
+import qs
 import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.widgets
@@ -96,6 +97,15 @@ Item { // Player instance
         anchors.margins: Appearance.sizes.elevationMargin
         color: ColorUtils.applyAlpha(blendedColors.colLayer0, 1)
         radius: root.radius
+
+        // The card is the way into full-screen media; its buttons and slider take
+        // their own presses first, so only a tap on the card itself lands here.
+        TapHandler {
+            onTapped: {
+                GlobalStates.mediaControlsOpen = false;
+                GlobalStates.immersiveMediaOpen = true;
+            }
+        }
 
         layer.enabled: true
         layer.effect: OpacityMask {

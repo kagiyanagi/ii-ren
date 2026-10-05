@@ -65,10 +65,8 @@ Item {
         onClicked: mouse => {
             if (mouse.button === Qt.BackButton) root.player?.previous();
             else if (mouse.button === Qt.ForwardButton) root.player?.next();
-            else if (mouse.button === Qt.LeftButton) {
-                root.popupOpen = false;
-                GlobalStates.immersiveMediaOpen = true;
-            }
+            // Opens the popup when hovering does not; full screen is the popup's tap.
+            else if (mouse.button === Qt.LeftButton) root.popupOpen = !root.popupOnHover && !root.popupOpen;
             else root.player?.togglePlaying();
         }
     }
@@ -121,6 +119,13 @@ Item {
             if (!GlobalStates.barMediaPresent) {
                 GlobalStates.mediaControlsOpen = false;
             }
+        }
+    }
+
+    Connections {
+        target: GlobalStates
+        function onImmersiveMediaOpenChanged() {
+            root.popupOpen = false;
         }
     }
 
