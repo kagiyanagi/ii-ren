@@ -36,12 +36,22 @@ QtObject {
     /** Emitted when the close has *finished*, not when it was asked for. */
     signal closed
 
+    // Every open waits for its window to draw it: see FirstFrameGate. A popup's
+    // first visible frame cost up to 111ms, measured, and the open used to jump it.
+    readonly property FirstFrameGate _gate: FirstFrameGate {
+        item: root.target
+        onReady: openAnim.restart()
+    }
+
     function open(): void {
         closeAnim.stop();
-        openAnim.restart();
+        openAnim.stop();
+        root.target.opacity = root._gate.warmOpacity;
+        root._gate.hold();
     }
 
     function close(): void {
+        root._gate.cancel();
         openAnim.stop();
         closeAnim.restart();
     }

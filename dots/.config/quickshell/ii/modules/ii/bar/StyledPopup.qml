@@ -471,6 +471,7 @@ LazyLoader {
             }
             function on_IsClosingChanged() {
                 if (root._isClosing) {
+                    firstFrames.cancel();
                     openAnim.stop();
                     closeAnim.start();
                 } else if (root._computedActive) {
@@ -494,8 +495,16 @@ LazyLoader {
             if (root.selfDismiss && Config.options.bar.tooltips.clickToShow) {
                 dismissGrabArmTimer.restart();
             }
+            // A new window: wait until it can draw the whole open (FirstFrameGate).
             popupWindow.resetOpenState();
-            openAnim.start();
+            popupWindow.surfaceOpacity = firstFrames.warmOpacity;
+            firstFrames.hold();
+        }
+
+        FirstFrameGate {
+            id: firstFrames
+            item: animContainer
+            onReady: openAnim.start()
         }
 
         Timer {

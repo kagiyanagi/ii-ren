@@ -74,21 +74,21 @@ PopupWindow {
         anchors.centerIn: parent
         implicitWidth: tooltipText.implicitWidth + 32
         implicitHeight: tooltipText.implicitHeight + 18
-        opacity: rootToolTipPopup.showTooltip ? 1.0 : 0.0
-        scale: rootToolTipPopup.showTooltip ? 1.0 : 0.8
-        transformOrigin: {
-            if (rootToolTipPopup.dockPosition === "top") return Item.Top
-            if (rootToolTipPopup.dockPosition === "bottom") return Item.Bottom
-            if (rootToolTipPopup.dockPosition === "left") return Item.Left
-            if (rootToolTipPopup.dockPosition === "right") return Item.Right
-            return Item.Bottom
-        }
 
-        Behavior on opacity {
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(tooltipRect)
+        // A tooltip fades and does not scale (DESIGN.md 9), in on fast effects and
+        // out on the exit spec (2.5) - picked inside the binding that writes it, as
+        // PopupToolTip does, because a Behavior cannot read its own direction (2.9).
+        property AnimSpec fadeSpec: Appearance.animation.elementMoveFast
+        opacity: {
+            tooltipRect.fadeSpec = rootToolTipPopup.showTooltip ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+            return rootToolTipPopup.showTooltip ? 1 : 0;
         }
-        Behavior on scale {
-            animation: Appearance.animation.elementResize.numberAnimation.createObject(tooltipRect)
+        Behavior on opacity {
+            NumberAnimation {
+                duration: tooltipRect.fadeSpec.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: tooltipRect.fadeSpec.bezierCurve
+            }
         }
 
         // A pill on its own shadow rather than a bordered box - the hairline

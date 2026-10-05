@@ -137,7 +137,6 @@ hl.layer_rule({ match = { namespace = "quickshell:.*" }, ignore_alpha = 0.79})
 hl.layer_rule({ match = { namespace = "quickshell:wallpaperSelector" }, blur = false}) -- opaque; re-blurring 1200x690 behind it each frame of the slide is pure cost
 hl.layer_rule({ match = { namespace = "quickshell:bar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:actionCenter" }, no_anim = true})
-hl.layer_rule({ match = { namespace = "quickshell:cheatsheet" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:dock" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:screenCorners" }, animation = "popin 120%"})
 hl.layer_rule({ match = { namespace = "quickshell:lockWindowPusher" }, no_anim = true})
@@ -145,9 +144,10 @@ hl.layer_rule({ match = { namespace = "quickshell:notificationPopup" }, animatio
 hl.layer_rule({ match = { namespace = "quickshell:overlay" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:overlay" }, ignore_alpha = 1})
 hl.layer_rule({ match = { namespace = "quickshell:overview" }, no_anim = true})
--- Full-screen surfaces whose card runs its own ArrowPopupMotion from what opened it:
--- the default layersIn popin scales the whole surface about the screen centre on top.
-hl.layer_rule({ match = { namespace = "quickshell:(dockFolder|desktopMenu|dropShelf)" }, no_anim = true})
+-- Surfaces that run their own enter and exit. Left to the defaults, layersIn pops the whole
+-- surface in about its own centre on top (the screen's, for a full-screen one), and layersOut
+-- shrinks and fades a frozen copy of its last frame after the exit has already played.
+hl.layer_rule({ match = { namespace = "quickshell:(dockFolder|desktopMenu|dropShelf|popup|mediaControls|onScreenDisplay|cursorRadar|immersiveMedia|cheatsheet|clipboardToast|fastPairPopup|screenshotPreview)" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, animation = "slide bottom"})
 hl.layer_rule({ match = { namespace = "quickshell:polkit" }, no_anim = true})
 -- Window rails: a screen-sized click-through layer, opaque where it paints; nothing behind it needs blurring.
@@ -169,7 +169,6 @@ hl.layer_rule({ match = { namespace = "quickshell:popup" }, ignore_alpha = 1}) -
 hl.layer_rule({ match = { namespace = "quickshell:mediaControls" }, ignore_alpha = 1}) -- Same as above
 hl.layer_rule({ match = { namespace = "quickshell:reloadPopup" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:(regionSelector|screenTranslator)" }, no_anim = true})
-hl.layer_rule({ match = { namespace = "quickshell:screenshot" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, blur = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:session" }, ignore_alpha = 0})
@@ -178,7 +177,6 @@ hl.layer_rule({ match = { namespace = "quickshell:sidebarLeft" }, animation = "s
 hl.layer_rule({ match = { namespace = "quickshell:verticalBar" }, animation = "slide"})
 hl.layer_rule({ match = { namespace = "quickshell:osk" }, order = -1})
 -- Quickshell: waffles
-hl.layer_rule({ match = { namespace = "quickshell:wallpaperSelector" }, animation = "slide top"})
 hl.layer_rule({ match = { namespace = "quickshell:wNotificationCenter" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:wOnScreenDisplay" }, no_anim = true})
 hl.layer_rule({ match = { namespace = "quickshell:wStartMenu" }, no_anim = true})

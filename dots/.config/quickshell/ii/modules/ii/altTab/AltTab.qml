@@ -184,7 +184,13 @@ Scope {
             implicitWidth: card.implicitWidth + Appearance.sizes.elevationMargin * 2
             implicitHeight: card.implicitHeight + Appearance.sizes.elevationMargin * 2
 
-            StyledRectangularShadow { target: card }
+            StyledRectangularShadow {
+                target: card
+                // anchors.fill doesn't follow a scale transform.
+                scale: card.scale
+                transformOrigin: card.transformOrigin
+                opacity: card.opacity
+            }
 
             Rectangle {
                 id: card

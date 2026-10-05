@@ -141,6 +141,10 @@ Scope { // Scope
             // Background
             StyledRectangularShadow {
                 target: cheatsheetBackground
+                // anchors.fill doesn't follow a scale transform.
+                scale: cheatsheetBackground.scale
+                transformOrigin: cheatsheetBackground.transformOrigin
+                opacity: cheatsheetBackground.opacity
             }
             Rectangle {
                 id: cheatsheetBackground
