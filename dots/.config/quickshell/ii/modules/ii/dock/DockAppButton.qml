@@ -183,8 +183,10 @@ DockButton {
             // Cycle through open windows on left click
             lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
             const toplevel = appToplevel.toplevels[lastFocused]
-            if (!FloatingMode.restoreMinimized(HyprlandData.clientForToplevel(toplevel)?.address))
-                toplevel.activate()
+            // Focused by address rather than activate(), which warps the cursor onto the window.
+            const address = HyprlandData.clientForToplevel(toplevel)?.address
+            if (!address) toplevel?.activate()
+            else if (!FloatingMode.restoreMinimized(address)) FloatingMode.focus(address)
         }
     }
 

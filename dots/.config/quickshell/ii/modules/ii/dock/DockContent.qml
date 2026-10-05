@@ -39,8 +39,8 @@ Item {
     readonly property bool ready: (isVertical ? visualHeight > 0 : visualWidth > 0) && !suppressSizeAnimation
     readonly property bool requestDockShow: previewPopupLoader.item?.visible || anyContextMenuOpen || (dock.folderCard?.active ?? false) || (mediaWidgetLoader.item?.popupHovered ?? false) || (mediaWidgetLoader.item?.popupShown ?? false)
 
-    readonly property real maxWindowPreviewHeight: 200
-    readonly property real maxWindowPreviewWidth: 300
+    readonly property real maxWindowPreviewHeight: 220
+    readonly property real maxWindowPreviewWidth: 340
     readonly property real windowControlsHeight: 30
 
     property bool anyContextMenuOpen: false

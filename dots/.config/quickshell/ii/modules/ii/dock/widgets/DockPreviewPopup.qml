@@ -115,8 +115,9 @@ PopupWindow {
 
         readonly property real _clampedX: Math.max(margins, Math.min(dockRoot.hoveredButtonCenter.x - implicitWidth  / 2, parent.width  - implicitWidth  - margins))
         readonly property real _clampedY: Math.max(margins, Math.min(dockRoot.hoveredButtonCenter.y - implicitHeight / 2, parent.height - implicitHeight - margins))
-        x: isVertical ? (dockPos === "left" ? margins : parent.width - implicitWidth - margins) : _clampedX
-        y: isVertical ? _clampedY : (dockPos === "top" ? margins : parent.height - implicitHeight - margins)
+        // Whole pixels, or every thumbnail on the card is drawn half a pixel off and blurs.
+        x: Math.round(isVertical ? (dockPos === "left" ? margins : parent.width - implicitWidth - margins) : _clampedX)
+        y: Math.round(isVertical ? _clampedY : (dockPos === "top" ? margins : parent.height - implicitHeight - margins))
 
         opacity: previewPopup.show ? 1 : 0
         visible: (appTopLevel?.toplevels?.length ?? 0) > 0
@@ -193,8 +194,10 @@ PopupWindow {
                     padding: 0
 
                     onClicked: {
-                        if (!FloatingMode.restoreMinimized(HyprlandData.clientForToplevel(modelData)?.address))
-                            modelData?.activate()
+                        // Focused by address rather than activate(), which warps the cursor onto the window.
+                        const address = HyprlandData.clientForToplevel(modelData)?.address
+                        if (!address) modelData?.activate()
+                        else if (!FloatingMode.restoreMinimized(address)) FloatingMode.focus(address)
                         dockRoot.buttonHovered = false
                         dockRoot.lastHoveredButton = null
                     }
@@ -213,7 +216,19 @@ PopupWindow {
                                 dockRoot.maxWindowPreviewWidth,
                                 dockRoot.maxWindowPreviewHeight
                             )
+                            // Whole pixels: constraintSize hands a 16:9 window 168.75, and
+                            // a fractional box is resampled once more on its way out.
+                            width: Math.round(implicitWidth)
+                            height: Math.round(implicitHeight)
+                            // A window squeezed ~5x in one bilinear step drops most of its
+                            // pixels and text comes out as speckle. Bilinear at 2x or less
+                            // averages instead, so the shot lands in the mask's layer at half
+                            // the window's size and mipmaps the rest of the way: one
+                            // half-size texture per card, no extra layer.
                             layer.enabled: true
+                            layer.smooth: true
+                            layer.mipmap: true
+                            layer.textureSize: Qt.size(Math.max(width, sourceSize.width / 2), Math.max(height, sourceSize.height / 2))
                             layer.effect: OpacityMask {
                                 maskSource: Rectangle {
                                     width: screencopyView.width

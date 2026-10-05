@@ -629,7 +629,9 @@ confirm = alt.split("function confirm()")[1]
 assert confirm.index("FloatingMode.restoreMinimized(target.address)") < confirm.index("hl.dsp.focus"), \
     "Alt+Tab brings a minimized window back by asking: Hyprland skips activating one that kept the focus"
 for dock in ("modules/ii/dock/DockAppButton.qml", "modules/ii/dock/widgets/DockPreviewPopup.qml"):
-    assert "FloatingMode.restoreMinimized(HyprlandData.clientForToplevel(" in (SHELL / dock).read_text(), f"{dock} too"
+    src = (SHELL / dock).read_text()
+    assert "FloatingMode.restoreMinimized(address)" in src, f"{dock} too"
+    assert "FloatingMode.focus(address)" in src, f"{dock}: activate() warps the cursor onto the window; focus by address"
 script = SHELL / "scripts/hyprland/hyprbars.sh"
 assert script.stat().st_mode & 0o111, "hyprbars.sh has to be executable"
 sh = script.read_text()

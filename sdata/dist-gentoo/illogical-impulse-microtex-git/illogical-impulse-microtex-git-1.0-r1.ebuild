@@ -41,8 +41,8 @@ src_prepare() {
 src_compile() {
 	cd "${S}"
 	mkdir -p build
-	cmake -B build -S . -DCMAKE_BUILD_TYPE=None
-	cmake --build build
+	cmake -B build -S . -DCMAKE_BUILD_TYPE=None || die
+	cmake --build build || die
 }
 
 src_install() {
