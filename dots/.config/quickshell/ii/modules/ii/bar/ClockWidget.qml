@@ -49,6 +49,17 @@ Item {
         }
     }
 
+    // The same state film as Resources beside it, inside the BarGroup's inset.
+    StateOverlay {
+        anchors.fill: parent
+        anchors.topMargin: 4
+        anchors.bottomMargin: 4
+        radius: Appearance.rounding.full
+        contentColor: rootItem.highlighted ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+        hover: mouseArea.containsMouse
+        press: mouseArea.pressed
+    }
+
     RowLayout {
         id: rowLayout
         anchors.centerIn: parent

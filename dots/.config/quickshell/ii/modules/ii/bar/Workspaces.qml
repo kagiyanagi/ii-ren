@@ -201,6 +201,7 @@ Item {
 
     // Active workspace indicator
     Rectangle {
+        id: activeIndicator
         z: 2
         anchors.horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
         anchors.verticalCenter: root.vertical ? undefined : parent.verticalCenter
@@ -281,7 +282,15 @@ Item {
          * the exit exists and the first-contact snap still has a visible edge to
          * trigger on.
          */
-        color: interactionMouseArea.pressed ? Appearance.colors.colLayer0Active : Appearance.colors.colLayer0Hover
+        color: {
+            const pressed = interactionMouseArea.pressed;
+            // Over the active pill an opaque layer-0 fill painted the pill out. There
+            // it is the pill's own state layer instead -- its content colour at the
+            // hover/pressed film token, so the pill shows through, as in Android.
+            if (onActive)
+                return ColorUtils.transparentize(Appearance.colors.colOnPrimary, pressed ? 0.90 : 0.92);
+            return pressed ? Appearance.colors.colLayer0Active : Appearance.colors.colLayer0Hover;
+        }
         opacity: interactionMouseArea.containsMouse ? 1 : 0
         visible: opacity > 0
 
@@ -293,6 +302,7 @@ Item {
         }
 
         property int hoverIdx: interactionMouseArea.hoverIndex
+        readonly property bool onActive: hoverIdx === root.workspaceIndexInGroup
         property bool wasVisible: false
 
         onVisibleChanged: { // we disable the animations on first contact, then enable it
@@ -308,7 +318,9 @@ Item {
             wasVisible = visible
         }
 
-        readonly property real hoverInset: root.iconBoxWrapperSize * 0.05
+        // On the active workspace the film takes the pill's own inset, so no rim of
+        // it shows round the pill's edge.
+        readonly property real hoverInset: onActive ? activeIndicator.visualInset : root.iconBoxWrapperSize * 0.05
         readonly property int hoverSlot: root.slotsBefore(hoverIdx)
 
         property real indicatorPosition: root.slotEdge(hoverSlot) + hoverInset

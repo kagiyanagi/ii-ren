@@ -43,6 +43,17 @@ Item {
     }
     readonly property string formattedTime: Qt.locale().toString(DateTime.clock.date, root.timeFormat)
 
+    // The same state film as Resources beside it, inside the BarGroup's inset.
+    StateOverlay {
+        anchors.fill: parent
+        anchors.leftMargin: 4
+        anchors.rightMargin: 4
+        radius: Appearance.rounding.full
+        contentColor: rootItem.highlighted ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+        hover: mouseArea.containsMouse
+        press: mouseArea.pressed
+    }
+
     ColumnLayout {
         id: clockColumn
         anchors.centerIn: parent
