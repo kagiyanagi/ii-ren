@@ -98,15 +98,6 @@ Item { // Player instance
         color: ColorUtils.applyAlpha(blendedColors.colLayer0, 1)
         radius: root.radius
 
-        // The card is the way into full-screen media; its buttons and slider take
-        // their own presses first, so only a tap on the card itself lands here.
-        TapHandler {
-            onTapped: {
-                GlobalStates.mediaControlsOpen = false;
-                GlobalStates.immersiveMediaOpen = true;
-            }
-        }
-
         layer.enabled: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
@@ -187,6 +178,33 @@ Item { // Player instance
                     text: "music_note"
                     iconSize: artBackground.width * 0.4
                     color: blendedColors.colOnLayer1
+                }
+
+                // The art is the way into full-screen media, and only the art. Films
+                // over the picture rather than a fill behind it, which the art would
+                // hide; the art's own mask rounds them.
+                RippleButton {
+                    id: artButton
+                    anchors.fill: parent
+                    padding: 0
+                    buttonRadius: artBackground.radius
+                    colBackground: "transparent"
+                    colBackgroundHover: "transparent"
+                    colRipple: ColorUtils.transparentize(blendedColors.colOnLayer0, 0.90)
+                    colStateLayer: blendedColors.colOnLayer0
+                    onClicked: {
+                        GlobalStates.mediaControlsOpen = false;
+                        GlobalStates.immersiveMediaOpen = true;
+                    }
+                    contentItem: StateOverlay {
+                        radius: artBackground.radius
+                        hover: artButton.hovered && !artButton.down
+                        contentColor: blendedColors.colOnLayer0
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Open full screen")
+                    }
                 }
             }
 
