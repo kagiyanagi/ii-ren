@@ -354,7 +354,7 @@ Item {
                     }
                 }
 
-                StyledToolTip {
+                PopupToolTip {
                     text: root.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                 }
             }
@@ -376,7 +376,7 @@ Item {
                     color: root.blendedColors.colOnSecondaryContainer
                 }
 
-                StyledToolTip {
+                PopupToolTip {
                     text: Translation.tr("Next")
                 }
             }

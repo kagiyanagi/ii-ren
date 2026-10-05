@@ -202,7 +202,7 @@ Item { // Player instance
                         contentColor: blendedColors.colOnLayer0
                     }
 
-                    StyledToolTip {
+                    PopupToolTip {
                         text: Translation.tr("Open full screen")
                     }
                 }
@@ -340,7 +340,7 @@ Item { // Player instance
                             }
                         }
 
-                        StyledToolTip {
+                        PopupToolTip {
                             text: root.player?.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
                         }
                     }
@@ -369,7 +369,7 @@ Item { // Player instance
             fill: MprisController.activePlayer == root.player
             downAction: () => MprisController.setActivePlayer(root.player)
 
-            StyledToolTip {
+            PopupToolTip {
                 text: playerPicker.fill ? Translation.tr("Controlled by media keys") : Translation.tr("Control this player with media keys")
             }
         }

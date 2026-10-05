@@ -219,6 +219,16 @@ def check_no_dead_colour_scheme():
     print("ok  cost: no album scheme is built for a branch that cannot run")
 
 
+def check_tooltips_leave_the_window():
+    """A StyledToolTip is a Popup inside its own window, clamped to it. The dock and
+    its media popup are windows cut to their content, so a tooltip with no room
+    above its button was pushed down over it. PopupToolTip is its own window."""
+    for rel in ("modules/ii/mediaControls/PlayerControl.qml", "modules/ii/dock/DockMediaWidget.qml"):
+        src = (SHELL / rel).read_text()
+        assert "StyledToolTip" not in src, f"{rel}: StyledToolTip is clamped into the window and covers its button"
+    print("ok  tooltips: media controls float theirs in their own window")
+
+
 if __name__ == "__main__":
     check_filter_keeps_distinct_players()
     check_filter_still_merges_duplicates()
@@ -228,4 +238,5 @@ if __name__ == "__main__":
     check_no_mask_over_the_scaled_column()
     check_disabled_controls_are_disabled()
     check_no_dead_colour_scheme()
+    check_tooltips_leave_the_window()
     print("\nall ok")
