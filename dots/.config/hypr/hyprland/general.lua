@@ -202,6 +202,9 @@ hl.animation({
     speed = 2.7,
     spring = "m3DefaultEffects"
 })
+-- Every shell popup runs its own enter and exit. Left on, this inherits global's 800ms and
+-- fades a frozen copy of the popup's last frame after its own exit: ~650ms of ghost, measured.
+hl.animation({ leaf = "fadePopups", enabled = false })
 -- workspaces
 hl.animation({
     leaf = "workspaces",

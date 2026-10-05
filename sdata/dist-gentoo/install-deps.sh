@@ -67,4 +67,6 @@ for i in "${metapkgs[@]}"; do
 	v sudo emerge --update --quiet app-misc/${i}
 done
 
-v sudo emerge --depclean
+# Housekeeping only: it refuses whenever the world has a loose end (a Perl upgrade
+# leaves modules on the old slot until perl-cleaner), which says nothing about the dots.
+v try sudo emerge --depclean

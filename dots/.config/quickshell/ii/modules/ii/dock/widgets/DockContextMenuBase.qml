@@ -97,6 +97,9 @@ Loader {
 
         StyledRectangularShadow {
             target: menuContent
+            // anchors.fill doesn't follow a scale transform.
+            scale: menuContent.scale
+            transformOrigin: menuContent.transformOrigin
             opacity: menuContent.opacity
             visible: menuContent.visible
         }
