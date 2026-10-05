@@ -17,7 +17,8 @@ function install_nix(){
 
   x mkdir -p ${REPO_ROOT}/cache
   x curl -JLo ${REPO_ROOT}/cache/nix-installer https://artifacts.nixos.org/experimental-installer
-  x sh ${REPO_ROOT}/cache/nix-installer install
+  # -f promises no prompts; the installer also refuses to ask without a terminal
+  x sh ${REPO_ROOT}/cache/nix-installer install $($ask || echo --no-confirm)
   try source '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
 
   command -v $cmd && return
@@ -63,9 +64,29 @@ function hm_deps(){
   x git rm -f "${SETUP_USERNAME_NIXFILE}"
 }
 
+function nixos-preflight(){
+  # Home Manager can't set these: they are NixOS options. Without nix-ld the venv
+  # step fails (uv's Python and the pip wheels are generic Linux binaries; NixOS
+  # only has a stub loader), and without the graphics drivers Hyprland can't start.
+  local missing=()
+  readlink /lib64/ld-linux-x86-64.so.2 2>/dev/null | grep -q nix-ld || missing+=("programs.nix-ld.enable = true;")
+  [ -e /run/opengl-driver ] || missing+=("hardware.graphics.enable = true;")
+  printf "${STY_CYAN}NixOS: also worth having in configuration.nix, for the parts Home Manager can't do:\n"
+  printf "  programs.fish.enable = true; services.gnome.gnome-keyring.enable = true;\n"
+  printf "  hardware.bluetooth.enable = true; programs.ydotool.enable = true;\n"
+  printf "Display managers don't list Home Manager's Hyprland: start it from a TTY, or with greetd\n"
+  printf "running ~/.nix-profile/bin/Hyprland.${STY_RST}\n"
+  [ ${#missing[@]} -eq 0 ] && return
+  printf "${STY_RED}Add to /etc/nixos/configuration.nix, run \"sudo nixos-rebuild switch\", then run this again:\n"
+  printf "  %s\n" "${missing[@]}"
+  printf "${STY_RST}"
+  exit 1
+}
+
 ##################################################
 ##################################################
 
+[ -e /etc/NIXOS ] && nixos-preflight
 vianix-warning
 
 TEST_CMDS=(curl fish swaylock gnome-keyring)

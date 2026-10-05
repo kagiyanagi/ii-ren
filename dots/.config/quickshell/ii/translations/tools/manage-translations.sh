@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Translation management script - convenient wrapper
 
 set -e

@@ -8,16 +8,13 @@ function prepare_systemd_user_service(){
 }
 
 function setup_user_group(){
-  if [[ -z $(getent group i2c) ]] && [[ "$OS_GROUP_ID" != "fedora" ]]; then
-    # On Fedora this is not needed. Tested with desktop computer with NVIDIA video card.
-    x sudo groupadd i2c
-  fi
-
-  if [[ "$OS_GROUP_ID" == "fedora" ]]; then
-    x sudo usermod -aG video,input "$(whoami)"
-  else
-    x sudo usermod -aG video,i2c,input "$(whoami)"
-  fi
+  # On Fedora i2c is not needed. Tested with desktop computer with NVIDIA video card.
+  local groups=(video input)
+  [[ "$OS_GROUP_ID" != "fedora" ]] && groups+=(i2c)
+  for g in "${groups[@]}"; do
+    getent group $g >/dev/null || x sudo groupadd $g
+  done
+  x sudo usermod -aG "$(IFS=,; echo "${groups[*]}")" "$(whoami)"
 }
 #####################################################################################
 # These python packages are installed using uv into the venv (virtual environment). Once the folder of the venv gets deleted, they are all gone cleanly. So it's considered as setups, not dependencies.
@@ -30,10 +27,10 @@ v setup_user_group
 if [[ ! -z $(systemctl --version) ]]; then
   # For Fedora, uinput is required for the virtual keyboard to function, and udev rules enable input group users to utilize it.
   if [[ "$OS_GROUP_ID" == "fedora" ]]; then
-    v bash -c "echo uinput | sudo tee /etc/modules-load.d/uinput.conf"
+    v bash -c "sudo mkdir -p /etc/modules-load.d && echo uinput | sudo tee /etc/modules-load.d/uinput.conf"
     v bash -c 'echo SUBSYSTEM==\"misc\", KERNEL==\"uinput\", MODE=\"0660\", GROUP=\"input\" | sudo tee /etc/udev/rules.d/99-uinput.rules'
   else
-    v bash -c "echo i2c-dev | sudo tee /etc/modules-load.d/i2c-dev.conf"
+    v bash -c "sudo mkdir -p /etc/modules-load.d && echo i2c-dev | sudo tee /etc/modules-load.d/i2c-dev.conf"
   fi
   # TODO: find a proper way for enable Nix installed ydotool. When running `systemctl --user enable ydotool, it errors "Failed to enable unit: Unit ydotool.service does not exist".
   if [[ ! "${INSTALL_VIA_NIX}" == true ]]; then
@@ -47,7 +44,12 @@ if [[ ! -z $(systemctl --version) ]]; then
       v sudo systemctl --machine=$(whoami)@.host --user enable ydotool --now
     fi
   fi
-  v sudo systemctl enable bluetooth --now
+  # Nix-installed bluez ships no system unit; NixOS adds it with hardware.bluetooth.enable.
+  if systemctl cat bluetooth.service >/dev/null 2>&1; then
+    v sudo systemctl enable bluetooth --now
+  else
+    printf "${STY_YELLOW}[$0]: No bluetooth.service; install your distro's bluez (NixOS: hardware.bluetooth.enable = true) for Bluetooth.${STY_RST}\n"
+  fi
 elif [[ ! -z $(openrc --version) ]]; then
   v bash -c "echo 'modules=i2c-dev' | sudo tee -a /etc/conf.d/modules"
   v sudo rc-update add modules boot
@@ -67,6 +69,7 @@ if [[ "$OS_GROUP_ID" == "gentoo" ]]; then
   v sudo chown -R $(whoami):$(whoami) ~/.local/
 fi
 
-v gsettings set org.gnome.desktop.interface font-name 'Google Sans Flex Medium 11 @opsz=11,wght=500'
-v gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
-v kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle Darkly
+# Cosmetic, so a desktop without the GNOME schemas or KConfig carries on
+v try gsettings set org.gnome.desktop.interface font-name 'Google Sans Flex Medium 11 @opsz=11,wght=500'
+v try gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+v try kwriteconfig6 --file kdeglobals --group KDE --key widgetStyle Darkly

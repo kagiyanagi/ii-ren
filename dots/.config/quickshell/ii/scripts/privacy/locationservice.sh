@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # GeoClue on/off. It is D-Bus activated, so stopping it is pointless: masking
 # is the only thing that keeps it from coming straight back on the next
 # request. GeoClue locates by WiFi/IP with no GPS chip at all, so the switch is

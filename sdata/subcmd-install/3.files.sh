@@ -230,8 +230,9 @@ case "${SKIP_FONTCONFIG}" in
   true) sleep 0;;
   *)
     case "$FONTSET_DIR_NAME" in
-      "") install_dir__sync dots/.config/fontconfig "$XDG_CONFIG_HOME"/fontconfig ;;
-      *) install_dir__sync dots-extra/fontsets/$FONTSET_DIR_NAME "$XDG_CONFIG_HOME"/fontconfig ;;
+      # conf.d is kept: Home Manager registers the Nix profile's fonts there.
+      "") install_dir__sync_exclude dots/.config/fontconfig "$XDG_CONFIG_HOME"/fontconfig "conf.d" ;;
+      *) install_dir__sync_exclude dots-extra/fontsets/$FONTSET_DIR_NAME "$XDG_CONFIG_HOME"/fontconfig "conf.d" ;;
     esac;;
 esac
 

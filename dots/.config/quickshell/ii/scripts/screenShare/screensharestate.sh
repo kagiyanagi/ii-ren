@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 STATE_FILE="$HOME/.local/state/quickshell/user/generated/screenshare/apps.txt"
 mkdir -p "$(dirname "$STATE_FILE")"

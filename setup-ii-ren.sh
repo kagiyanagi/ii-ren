@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -469,7 +469,7 @@ else
     sleep 0.5
 
     log_verbose "Killing Quickshell process"
-    pkill -x qs
+    qs kill -c ii  # not pkill -x qs: a Nix install runs as .quickshell-wra
 
     log_verbose "Reloading Hyprland"
     hyprctl reload

@@ -60,8 +60,12 @@ install-python-packages(){
   # we need python 3.12 https://github.com/python-pillow/Pillow/issues/8089
   try uv venv --prompt .venv $(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV) -p 3.12
   x source $(eval echo $ILLOGICAL_IMPULSE_VIRTUAL_ENV)/bin/activate
+  # The GUI build of OpenCV needed libGL, which NixOS cannot load from a wheel; the
+  # headless one replaced it. Both own cv2/, so the old one goes first.
+  try uv pip uninstall opencv-contrib-python
   if [[ "$INSTALL_VIA_NIX" = true ]]; then
-    x nix-shell ${REPO_ROOT}/sdata/uv/shell.nix --run "uv pip install -r ${REPO_ROOT}/sdata/uv/requirements.txt"
+    # <nixpkgs> is the channel install_home-manager adds; only NixOS has one by that name
+    x nix-shell -I nixpkgs=$HOME/.nix-defexpr/channels/nixpkgs-home ${REPO_ROOT}/sdata/uv/shell.nix --run "uv pip install -r ${REPO_ROOT}/sdata/uv/requirements.txt"
   else
     x uv pip install -r ${REPO_ROOT}/sdata/uv/requirements.txt
   fi

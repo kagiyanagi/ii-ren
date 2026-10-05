@@ -125,6 +125,7 @@ class Translator:
 
     def __init__(self, layout: str, variant: str, options: str):
         self.state = None
+        self.held: set[int] = set()
         if xkb is None:
             return
         try:
@@ -143,8 +144,13 @@ class Translator:
         return self.state is not None
 
     def update(self, code: int, pressed: bool) -> None:
-        if self.state is None:
+        """Feeds xkb real transitions only. xkb refcounts a modifier per key-down,
+        so an auto-repeat (or the same press from a second device) passed in as
+        another down leaves Ctrl latched after its one release, and every key
+        afterwards reads as a shortcut."""
+        if self.state is None or (code in self.held) == pressed:
             return
+        (self.held.add if pressed else self.held.discard)(code)
         direction = xkb.XKB_KEY_DOWN if pressed else xkb.XKB_KEY_UP
         self.state.update_key(code + 8, direction)
 

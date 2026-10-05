@@ -85,7 +85,8 @@ v init_local_repo
 deps_data=$(yq -o=j '.' "$deps_data_file")
 echo "Starting to install packages from $deps_data_file ..."
 
-while IFS= read -r deps_list_key; do
+# The group list comes in on fd 9, so dnf and a failure prompt keep the real stdin.
+while IFS= read -r -u 9 deps_list_key; do
   echo "Installing package list: $deps_list_key"
 
   install_opts=$(echo $deps_data | yq ".groups.\"$deps_list_key\" | select(has(\"install_opts\")) | .install_opts[]")
@@ -95,10 +96,10 @@ while IFS= read -r deps_list_key; do
       install_opts="$install_opts --repofrompath=illogical-impulse,file://$HOME/.cache/illogical-impulse-repo --nogpgcheck"
   fi
 
-  r v sudo dnf install -y $install_opts $package_list </dev/tty
+  r v sudo dnf install -y $install_opts $package_list
 
   echo "----------------------------------------"
-done < <(echo "$deps_data" | yq '.groups | keys[]? | select(length > 0)')
+done 9< <(echo "$deps_data" | yq '.groups | keys[]? | select(length > 0)')
 
 # Add back versionlock at the end
 [ -n "$nolock_qs" ] || v sudo dnf versionlock add quickshell-git || true

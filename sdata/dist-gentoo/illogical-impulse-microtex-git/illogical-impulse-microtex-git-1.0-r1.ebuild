@@ -34,6 +34,8 @@ src_prepare() {
 	# Gentoo doesn't have gtksourceviewmm4 even on testing so I just left it on 3
 	# sed -i 's/gtksourceviewmm-3.0/gtksourceviewmm-4.0/' CMakeLists.txt
 	sed -i 's/tinyxml2.so.10/tinyxml2.so.11/' CMakeLists.txt
+	# fontconfig 2.18 no longer pulls FcFreeTypeQuery in through fontconfig.h
+	sed -i '/#include <fontconfig\/fontconfig.h>/a #include <fontconfig/fcfreetype.h>' src/platform/cairo/graphic_cairo.cpp
 }
 
 src_compile() {

@@ -157,6 +157,14 @@ Singleton {
         
     }
 
+    // Print and Super+Alt+R stay bound under the lock (a recording must still
+    // stop), but a selector opened there sits dimmed over the transparent lock
+    // surface with no input until unlock. Both families open it through here.
+    onRegionSelectorOpenChanged: {
+        if (regionSelectorOpen && screenLocked)
+            regionSelectorOpen = false
+    }
+
     onDashboardPanelOpenChanged: {
         if (dashboardPanelOpen) {
             Notifications.timeoutAll();

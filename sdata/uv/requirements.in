@@ -15,6 +15,6 @@ pycairo
 pygobject
 tqdm
 numpy
-opencv-contrib-python
+opencv-contrib-python-headless
 requests
 onnxruntime

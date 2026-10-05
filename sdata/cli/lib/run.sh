@@ -3,7 +3,8 @@
 # Command: iiren run
 echo -e "${BLUE}Killing Quickshell & Reloading Hyprland...${NC}"
 
-pkill -x qs
+# By config, not name: a Nix install runs as .quickshell-wra
+qs kill -c ii
 hyprctl reload
 
 sleep 1.0

@@ -60,7 +60,7 @@ quickshell, home_attrs, ... }:
 
       # NOTE: below are migrated from dist-arch. For each package, must know why it's needed and how it's used specifically, cuz things may be need tweak to properly use the package installed by Nix, for example those have hardcoded path /usr/* . See sdata/deps-info.md
       ### illogical-impulse-audio
-      libcava #cava
+      cava #cava (libcava is only the library; MediaControls runs the cava binary)
       lxqt.pavucontrol-qt #pavucontrol-qt
       wireplumber #wireplumber
       pipewire #pipewire-pulse
