@@ -27,6 +27,7 @@ Rectangle {
     default property alias actionButtons: actions.groupData
     // Leads the action row: the character count, or what the output fixes.
     property Component leading: null
+    signal ctrlReturnPressed()
     color: Appearance.colors.colLayer2
     radius: Appearance.rounding.normal
 
@@ -50,6 +51,11 @@ Rectangle {
                 color: root.error ? Appearance.colors.colError : Appearance.colors.colOnLayer2
                 padding: 16
                 background: null
+                Keys.onPressed: event => {
+                    if (!(event.modifiers & Qt.ControlModifier) || (event.key !== Qt.Key_Return && event.key !== Qt.Key_Enter)) return;
+                    root.ctrlReturnPressed();
+                    event.accepted = true;
+                }
             }
         }
 
@@ -60,6 +66,8 @@ Rectangle {
 
             Loader {
                 Layout.preferredHeight: 40
+                // Gives way to the buttons (two row gaps), and long text elides inside it.
+                Layout.maximumWidth: parent.width - actions.implicitWidth - 16
                 active: root.leading !== null
                 visible: active
                 sourceComponent: root.leading

@@ -6,8 +6,11 @@ None of this shows in a still frame:
 - A failed `trans` left the placeholder, as if nothing had been typed. The exit
   handler now reports it, but it must stay quiet for a run killed by the next
   keystroke, or every fast typist sees the error flash between results.
-- Swap with the source on auto trades in the *detected* language, which `trans`
-  names in English while the language list is endonyms. The lookup is evaluated.
+- One `trans -dump` answers everything: Google's raw JSON, still in HTTP chunks,
+  carries the translation, the detected language (a code, with Google's legacy iw/jw),
+  the romanisation and the "did you mean". Its parser runs on captured answers here.
+- Swap with the source on auto trades in the *detected* language, a code, while the
+  language list is endonyms. The lookup is evaluated.
 - The dialog's Loader was bound to the open flag, so it was destroyed before its
   exit played. It is latched now and released once the dialog stops being visible.
 - The two cards split the page under the language bar, as Google Translate does on
@@ -29,23 +32,46 @@ def node(js):
     return json.loads(subprocess.run(["node", "-e", js], capture_output=True, text=True, check=True).stdout)
 
 
+# The dump parser, lifted and run on real answers, chunk framing included.
+m = re.search(r"function parseDump\(raw: string\): var \{(.*?)\n    \}", qml, re.S)
+assert m, "Translator: parseDump is gone"
+PARSE = f"const parseDump = raw => {{{m.group(1)}}};"
+seg = lambda t, s: [t, s, None, None, 3]
+helo = [[seg("hello wrld", "helo wrld")], None, "nl", None, None, None, 0.75,
+        ["<b><i>hello</i></b> <b><i>world</i></b>", "hello world", [1]]]
+ja = [[seg("こんにちは世界", "Bonjour le monde"), [None, None, "Kon'nichiwa sekai"]], None, "fr"]
+two = [[seg("C'est une phrase. ", "This is a sentence. "), seg("Et un autre.", "And another.")], None, "en"]
+he = [[seg("Hello world", "שלום עולם"), [None, None, None, "shlum olam"]], None, "iw"]
+chunk = lambda d: f"{len(json.dumps(d)):x}\r\n{json.dumps(d)}\r\n0\r\n\r\n"
+dumps = [chunk(helo), chunk(ja), chunk(two), chunk(he), json.dumps(two), "", "Error: no connection\n"]
+got = node(f"{PARSE} console.log(JSON.stringify({json.dumps(dumps)}.map(parseDump)));")
+assert got[0] == {"translation": "hello wrld", "transliteration": "", "detected": "nl", "correction": "hello world"}, got[0]
+assert got[1] == {"translation": "こんにちは世界", "transliteration": "Kon'nichiwa sekai", "detected": "fr", "correction": ""}, got[1]
+assert got[2]["translation"] == "C'est une phrase. Et un autre." and got[4] == got[2], "Translator: segments must join, framed or not"
+assert got[3]["detected"] == "he" and got[3]["transliteration"] == "", f"Translator: iw must map to he, source romanisation is not ours: {got[3]}"
+assert got[5] is None and got[6] is None, "Translator: an unreadable dump must be null, not an empty translation"
+
+
 # The exit handler, lifted and run against each way a run ends.
 m = re.search(r"onExited: \(exitCode, exitStatus\) => \{(.*?)\n        \}", qml, re.S)
 assert m, "Translator: translateProc no longer takes (exitCode, exitStatus); a killed run is indistinguishable"
-cases = [[1, 15, "partial"], [0, 127, ""], [0, 2, ""], [0, 0, "  "], [0, 0, " Hello \n"]]
+cases = [[1, 15, "partial"], [0, 127, ""], [0, 2, ""], [0, 0, "  "], [0, 0, chunk(helo)]]
 got = node(f"""
+{PARSE}
 const f = new Function("root", "translateProc", "Translation", "exitStatus", "exitCode", {json.dumps(m.group(1))});
 const T = {{ tr: s => s }};
 console.log(JSON.stringify({json.dumps(cases)}.map(([status, code, buffer]) => {{
-    const root = {{ translatedText: "old", translateError: "" }};
+    const root = {{ translatedText: "old", translateError: "", parseDump, inputField: {{ text: "helo wrld" }}, sourceLanguage: "auto" }};
     f(root, {{ buffer }}, T, status, code);
-    return root;
+    const {{ parseDump: _, inputField, sourceLanguage, ...out }} = root;
+    return out;
 }})));""")
 assert got[0] == {"translatedText": "old", "translateError": ""}, \
     f"Translator: a run killed for a newer keystroke changed the output: {got[0]}"
 assert "trans" in got[1]["translateError"], "Translator: exit 127 must say `trans` is missing"
 assert got[2]["translateError"] and got[3]["translateError"], "Translator: a failed or empty run must say so"
-assert got[4] == {"translatedText": "Hello", "translateError": ""}, f"Translator: a good run did not land: {got[4]}"
+assert got[4] == {"translatedText": "hello wrld", "translateError": "", "transliteration": "", "correction": "hello world",
+                  "detectedLanguage": "nl"}, f"Translator: a good run did not land: {got[4]}"
 
 # Swap resolves auto to the detected language's endonym.
 m = re.search(r"detectedEndonym: (Object\.keys.*?\?\? \"\")", qml, re.S)
@@ -53,7 +79,7 @@ assert m, "Translator: detectedEndonym is gone; swap cannot resolve auto"
 aliases = {"Deutsch": "de German", "Français": "fr French", "English": "en English"}
 got = node(f"""
 const root = {{ languageAliases: {json.dumps(aliases)} }};
-console.log(JSON.stringify(["French", "German", "Klingon", ""].map(d => (root.detectedLanguage = d, {m.group(1)}))));""")
+console.log(JSON.stringify(["fr", "de", "tlh", ""].map(d => (root.detectedLanguage = d, {m.group(1)}))));""")
 assert got == ["Français", "Deutsch", "", ""], f"Translator: detected-language lookup gave {got}"
 assert re.search(r'swapTarget: root\.sourceLanguage === "auto" \? root\.detectedEndonym : root\.sourceLanguage', qml), \
     "Translator: swapTarget no longer falls back to the detected language on auto"
@@ -62,7 +88,7 @@ assert "enabled: root.swapTarget.length > 0" in qml, "Translator: swap must be d
 # The language row cannot shift under the pointer.
 bar = qml[qml.find("// From, swap, to"):qml.find("TextCanvas { // Content input")]
 assert bar.count("Layout.preferredWidth: 1") == 2, "Translator: the two pills must share the row equally"
-assert 'hintText: root.sourceLanguage === "auto"' in bar, "Translator: a hand-picked source still shows the detected hint"
+assert 'hintText: root.sourceLanguage === "auto" ? root.detectedEndonym' in bar, "Translator: a hand-picked source still shows the detected hint"
 
 # The cards split the height and scroll their own text.
 for card in ("TextCanvas { // Content input", "TextCanvas { // Content translation"):

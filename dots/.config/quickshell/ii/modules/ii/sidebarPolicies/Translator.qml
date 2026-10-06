@@ -1,7 +1,6 @@
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
-import qs.modules.common.functions
 import qs.modules.ii.sidebarPolicies.translator
 import QtQuick
 import QtQuick.Layouts
@@ -19,7 +18,11 @@ Item {
 
     property string translatedText: ""
     property string translateError: ""
-    // English name of what "auto" resolved to; empty when the source is picked by hand.
+    // The translation spelled out in Latin letters, when its script is not.
+    property string transliteration: ""
+    // Google's "did you mean", when it read the input as something else.
+    property string correction: ""
+    // Code of what "auto" resolved to; empty when the source is picked by hand.
     property string detectedLanguage: ""
     property list<string> languages: []
     // Endonym -> "code English name", which the language picker also searches.
@@ -33,7 +36,7 @@ Item {
         const target = root.languageAliases[root.targetLanguage];
         if (!target) return false;
         if (root.sourceLanguage === root.targetLanguage) return true;
-        return root.sourceLanguage === "auto" && target.slice(target.indexOf(" ") + 1) === root.detectedLanguage;
+        return root.sourceLanguage === "auto" && target.split(" ")[0] === root.detectedLanguage;
     }
     onRefiningChanged: translateTimer.restart()
     // LanguageTool codes, fetched once; `trans` codes are resolved against them.
@@ -45,11 +48,30 @@ Item {
     readonly property string outputError: root.refining ? root.refineError : root.translateError
     readonly property string outputText: (root.refining ? root.refinedText : root.translatedText).trim()
     // What auto resolved to, as the endonym the language list and the swap use.
-    readonly property string detectedEndonym: Object.keys(root.languageAliases).find(k => {
-        const a = root.languageAliases[k];
-        return a.slice(a.indexOf(" ") + 1) === root.detectedLanguage;
-    }) ?? ""
+    readonly property string detectedEndonym: Object.keys(root.languageAliases).find(k => root.languageAliases[k].split(" ")[0] === root.detectedLanguage) ?? ""
     readonly property string swapTarget: root.sourceLanguage === "auto" ? root.detectedEndonym : root.sourceLanguage
+
+    // `-dump` prints Google's raw answer still in HTTP chunks, a size line before each
+    // body line; the JSON escapes its own newlines, so every other line is body. Null
+    // when it does not parse, so a format change shows as a failure, not as garbage.
+    function parseDump(raw: string): var {
+        const body = raw.trim();
+        try {
+            const d = JSON.parse(body.startsWith("[") ? body : body.split(/\r?\n/).filter((_, i) => i % 2).join(""));
+            const translation = d[0].map(s => s[0] ?? "").join("").trim();
+            // The romanisation rides on a segment of its own, with no translation in it.
+            const roman = d[0].find(s => s[0] === null)?.[2] ?? "";
+            return {
+                translation: translation,
+                transliteration: roman === translation ? "" : roman,
+                // Google still says iw and jw where `trans` lists he and jv.
+                detected: ({ iw: "he", jw: "jv" })[d[2]] ?? d[2] ?? "",
+                correction: d[7]?.[1] ?? "",
+            };
+        } catch (e) {
+            return null;
+        }
+    }
 
     function ltCode(code: string): string {
         const L = root.ltLanguages;
@@ -135,15 +157,17 @@ Item {
                     refineProc.language = code;
                     refineProc.text = root.inputField.text;
                     refineProc.running = code.length > 0;
-                } else {
+                }
+                // On auto it runs while refining too: the detected language is in its answer.
+                if (!root.refining || root.sourceLanguage === "auto") {
                     translateProc.buffer = "";
                     root.translateError = "";
                     translateProc.running = true;
                 }
-                detectProc.running = false;
-                detectProc.running = root.sourceLanguage === "auto";
             } else {
                 root.translatedText = "";
+                root.transliteration = "";
+                root.correction = "";
                 root.translateError = "";
                 root.refineResult = { text: "", matches: [] };
                 root.refineError = "";
@@ -155,10 +179,9 @@ Item {
 
     Process {
         id: translateProc
-        command: ["bash", "-c", `trans -brief -no-bidi`
-            + ` -source '${StringUtils.shellSingleQuoteEscape(root.sourceLanguage)}'`
-            + ` -target '${StringUtils.shellSingleQuoteEscape(root.targetLanguage)}'`
-            + ` '${StringUtils.shellSingleQuoteEscape(root.inputField.text.trim())}'`]
+        // Through env, so a missing `trans` still exits 127 instead of failing to start.
+        command: ["env", "trans", "-dump", "-no-bidi", "-source", root.sourceLanguage, "-target", root.targetLanguage,
+            "--", root.inputField.text.trim()]
         property string buffer: ""
         stdout: SplitParser {
             onRead: data => {
@@ -168,10 +191,15 @@ Item {
         onExited: (exitCode, exitStatus) => {
             // A run that was killed for a newer keystroke says nothing.
             if (exitStatus !== 0) return;
-            const out = translateProc.buffer.trim();
+            const out = root.parseDump(translateProc.buffer);
             if (exitCode === 127) root.translateError = Translation.tr("Translating needs `trans` (translate-shell)");
-            else if (exitCode !== 0 || !out) root.translateError = Translation.tr("Couldn't translate. Check your connection");
-            else root.translatedText = out;
+            else if (exitCode !== 0 || !out?.translation) root.translateError = Translation.tr("Couldn't translate. Check your connection");
+            else {
+                root.translatedText = out.translation;
+                root.transliteration = out.transliteration;
+                root.correction = out.correction === root.inputField.text.trim() ? "" : out.correction;
+                if (root.sourceLanguage === "auto") root.detectedLanguage = out.detected;
+            }
         }
     }
 
@@ -208,15 +236,15 @@ Item {
     }
 
     Process {
-        id: detectProc
-        // `-brief` drops the source language, so identify it on a call of its own.
-        command: ["trans", "-id", "-no-ansi", "-no-bidi", root.inputField.text.trim()]
-        stdout: SplitParser {
-            onRead: data => {
-                const m = data.match(/^Name\s+(.+)$/);
-                if (m) root.detectedLanguage = m[1].trim();
-            }
-        }
+        id: speakProc
+        // Killing `trans` would orphan its player, so a reading plays out; the button waits.
+        // Voice wants a code: given "English" it says it has none, and exits 0.
+        command: ["trans", "-speak", "-no-translate", "-source", root.languageAliases[root.targetLanguage]?.split(" ")[0] ?? "auto",
+            "--", root.outputText]
+        onStarted: console.warn("[Translator] speak start", JSON.stringify(command))
+        onExited: (code, status) => console.warn("[Translator] speak exit", code, status)
+        stdout: SplitParser { onRead: data => console.warn("[Translator] speak out:", data) }
+        stderr: SplitParser { onRead: data => console.warn("[Translator] speak err:", data) }
     }
 
     Process {
@@ -260,7 +288,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 displayText: root.sourceLanguage === "auto" ? Translation.tr("Auto") : root.sourceLanguage
-                hintText: root.sourceLanguage === "auto" ? root.detectedLanguage : ""
+                hintText: root.sourceLanguage === "auto" ? root.detectedEndonym : ""
                 onClicked: root.showLanguageSelectorDialog(false)
             }
             RippleButton {
@@ -286,7 +314,7 @@ Item {
                     }
                 }
                 StyledToolTip {
-                    text: Translation.tr("Swap languages")
+                    text: Translation.tr("Swap languages (Ctrl+Enter)")
                 }
             }
             LanguageSelectorButton {
@@ -304,15 +332,8 @@ Item {
             Layout.preferredHeight: 1
             isInput: true
             placeholderText: Translation.tr("Enter text to translate")
-            leading: Component {
-                StyledText {
-                    leftPadding: 8
-                    verticalAlignment: Text.AlignVCenter
-                    text: Translation.tr("%1 characters").arg(root.inputField.text.length)
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smaller
-                }
-            }
+            onCtrlReturnPressed: if (swapButton.enabled) swapButton.clicked()
+            leading: root.correction ? correctionChip : characterCount
             CardButton {
                 symbol: "content_paste"
                 onClicked: root.inputField.text = Quickshell.clipboardText
@@ -338,7 +359,7 @@ Item {
             text: root.outputError || root.outputText
             error: root.outputError.length > 0
             busy: translateProc.running || refineProc.running
-            leading: root.refining ? fixSelector : null
+            leading: root.refining ? fixSelector : root.transliteration && !outputCanvas.error ? transliterationText : null
             CardButton {
                 id: copyButton
                 property bool copied: false
@@ -354,6 +375,11 @@ Item {
                     interval: 1500
                     onTriggered: copyButton.copied = false
                 }
+            }
+            CardButton {
+                symbol: speakProc.running ? "graphic_eq" : "volume_up"
+                enabled: copyButton.enabled && !speakProc.running
+                onClicked: speakProc.running = true
             }
             CardButton {
                 symbol: "travel_explore"
@@ -393,6 +419,50 @@ Item {
     Component {
         id: fixSelector
         FixSelectorButton {}
+    }
+
+    Component {
+        id: characterCount
+        StyledText {
+            leftPadding: 8
+            verticalAlignment: Text.AlignVCenter
+            text: Translation.tr("%1 characters").arg(root.inputField.text.length)
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.smaller
+        }
+    }
+
+    Component {
+        id: transliterationText
+        StyledText {
+            leftPadding: 8
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+            text: root.transliteration
+            color: Appearance.colors.colSubtext
+            font.pixelSize: Appearance.font.pixelSize.small
+        }
+    }
+
+    // Takes Google's reading as the input, as its "Did you mean" link does.
+    Component {
+        id: correctionChip
+        RippleButton {
+            horizontalPadding: 12
+            implicitWidth: contentItem.implicitWidth + horizontalPadding * 2
+            implicitHeight: 40
+            buttonRadius: Appearance.rounding.full
+            colBackgroundHover: Appearance.colors.colLayer2Hover
+            colRipple: Appearance.colors.colLayer2Active
+            onClicked: root.inputField.text = root.correction
+            contentItem: StyledText {
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+                text: Translation.tr("Did you mean: %1").arg(root.correction)
+                color: Appearance.colors.colPrimary
+                font.pixelSize: Appearance.font.pixelSize.small
+            }
+        }
     }
 
     // Latched: it stays loaded until the dialog's exit has played.
