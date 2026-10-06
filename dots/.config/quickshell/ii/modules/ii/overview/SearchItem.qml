@@ -98,10 +98,16 @@ RippleButton {
     
     PointingHandInteraction {}
 
+    // A row cut by the list's edge mid-scroll shrinks its fill to the part that
+    // shows, so the cut ends in the row's own corners instead of a square edge.
+    // Geometry, not a mask: check-overview.py keeps offscreen passes off this card.
+    readonly property Flickable view: ListView.view
     background {
         anchors.fill: root
         anchors.leftMargin: root.horizontalMargin
         anchors.rightMargin: root.horizontalMargin
+        anchors.topMargin: root.view ? Math.max(0, root.view.contentY - root.y) : 0
+        anchors.bottomMargin: root.view ? Math.max(0, root.y + root.height - root.view.contentY - root.view.height) : 0
     }
 
     onClicked: {
