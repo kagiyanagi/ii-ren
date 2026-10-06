@@ -46,19 +46,30 @@ MouseArea {
             hover: root.containsMouse
             press: root.pressed
 
-            // The meter's own colours are for the dark bar and vanish on the
-            // light accent, so it takes the accent's: on-primary content over a
-            // track between the two. The track stays opaque because the meter
-            // draws its inside number in the track colour where it crosses the
-            // fill. Error container is the red that contrasts with primary in
-            // both light and dark schemes.
-            CustomBatteryMeter {
-                id: meter
+            // Every style is sized for the bare bar, ~18-20px tall, which left
+            // a 3px rim of accent round it. Scaled to leave 4 all round, the
+            // inset the accent keeps from its pill. Text-only stays full size,
+            // like the clock's time.
+            Item {
+                readonly property real fit: meter.style === "text" ? 1 : Math.min(1, (pill.height - 16) / meter.implicitHeight)
                 anchors.centerIn: parent
-                drawOutsideText: false
-                highlightColor: (isLow && !isCharging) ? Appearance.colors.colErrorContainer : Appearance.colors.colOnPrimary
-                trackColor: (isCritical && !isCharging) ? Appearance.colors.colError : ColorUtils.mix(pill.colAccent, Appearance.colors.colOnPrimary, 0.7)
-                contentColor: (isLow && !isCharging) ? Appearance.colors.colErrorContainer : Appearance.colors.colOnPrimary
+                implicitWidth: meter.implicitWidth * fit
+                implicitHeight: meter.implicitHeight * fit
+
+                // The meter's own track is secondary container, the accent's
+                // tone, so it would vanish: the track is the accent's on-colour
+                // at 28% instead, mixed in rather than translucent because the
+                // meter draws its inside number in the track colour where it
+                // crosses the fill. The low and critical reds are the meter's own.
+                CustomBatteryMeter {
+                    id: meter
+                    anchors.centerIn: parent
+                    scale: parent.fit
+                    drawOutsideText: false
+                    highlightColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnPrimaryContainer
+                    trackColor: (isCritical && !isCharging) ? Appearance.colors.colErrorContainer : ColorUtils.mix(Appearance.colors.colOnPrimaryContainer, pill.colAccent, 0.28)
+                    contentColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnPrimaryContainer
+                }
             }
         }
     }

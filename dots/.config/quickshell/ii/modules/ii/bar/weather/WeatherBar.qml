@@ -133,9 +133,9 @@ MouseArea {
 
         MaterialSymbol {
             fill: 0
-            text: WeatherIcons.getMaterialSymbol(Weather.data?.wCode ?? 113)
+            text: WeatherIcons.getMaterialSymbol(Weather.data?.wCode ?? 113, Weather.isNight)
             iconSize: root.material ? Appearance.font.pixelSize.normal : Appearance.font.pixelSize.large
-            color: root.material ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
+            color: root.material ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colOnLayer1
         }
     }
 

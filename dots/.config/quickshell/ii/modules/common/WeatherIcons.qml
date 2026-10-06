@@ -211,8 +211,12 @@ Singleton {
         "395": "snowing"
     })
 
-    function getMaterialSymbol(code): string {
+    // The two codes with a sun in them get the moon after dark, as the
+    // illustrations do; a clear night showed a sun.
+    function getMaterialSymbol(code, isNight): string {
         var key = String(code)
+        if (isNight && key === "113") return "clear_night"
+        if (isNight && key === "116") return "partly_cloudy_night"
         if (_materialFallback.hasOwnProperty(key)) {
             return _materialFallback[key]
         }

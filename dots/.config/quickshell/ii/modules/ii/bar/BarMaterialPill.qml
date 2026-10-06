@@ -1,5 +1,4 @@
 import qs.modules.common
-import qs.modules.common.functions
 import qs.modules.common.widgets
 import QtQuick
 
@@ -19,9 +18,11 @@ Rectangle {
     property bool hover: false
     property bool press: false
     default property alias accentContent: accent.data
-    // Primary, eased 15% toward its container: full tone-80 primary glared
-    // against the dark pills, and no tone sits between the two.
-    readonly property color colAccent: ColorUtils.mix(Appearance.colors.colPrimary, Appearance.colors.colPrimaryContainer, 0.85)
+    // Tonal, not filled: a light primary accent put dark content in a bar of
+    // light content, and nothing drawn for the dark bar (the weather
+    // illustrations, the battery meter) sat right on it. Content on it takes
+    // colOnPrimaryContainer.
+    readonly property color colAccent: Appearance.colors.colPrimaryContainer
 
     // 4 between the accent and the pill's edge, as BarGroup insets its pill
     // from the bar; 12 at the text end so the label sits off the curve.

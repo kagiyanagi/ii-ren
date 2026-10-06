@@ -75,10 +75,12 @@ Item {
             hover: mouseArea.containsMouse || dropArea.containsDrag
             press: mouseArea.pressed
 
+            // One weight up from the date: the key value of the pair.
             StyledText {
                 anchors.centerIn: parent
                 font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnPrimary
+                font.weight: Font.Medium
+                color: Appearance.colors.colOnPrimaryContainer
                 text: root.formattedTime
             }
         }
