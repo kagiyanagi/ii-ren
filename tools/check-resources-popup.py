@@ -8,10 +8,10 @@ they stop being true -- a fill spilling past its track, or a plot painting into 
 corner arc, both just look like a rendering glitch at 60fps:
 
 1. The three meter pills masked their own fill to the track. The fill is
-   left-aligned, the same height as the track and carries the same `full` radius,
-   so Qt's radius clamp already keeps it inside at every width -- the mask was
-   masking a shape that was never outside it. Change the fill's height or radius
-   and that stops holding.
+   left-aligned, the same height as the track, carries the same `full` radius
+   and is never narrower than it is tall, so Qt's radius clamp keeps it inside at
+   every width with no clip at all. Narrower than tall, it either escapes the left
+   cap as a thin capsule or, scissored, shows as a flat-cut sliver at low usage.
 
 2. The two usage cards masked the graph well so the Canvas could not paint into
    a rounded corner. The Canvas now fills the well and clips its own painting to
@@ -61,35 +61,26 @@ def covers(inner, outer, steps=140):
 
 
 # -- 1. the meter fill is inside its track at every percent -------------------
-# MeterPill: implicitHeight 64, radius `full`. The fill is the track's silhouette
-# behind a scissor clip, never narrower than the pill is tall.
+# MeterPill: implicitHeight 64, radius `full`. The fill grows from a circle the
+# pill's height at 0% to the full track at 100%.
 assert "radius: Appearance.rounding.full" in CODE, "meter pill lost its full radius"
 assert "implicitHeight: 64" in CODE, "meter pill height changed -- re-derive the fill geometry"
 assert "radius: pill.radius" in CODE, "the meter fill no longer takes the track's radius"
-assert re.search(r"width:\s*Math\.max\(fillClip\.width,\s*pill\.height\)", CODE), \
-    "the meter fill may now be narrower than the pill is tall -- Qt clamps its " \
-    "radius to min(w, h)/2 and it becomes a thin capsule that escapes the left cap"
-assert re.search(r"id: fillClip\b[\s\S]{0,400}?clip: true", CODE), \
-    "the meter fill lost its scissor clip -- nothing bounds it to the track now"
+assert re.search(r"width:\s*pill\.height \+ \(pill\.width - pill\.height\) \* pill\.value", CODE), \
+    "the meter fill may now be narrower than the pill is tall -- it escapes the " \
+    "left cap, or gets scissored into a flat-cut sliver at low usage"
 
 FULL, H = 9999, 64
 for track_w in (240, 380, 420):
     for pct in [i / 40 for i in range(41)]:
-        w = track_w * pct
-        if w <= 0:
-            continue
-        # What actually paints: the inner rect, widened to the cap diameter, then
-        # scissored to `w`. The scissor can only remove area, so checking the
-        # un-scissored inner rect is the stricter test.
-        inner_w = max(w, H)
-        worst = covers((inner_w, H, min(FULL, inner_w / 2, H / 2), 0.0),
-                       (track_w, H, FULL))
+        w = H + (track_w - H) * pct
+        worst = covers((w, H, min(FULL, w / 2, H / 2), 0.0), (track_w, H, FULL))
         assert worst <= 1e-6, (
             f"meter fill escapes its track at {pct:.3f} of {track_w}px "
-            f"(overshoot {worst:.3f}px) -- it needs the mask back")
+            f"(overshoot {worst:.3f}px)")
 
 # The bug this replaced, kept as a live counter-example: a fill that takes the
-# percent as its own width really does escape, so the widening is load-bearing.
+# percent as its own width really does escape, so the floor is load-bearing.
 naive = covers((6.0, H, min(FULL, 3.0, H / 2), 0.0), (240, H, FULL))
 assert naive > 1, "a narrow raw-width fill no longer escapes; re-derive this check"
 

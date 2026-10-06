@@ -246,17 +246,14 @@ StyledPopup {
      * One horizontal meter: RAM, swap and disk were this card written three
      * times, 280 lines each, free to drift apart.
      *
-     * The fill is the track's own silhouette, cut off at the current value by a
-     * rectangular scissor clip, so it cannot paint outside the track and needs no
-     * OpacityMask to be told so (DESIGN.md 8: prefer native clipping to a mask).
-     * `clip` on an Item is a scissor rect; `layer.enabled` is a framebuffer.
-     *
-     * Not simply a narrower rounded rect: Qt clamps a Rectangle's radius to
-     * min(w, h)/2, so a fill narrower than the pill is tall comes out a thin tall
-     * capsule and pokes straight out through the track's left cap. Keeping the
-     * inner rect at least as wide as the pill is tall makes its radius clamp to
-     * the track's and its left cap coincide with the track's exactly; below that
-     * width the scissor is what shortens it, which is what the mask used to do.
+     * The fill is a pill of its own, never narrower than the track is tall: at 0%
+     * it is the circle round the icon, and the rest of the track maps onto the
+     * remaining width -- the floor Android's brightness slider keeps its thumb at.
+     * The percent printed beside it is the exact reading. It used to be the
+     * track's silhouette scissored to the raw value, and below one pill-height
+     * that left a flat-cut sliver of the left cap. A rounded rect at least as wide
+     * as it is tall clamps its radius to the track's, so its left cap coincides
+     * with the track's and it needs no clip or mask (DESIGN.md 8).
      * tools/check-resources-popup.py holds that geometry down.
      */
     component MeterPill: Rectangle {
@@ -289,27 +286,20 @@ StyledPopup {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
-        Item {
-            id: fillClip
+        Rectangle {
+            id: fill
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            width: pill.width * pill.value
-            clip: true
+            width: pill.height + (pill.width - pill.height) * pill.value
+            radius: pill.radius
+            color: pill.fillColor
 
             Behavior on width {
                 animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
             }
-
-            Rectangle {
-                height: fillClip.height
-                width: Math.max(fillClip.width, pill.height)
-                radius: pill.radius
-                color: pill.fillColor
-
-                Behavior on color {
-                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                }
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
             }
         }
 

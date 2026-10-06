@@ -54,6 +54,14 @@ SectionCard {
             }
         }
 
+        // On the Flickable itself, not its contentItem, so it stays put while the row scrolls.
+        ScrollEdgeFade {
+            parent: flickable
+            target: flickable
+            vertical: false
+            color: inDayForecastCard.color
+        }
+
         RowLayout {
             id: rowLayout
             spacing: 12
