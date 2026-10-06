@@ -46,6 +46,10 @@ SectionCard {
         flickableDirection: Flickable.HorizontalFlick
         visible: !root.forecastLoading && root.forecastData.length > 0
 
+        HoverHandler {
+            cursorShape: flickable.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        }
+
         WheelHandler {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             onWheel: (event) => {
