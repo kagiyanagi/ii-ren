@@ -20,9 +20,8 @@ StyledPopup {
 
     contentItem: Rectangle {
         id: card
-        // At least 350 so a short title still reads as a card; capped at 600
-        // so a long one wraps instead of spanning the screen.
-        implicitWidth: Math.max(350, Math.min(600, titleMetrics.width + 32))
+        // Fixed so the card stays put as titles change; a long title wraps.
+        implicitWidth: 360
         implicitHeight: contentLayout.implicitHeight + 32
         radius: Appearance.rounding.normal
         color: Appearance.colors.colSurfaceContainerHigh
@@ -50,13 +49,6 @@ StyledPopup {
                 shift: footerShift
                 slot: 2
             }
-        }
-
-        TextMetrics {
-            id: titleMetrics
-            text: root.appTitle
-            font.pixelSize: Appearance.font.pixelSize.normal
-            font.weight: Font.Medium
         }
 
         ColumnLayout {
