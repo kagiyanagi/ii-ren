@@ -13,9 +13,8 @@ import "greeting.js" as Greeting
  * The Hermes tab before the first message. The Hermes mark, a greeting for
  * the hour with the user's name on a line of its own in the page's one accent,
  * a question, then ways to start: the window you were in, what you copied, a
- * shell command, the command list. Left-aligned and set low, as Gemini on
- * Android sets its own, so the eye ends just above the composer it is about to
- * use.
+ * shell command, the command list. Centred and set low, so the eye ends just
+ * above the composer it is about to use.
  *
  * Every open replays the entrance: the lines rise in one after another (2.8)
  * while the mark turns into place and the name's weight swells to rest. Leaving is a plain fade (2.5).
@@ -195,6 +194,7 @@ Item {
 
         MaterialShapeWrappedMaterialSymbol {
             id: mark
+            Layout.alignment: Qt.AlignHCenter
             transform: Translate { id: markShift }
             text: "auto_awesome"
             shape: MaterialShape.Shape.PixelCircle
@@ -206,7 +206,8 @@ Item {
         StyledText {
             id: leadLine
             Layout.fillWidth: true
-            Layout.topMargin: 12
+            horizontalAlignment: Text.AlignHCenter
+            Layout.topMargin: 24
             transform: Translate { id: leadShift }
             wrapMode: Text.Wrap
             text: root.parts.lead
@@ -219,6 +220,7 @@ Item {
         StyledText {
             id: nameLine
             Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
             visible: root.parts.name.length > 0
             transform: Translate { id: nameShift }
             elide: Text.ElideRight
@@ -232,7 +234,8 @@ Item {
         StyledText {
             id: promptLine
             Layout.fillWidth: true
-            Layout.topMargin: 12
+            horizontalAlignment: Text.AlignHCenter
+            Layout.topMargin: 16
             transform: Translate { id: promptShift }
             wrapMode: Text.Wrap
             text: Greeting.subtitle(root.now)
@@ -243,9 +246,22 @@ Item {
         Flow {
             id: starters
             Layout.fillWidth: true
-            Layout.topMargin: 16
+            Layout.topMargin: 32
             transform: Translate { id: startersShift }
             spacing: 8
+            // Flow only packs left; centre each row once it has placed them.
+            onPositioningComplete: {
+                const rows = {};
+                for (const c of starters.children)
+                    if (c.visible)
+                        (rows[c.y] = rows[c.y] ?? []).push(c);
+                for (const row of Object.values(rows)) {
+                    const last = row[row.length - 1];
+                    const shift = (starters.width - (last.x + last.width - row[0].x)) / 2;
+                    for (const c of row)
+                        c.x += shift;
+                }
+            }
 
             Starter {
                 visible: root.windowTitle.length > 0
