@@ -17,7 +17,9 @@ RippleButton { // Right sidebar button
     Layout.fillHeight: false
 
     implicitWidth: indicatorsLayout.implicitWidth + (vertical ? 6 : 10) * 2
-    implicitHeight: indicatorsLayout.implicitHeight + (vertical ? 4 : 5) * 2
+    // Material bar style: the button is the whole group pill (BarComponent
+    // drops the inset), so its film is the pill's shape.
+    implicitHeight: (Config.options.bar.barGroupStyle === 3 && !vertical) ? Appearance.sizes.baseBarHeight - 8 : indicatorsLayout.implicitHeight + (vertical ? 4 : 5) * 2
 
     buttonRadius: Appearance.rounding.full
     colBackgroundHover: Appearance.colors.colLayer1Hover

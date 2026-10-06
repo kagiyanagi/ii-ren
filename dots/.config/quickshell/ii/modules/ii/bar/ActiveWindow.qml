@@ -22,11 +22,12 @@ Item {
     readonly property int maxSize: 350
     readonly property int fixedSize: root.vertical ? 150 : 225
 
-    property string appClassText: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
-                root.activeWindow?.appId : (root.biggestWindow?.class) ?? Translation.tr("Desktop")
-                
-    property string appTitleText: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
-                root.activeWindow?.title : (root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${monitor?.activeWorkspace?.id ?? 1}`
+    // Focused here: the active window. Otherwise the biggest on this monitor's
+    // workspace, or the desktop when it has none.
+    readonly property bool showsActive: !!(root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow)
+
+    property string appClassText: root.showsActive ? (root.activeWindow?.appId ?? "") : (root.biggestWindow?.class) ?? Translation.tr("Desktop")
+    property string appTitleText: root.showsActive ? (root.activeWindow?.title ?? "") : (root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${monitor?.activeWorkspace?.id ?? 1}`
     
     implicitHeight: isFixedSize ? fixedSize : (root.vertical ? Math.max(classText.implicitWidth, titleText.implicitWidth) + 20 : colLayout.implicitHeight)
     implicitWidth: isFixedSize ? fixedSize : Math.min(Math.max(classText.implicitWidth, titleText.implicitWidth) + 20, maxSize)
@@ -74,5 +75,20 @@ Item {
             rotation: root.vertical ? 90 : 0
             text: root.vertical ? root.appClassText : root.appTitleText
         }
+    }
+
+    MouseArea {
+        id: mouseArea
+        anchors.fill: parent
+        hoverEnabled: !Config.options.bar.tooltips.clickToShow
+    }
+
+    ActiveWindowPopup {
+        hoverTarget: mouseArea
+        appClass: root.appClassText
+        appTitle: root.appTitleText
+        address: root.showsActive ? root.activeWindowAddress : (root.biggestWindow?.address ?? "")
+        monitorName: root.monitor?.name ?? ""
+        workspaceId: root.monitor?.activeWorkspace?.id ?? 1
     }
 }

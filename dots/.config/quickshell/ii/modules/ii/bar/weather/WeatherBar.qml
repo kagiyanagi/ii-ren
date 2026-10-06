@@ -5,6 +5,7 @@ import qs.modules.common.widgets
 import qs.modules.common.functions
 import qs
 import qs.services
+import qs.modules.ii.bar
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
@@ -23,7 +24,10 @@ MouseArea {
     // A bar item is a handle that opens a popup, so it needs a real hit area
     // even when the glyph inside it is small (DESIGN.md 3.4: 32px floor on a
     // pointer-driven shell). The padding is on the 4dp grid; 25 was not.
-    implicitWidth: Math.max(32, rowLayout.implicitWidth + 20)
+    // Material style: the reading on a pill, the icon in a primary circle
+    // at its end (BarMaterialPill). Horizontal bar only.
+    readonly property bool material: Config.options.bar.barGroupStyle === 3 && !root.vertical
+    implicitWidth: root.material ? (materialPill.item?.implicitWidth ?? 0) : Math.max(32, rowLayout.implicitWidth + 20)
     implicitHeight: Math.max(32, rowLayout.implicitHeight + (root.vertical ? 20 : 12))
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -57,6 +61,7 @@ MouseArea {
     // scale (3.3) - a growing rectangle in a status strip reads as a layout
     // glitch. The item is never disabled, so there is no 0.4 case.
     Rectangle {
+        visible: !root.material
         anchors.fill: parent
         radius: Appearance.rounding.full
         color: (root.containsPress || root.activeFocus) ? Appearance.colors.colLayer0Active : root.containsMouse ? Appearance.colors.colLayer0Hover : ColorUtils.transparentize(Appearance.colors.colLayer0Hover, 1)
@@ -69,8 +74,27 @@ MouseArea {
         }
     }
 
+    Loader {
+        id: materialPill
+        active: root.material
+        anchors.centerIn: parent
+        sourceComponent: BarMaterialPill {
+            accentFirst: false
+            accentIsCircle: true
+            text: root.hasReading ? Weather.data.temp : "--°"
+            hover: root.containsMouse
+            press: root.containsPress
+
+            Loader {
+                anchors.centerIn: parent
+                sourceComponent: (Config.options.bar.weather.dynamicIcon ?? true) ? dynamicIconComp : symbolIconComp
+            }
+        }
+    }
+
     GridLayout {
         id: rowLayout
+        visible: !root.material
         anchors.centerIn: parent
 
         columns: root.vertical ? 1 : 2
@@ -94,8 +118,9 @@ MouseArea {
         id: dynamicIconComp
 
         Image {
-            width: 20
-            height: 20
+            // Smaller in the material style's 24px circle.
+            width: root.material ? Appearance.font.pixelSize.normal : 20
+            height: width
             source: WeatherIcons.getWeatherIcon(Weather.data?.wCode ?? 113, Weather.isNight)
             sourceSize: Qt.size(40, 40)
             fillMode: Image.PreserveAspectFit
@@ -109,8 +134,8 @@ MouseArea {
         MaterialSymbol {
             fill: 0
             text: WeatherIcons.getMaterialSymbol(Weather.data?.wCode ?? 113)
-            iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnLayer1
+            iconSize: root.material ? Appearance.font.pixelSize.normal : Appearance.font.pixelSize.large
+            color: root.material ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
         }
     }
 

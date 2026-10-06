@@ -117,8 +117,18 @@ Item {
 
     readonly property bool isSpacer: modelData?.id === "sacebar" || modelData?.id === "spacebar"
 
+    // Material (3): every widget its own pill, none joining corners, and the
+    // clock, weather and battery draw theirs (BarMaterialPill) over a bare group.
+    readonly property bool material: Config.options.bar.barGroupStyle === 3
+    readonly property bool drawsOwnPill: material && !rootItem.vertical
+        && ["clock", "weather", "battery"].includes(modelData?.id)
+    // And no inset where the widget is one control with its own hover film, so
+    // the film fills the pill rather than sitting 4 inside it.
+    readonly property bool fillsPill: drawsOwnPill || (material && !rootItem.vertical
+        && ["system_monitor", "policies_panel_button", "dashboard_panel_button", "system_tray"].includes(modelData?.id))
+
     property real startRadius: {
-        if (rootItem.isolated || rootItem.isSpacer) return Appearance.rounding.full
+        if (rootItem.isolated || rootItem.isSpacer || rootItem.material) return Appearance.rounding.full
         if (barSection === 0) {
             if (originalIndex == 0) return Appearance.rounding.full
             let prevList = list.slice(0, originalIndex).reverse()
@@ -140,7 +150,7 @@ Item {
     }
 
     property real endRadius: {
-        if (rootItem.isolated || rootItem.isSpacer) return Appearance.rounding.full
+        if (rootItem.isolated || rootItem.isSpacer || rootItem.material) return Appearance.rounding.full
         if (barSection === 2) {
             if (originalIndex == list.length - 1) return Appearance.rounding.full
             let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
@@ -160,9 +170,10 @@ Item {
 
     readonly property int barGroupStyle: Config.options.bar.barGroupStyle
     readonly property int barBackgroundStyle: Config.options.bar.barBackgroundStyle
-    property color colBackground: isSpacer ? "transparent" :
-                                   barGroupStyle == 0 ? Appearance.colors.colLayer1 :
-                                   (barGroupStyle == 1 && barBackgroundStyle == 1) ? Appearance.colors.colLayer1 :
+    property color colBackground: (isSpacer || drawsOwnPill) ? "transparent" :
+                                   // Layer 2, not 1: surfaceContainerLow sits one tone above the bar
+                                   // and the pills all but vanish on a dark scheme.
+                                   (barGroupStyle == 0 || barGroupStyle == 3 || (barGroupStyle == 1 && barBackgroundStyle == 1)) ? Appearance.colors.colLayer2 :
                                    (barGroupStyle == 1) ? Appearance.m3colors.m3surfaceContainerLow :
                                    "transparent";
     
@@ -171,7 +182,7 @@ Item {
     BarGroup {
         id: wrapper
         vertical: rootItem.vertical
-        padding: rootItem.isSpacer ? 0 : 4
+        padding: (rootItem.isSpacer || rootItem.fillsPill) ? 0 : 4
         anchors {
             // `root` here was BarContent's id, not this file's -- it has no
             // `vertical`, so the group took the horizontal branch in both bars.

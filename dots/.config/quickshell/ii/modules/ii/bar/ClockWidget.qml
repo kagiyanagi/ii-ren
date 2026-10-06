@@ -27,7 +27,11 @@ Item {
     readonly property string formattedTime: Qt.locale().toString(DateTime.clock.date, root.timeFormat)
     readonly property string formattedDate: Qt.locale().toString(DateTime.clock.date, root.dateFormat)
 
-    implicitWidth: rowLayout.implicitWidth + rowLayout.spacing * 10
+    // Material style draws the clock as its own pill (BarMaterialPill); a
+    // LocalSend highlight turns the whole group colPrimary, so it falls back
+    // to the plain row for that.
+    readonly property bool material: Config.options.bar.barGroupStyle === 3 && !rootItem.highlighted
+    implicitWidth: root.material ? (materialPill.item?.implicitWidth ?? 0) : rowLayout.implicitWidth + rowLayout.spacing * 10
     implicitHeight: Appearance.sizes.barHeight
     property color colText: dropArea.containsDrag ? Appearance.colors.colPrimary : rootItem.highlighted ? Appearance.colors.colOnPrimary : Appearance.colors.colOnLayer1
 
@@ -51,6 +55,7 @@ Item {
 
     // The same state film as Resources beside it, inside the BarGroup's inset.
     StateOverlay {
+        visible: !root.material
         anchors.fill: parent
         anchors.topMargin: 4
         anchors.bottomMargin: 4
@@ -60,8 +65,28 @@ Item {
         press: mouseArea.pressed
     }
 
+    Loader {
+        id: materialPill
+        active: root.material
+        anchors.centerIn: parent
+        sourceComponent: BarMaterialPill {
+            text: root.showDate ? root.formattedDate : ""
+            // A file dragged over it lights the pill as hover does.
+            hover: mouseArea.containsMouse || dropArea.containsDrag
+            press: mouseArea.pressed
+
+            StyledText {
+                anchors.centerIn: parent
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colOnPrimary
+                text: root.formattedTime
+            }
+        }
+    }
+
     RowLayout {
         id: rowLayout
+        visible: !root.material
         anchors.centerIn: parent
         spacing: 4
 

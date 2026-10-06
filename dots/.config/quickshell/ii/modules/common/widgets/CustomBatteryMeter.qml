@@ -19,6 +19,9 @@ Item {
     property bool isLow: percentage <= (Config.options.battery.low / 100)
     property bool isCritical: percentage <= (Config.options.battery.critical / 100)
     property bool vertical: false
+    // Off when the host shows the outside percentage itself (the bar's
+    // Material pill puts it in its label); displayOutsideText still says when.
+    property bool drawOutsideText: true
 
     property color highlightColor: (isLow && !isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSecondaryContainer
     // `isCritical` was wired end to end and read by nothing, so critical and merely low
@@ -114,7 +117,7 @@ Item {
         StyledText {
             id: outsideText
             Layout.alignment: Qt.AlignVCenter
-            visible: root.displayOutsideText
+            visible: root.displayOutsideText && root.drawOutsideText
             text: root.percentageText
             color: root.contentColor
             font {
@@ -331,48 +334,37 @@ Item {
                 layer.smooth: true
                 preferredRendererType: Shape.CurveRenderer
 
-                // Background solid circle track
+                // A real ring rather than a disc with a hole painted in the bar's
+                // colour: the hole has to show whatever the meter sits on, and
+                // that is not always colLayer1 (the bar's Material pill, Settings).
+                // Radius 7 with a 4px stroke spans the old 5-to-9 donut.
                 ShapePath {
-                    strokeColor: "transparent"
-                    fillColor: root.trackColor
+                    strokeColor: root.trackColor
+                    strokeWidth: 4
+                    fillColor: "transparent"
                     PathAngleArc {
                         centerX: 10
                         centerY: 10
-                        radiusX: 9
-                        radiusY: 9
+                        radiusX: 7
+                        radiusY: 7
                         startAngle: 0
                         sweepAngle: 360
                     }
                 }
 
-                // Active level pie / wedge
+                // Active level arc
                 ShapePath {
-                    strokeColor: "transparent"
-                    fillColor: root.highlightColor
-                    startX: 10
-                    startY: 10
+                    strokeColor: root.highlightColor
+                    strokeWidth: 4
+                    fillColor: "transparent"
+                    capStyle: ShapePath.FlatCap
                     PathAngleArc {
                         centerX: 10
                         centerY: 10
-                        radiusX: 9
-                        radiusY: 9
+                        radiusX: 7
+                        radiusY: 7
                         startAngle: -90
                         sweepAngle: Math.max(2, root.animatedPercentage * 360)
-                    }
-                    PathLine { x: 10; y: 10 }
-                }
-
-                // Inner cutout circle for donut look
-                ShapePath {
-                    strokeColor: "transparent"
-                    fillColor: Appearance.colors.colLayer1
-                    PathAngleArc {
-                        centerX: 10
-                        centerY: 10
-                        radiusX: 5
-                        radiusY: 5
-                        startAngle: 0
-                        sweepAngle: 360
                     }
                 }
             }
@@ -708,7 +700,8 @@ Item {
                     width: 22
                     height: 13
                     radius: Appearance.rounding.small
-                    color: Appearance.colors.colLayer2
+                    // An outline: the body shows what it sits on, as on iOS.
+                    color: "transparent"
                     border.color: root.highlightColor
                     border.width: 1.2
                     clip: true

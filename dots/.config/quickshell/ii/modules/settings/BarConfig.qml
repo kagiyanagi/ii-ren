@@ -205,7 +205,7 @@ ContentPage {
 
             ContentSubsection {
                 title: Translation.tr("Group style")
-                tooltip: Translation.tr("Island style makes the group background opaque when bar is transparent")
+                tooltip: Translation.tr("Island makes groups opaque on a transparent bar. Material gives the clock, weather and battery pills of their own")
                 Layout.fillWidth: false
 
                 ConfigSelectionArray {
@@ -228,6 +228,11 @@ ContentPage {
                             displayName: Translation.tr("Transparent"),
                             icon: "opacity",
                             value: 2
+                        },
+                        {
+                            displayName: Translation.tr("Material"),
+                            icon: "pill",
+                            value: 3
                         }
                     ]
                 }

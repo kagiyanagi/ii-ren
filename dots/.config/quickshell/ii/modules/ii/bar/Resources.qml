@@ -33,6 +33,8 @@ MouseArea {
         return Math.round(bytes).toString();
     }
 
+    // Material style spaces the stats a little wider, as its pills do.
+    readonly property int gap: Config.options.bar.barGroupStyle === 3 ? 8 : 6
     readonly property bool showSymbols: Config.options.bar.resources.showSymbols ?? false
     readonly property string ramUnit: Config.options.bar.resources.ramUnit ?? "percent"
 
@@ -132,7 +134,7 @@ MouseArea {
             percentage: ResourceUsage.memoryUsedPercentage
             customText: root.ramText
             shown: root.showRam
-            Layout.leftMargin: shown && root.showCpu ? 6 : 0
+            Layout.leftMargin: shown && root.showCpu ? root.gap : 0
             warningThreshold: Config.options.bar.resources.memoryWarningThreshold ?? 95
         }
 
@@ -141,7 +143,7 @@ MouseArea {
             percentage: ResourceUsage.cpuTemp / 100
             customText: root.tempText
             shown: root.showTemp
-            Layout.leftMargin: shown && (root.showCpu || root.showRam) ? 6 : 0
+            Layout.leftMargin: shown && (root.showCpu || root.showRam) ? root.gap : 0
             warningThreshold: Config.options.bar.resources.tempWarningThreshold ?? 85
         }
 
@@ -150,7 +152,7 @@ MouseArea {
             percentage: root.netLoadFraction
             customText: root.netText
             shown: root.showNetwork
-            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp) ? 6 : 0
+            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp) ? root.gap : 0
             warningThreshold: 90
         }
 
@@ -159,7 +161,7 @@ MouseArea {
             percentage: ResourceUsage.swapUsedPercentage
             customText: root.swapText
             shown: root.showSwap
-            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork) ? 6 : 0
+            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork) ? root.gap : 0
             warningThreshold: Config.options.bar.resources.swapWarningThreshold ?? 85
         }
 
@@ -168,7 +170,7 @@ MouseArea {
             percentage: ResourceUsage.gpuUsage
             customText: root.gpuText
             shown: root.showGpu
-            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork || root.showSwap) ? 6 : 0
+            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork || root.showSwap) ? root.gap : 0
             warningThreshold: 90
         }
 
@@ -177,7 +179,7 @@ MouseArea {
             percentage: ResourceUsage.diskUsedPercentage
             customText: root.diskText
             shown: root.showDisk
-            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork || root.showSwap || root.showGpu) ? 6 : 0
+            Layout.leftMargin: shown && (root.showCpu || root.showRam || root.showTemp || root.showNetwork || root.showSwap || root.showGpu) ? root.gap : 0
             warningThreshold: 90
         }
     }

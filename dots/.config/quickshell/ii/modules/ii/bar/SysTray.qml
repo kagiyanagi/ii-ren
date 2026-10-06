@@ -99,8 +99,10 @@ Item {
             // at 24 in the middle of it.
             implicitWidth: 32
             implicitHeight: 32
-            background.implicitWidth: 24
-            background.implicitHeight: 24
+            // Material bar style: the film fills the 32px box, the group pill's
+            // own height, so it is concentric with the pill's end.
+            background.implicitWidth: Config.options.bar.barGroupStyle === 3 ? 32 : 24
+            background.implicitHeight: Config.options.bar.barGroupStyle === 3 ? 32 : 24
             background.anchors.centerIn: this
             colBackgroundToggled: Appearance.colors.colSecondaryContainer
             colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
