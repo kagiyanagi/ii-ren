@@ -203,8 +203,15 @@ Item {
                     }
                 }
 
-                Component.onCompleted: {
-                    if (root.delegate) {
+                // Built the first time the item is on screen, not up front: the
+                // Repeater makes one per entry, and a wallpaper folder's worth of
+                // thumbnails each run a generator process.
+                property bool built: false
+                onVisibleChanged: build()
+                Component.onCompleted: build()
+                function build() {
+                    if (!built && visible && root.delegate) {
+                        built = true
                         var obj = root.delegate.createObject(delegateContainer, {
                             modelData: itemContainer.modelData,
                             index: itemContainer.index,

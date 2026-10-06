@@ -11,7 +11,6 @@ import qs.modules.ii.background.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -316,8 +315,24 @@ Scope {
                         event.accepted = true;
                     }
 
-                    Item {
-                        id: stripViewport
+                    // The M3 carousel Settings > Quick uses: the one in front is
+                    // the hero, the next two shrink into the edge, and a drag
+                    // morphs them through those sizes instead of sliding a row of
+                    // equal tiles. Android's wallpaper picker, as near as M3 has it.
+                    Carousel {
+                        id: wallpaperStrip
+
+                        // Set on click so the check moves right away; switchwall
+                        // writing the config back is a good second later. The
+                        // Connections puts it back in sync with reality after.
+                        property string selectedPath: Config.options.background.wallpaperPath
+
+                        Connections {
+                            target: Config.options.background
+                            function onWallpaperPathChanged(): void {
+                                wallpaperStrip.selectedPath = Config.options.background.wallpaperPath;
+                            }
+                        }
 
                         Layout.fillWidth: true
                         Layout.preferredHeight: 132
@@ -326,198 +341,72 @@ Scope {
                         // already applied, so the strip is 132dp of card that can
                         // only re-select what is selected. It earns its space from
                         // two up.
-                        visible: wallpaperStrip.count > 1 && GlobalStates.desktopMenuWidgetId === null
+                        visible: menuColumn.shuffledWallpapers.length > 1 && GlobalStates.desktopMenuWidgetId === null
 
-                        // The viewport cuts the tiles at each end square, so round
-                        // the cut itself the same as the tiles.
-                        layer.enabled: true
-                        layer.effect: OpacityMask {
-                            maskSource: Rectangle {
-                                width: stripViewport.width
-                                height: stripViewport.height
-                                topLeftRadius: menuCard.outerRadius
-                                topRightRadius: menuCard.outerRadius
-                                bottomLeftRadius: menuCard.outerRadius
-                                bottomRightRadius: menuCard.outerRadius
-                            }
+                        leftPadding: 0
+                        rightPadding: 0
+                        topPadding: 0
+                        bottomPadding: 0
+
+                        model: menuColumn.shuffledWallpapers.map(path => ({ filePath: path }))
+                        // Stays open, so several can be tried in a row. The picked
+                        // one glides up into the hero slot, as on Android.
+                        onItemClicked: (index, modelData) => {
+                            wallpaperStrip.selectedPath = modelData.filePath;
+                            Wallpapers.apply(modelData.filePath);
+                            wallpaperStrip.snapToIndex(index);
                         }
 
-                        // Backs the strip so the edge fade has something to fade
-                        // into, now that there is no card behind it.
-                        Rectangle {
-                            anchors.fill: parent
-                            color: Appearance.m3colors.m3surfaceContainer
-                        }
+                        delegate: Item {
+                            id: wallpaperTile
 
-                        ListView {
-                            id: wallpaperStrip
+                            required property var modelData
+                            required property int index
+                            readonly property bool current: modelData.filePath === wallpaperStrip.selectedPath
 
-                            // Set on click so the tile grows right away; switchwall
-                            // writing the config back is a good second later. The
-                            // Connections puts it back in sync with reality after.
-                            property string selectedPath: Config.options.background.wallpaperPath
-
-                            Connections {
-                                target: Config.options.background
-                                function onWallpaperPathChanged(): void {
-                                    wallpaperStrip.selectedPath = Config.options.background.wallpaperPath;
-                                }
+                            ThumbnailImage {
+                                anchors.fill: parent
+                                sourcePath: wallpaperTile.modelData.filePath
+                                fillMode: Image.PreserveAspectCrop
+                                clip: true
+                                // The hero crops a landscape wallpaper down to its
+                                // middle, so both the cached thumbnail and the decode
+                                // have to be bigger than the tile or it is all upscale.
+                                thumbnailSizeName: "x-large"
+                                sourceSize: Qt.size(0, height * 2)
                             }
 
-                            anchors.fill: parent
-                            orientation: ListView.Horizontal
-                            spacing: 6
-                            clip: true
-                            // Rubber band past the ends, like every other list here.
-                            boundsBehavior: Flickable.DragOverBounds
-                            model: menuColumn.shuffledWallpapers
+                            // Scrim, because a light wallpaper under a light
+                            // accent leaves the check mark invisible.
+                            Rectangle {
+                                anchors.fill: parent
+                                color: Qt.rgba(0, 0, 0, 0.35)
 
-                            // Smooths the wheel's jumps into a glide. Off while the
-                            // drag or the flick owns contentX, or it fights them and
-                            // the strip goes rubbery under the pointer.
-                            Behavior on contentX {
-                                enabled: !wallpaperStrip.dragging && !wallpaperStrip.flicking
-                                NumberAnimation {
-                                    id: scrollAnim
-                                    duration: Appearance.animation.scroll.duration
-                                    easing.type: Appearance.animation.scroll.type
-                                    easing.bezierCurve: Appearance.animation.scroll.bezierCurve
+                                opacity: wallpaperTile.current ? 1 : 0
+                                visible: opacity > 0
+                                Behavior on opacity {
+                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                                 }
-                            }
-
-                            delegate: Item {
-                                id: wallpaperTile
-
-                                required property string modelData
-                                readonly property bool current: modelData === wallpaperStrip.selectedPath
-
-                                // The one in use gets the wider tile, like the launcher's.
-                                // The list repositions its neighbours every frame of
-                                // this, so the whole strip slides along with it.
-                                width: current ? 152 : 98
-                                // Size is spatial, so it runs on the spatial spring
-                                // token and is allowed the overshoot; the scrim
-                                // fading over it is an effect and is not.
-                                Behavior on width {
-                                    animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
-                                }
-                                height: wallpaperStrip.height
 
                                 Rectangle {
-                                    anchors.fill: parent
-                                    radius: Appearance.rounding.normal
-                                    color: Appearance.colors.colSurfaceContainerHigh
-                                }
+                                    anchors.centerIn: parent
+                                    implicitWidth: 26
+                                    implicitHeight: 26
+                                    radius: Appearance.rounding.full
+                                    color: Appearance.colors.colPrimary
 
-                                ThumbnailImage {
-                                    id: wallpaperThumbnail
-                                    anchors.fill: parent
-                                    sourcePath: wallpaperTile.modelData
-                                    fillMode: Image.PreserveAspectCrop
-                                    // Cropping paints past the item, and the layer the
-                                    // rounding mask sits on grows with it, so the top
-                                    // corners come out square without this.
-                                    clip: true
-                                    // A tile this size crops a landscape wallpaper down
-                                    // to its middle, so both the cached thumbnail and the
-                                    // decode have to be bigger than the tile itself or it
-                                    // is all upscale.
-                                    thumbnailSizeName: "x-large"
-                                    sourceSize: Qt.size(0, height * 2)
-                                    // An effect inside a delegate, which rule 8
-                                    // forbids, and kept anyway: it is in
-                                    // check-effect-budget.py's KNOWN set and every
-                                    // way out costs more per tile than the one
-                                    // framebuffer it removes. See notes.md.
-                                    layer.enabled: true
-                                    layer.effect: OpacityMask {
-                                        maskSource: Rectangle {
-                                            width: wallpaperThumbnail.width
-                                            height: wallpaperThumbnail.height
-                                            radius: Appearance.rounding.normal
-                                        }
-                                    }
-                                }
-
-                                // Scrim, because a light wallpaper under a light
-                                // accent leaves the check mark invisible.
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: Appearance.rounding.normal
-                                    color: Qt.rgba(0, 0, 0, 0.35)
-
-                                    opacity: wallpaperTile.current ? 1 : 0
-                                    visible: opacity > 0
-                                    Behavior on opacity {
-                                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                    scale: wallpaperTile.current ? 1 : 0.5
+                                    Behavior on scale {
+                                        animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
                                     }
 
-                                    Rectangle {
+                                    MaterialSymbol {
                                         anchors.centerIn: parent
-                                        implicitWidth: 26
-                                        implicitHeight: 26
-                                        radius: Appearance.rounding.full
-                                        color: Appearance.colors.colPrimary
-
-                                        scale: wallpaperTile.current ? 1 : 0.5
-                                        Behavior on scale {
-                                            animation: Appearance.animation.elementResize.numberAnimation.createObject(this)
-                                        }
-
-                                        MaterialSymbol {
-                                            anchors.centerIn: parent
-                                            text: "check"
-                                            iconSize: 16
-                                            color: Appearance.m3colors.m3onPrimary
-                                        }
+                                        text: "check"
+                                        iconSize: 16
+                                        color: Appearance.m3colors.m3onPrimary
                                     }
                                 }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    // Stays open, so several can be tried in a row.
-                                    onClicked: {
-                                        wallpaperStrip.selectedPath = wallpaperTile.modelData;
-                                        Wallpapers.apply(wallpaperTile.modelData);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Softens the tile the viewport cuts in half at each end.
-                        ScrollEdgeFade {
-                            target: wallpaperStrip
-                            vertical: false
-                            fadeSize: 28
-                            color: Appearance.m3colors.m3surfaceContainer
-                        }
-
-                        // A horizontal Flickable ignores a vertical wheel, so without
-                        // this the strip only moves by dragging. Deltas stack onto the
-                        // target while the glide is still running, the way
-                        // WheelScrollHandler does it for the vertical lists.
-                        MouseArea {
-                            id: wheelCatcher
-
-                            property real scrollTarget: 0
-
-                            anchors.fill: parent
-                            acceptedButtons: Qt.NoButton
-                            // It covers the tiles, so it owns the strip's cursor as
-                            // well: a MouseArea claims the cursor whether or not it
-                            // sets a shape, and a tile-level one is never seen.
-                            cursorShape: wallpaperStrip.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
-                            onWheel: event => {
-                                const angle = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x;
-                                const scrolling = Config?.options.interactions.scrolling;
-                                const threshold = scrolling?.mouseScrollDeltaThreshold ?? 120;
-                                // A wheel arrives in multiples of 120, a touchpad in
-                                // small continuous deltas, so they scale differently.
-                                const factor = Math.abs(angle) >= threshold ? (scrolling?.mouseScrollFactor ?? 120) : (scrolling?.touchpadScrollFactor ?? 450);
-                                const base = scrollAnim.running ? wheelCatcher.scrollTarget : wallpaperStrip.contentX;
-                                const maxX = Math.max(0, wallpaperStrip.contentWidth - wallpaperStrip.width);
-                                wheelCatcher.scrollTarget = Math.max(0, Math.min(base - angle / threshold * factor, maxX));
-                                wallpaperStrip.contentX = wheelCatcher.scrollTarget;
                             }
                         }
                     }

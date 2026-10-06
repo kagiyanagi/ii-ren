@@ -67,8 +67,6 @@ KNOWN = {
     # a real hit.
     ("modules/ii/bar/Workspaces.qml", "layer.enabled"),
     ("modules/ii/bar/Workspaces.qml", "MultiEffect"),
-    ("modules/ii/desktopMenu/DesktopMenu.qml", "OpacityMask"),
-    ("modules/ii/desktopMenu/DesktopMenu.qml", "layer.enabled"),
     ("modules/ii/dock/widgets/DockPreviewPopup.qml", "OpacityMask"),
     ("modules/ii/dock/widgets/DockPreviewPopup.qml", "layer.enabled"),
 }
