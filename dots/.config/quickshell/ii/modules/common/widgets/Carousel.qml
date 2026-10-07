@@ -71,7 +71,7 @@ Item {
         const maxX = Math.max(0, (repeater.count - 1) * _stepSize)
         snapAnim.from = flickable.contentX
         snapAnim.to = Math.min(target, maxX)
-        snapAnim.start()
+        snapAnim.restart()
     }
 
     StyledFlickable {
@@ -185,17 +185,21 @@ Item {
                 MouseArea {
                     id: itemMouseArea
                     anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
+                    cursorShape: flickable.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                     onClicked: root.itemClicked(itemContainer.index, itemContainer.modelData)
                     hoverEnabled: true
 
+                    // One tile per wheel notch; a touchpad's small deltas add up
+                    // to a notch first. A flick per event raced to the end.
                     onWheel: event => {
                         root.pressedAny()
-                        if (event.angleDelta.y < 0) {
-                            flickable.flick(-900,0)
-                        } else if (event.angleDelta.y > 0) {
-                            flickable.flick(900,0)
-                        }
+                        const notch = Config.options.interactions.scrolling.mouseScrollDeltaThreshold
+                        root._wheelAccum += event.angleDelta.y || event.angleDelta.x
+                        const steps = Math.trunc(root._wheelAccum / notch)
+                        if (!steps) return
+                        root._wheelAccum -= steps * notch
+                        const from = snapAnim.running ? Math.round(snapAnim.to / root._stepSize) : root.currentIndex
+                        root.snapToIndex(Math.max(0, Math.min(repeater.count - 1, from - steps)))
                     }
 
                     onPressed: {
@@ -267,8 +271,22 @@ Item {
 
     onWidthChanged: updateCurrentIndex()
 
+    property real _wheelAccum: 0
+    property real _dragStartX: 0
+
     Connections {
         target: flickable
+        function onDragStarted() {
+            root._dragStartX = flickable.contentX
+        }
+        // A fling moves one tile on from where the drag let go, as Android's
+        // carousel snap does. Left free, a quick release ran ~20 tiles to the end.
+        function onFlickStarted() {
+            if (!root.snapEnabled) return
+            const pos = flickable.contentX / root._stepSize
+            root.snapToIndex(flickable.contentX > root._dragStartX ? Math.ceil(pos) : Math.floor(pos))
+            flickable.cancelFlick()
+        }
         function onContentXChanged() {
             if (!snapAnim.running) {
                 updateCurrentIndex()
