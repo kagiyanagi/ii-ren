@@ -124,6 +124,19 @@ Item {
         return n;
     }
 
+    /*
+     * Owner call (2026-10-07): the Super-hold morph is faster and bouncier than any
+     * M3 token. OutElastic is a decaying sinusoid, an underdamped spring's step
+     * response; period 0.45 over 500ms is about ζ 0.44. 90% there by ~50ms (fast
+     * spatial: ~100ms), 23% overshoot at ~100ms, one soft rebound. 0.35 over 350ms
+     * was measured too fast and too bouncy.
+     */
+    component NumbersMorph: NumberAnimation {
+        duration: Appearance.animationCurves.expressiveDefaultSpatialDuration
+        easing.type: Easing.OutElastic
+        easing.period: 0.45
+    }
+
     property bool showNumbersByMs: false
     Timer {
         id: showNumbersTimer
@@ -589,16 +602,22 @@ Item {
                                     topMargin: root.showNumbersByMs ? 15 : 2
                                 }
                                 source: modelData.icon
-                                implicitSize: (root.individualIconBoxHeight * root.iconRatio) * (root.showNumbersByMs ? 1 / 1.5 : 1)
+                                // Shrinks by scale, not implicitSize: IconImage binds
+                                // sourceSize to its size, so animating the size decoded
+                                // every icon again on every frame of the Super-hold morph.
+                                implicitSize: root.individualIconBoxHeight * root.iconRatio
+                                transformOrigin: Item.TopLeft
+                                scale: root.showNumbersByMs ? 1 / 1.5 : 1
 
+                                // Position and size: a spatial spring, not the effects spec.
                                 Behavior on anchors.leftMargin {
-                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                    NumbersMorph {}
                                 }
                                 Behavior on anchors.topMargin {
-                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                    NumbersMorph {}
                                 }
-                                Behavior on implicitSize {
-                                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                                Behavior on scale {
+                                    NumbersMorph {}
                                 }
                             }
                         }
@@ -609,7 +628,9 @@ Item {
     }
 
     component WorkspaceBackgroundIndicator: Rectangle {
-        property bool showNumbers: Config.options.bar.workspaces.alwaysShowNumbers || root.showNumbersByMs
+        // A workspace showing app icons has no dot, and its number only while Super is held.
+        readonly property bool hasIcons: layout.implicitHeight + 8 >= root.iconBoxWrapperSize
+        property bool showNumbers: root.showNumbersByMs || (Config.options.bar.workspaces.alwaysShowNumbers && !hasIcons)
         property int workspaceValue
         property bool activeWorkspace
         property color indColor: (activeWorkspace) ? Appearance.colors.colOnPrimary : (root.workspaceOccupied[index] ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1Inactive)
@@ -618,14 +639,16 @@ Item {
         width: root.workspaceDotSize
         height: width
         radius: width / 2
-        visible: layout.implicitHeight + 8 < root.iconBoxWrapperSize || root.showNumbersByMs
-        color: !showNumbers ?  indColor : "transparent"
+        // Held visible until the number has faded: hiding on release cut it in one frame.
+        visible: !hasIcons || numberText.opacity > 0
+        color: !showNumbers && !hasIcons ? indColor : "transparent"
 
         Behavior on color {
             animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
         }
 
         StyledText {
+            id: numberText
             opacity: showNumbers ? 1 : 0
             anchors.centerIn: parent
             text: Config.options?.bar.workspaces.numberMap[workspaceValue - 1] || workspaceValue
@@ -633,10 +656,21 @@ Item {
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
             color: indColor
+            // Pops in on the morph's spring. On the way out it only fades, and shrinks
+            // once invisible: the spring would carry it past 0 and mirror the glyph.
+            scale: showNumbers || opacity > 0 ? 1 : 0
             // Opacity is an effect: it clips, so it takes the critically damped
-            // spec, not the spatial one that overshoots past 1 (2.1, 10.6).
+            // spec, not the spatial one that overshoots past 1 (2.1, 10.6). Fast
+            // effects both ways: on default effects the pop peaked at 59% opacity.
             Behavior on opacity {
-                animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                NumberAnimation {
+                    duration: Appearance.animationCurves.expressiveFastEffectsDuration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animationCurves.expressiveEffects
+                }
+            }
+            Behavior on scale {
+                NumbersMorph {}
             }
         }
     }
