@@ -18,7 +18,7 @@ import "batteryHistory.js" as History
  */
 ContentPage {
     id: page
-    readonly property int index: 2
+    readonly property int index: 3
     property bool register: parent.register ?? false
     forceWidth: true
 

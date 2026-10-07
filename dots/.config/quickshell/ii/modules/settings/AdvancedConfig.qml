@@ -65,7 +65,7 @@ Item {
 
     ContentPage {
         id: page
-        readonly property int index: 12
+        readonly property int index: 13
         property bool register: advancedConfigRoot.register
         anchors.fill: parent
         forceWidth: true

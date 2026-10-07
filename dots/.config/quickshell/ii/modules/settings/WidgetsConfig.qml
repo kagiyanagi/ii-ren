@@ -166,7 +166,7 @@ Item {
         id: page
         anchors.fill: parent
         forceWidth: true
-        readonly property int index: 6
+        readonly property int index: 7
         property bool register: parent.register ?? false
         opacity: subPageOverlay.slideProgress
         visible: opacity > 0

@@ -8,7 +8,7 @@ import qs.modules.common.functions
 
 ContentPage {
     id: page
-    readonly property int index: 0
+    readonly property int index: 1
     property bool register: parent.register ?? false
     forceWidth: true
 
@@ -587,8 +587,17 @@ ContentPage {
 
     NoticeBox {
         Layout.fillWidth: true
-        text: Translation.tr('Not all options are available in this app. You should also check the config file by hitting the "Config file" button on the topleft corner or opening ~/.config/illogical-impulse/config.json manually.')
+        text: Translation.tr("Not all options are in this app. The rest are in ~/.config/illogical-impulse/config.json.")
 
+        RippleButtonWithIcon {
+            buttonRadius: Appearance.rounding.small
+            materialIcon: "open_in_new"
+            mainText: Translation.tr("Open file")
+            onClicked: Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`)
+            colBackground: ColorUtils.transparentize(Appearance.colors.colPrimaryContainer)
+            colBackgroundHover: Appearance.colors.colPrimaryContainerHover
+            colRipple: Appearance.colors.colPrimaryContainerActive
+        }
         RippleButtonWithIcon {
             id: copyPathButton
             property bool justCopied: false

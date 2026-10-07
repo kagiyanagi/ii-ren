@@ -16,6 +16,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import Quickshell
+import Quickshell.Io
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -30,12 +31,8 @@ ApplicationWindow {
     property bool showNextTime: false
 
     property int currentPage: {
-        const p = Quickshell.env("II_SETTINGS_PAGE");
-        if (p) {
-            const idx = root.pages.findIndex(x => x.id === p);
-            return idx !== -1 ? idx : 0;
-        }
-        return 0;
+        const idx = root.pageIndexById(Quickshell.env("II_SETTINGS_PAGE"));
+        return idx !== -1 ? idx : root.pageIndexById("quick");
     }
     property real scrollPos: 0
     property string lastSearch: ""
@@ -45,6 +42,13 @@ ApplicationWindow {
 
 
     property var pages: [
+        {
+            id: "profiles",
+            name: Translation.tr("Profiles"),
+            summary: Translation.tr("Saved setups"),
+            icon: "switch_account",
+            component: "modules/settings/ProfilesConfig.qml"
+        },
         {
             id: "quick",
             name: Translation.tr("Quick"),
@@ -138,13 +142,6 @@ ApplicationWindow {
             component: "modules/settings/AdvancedConfig.qml"
         },
         {
-            id: "profiles",
-            name: Translation.tr("Profiles"),
-            summary: Translation.tr("Saved setups"),
-            icon: "switch_account",
-            component: "modules/settings/ProfilesConfig.qml"
-        },
-        {
             id: "about",
             name: Translation.tr("About"),
             summary: Translation.tr("Hardware, this shell, credits"),
@@ -160,7 +157,126 @@ ApplicationWindow {
         }
         return -1;
     }
-    
+
+    component NavTab: RippleButton {
+        id: tab
+        required property int pageIndex
+        readonly property var modelData: root.pages[pageIndex]
+        // Profiles is who you are here, so it is the account row above
+        // search, the way Windows 11 Settings opens: your avatar, your
+        // name, the profile your changes go into. Its 40px avatar is
+        // centred on the 24px icons' column, so every row's text starts
+        // at the same x.
+        readonly property bool isAccount: modelData.id === "profiles"
+        Layout.fillWidth: true
+        implicitHeight: tabContent.implicitHeight + 12 * 2
+        leftPadding: isAccount ? 8 : 16
+        rightPadding: 16
+        buttonRadius: Appearance.rounding.large
+        toggled: root.currentPage === pageIndex
+        onClicked: root.currentPage = pageIndex
+
+        colBackground: CF.ColorUtils.transparentize(Appearance.colors.colLayer0Hover, 1)
+        colBackgroundHover: Appearance.colors.colLayer0Hover
+        colRipple: Appearance.colors.colLayer0Active
+        colBackgroundToggled: Appearance.colors.colSecondary
+        colBackgroundToggledHover: Appearance.colors.colSecondaryHover
+        colRippleToggled: Appearance.colors.colSecondaryActive
+        colStateLayer: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
+        readonly property color colContent: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
+
+        contentItem: RowLayout {
+            id: tabContent
+            spacing: tab.isAccount ? 8 : 16
+
+            // A Loader, so the avatar's one mask layer exists once,
+            // not in every row.
+            Loader {
+                active: tab.isAccount
+                visible: active
+                sourceComponent: Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 40
+                    radius: Appearance.rounding.full
+                    color: Appearance.colors.colPrimaryContainer
+
+                    StyledText {
+                        anchors.centerIn: parent
+                        text: SystemInfo.username.charAt(0).toUpperCase()
+                        font.family: Appearance.font.family.title
+                        font.pixelSize: Appearance.font.pixelSize.larger
+                        color: Appearance.colors.colOnPrimaryContainer
+                    }
+                    StyledImage { // The user's avatar, when one is set, covers the initial
+                        id: avatar
+                        anchors.fill: parent
+                        fillMode: Image.PreserveAspectCrop
+                        source: Directories.userAvatarPathAccountsService
+                        fallbacks: [Directories.userAvatarPathRicersAndWeirdSystems, Directories.userAvatarPathRicersAndWeirdSystems2]
+                        layer.enabled: true
+                        layer.effect: OpacityMask {
+                            maskSource: Circle {
+                                diameter: avatar.height
+                            }
+                        }
+                    }
+                }
+            }
+
+            MaterialSymbol {
+                visible: !tab.isAccount
+                text: tab.modelData.icon
+                rotation: tab.modelData.iconRotation || 0
+                iconSize: 24
+                fill: tab.toggled ? 1 : 0
+                color: tab.colContent
+                Behavior on color {
+                    animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                spacing: 2
+
+                StyledText {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: tab.isAccount ? SystemInfo.username : tab.modelData.name
+                    font.family: Appearance.font.family.title
+                    font.pixelSize: Appearance.font.pixelSize.normal
+                    font.variableAxes: Appearance.font.variableAxes.title
+                    color: tab.colContent
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: !tab.isAccount ? tab.modelData.summary : Translation.tr("%1 profile").arg(activeProfileFile.text().trim() || Translation.tr("Default"))
+                    font.pixelSize: Appearance.font.pixelSize.smallie
+                    color: tab.toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnSurfaceVariant
+                    Behavior on color {
+                        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                    }
+                }
+            }
+        }
+    }
+
+    // The active config profile, named on the Profiles row. Re-read on every page
+    // change too: .active only appears with the first switch, which no watch sees.
+    FileView {
+        id: activeProfileFile
+        path: `${Directories.shellConfig}/profiles/.active`
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+    }
+    onCurrentPageChanged: activeProfileFile.reload()
 
     visible: true
     onClosing: Qt.quit()
@@ -261,13 +377,16 @@ ApplicationWindow {
                 Layout.margins: 4
                 spacing: 8
 
+                NavTab {
+                    pageIndex: root.pageIndexById("profiles")
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: false
                     spacing: 4
 
-                    // AOSP's search bar shape, a pill with the icon inside it, at
-                    // the height of the buttons beside it.
+                    // AOSP's search bar shape, a pill with the icon inside it.
                     ToolbarTextField {
                         id: searchInput
                         Layout.fillWidth: true
@@ -372,41 +491,6 @@ ApplicationWindow {
                             }
                         }
                     }
-
-                    // Where Android puts the account avatar.
-                    RippleButton {
-                        id: configButton
-                        property bool justCopied: false
-                        implicitWidth: 40
-                        implicitHeight: 40
-                        buttonRadius: Appearance.rounding.full
-                        colBackgroundHover: Appearance.colors.colLayer0Hover
-                        colRipple: Appearance.colors.colLayer0Active
-                        colStateLayer: Appearance.colors.colOnLayer0
-                        onClicked: Qt.openUrlExternally(`${Directories.config}/illogical-impulse/config.json`)
-                        altAction: () => {
-                            Quickshell.clipboardText = CF.FileUtils.trimFileProtocol(`${Directories.config}/illogical-impulse/config.json`);
-                            configButton.justCopied = true;
-                            revertTextTimer.restart();
-                        }
-                        contentItem: MaterialSymbol {
-                            anchors.centerIn: parent
-                            horizontalAlignment: Text.AlignHCenter
-                            text: configButton.justCopied ? "check" : "edit"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: Appearance.colors.colOnLayer0
-                        }
-
-                        Timer {
-                            id: revertTextTimer
-                            interval: 1500
-                            onTriggered: configButton.justCopied = false
-                        }
-
-                        StyledToolTip {
-                            text: configButton.justCopied ? Translation.tr("Path copied") : Translation.tr("Open the shell config file\nAlternatively right-click to copy path")
-                        }
-                    }
                 }
 
                 // The pages outgrow the window's starting height, so they scroll
@@ -444,7 +528,7 @@ ApplicationWindow {
                     // height settles after it, and a reveal against the half-laid-out
                     // height leaves the list scrolled a row down, so redo it then.
                     function revealCurrentTab() {
-                        const tab = tabRepeater.itemAt(root.currentPage);
+                        const tab = tabRepeater.itemAt(root.currentPage - 1);
                         if (!tab) return;
                         tabFlick.contentY = Math.max(Math.min(tabFlick.contentY, tab.y), tab.y + tab.height - tabFlick.height);
                     }
@@ -465,74 +549,11 @@ ApplicationWindow {
 
                         Repeater {
                             id: tabRepeater
-                            model: root.pages
+                            model: root.pages.length - 1 // Every page after Profiles, which sits above search
 
-                            RippleButton {
-                                id: tab
+                            NavTab {
                                 required property int index
-                                required property var modelData
-                                Layout.fillWidth: true
-                                implicitHeight: tabContent.implicitHeight + 12 * 2
-                                leftPadding: 16
-                                rightPadding: 16
-                                buttonRadius: Appearance.rounding.large
-                                toggled: root.currentPage === index
-                                onClicked: root.currentPage = index
-
-                                colBackground: CF.ColorUtils.transparentize(Appearance.colors.colLayer0Hover, 1)
-                                colBackgroundHover: Appearance.colors.colLayer0Hover
-                                colRipple: Appearance.colors.colLayer0Active
-                                colBackgroundToggled: Appearance.colors.colSecondary
-                                colBackgroundToggledHover: Appearance.colors.colSecondaryHover
-                                colRippleToggled: Appearance.colors.colSecondaryActive
-                                colStateLayer: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
-                                readonly property color colContent: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
-
-                                contentItem: RowLayout {
-                                    id: tabContent
-                                    spacing: 16
-
-                                    MaterialSymbol {
-                                        text: tab.modelData.icon
-                                        rotation: tab.modelData.iconRotation || 0
-                                        iconSize: 24
-                                        fill: tab.toggled ? 1 : 0
-                                        color: tab.colContent
-                                        Behavior on color {
-                                            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                                        }
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        Layout.minimumWidth: 0
-                                        spacing: 2
-
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            text: tab.modelData.name
-                                            font.family: Appearance.font.family.title
-                                            font.pixelSize: Appearance.font.pixelSize.normal
-                                            font.variableAxes: Appearance.font.variableAxes.title
-                                            color: tab.colContent
-                                            Behavior on color {
-                                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                                            }
-                                        }
-
-                                        StyledText {
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            text: tab.modelData.summary
-                                            font.pixelSize: Appearance.font.pixelSize.smallie
-                                            color: tab.toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnSurfaceVariant
-                                            Behavior on color {
-                                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                                            }
-                                        }
-                                    }
-                                }
+                                pageIndex: index + 1
                             }
                         }
                     }

@@ -9,7 +9,7 @@ import qs.modules.ii.settings
 
 ContentPage {
     id: page
-    readonly property int index: 5
+    readonly property int index: 6
     property bool register: parent.register ?? false
     forceWidth: true
 
