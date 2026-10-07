@@ -19,19 +19,38 @@ save_file() {
     CHANGED=$((CHANGED + 1))
 }
 
-# Same as save_file, but de-personalises the copy that lands in the repo: your
-# home directory goes back to "~" so it installs as the next person's paths, and
-# the wallpaper is cleared so a fresh install gets the bundled one instead of a
-# picture that only exists on this machine.
+# The repo is public and installs onto other people's machines. Anything that
+# still names this machine or its owner after de-personalising - a home path, an
+# email, a Bluetooth address - stops the save instead of being committed.
+LEAK_RE="/home/[^/\"']+|[A-Za-z0-9._+-]+(@|%40)[A-Za-z0-9-]+\.[A-Za-z.]{2,}|([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"
+leaks() {
+    grep -nE "$LEAK_RE" "$1" | grep -v 'noreply' && return 0
+    return 1
+}
+
+# Same as save_file, but de-personalises the copy that lands in the repo. Keys
+# that only mean something on this machine are dropped, so a fresh install gets
+# Config.qml's default for them: the wallpaper and photos, the weather city,
+# calendar feeds (a private iCal url is a password), Bluetooth devices, the last
+# VPN, the to-do file, the UI language, and which apps are pinned. Your home
+# directory goes back to "~" so the rest installs as the next person's paths.
 save_config() {
     local src="$1" dest="$2" tmp
     [ -f "$src" ] || return 0
     tmp="$(mktemp)"
-    sed -e "s|\"$HOME/|\"~/|g" \
-        -e "s|\"file://$HOME/|\"file://~/|g" \
-        -e "s|^\( *\"wallpaperPath\": \)\".*\",\?$|\1\"\",|" \
-        "$src" > "$tmp"
-    save_file "$tmp" "$dest"
+    jq --indent 4 'del(
+            .background.wallpaperPath, .background.thumbnailPath, .background.depth.declined,
+            .bar.weather.city, .calendar.icsUrls, .bluetooth.fastPair.ignoredDevices,
+            .networking.vpn.last, .todo.filePath, .language.ui,
+            .dock.pinnedApps, .dock.pinnedFiles, .dock.folders, .tray.pinnedItems,
+            .launcher.pinnedApps, .sidebar.booru.gelbooru, .update.scriptPath)
+        | walk(if type == "object" then del(.imagePath, .cachedRandomQuote, .cachedRandomAuthor) else . end)' \
+        "$src" | sed -e "s|\"$HOME/|\"~/|g" -e "s|\"file://$HOME/|\"file://~/|g" > "$tmp"
+    if leaks "$tmp"; then
+        echo -e "${RED}  ✗ ${dest#"$REPO"/} not saved: the lines above are personal. Drop that key in save.sh.${NC}"
+    else
+        save_file "$tmp" "$dest"
+    fi
     rm -f "$tmp"
     [ -f "$dest" ] && chmod 644 "$dest" || true
 }
@@ -39,8 +58,15 @@ save_config() {
 save_config "$HOME/.config/illogical-impulse/config.json" \
             "$REPO/dots/.config/illogical-impulse/config.json"
 
+# private.lua is for what only this machine has - its own apps, paths, scripts.
+# Hyprland loads it after the other custom files; it never reaches the repo.
 for f in "$HOME"/.config/hypr/custom/*.lua; do
     [ -e "$f" ] || continue
+    [ "$(basename "$f")" = private.lua ] && continue
+    if leaks "$f"; then
+        echo -e "${RED}  ✗ $f not saved: move the lines above into custom/private.lua.${NC}"
+        continue
+    fi
     save_file "$f" "$REPO/dots/.config/hypr/custom/$(basename "$f")"
 done
 

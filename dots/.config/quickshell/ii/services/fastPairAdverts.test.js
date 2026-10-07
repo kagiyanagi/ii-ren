@@ -13,7 +13,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "5E:93:DA:26:66:05"
+                            "data": "5E:00:00:00:00:01"
                         },
                         "RSSI": {
                             "type": "n",
@@ -25,7 +25,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "53:6F:83:76:14:CF"
+                            "data": "53:00:00:00:00:02"
                         },
                         "RSSI": {
                             "type": "n",
@@ -49,7 +49,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "74:19:0A:2F:1E:9B"
+                            "data": "74:00:00:00:00:03"
                         },
                         "RSSI": {
                             "type": "n",
@@ -90,7 +90,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "34:FC:99:FF:6A:78"
+                            "data": "34:00:00:00:00:04"
                         },
                         "RSSI": {
                             "type": "n",
@@ -106,7 +106,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "A8:E2:91:48:B5:83"
+                            "data": "A8:00:00:00:00:05"
                         },
                         "RSSI": {
                             "type": "n",
@@ -130,7 +130,7 @@ const DUMP = {
                     "org.bluez.Device1": {
                         "Address": {
                             "type": "s",
-                            "data": "2C:DE:DF:0C:16:C3"
+                            "data": "2C:00:00:00:00:06"
                         },
                         "Icon": {
                             "type": "s",
@@ -183,19 +183,19 @@ const DUMP = {
 const a = parseAdverts(JSON.stringify(DUMP));
 
 // Paired headset was in BlueZ's cache but carried no RSSI -> not nearby now.
-assert.ok(!("2C:DE:DF:0C:16:C3" in a), "device without RSSI must be dropped");
+assert.ok(!("2C:00:00:00:00:06" in a), "device without RSSI must be dropped");
 
 // BR/EDR speaker: CoD 0x240404 -> major class 0x04, icon audio-headset.
-assert.strictEqual(a["53:6F:83:76:14:CF"].rssi, -89);
-assert.strictEqual(a["53:6F:83:76:14:CF"].audio, true);
-assert.strictEqual(a["53:6F:83:76:14:CF"].fastPair, false);
+assert.strictEqual(a["53:00:00:00:00:02"].rssi, -89);
+assert.strictEqual(a["53:00:00:00:00:02"].audio, true);
+assert.strictEqual(a["53:00:00:00:00:02"].fastPair, false);
 
 // Samsung watch advertises service data 0xFD69, not 0xFE2C, and has no CoD.
-assert.strictEqual(a["74:19:0A:2F:1E:9B"].audio, false, "watch must not look like earbuds");
-assert.strictEqual(a["74:19:0A:2F:1E:9B"].fastPair, false);
+assert.strictEqual(a["74:00:00:00:00:03"].audio, false, "watch must not look like earbuds");
+assert.strictEqual(a["74:00:00:00:00:03"].fastPair, false);
 
 // A laptop (icon "computer") must not qualify either.
-assert.strictEqual(a["A8:E2:91:48:B5:83"].audio, false);
+assert.strictEqual(a["A8:00:00:00:00:05"].audio, false);
 
 // Fast Pair advert: audio by virtue of FE2C, model ID from bytes 1..3.
 assert.strictEqual(a["11:22:33:44:55:66"].fastPair, true);

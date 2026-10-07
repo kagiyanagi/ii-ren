@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory() as tmp:
     )
     fake.chmod(0o755)
     env = dict(os.environ, PATH=f"{tmp}:{os.environ['PATH']}", HOME=str(tmp / "home"),
-               HERMES_GATEWAY_SSH="ren@pi", HERMES_GATEWAY_SSH_KEY="~/.ssh/id_rsa")
+               HERMES_GATEWAY_SSH="user@host", HERMES_GATEWAY_SSH_KEY="~/.ssh/id_rsa")
     run = subprocess.run([str(SCRIPT)], env=env, capture_output=True, text=True, timeout=20)
 
     assert run.returncode == 127, (run.returncode, run.stderr)
@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory() as tmp:
     args = (tmp / "args").read_text().splitlines()
     assert "BatchMode=yes" in args, args
     assert args[args.index("-i") + 1] == f"{tmp}/home/.ssh/id_rsa", args
-    assert args[-3:-1] == ["--", "ren@pi"], args
+    assert args[-3:-1] == ["--", "user@host"], args
 
 # Local stays local: the env the service passes must be unset, not empty, off ssh.
 service = SERVICE.read_text()

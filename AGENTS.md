@@ -51,8 +51,11 @@ real directory in its place, so run `ln -s` again after one.
 
 What is *not* symlinked flows the other way: `iiren save` pulls
 `~/.config/illogical-impulse/config.json` and `~/.config/hypr/custom/*.lua` back into
-`dots/`, de-personalising them (`$HOME` -> `~`, wallpaper cleared). Edit settings through
-the GUI, then `iiren save`, rather than hand-editing the JSON defaults.
+`dots/`, de-personalising them (`$HOME` -> `~`; wallpaper, photos, city, calendar feeds,
+Bluetooth devices, pinned apps and UI language dropped to defaults). Anything that still
+names a home path, an email or a MAC address stops the save. Machine-only Hyprland lines
+go in `custom/private.lua`, which Hyprland loads last and `iiren save` skips. Edit settings
+through the GUI, then `iiren save`, rather than hand-editing the JSON defaults.
 
 ## Hyprland side (Lua, not hyprlang)
 

@@ -31,6 +31,10 @@ end
 if is_file_exists(HOME .. "/.config/hypr/custom/keybinds.lua") then
     require("custom.keybinds")
 end
+-- This machine only: `iiren save` never copies it into the repo.
+if is_file_exists(HOME .. "/.config/hypr/custom/private.lua") then
+    require("custom.private")
+end
 
 -- Display layout, written by the settings app (Hyprland > Displays).
 -- nwg-displays writes the same two files.

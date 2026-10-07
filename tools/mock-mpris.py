@@ -23,7 +23,7 @@ BUS = f"org.mpris.MediaPlayer2.{NAME}"
 PATH = "/org/mpris/MediaPlayer2"
 PLAYER = "org.mpris.MediaPlayer2.Player"
 # MOCK_ART swaps in a remote (or hostile) url to exercise services/CoverArt.qml.
-ART = os.environ.get("MOCK_ART", "file:///home/ren/Pictures/d45f25d553159d59fee7e31e3ebd8ebe.jpg")
+ART = os.environ.get("MOCK_ART", "file://" + os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../dots/.config/quickshell/ii/assets/images/default_wallpaper.png")))
 
 META = dbus.Dictionary({
     "mpris:trackid": dbus.ObjectPath("/org/mpris/MediaPlayer2/mock/track1"),
