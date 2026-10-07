@@ -1159,24 +1159,4 @@ ContentPage {
             }
         }
     }
-
-    // Committed on Enter or focus-out: a half-typed command is not worth a config write.
-    // Written out rather than repeated, since ContentGroup splits its run around a Repeater.
-    component ClickActionField: ConfigTextField {
-        required property string key
-        inputText: Config.options.bar.clickActions[key]
-        onEditingFinished: Config.options.bar.clickActions[key] = inputText.trim()
-    }
-
-    ContentSection {
-        icon: "ads_click"
-        title: Translation.tr("Click actions")
-        tooltip: Translation.tr("A command to run when the widget is clicked, e.g. gnome-clocks. Leave empty for the default.")
-
-        ClickActionField { key: "clock"; icon: "schedule"; text: Translation.tr("Clock"); placeholderText: Translation.tr("Nothing") }
-        ClickActionField { key: "weather"; icon: "partly_cloudy_day"; text: Translation.tr("Weather"); placeholderText: Translation.tr("Weather page") }
-        ClickActionField { key: "battery"; icon: "battery_android_full"; text: Translation.tr("Battery"); placeholderText: Translation.tr("Battery settings") }
-        ClickActionField { key: "resources"; icon: "memory"; text: Translation.tr("Resource monitor"); placeholderText: Translation.tr("Task manager") }
-        ClickActionField { key: "networkSpeed"; icon: "speed"; text: Translation.tr("Network speed"); placeholderText: Translation.tr("Nothing") }
-    }
 }

@@ -158,14 +158,10 @@ Item {
         cursorShape: root.vertical ? Qt.ArrowCursor : Qt.PointingHandCursor
 
         onClicked: (mouse) => {
-            if (mouse.button === Qt.LeftButton) {
-                if (!Config.options.bar.tooltips.clickToShow) Session.barClick("networkSpeed");
-            } else {
-                if (root.vertical) return;
+            if (mouse.button === Qt.LeftButton || root.vertical) return;
 
-                var nextMode = (displayMode + 1) % 5;
-                Config.options.bar.networkSpeed.displayMode = nextMode;
-            }
+            var nextMode = (displayMode + 1) % 5;
+            Config.options.bar.networkSpeed.displayMode = nextMode;
         }
     }
 

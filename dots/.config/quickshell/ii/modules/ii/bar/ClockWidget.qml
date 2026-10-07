@@ -129,9 +129,6 @@ Item {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
-        // Only a click with somewhere to go looks clickable; click-to-show owns the click.
-        cursorShape: Config.options.bar.clickActions.clock ? Qt.PointingHandCursor : Qt.ArrowCursor
-        onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.barClick("clock")
 
         ClockWidgetPopup {
             hoverTarget: mouseArea

@@ -13,7 +13,7 @@ MouseArea {
     implicitWidth: columnLayout.implicitWidth
     hoverEnabled: !Config.options.bar.tooltips.clickToShow
     // Click-to-show owns the click for the popup.
-    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.barClick("resources", Session.launchTaskManager)
+    onClicked: if (!Config.options.bar.tooltips.clickToShow) Session.launchTaskManager()
     cursorShape: Qt.PointingHandCursor
 
     StateOverlay {

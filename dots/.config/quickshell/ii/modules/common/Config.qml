@@ -1338,14 +1338,6 @@ Singleton {
                     property int closeDelay: 50
                     property bool clickToShow: false
                 }
-                // A shell command run when the widget is clicked; empty keeps its own action.
-                property JsonObject clickActions: JsonObject {
-                    property string clock: ""
-                    property string weather: ""
-                    property string battery: ""
-                    property string resources: ""
-                    property string networkSpeed: ""
-                }
                 property JsonObject sizes: JsonObject {
                     property int height: 40 // horizontal mode
                     property int width: 46 // vertical mode

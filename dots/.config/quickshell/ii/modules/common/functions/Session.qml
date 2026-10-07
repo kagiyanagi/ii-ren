@@ -33,13 +33,6 @@ Singleton {
         Quickshell.execDetached(["bash", "-c", `${Config.options.apps.taskManager}`]);
     }
 
-    // A bar widget's click: the command set in Settings > Bar, else the widget's own action.
-    function barClick(id, fallback) {
-        const cmd = Config.options.bar.clickActions[id];
-        if (cmd) Quickshell.execDetached(["bash", "-c", cmd]);
-        else fallback?.();
-    }
-
     function hibernate() {
         Quickshell.execDetached(["bash", "-c", `systemctl hibernate || loginctl hibernate`]);
     }
