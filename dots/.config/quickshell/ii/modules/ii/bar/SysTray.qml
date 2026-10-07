@@ -158,8 +158,12 @@ Item {
                 }
             }
 
-            StyledToolTip {
+            // A popup window, not StyledToolTip: the in-window ToolTip had no room
+            // in the bar's surface, landed on the button and ate its clicks.
+            PopupToolTip {
                 text: Translation.tr("Show hidden icons")
+                extraVisibleCondition: !root.trayOverflowOpen
+                anchorEdges: (!Config.options.bar.bottom && !Config.options.bar.vertical) ? Edges.Bottom : Edges.Top
             }
         }
 
