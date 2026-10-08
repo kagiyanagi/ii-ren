@@ -37,13 +37,6 @@ Item {
 
     Connections {
         target: LocalSend
-        function onCurrentTransferChanged() {
-            if (LocalSend.currentTransfer) {
-                rootItem.toggleHighlight(true)
-            } else {
-                rootItem.toggleHighlight(false)
-            }
-        }
         function onDroppedFilesChanged() {
             if (LocalSend.droppedFiles.length > 0) {
                 rootItem.toggleHighlight(true)

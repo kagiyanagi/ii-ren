@@ -130,6 +130,17 @@ DelegateChooser {
     }
 
     DelegateChoice {
+        roleValue: "localSend"
+        AndroidLocalSendToggle {
+            required property int index
+            required property var modelData
+            buttonIndex: index
+            buttonData: modelData
+            chooser: root
+        }
+    }
+
+    DelegateChoice {
         roleValue: "idleInhibitor"
         AndroidIdleInhibitorToggle {
             required property int index

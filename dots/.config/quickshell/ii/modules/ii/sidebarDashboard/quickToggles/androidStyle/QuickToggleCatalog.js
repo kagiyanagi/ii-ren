@@ -18,6 +18,7 @@ var TOGGLE_TYPES = {
     darkMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     gameMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     floatingMode: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
+    localSend: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     screenSnip: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     colorPicker: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },
     onScreenKeyboard: { kind: "toggle", defaultSize: [1, 1], maxHeight: 8 },

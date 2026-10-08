@@ -49,6 +49,7 @@ ShellRoot {
         Updates.load()
         HermesService.load()
         SoundService.load()
+        LocalSend.live = true
         if (Config.ready) root.activeFamily = Config.options.panelFamily
     }
 

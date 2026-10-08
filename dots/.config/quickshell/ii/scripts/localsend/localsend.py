@@ -14,6 +14,7 @@ https://github.com/localsend/protocol.
 """
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import os
@@ -41,7 +42,7 @@ INFO = {
     "version": "2.1",
     "deviceModel": "Linux",
     "deviceType": "desktop",
-    "fingerprint": uuid.uuid4().hex,
+    "fingerprint": None,  # stable_fingerprint(), set below
     "port": PORT,
     # ponytail: plain HTTP. Peers honour this field and skip TLS; switch to a
     # self-signed ssl.SSLContext here if a peer ever refuses to downgrade.
@@ -49,6 +50,19 @@ INFO = {
     "download": False,
 }
 
+
+def stable_fingerprint():
+    """Same ID every run: phones key devices on it, so a fresh one per start
+    listed this machine once per restart until the old entry timed out."""
+    try:
+        with open("/etc/machine-id", "rb") as fh:
+            seed = fh.read().strip()
+    except OSError:
+        seed = socket.gethostname().encode()
+    return hashlib.sha256(b"ii-localsend:" + seed).hexdigest()[:32]
+
+
+INFO["fingerprint"] = stable_fingerprint()
 _out = threading.Lock()
 
 
@@ -120,7 +134,36 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def body(self):
-        return self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        return b"".join(self.stream())
+
+    def stream(self):
+        """Yield the request body. The LocalSend app (Dart's HttpClient) uploads
+        with Transfer-Encoding: chunked and no Content-Length."""
+        if "chunked" not in (self.headers.get("Transfer-Encoding") or "").lower():
+            left = int(self.headers.get("Content-Length") or 0)
+            while left > 0:
+                buf = self.rfile.read(min(CHUNK, left))
+                if not buf:
+                    raise ConnectionError("body ended early")
+                left -= len(buf)
+                yield buf
+            return
+        while True:
+            line = self.rfile.readline(1024)
+            if not line:
+                raise ConnectionError("body ended early")
+            left = int(line.split(b";")[0].strip() or b"0", 16)
+            if left == 0:
+                while self.rfile.readline(1024) not in (b"\r\n", b"\n", b""):
+                    pass  # trailers
+                return
+            while left > 0:
+                buf = self.rfile.read(min(CHUNK, left))
+                if not buf:
+                    raise ConnectionError("body ended early")
+                left -= len(buf)
+                yield buf
+            self.rfile.readline(1024)  # CRLF after each chunk
 
     def do_GET(self):
         self.reply(200, INFO) if "/info" in self.path else self.reply(404)
@@ -187,23 +230,29 @@ class Handler(BaseHTTPRequestHandler):
         if not session or session["byToken"].get(q.get("token", "")) != fid:
             return self.reply(403)
         meta = session["files"].get(fid) or {}
-        size = int(self.headers.get("Content-Length") or 0)
         if meta.get("fileType") == "text":
             emit(
                 event="text",
                 sender=session["sender"],
-                text=self.rfile.read(size).decode("utf-8", "replace"),
+                text=self.body().decode("utf-8", "replace"),
             )
             return self.reply(200)
         dest = safe_dest(meta.get("fileName"))
-        left = size
-        with open(dest, "wb") as fh:
-            while left > 0:
-                buf = self.rfile.read(min(CHUNK, left))
-                if not buf:
-                    break
-                fh.write(buf)
-                left -= len(buf)
+        size = 0
+        try:
+            with open(dest, "wb") as fh:
+                for buf in self.stream():
+                    fh.write(buf)
+                    size += len(buf)
+            expected = meta.get("size")
+            if isinstance(expected, int) and size != expected:
+                raise ConnectionError(f"got {size} of {expected} bytes")
+        except (OSError, ValueError) as exc:
+            # A truncated file must not be left looking like a received one.
+            os.remove(dest)
+            emit(error=f"{os.path.basename(dest)}: {exc}")
+            self.close_connection = True
+            return self.reply(400)
         emit(
             event="saved",
             sender=session["sender"],

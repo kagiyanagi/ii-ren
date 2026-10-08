@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.common.utils
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -21,8 +22,13 @@ Singleton {
 
     readonly property string helperPath: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/localsend/localsend.py"))
     property bool available: false
+    // Set from shell.qml only: the settings app loads this singleton too, and a
+    // second receiver there would announce this machine to phones twice.
+    property bool live: false
     property bool serverRunning: receiveProc.running
-    property bool autoStart: Config.options?.localsend?.autoStart ?? false
+    // The on/off switch itself, so the receiver comes back after a restart in
+    // whatever state it was left.
+    readonly property bool enabled: Config.ready && Config.options.localsend.autoStart
     property string downloadPath: Config.options?.localsend?.downloadPath
     property bool showNotifications: Config.options?.localsend?.showNotifications ?? true
 
@@ -39,8 +45,6 @@ Singleton {
     signal transferStarted(var transfer)
     signal transferCompleted(var transfer)
     signal transferCancelled(var transfer)
-    signal serverStarted()
-    signal serverStopped()
     signal sendCompleted()
     signal sendFailed(string message)
 
@@ -84,14 +88,7 @@ Singleton {
         id: checkAvailabilityProc
         running: true
         command: ["python3", root.helperPath, "check"]
-        onExited: (exitCode, exitStatus) => {
-            root.available = (exitCode === 0)
-            if (root.available && root.autoStart) {
-                Qt.callLater(() => {
-                    root.startServer()
-                })
-            }
-        }
+        onExited: (exitCode, exitStatus) => root.available = (exitCode === 0)
     }
 
     // Notification process for incoming transfers
@@ -124,7 +121,7 @@ Singleton {
         notificationProc.command = [
             "notify-send",
             Translation.tr("LocalSend: Incoming Transfer"),
-            Translation.tr("From: %1\nCheck the clock widget popup on the bar for more information").arg(transfer.sender),
+            Translation.tr("From: %1\n%2 (%3)").arg(transfer.sender).arg(fileNames).arg(fileSizes),
             "-A", `accept=${Translation.tr("Accept")}`,
             "-A", `deny=${Translation.tr("Deny")}`,
             "-a", "LocalSend",
@@ -132,10 +129,12 @@ Singleton {
         notificationProc.running = true
     }
 
-    // Main receive server process
-    Process {
+    // Main receive server process. KeepAliveProcess runs it under
+    // --pdeathsig, so it dies with the shell instead of outliving it.
+    KeepAliveProcess {
         id: receiveProc
-        running: false
+        wanted: root.live && root.available && root.enabled
+        args: ["python3", root.helperPath, "receive", "--output", root.downloadPath]
         stdinEnabled: true
 
         stdout: SplitParser {
@@ -154,11 +153,6 @@ Singleton {
             onRead: line => {
                 console.log("[LocalSend] stderr:", line)
             }
-        }
-
-        onExited: (exitCode, exitStatus) => {
-            console.log("[LocalSend] Server stopped with exit code:", exitCode)
-            root.serverStopped()
         }
     }
 
@@ -204,16 +198,15 @@ Singleton {
         if (event.error) {
             console.warn("[LocalSend]", event.error)
             Quickshell.execDetached(["notify-send", Translation.tr("LocalSend error"), event.error, "-a", "LocalSend"])
+            // Something else holds the port (the LocalSend app); retrying would
+            // repeat this notification every minute.
+            if (event.error.startsWith("cannot bind")) root.stopServer()
             return
         }
         if (!event.event) return
         console.log("[LocalSend] Event:", JSON.stringify(event))
 
         switch (event.event) {
-            case "ready":
-                root.serverStarted()
-                break
-
             case "device":
                 console.log("[LocalSend] Device registered:", event.alias, event.ip)
                 if (event.ip) {
@@ -248,7 +241,7 @@ Singleton {
 
             case "prompt":
                 console.log("[LocalSend] Prompt received, showing notification")
-                if (root.currentTransfer && root.showNotifications) {
+                if (root.currentTransfer) {
                     root.showIncomingNotification(root.currentTransfer)
                 }
                 break
@@ -299,57 +292,16 @@ Singleton {
         }
     }
     
-    Timer {
-        id: serverStartDelayTimer
-        interval: 500
-        onTriggered: {
-            receiveProc.command = ["python3", root.helperPath, "receive", "--output", root.downloadPath]
-            console.log("[LocalSend] Starting receive server with output dir:", root.downloadPath)
-            receiveProc.running = true
-        }
-    }
-
     function startServer(): void {
         if (!root.available) {
             Quickshell.execDetached(["notify-send", Translation.tr("LocalSend error"), Translation.tr("The LocalSend helper could not run. It needs <tt>python3</tt>."), "-a", "LocalSend"])
-            console.warn("[LocalSend] helper is not available:", root.helperPath)
             return
         }
-        if (receiveProc.running) {
-            console.log("[LocalSend] Server is already running")
-            return
-        }
-
-        // kill any existing servers
-        // or else it gives an error saying "address already in use" and doesn't start
-        Quickshell.execDetached(["pkill", "-f", root.helperPath])
-        serverStartDelayTimer.restart()
+        Config.options.localsend.autoStart = true
     }
 
     function stopServer(): void {
-        console.log("[LocalSend] Stopping receive server...")
-        receiveProc.running = false
-    }
-
-    function restartServer(): void {
-        if (receiveProc.running) {
-            console.log("[LocalSend] Restarting server...")
-            receiveProc.running = false
-            // Wait for process to stop, then start again
-            restartDelayTimer.restart()
-        } else if (root.available) {
-            root.startServer()
-        }
-    }
-
-    Timer {
-        id: restartDelayTimer
-        interval: 2000 // 2 seconds delay
-        repeat: false
-        onTriggered: {
-            console.log("[LocalSend] Restarting server after delay...")
-            root.startServer()
-        }
+        Config.options.localsend.autoStart = false
     }
 
     function acceptTransfer(): void {
@@ -364,13 +316,8 @@ Singleton {
         receiveProc.write("n\n")
     }
 
-    onDownloadPathChanged: {
-        // Restart server if download path changed while running
-        if (receiveProc.running) {
-            console.log("[LocalSend] Download path changed, restarting server...")
-            root.restartServer()
-        }
-    }
+    // The new path is already in args; KeepAliveProcess starts it again.
+    onDownloadPathChanged: if (receiveProc.running) receiveProc.running = false
 
     IpcHandler {
         target: "localsend"

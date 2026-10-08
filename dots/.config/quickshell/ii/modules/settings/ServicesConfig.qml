@@ -723,14 +723,14 @@ ContentPage {
 
         ConfigSwitch {
             buttonIcon: "power_settings_new"
-            text: Translation.tr("Auto-start server")
+            text: Translation.tr("Receive files")
             checked: Config.options.localsend.autoStart
             enabled: LocalSend.available
             onCheckedChanged: {
                 Config.options.localsend.autoStart = checked;
             }
             StyledToolTip {
-                text: Translation.tr("Automatically start LocalSend server when shell starts")
+                text: Translation.tr("Same as the LocalSend tile in quick settings. Stays as you left it across restarts")
             }
         }
 
@@ -743,7 +743,7 @@ ContentPage {
                 Config.options.localsend.showNotifications = checked;
             }
             StyledToolTip {
-                text: Translation.tr("Show notifications for incoming transfers and completed downloads")
+                text: Translation.tr("Show notifications for received files and text. Incoming requests always notify")
             }
         }
 

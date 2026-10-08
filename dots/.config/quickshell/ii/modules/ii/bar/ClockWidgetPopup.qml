@@ -81,8 +81,8 @@ StyledPopup {
     stickyHover: true
 
     /*
-     * All three sections switched off, with no LocalSend on
-     * the network, leaves a 400px-wide empty card under the pointer.
+     * Which sections draw, read by the stagger and by `contentAvailable`
+     * (an empty popup is a 400px-wide card under the pointer).
      *
      * These live on the root and not on the column that draws them, because
      * the column is inside the LazyLoader's content: it exists only while the
@@ -95,8 +95,8 @@ StyledPopup {
     readonly property bool hasClockFace: Config.options.time.alarms.showAnalogClock
     readonly property bool hasWorldClocks: Config.options.time.alarms.showWorldClocks
         && Config.options.time.worldClocks && Config.options.time.worldClocks.length > 0
-    readonly property bool hasInfoColumn: LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0 || LocalSend.available
-    readonly property bool hasTransfer: LocalSend.currentTransfer !== null || LocalSend.droppedFiles.length > 0
+    readonly property bool hasInfoColumn: true // the timer pill never hides
+    readonly property bool hasTransfer: LocalSend.droppedFiles.length > 0
     readonly property bool hasAlarms: Config.options.time.alarms.showAlarmsSection
 
     contentAvailable: !Config.ready || root.hasClockFace || root.hasWorldClocks
@@ -342,7 +342,6 @@ StyledPopup {
             InfoPill {
                 id: infoPill
                 startAnim: columnLayout.startAnim
-                visible: LocalSend.currentTransfer == null || LocalSend.droppedFiles.length > 0
                 
                 readonly property bool isTimerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning || root.stopwatchPaused || (TimerService.stopwatchTime > 0)
 
@@ -389,22 +388,6 @@ StyledPopup {
                     }
                 }
             }
-
-            LocalSendPill {
-                id: localSendPill
-                startAnim: columnLayout.startAnim
-                visible: LocalSend.available
-            }
-        }
-
-        Component {
-            id: transferCard
-            LocalSendTransferCard {}
-        }
-
-        Component {
-            id: sendCard
-            LocalSendSendCard {}
         }
 
         Loader {
@@ -413,7 +396,7 @@ StyledPopup {
             Layout.minimumWidth: 360
             visible: active
             active: root.hasTransfer
-            sourceComponent: LocalSend.currentTransfer !== null ? transferCard : sendCard
+            sourceComponent: LocalSendSendCard {}
             
             opacity: 0
             transform: Translate {

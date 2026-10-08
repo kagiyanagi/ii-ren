@@ -4,7 +4,7 @@ import json, os, shutil, subprocess, sys, tempfile, threading, time
 HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "localsend.py")
 
 
-def run(answer, payload=b"hello localsend\n"):
+def run(answer, payload=b"hello localsend\n", client=None):
     out = tempfile.mkdtemp()
     src = os.path.join(tempfile.mkdtemp(), "note it.txt")
     open(src, "wb").write(payload)
@@ -25,8 +25,8 @@ def run(answer, payload=b"hello localsend\n"):
             break
         time.sleep(0.1)
     assert any(e.get("event") == "ready" for e in events), events
-    send = subprocess.run([sys.executable, HELPER, "send", "127.0.0.1", src],
-                          capture_output=True, text=True)
+    send = client(src) if client else subprocess.run(
+        [sys.executable, HELPER, "send", "127.0.0.1", src], capture_output=True, text=True)
     time.sleep(0.5)
     srv.terminate(); srv.wait(5)
     sent = [json.loads(l) for l in send.stdout.splitlines()]
@@ -53,5 +53,27 @@ print("deny ok:", [e.get("event") for e in ev])
 ev, sent, files = run("y", b"x" * (700 * 1024))
 saved = next(e for e in ev if e.get("event") == "saved")
 assert saved["size"] == 700 * 1024, saved
+print("large ok:", saved["size"], "bytes")
+
+
+def app_upload(src):
+    """Upload the way the LocalSend app does: chunked, no Content-Length."""
+    import http.client
+    data = open(src, "rb").read()
+    files = {"f": {"id": "f", "fileName": "photo.jpg", "size": len(data), "fileType": "image/jpeg"}}
+    c = http.client.HTTPConnection("127.0.0.1", 53317, timeout=10)
+    c.request("POST", "/api/localsend/v2/prepare-upload", json.dumps({"info": {"alias": "phone"}, "files": files}),
+              {"Content-Type": "application/json"})
+    prep = json.loads(c.getresponse().read())
+    c.request("POST", f"/api/localsend/v2/upload?sessionId={prep['sessionId']}&fileId=f&token={prep['files']['f']}",
+              iter([data[:1000], data[1000:]]), encode_chunked=True)
+    c.getresponse().read()
+    return subprocess.CompletedProcess([], 0, "", "")
+
+
+ev, sent, files = run("y", b"y" * (300 * 1024), client=app_upload)
+saved = next(e for e in ev if e.get("event") == "saved")
+assert saved["size"] == 300 * 1024, saved
+assert files == ["photo.jpg"] and saved["path"].endswith("photo.jpg"), (files, saved)
 print("chunked ok:", saved["size"], "bytes")
 print("PASS")
