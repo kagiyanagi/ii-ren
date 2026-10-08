@@ -140,16 +140,8 @@ ContentPage {
                 text: Translation.tr("Your quote")
                 placeholderText: Translation.tr("Your favorite quote")
 
-                Component.onCompleted: {
-                    quoteTextField.textField.text = Config.options.background.widgets.quote.quoteText || "";
-                }
-
-                Connections {
-                    target: quoteTextField.textField
-                    function onTextChanged() {
-                        Config.options.background.widgets.quote.quoteText = quoteTextField.textField.text;
-                    }
-                }
+                inputText: Config.options.background.widgets.quote.quoteText || ""
+                onInputTextChanged: Config.options.background.widgets.quote.quoteText = inputText
             }
 
             ContentSubsectionLabel {

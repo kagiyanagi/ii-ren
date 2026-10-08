@@ -22,6 +22,11 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions as CF
 import qs.modules.settings
+// Unused here, and load-bearing: Quickshell only registers the types of a
+// directory something imports as a qs. module. Without it the widget config
+// pages, loaded by URL, cannot see their siblings (DesktopWidgetVisualOptions,
+// FingerprintEnrollOverlay) and open empty.
+import qs.modules.settings.widgets
 
 ApplicationWindow {
     id: root

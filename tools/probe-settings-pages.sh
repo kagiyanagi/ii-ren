@@ -46,6 +46,10 @@ mapfile -t PAGES < <({ grep -lE '^ContentPage \{' "$PAGES_DIR"/*.qml
 [ "${#PAGES[@]}" -gt 0 ] || { echo "FAIL: no sub-pages found"; exit 1; }
 
 list=$(printf '"%s",' "${PAGES[@]}")
+# settings.qml's own qs. imports, so a page sees exactly the types it would there:
+# Quickshell registers a directory's types only once something imports it as a
+# module, and the widget config pages lean on that for their siblings.
+imports=$(grep -E '^import qs\.' "$SHELL_DIR/settings.qml")
 
 cat > "$PROBE" <<EOF
 //@ pragma UseQApplication
@@ -54,9 +58,10 @@ cat > "$PROBE" <<EOF
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import qs.modules.common
+$imports
 
 ApplicationWindow {
+    id: probeRoot
     visible: true
     width: 800
     height: 600
@@ -66,7 +71,7 @@ ApplicationWindow {
 
     Column {
         Repeater {
-            model: parent.parent.pages
+            model: probeRoot.pages
             Loader {
                 width: 700
                 height: 400
