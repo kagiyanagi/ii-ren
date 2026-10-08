@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Quote widget options")
 
@@ -28,9 +28,8 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("quote")
 
             ContentSubsectionLabel {
@@ -128,10 +127,6 @@ ContentPage {
                 }
             }
 
-            ContentSubsectionLabel {
-                visible: !(Config.options.background.widgets.quote.fetchRandom ?? false)
-                text: Translation.tr("Custom quote")
-            }
 
             ConfigTextField {
                 id: quoteTextField
@@ -144,9 +139,6 @@ ContentPage {
                 onInputTextChanged: Config.options.background.widgets.quote.quoteText = inputText
             }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Text size")
-            }
 
             ConfigSlider {
                 buttonIcon: "format_size"

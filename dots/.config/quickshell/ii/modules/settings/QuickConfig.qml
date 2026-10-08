@@ -235,6 +235,12 @@ ContentPage {
                             }
                         }
                     }
+
+                    // The grid scrolls inside a fixed height; without the fade a
+                    // half-cut row read as clipped rather than as more below.
+                    ScrollEdgeFade {
+                        target: flickable
+                    }
                 }
             }
         }
@@ -275,23 +281,30 @@ ContentPage {
                     Config.options.light.night.automaticDarkMode = checked;
                 }
             }
-            ConfigRow {
-                MaterialTextField {
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("From (HH:mm)")
-                    text: Config.options.light.night.from
-                    onEditingFinished: {
-                        if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
-                            Config.options.light.night.from = text.trim();
+            ConfigLabeledRow {
+                buttonIcon: "schedule"
+                text: Translation.tr("Schedule")
+            // Both automatic modes run on this window; with neither on it does nothing.
+            enabled: Config.options.light.night.automatic || Config.options.light.night.automaticDarkMode
+
+                ConfigRow {
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        placeholderText: Translation.tr("From (HH:mm)")
+                        text: Config.options.light.night.from
+                        onEditingFinished: {
+                            if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                                Config.options.light.night.from = text.trim();
+                        }
                     }
-                }
-                MaterialTextField {
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Until (HH:mm)")
-                    text: Config.options.light.night.to
-                    onEditingFinished: {
-                        if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
-                            Config.options.light.night.to = text.trim();
+                    MaterialTextField {
+                        Layout.fillWidth: true
+                        placeholderText: Translation.tr("Until (HH:mm)")
+                        text: Config.options.light.night.to
+                        onEditingFinished: {
+                            if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(text.trim()))
+                                Config.options.light.night.to = text.trim();
+                        }
                     }
                 }
             }
@@ -383,129 +396,113 @@ ContentPage {
         icon: "screenshot_monitor"
         title: Translation.tr("Bar & screen")
 
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Bar position")
-                Layout.fillWidth: true
-                ConfigSelectionArray {
-                    currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
-                    onSelected: newValue => {
-                        Config.options.bar.bottom = (newValue & 1) !== 0;
-                        Config.options.bar.vertical = (newValue & 2) !== 0;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Top"),
-                            icon: "arrow_upward",
-                            value: 0 // bottom: false, vertical: false
-                        },
-                        {
-                            displayName: Translation.tr("Left"),
-                            icon: "arrow_back",
-                            value: 2 // bottom: false, vertical: true
-                        },
-                        {
-                            displayName: Translation.tr("Bottom"),
-                            icon: "arrow_downward",
-                            value: 1 // bottom: true, vertical: false
-                        },
-                        {
-                            displayName: Translation.tr("Right"),
-                            icon: "arrow_forward",
-                            value: 3 // bottom: true, vertical: true
-                        }
-                    ]
-                }
+        ConfigSelectionRow {
+            buttonIcon: "open_with"
+            text: Translation.tr("Bar position")
+            currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
+            onSelected: newValue => {
+                Config.options.bar.bottom = (newValue & 1) !== 0;
+                Config.options.bar.vertical = (newValue & 2) !== 0;
             }
-            ContentSubsection {
-                title: Translation.tr("Bar style")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.cornerStyle
-                    onSelected: newValue => {
-                        Config.options.bar.cornerStyle = newValue; // Update local copy
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Hug"),
-                            icon: "line_curve",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Float"),
-                            icon: "page_header",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Rect"),
-                            icon: "toolbar",
-                            value: 2
-                        }
-                    ]
+            options: [
+                {
+                    displayName: Translation.tr("Top"),
+                    icon: "arrow_upward",
+                    value: 0 // bottom: false, vertical: false
+                },
+                {
+                    displayName: Translation.tr("Left"),
+                    icon: "arrow_back",
+                    value: 2 // bottom: false, vertical: true
+                },
+                {
+                    displayName: Translation.tr("Bottom"),
+                    icon: "arrow_downward",
+                    value: 1 // bottom: true, vertical: false
+                },
+                {
+                    displayName: Translation.tr("Right"),
+                    icon: "arrow_forward",
+                    value: 3 // bottom: true, vertical: true
                 }
+            ]
+        }
+        ConfigSelectionRow {
+            buttonIcon: "border_style"
+            text: Translation.tr("Bar style")
+            currentValue: Config.options.bar.cornerStyle
+            onSelected: newValue => {
+                Config.options.bar.cornerStyle = newValue; // Update local copy
             }
+            options: [
+                {
+                    displayName: Translation.tr("Hug"),
+                    icon: "line_curve",
+                    value: 0
+                },
+                {
+                    displayName: Translation.tr("Float"),
+                    icon: "page_header",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Rect"),
+                    icon: "toolbar",
+                    value: 2
+                }
+            ]
         }
 
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Screen round corner")
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.appearance.fakeScreenRounding
-                    onSelected: newValue => {
-                        Config.options.appearance.fakeScreenRounding = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Not fullscreen"),
-                            icon: "fullscreen_exit",
-                            value: 2
-                        },
-                        {
-                            displayName: Translation.tr("Wrapped"),
-                            icon: "capture",
-                            value: 3
-                        }
-                    ]
-                }
+        ConfigSelectionRow {
+            buttonIcon: "rounded_corner"
+            text: Translation.tr("Screen round corner")
+            currentValue: Config.options.appearance.fakeScreenRounding
+            onSelected: newValue => {
+                Config.options.appearance.fakeScreenRounding = newValue;
             }
-
-            ContentSubsection {
-                title: Translation.tr("Rounding style")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.appearance.sharpMode
-                    onSelected: newValue => {
-                        Config.options.appearance.sharpMode = newValue;
-                        HyprlandSettings.setRounding(newValue ? 0 : Config.options.appearance.defaultBorderRadius);
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Default"),
-                            icon: "rounded_corner",
-                            value: false
-                        },
-                        {
-                            displayName: Translation.tr("Sharp"),
-                            icon: "square",
-                            value: true
-                        }
-                    ]
+            options: [
+                {
+                    displayName: Translation.tr("No"),
+                    icon: "close",
+                    value: 0
+                },
+                {
+                    displayName: Translation.tr("Yes"),
+                    icon: "check",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Not fullscreen"),
+                    icon: "fullscreen_exit",
+                    value: 2
+                },
+                {
+                    displayName: Translation.tr("Wrapped"),
+                    icon: "capture",
+                    value: 3
                 }
+            ]
+        }
+        ConfigSelectionRow {
+            buttonIcon: "crop_square"
+            text: Translation.tr("Rounding style")
+            currentValue: Config.options.appearance.sharpMode
+            onSelected: newValue => {
+                Config.options.appearance.sharpMode = newValue;
+                HyprlandSettings.setRounding(newValue ? 0 : Config.options.appearance.defaultBorderRadius);
             }
+            options: [
+                {
+                    displayName: Translation.tr("Default"),
+                    icon: "rounded_corner",
+                    value: false
+                },
+                {
+                    displayName: Translation.tr("Sharp"),
+                    icon: "square",
+                    value: true
+                }
+            ]
         }
 
         ConfigSpinBox {
@@ -521,67 +518,58 @@ ContentPage {
             }
         }
 
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Bar background style")
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.barBackgroundStyle
-                    onSelected: newValue => {
-                        Config.options.bar.barBackgroundStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Visible"),
-                            icon: "visibility",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Adaptive"),
-                            icon: "masked_transitions",
-                            value: 2
-                        },
-                        {
-                            displayName: Translation.tr("Transparent"),
-                            icon: "opacity",
-                            value: 0
-                        }
-                    ]
+        ConfigSelectionRow {
+            buttonIcon: "format_color_fill"
+            text: Translation.tr("Bar background style")
+            currentValue: Config.options.bar.barBackgroundStyle
+            onSelected: newValue => {
+                Config.options.bar.barBackgroundStyle = newValue;
+            }
+            options: [
+                {
+                    displayName: Translation.tr("Visible"),
+                    icon: "visibility",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Adaptive"),
+                    icon: "masked_transitions",
+                    value: 2
+                },
+                {
+                    displayName: Translation.tr("Transparent"),
+                    icon: "opacity",
+                    value: 0
+                }
+            ]
+        }
+        ConfigSelectionRow {
+            buttonIcon: "dashboard"
+            text: Translation.tr("Hyprland layout")
+            currentValue: {
+                if (Persistent.states.hyprland.layout !== "scrolling") return "default"
+                else return "scrolling"
+            }
+            onSelected: newValue => {
+                if (newValue === "scrolling") {
+                    HyprlandSettings.setLayout("scrolling")
+                } else {
+                    const defaultLayout = Config.options.hyprland.defaultHyprlandLayout
+                    HyprlandSettings.setLayout(defaultLayout)
                 }
             }
-
-            ContentSubsection {
-                title: Translation.tr("Hyprland layout")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: {
-                        if (Persistent.states.hyprland.layout !== "scrolling") return "default"
-                        else return "scrolling"
-                    }
-                    onSelected: newValue => {
-                        if (newValue === "scrolling") {
-                            HyprlandSettings.setLayout("scrolling")
-                        } else {
-                            const defaultLayout = Config.options.hyprland.defaultHyprlandLayout
-                            HyprlandSettings.setLayout(defaultLayout)
-                        }
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Default"),
-                            icon: "mobile_layout",
-                            value: "default"
-                        },
-                        {
-                            displayName: Translation.tr("Scrolling"),
-                            icon: "view_carousel",
-                            value: "scrolling"
-                        }
-                    ]
+            options: [
+                {
+                    displayName: Translation.tr("Default"),
+                    icon: "mobile_layout",
+                    value: "default"
+                },
+                {
+                    displayName: Translation.tr("Scrolling"),
+                    icon: "view_carousel",
+                    value: "scrolling"
                 }
-            }
+            ]
         }
     }
 

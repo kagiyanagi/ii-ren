@@ -32,12 +32,6 @@ Item {
             readonly property var rows: column.visibleChildren
             readonly property Item row: rows[index] ?? null
             readonly property bool carded: row?.wantsCard === true && (row?.height ?? 0) > 0
-            // A chip group fills its cell but only draws across part of it, so
-            // hug it - otherwise the card trails dead space past the last chip.
-            // Mirror its own left padding on the right so both gaps match.
-            readonly property real cardWidth: (row?.hugCard === true && row.implicitWidth > 0)
-                ? Math.min(row.implicitWidth + (row.leftPadding ?? root.horizontalBleed), root.width)
-                : root.width
             // Corners are per run, not per group: a card next to a bare row is
             // the end of its run and gets the outer radius there.
             // What actually paints on this card: the row itself, or - when the
@@ -49,7 +43,7 @@ Item {
             visible: carded
             color: root.cardColor
             x: -root.horizontalBleed
-            width: cardWidth + root.horizontalBleed * 2
+            width: root.width + root.horizontalBleed * 2
             y: row?.y ?? 0
             height: row?.height ?? 0
             topLeftRadius: runStart ? root.outerRadius : root.innerRadius

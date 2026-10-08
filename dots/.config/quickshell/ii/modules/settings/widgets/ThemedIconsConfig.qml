@@ -29,7 +29,7 @@ Item {
     ContentPage {
         id: page
         anchors.fill: parent
-        forceWidth: false
+        forceWidth: true
         title: Translation.tr("Icon packs (apps & folders)")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
@@ -40,7 +40,7 @@ Item {
             // This was a 40-line explanation card sitting above the options. It
             // is a scope note for the section, and a section already has a place
             // to put one.
-            tooltip: Translation.tr("Select icon packs for apps and folders across KDE (Dolphin, Qt) and GTK. Packs marked with ✦ (like Breeze and Breeze Plus) natively adapt their folder colors to your wallpaper.")
+            tooltip: Translation.tr("Select icon packs for apps and folders across KDE (Dolphin, Qt) and GTK. Packs with a sparkle (like Breeze and Breeze Plus) natively adapt their folder colors to your wallpaper.")
 
             // The preview is the page, and it comes first: the pack that is in
             // force right now, and whether it recolours folders with the
@@ -62,8 +62,8 @@ Item {
 
                     // A dynamic pack tints its folders with the wallpaper accent,
                     // so the preview folder carries that accent when the pack is
-                    // one and a neutral when it is not -- the ✦ in the chip
-                    // labels, shown rather than spelled. A plain symbol and not a
+                    // one and a neutral when it is not -- the sparkle on the
+                    // chips, shown rather than spelled. A plain symbol and not a
                     // MaterialShape tile: that is a Canvas that repaints on every
                     // colour frame, and this directory's effect budget is zero.
                     MaterialSymbol {
@@ -178,57 +178,49 @@ Item {
                 }
             }
 
-            ContentSubsection {
+            ConfigSelectionRow {
+                text: Translation.tr("Light mode icon pack")
+                buttonIcon: "light_mode"
+                summary: Translation.tr("Used in light mode. Packs with a sparkle recolour their folders to match your wallpaper.")
                 visible: subPageRoot.canPreview
-                title: Translation.tr("Light mode icon pack")
-                icon: "light_mode"
-                Layout.fillWidth: true
-                tooltip: Translation.tr("Icon pack applied during Light Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")
-
-                ConfigSelectionArray {
-                    currentValue: IconThemes.lightTheme
-                    onSelected: (newValue) => {
-                        IconThemes.lightTheme = newValue;
-                        // Picking for the mode you are in is applying, as it
-                        // already is on the cursor page -- otherwise the control
-                        // looks like it did nothing until you find Apply. Picking
-                        // for the other mode is a change for later, and applying
-                        // it would re-run the script over an unchanged pack.
-                        if (!subPageRoot.darkMode)
-                            IconThemes.applyCurrent();
-                    }
-                    options: IconThemes.availableThemes.map((theme) => {
-                        return ({
-                            "displayName": (theme.dynamic ? "✦ " : "") + theme.name,
-                            "value": theme.id,
-                            "icon": theme.dynamic ? "auto_awesome" : "folder"
-                        });
-                    })
+                currentValue: IconThemes.lightTheme
+                onSelected: (newValue) => {
+                    IconThemes.lightTheme = newValue;
+                    // Picking for the mode you are in is applying, as it
+                    // already is on the cursor page -- otherwise the control
+                    // looks like it did nothing until you find Apply. Picking
+                    // for the other mode is a change for later, and applying
+                    // it would re-run the script over an unchanged pack.
+                    if (!subPageRoot.darkMode)
+                        IconThemes.applyCurrent();
                 }
+                options: IconThemes.availableThemes.map((theme) => {
+                    return ({
+                        "displayName": theme.name,
+                        "value": theme.id,
+                        "icon": theme.dynamic ? "auto_awesome" : "folder"
+                    });
+                })
             }
 
-            ContentSubsection {
+            ConfigSelectionRow {
+                text: Translation.tr("Dark mode icon pack")
+                buttonIcon: "dark_mode"
+                summary: Translation.tr("Used in dark mode. Packs with a sparkle recolour their folders to match your wallpaper.")
                 visible: subPageRoot.canPreview
-                title: Translation.tr("Dark mode icon pack")
-                icon: "dark_mode"
-                Layout.fillWidth: true
-                tooltip: Translation.tr("Icon pack applied during Dark Mode. Marked with ✦ are dynamic packs that recolor folders with your wallpaper.")
-
-                ConfigSelectionArray {
-                    currentValue: IconThemes.darkTheme
-                    onSelected: (newValue) => {
-                        IconThemes.darkTheme = newValue;
-                        if (subPageRoot.darkMode)
-                            IconThemes.applyCurrent();
-                    }
-                    options: IconThemes.availableThemes.map((theme) => {
-                        return ({
-                            "displayName": (theme.dynamic ? "✦ " : "") + theme.name,
-                            "value": theme.id,
-                            "icon": theme.dynamic ? "auto_awesome" : "folder"
-                        });
-                    })
+                currentValue: IconThemes.darkTheme
+                onSelected: (newValue) => {
+                    IconThemes.darkTheme = newValue;
+                    if (subPageRoot.darkMode)
+                        IconThemes.applyCurrent();
                 }
+                options: IconThemes.availableThemes.map((theme) => {
+                    return ({
+                        "displayName": theme.name,
+                        "value": theme.id,
+                        "icon": theme.dynamic ? "auto_awesome" : "folder"
+                    });
+                })
             }
 
             // Picking already applies, so this is the "it did not take" escape

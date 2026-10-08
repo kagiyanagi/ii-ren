@@ -109,137 +109,104 @@ ContentPage {
         icon: "spoke"
         title: Translation.tr("Positioning & appearance")
 
-        ConfigRow {
-            ContentSubsection {
-                title: Translation.tr("Bar position")
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
-                    // NetworkSpeed already draws icon mode on a vertical bar, so
-                    // this used to overwrite the user's horizontal mode for nothing:
-                    // back on a horizontal bar, their choice was gone.
-                    onSelected: newValue => {
-                        Config.options.bar.bottom = (newValue & 1) !== 0;
-                        Config.options.bar.vertical = (newValue & 2) !== 0;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Top"),
-                            icon: "arrow_upward",
-                            value: 0 // bottom: false, vertical: false
-                        },
-                        {
-                            displayName: Translation.tr("Left"),
-                            icon: "arrow_back",
-                            value: 2 // bottom: false, vertical: true
-                        },
-                        {
-                            displayName: Translation.tr("Bottom"),
-                            icon: "arrow_downward",
-                            value: 1 // bottom: true, vertical: false
-                        },
-                        {
-                            displayName: Translation.tr("Right"),
-                            icon: "arrow_forward",
-                            value: 3 // bottom: true, vertical: true
-                        }
-                    ]
-                }
+        // Where the bar sits, then what it looks like there: each choice is one
+        // row in a single run, and the radius sits under the style it belongs to.
+        ConfigSelectionRow {
+            buttonIcon: "open_with"
+            text: Translation.tr("Bar position")
+            currentValue: (Config.options.bar.bottom ? 1 : 0) | (Config.options.bar.vertical ? 2 : 0)
+            // NetworkSpeed already draws icon mode on a vertical bar, so
+            // this used to overwrite the user's horizontal mode for nothing:
+            // back on a horizontal bar, their choice was gone.
+            onSelected: newValue => {
+                Config.options.bar.bottom = (newValue & 1) !== 0;
+                Config.options.bar.vertical = (newValue & 2) !== 0;
             }
-            ContentSubsection {
-                title: Translation.tr("Automatically hide")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.autoHide.enable
-                    onSelected: newValue => {
-                        Config.options.bar.autoHide.enable = newValue; // Update local copy
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: false
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: true
-                        }
-                    ]
+            options: [
+                {
+                    displayName: Translation.tr("Top"),
+                    icon: "arrow_upward",
+                    value: 0 // bottom: false, vertical: false
+                },
+                {
+                    displayName: Translation.tr("Left"),
+                    icon: "arrow_back",
+                    value: 2 // bottom: false, vertical: true
+                },
+                {
+                    displayName: Translation.tr("Bottom"),
+                    icon: "arrow_downward",
+                    value: 1 // bottom: true, vertical: false
+                },
+                {
+                    displayName: Translation.tr("Right"),
+                    icon: "arrow_forward",
+                    value: 3 // bottom: true, vertical: true
                 }
+            ]
+        }
+        ConfigSwitch {
+            buttonIcon: "visibility_off"
+            text: Translation.tr("Automatically hide")
+            checked: Config.options.bar.autoHide.enable
+            onCheckedChanged: {
+                Config.options.bar.autoHide.enable = checked;
             }
         }
-
-        ConfigRow {
-            Layout.fillHeight: false
-            ContentSubsection {
-                title: Translation.tr("Corner style")
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.cornerStyle
-                    onSelected: newValue => {
-                        Config.options.bar.cornerStyle = newValue; // Update local copy
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Hug"),
-                            icon: "line_curve",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Float"),
-                            icon: "page_header",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Rect"),
-                            icon: "toolbar",
-                            value: 2
-                        }
-                    ]
-                }
+        ConfigSelectionRow {
+            buttonIcon: "format_color_fill"
+            text: Translation.tr("Bar background style")
+            summary: Translation.tr("Adaptive style makes the bar background transparent when there are no active windows")
+            currentValue: Config.options.bar.barBackgroundStyle
+            onSelected: newValue => {
+                Config.options.bar.barBackgroundStyle = newValue;
             }
-
-            ContentSubsection {
-                title: Translation.tr("Group style")
-                tooltip: Translation.tr("Island makes groups opaque on a transparent bar. Material gives the clock, weather and battery pills of their own")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.barGroupStyle
-                    onSelected: newValue => {
-                        Config.options.bar.barGroupStyle = newValue; // Update local copy
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Pills"),
-                            icon: "location_chip",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Island"),
-                            icon: "shadow",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Transparent"),
-                            icon: "opacity",
-                            value: 2
-                        },
-                        {
-                            displayName: Translation.tr("Material"),
-                            icon: "pill",
-                            value: 3
-                        }
-                    ]
+            options: [
+                {
+                    displayName: Translation.tr("Visible"),
+                    icon: "visibility",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Adaptive"),
+                    icon: "masked_transitions",
+                    value: 2
+                },
+                {
+                    displayName: Translation.tr("Transparent"),
+                    icon: "opacity",
+                    value: 0
                 }
-            }
+            ]
         }
-
+        ConfigSelectionRow {
+            buttonIcon: "border_style"
+            text: Translation.tr("Corner style")
+            currentValue: Config.options.bar.cornerStyle
+            onSelected: newValue => {
+                Config.options.bar.cornerStyle = newValue;
+            }
+            options: [
+                {
+                    displayName: Translation.tr("Hug"),
+                    icon: "line_curve",
+                    value: 0
+                },
+                {
+                    displayName: Translation.tr("Float"),
+                    icon: "page_header",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Rect"),
+                    icon: "toolbar",
+                    value: 2
+                }
+            ]
+        }
+        // Only a floating bar has corners of its own to round (BarContent.qml).
         ConfigSpinBox {
+            enabled: Config.options.bar.cornerStyle === 1
             icon: "rounded_corner"
             text: Translation.tr("Corner radius")
             value: Config.options.bar.cornerRadius
@@ -248,35 +215,36 @@ ContentPage {
             stepSize: 1
             onValueChanged: { Config.options.bar.cornerRadius = value; }
         }
-
-        ContentSubsection {
-            title: Translation.tr("Bar background style")
-            tooltip: Translation.tr("Adaptive style makes the bar background transparent when there are no active windows")
-            Layout.fillWidth: false
-
-            ConfigSelectionArray {
-                currentValue: Config.options.bar.barBackgroundStyle
-                onSelected: newValue => {
-                    Config.options.bar.barBackgroundStyle = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Visible"),
-                        icon: "visibility",
-                        value: 1
-                    },
-                    {
-                        displayName: Translation.tr("Adaptive"),
-                        icon: "masked_transitions",
-                        value: 2
-                    },
-                    {
-                        displayName: Translation.tr("Transparent"),
-                        icon: "opacity",
-                        value: 0
-                    }
-                ]
+        ConfigSelectionRow {
+            buttonIcon: "category"
+            text: Translation.tr("Group style")
+            summary: Translation.tr("Island makes groups opaque on a transparent bar. Material gives the clock, weather and battery pills of their own")
+            currentValue: Config.options.bar.barGroupStyle
+            onSelected: newValue => {
+                Config.options.bar.barGroupStyle = newValue;
             }
+            options: [
+                {
+                    displayName: Translation.tr("Pills"),
+                    icon: "location_chip",
+                    value: 0
+                },
+                {
+                    displayName: Translation.tr("Island"),
+                    icon: "shadow",
+                    value: 1
+                },
+                {
+                    displayName: Translation.tr("Transparent"),
+                    icon: "opacity",
+                    value: 2
+                },
+                {
+                    displayName: Translation.tr("Material"),
+                    icon: "pill",
+                    value: 3
+                }
+            ]
         }
     }
 
@@ -285,104 +253,41 @@ ContentPage {
         icon: "schedule"
         title: Translation.tr("Clock")
 
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "calendar_today"
-                text: Translation.tr("Show date")
-                checked: Config.options.bar.clock.showDate ?? true
-                onCheckedChanged: {
-                    Config.options.bar.clock.showDate = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "calendar_today"
+            text: Translation.tr("Show date")
+            checked: Config.options.bar.clock.showDate ?? true
+            onCheckedChanged: {
+                Config.options.bar.clock.showDate = checked;
             }
-            ConfigSwitch {
-                buttonIcon: "timer"
-                text: Translation.tr("Show seconds")
-                checked: Config.options.bar.clock.showSeconds ?? false
-                onCheckedChanged: {
-                    Config.options.bar.clock.showSeconds = checked;
-                }
+        }
+        ConfigSwitch {
+            buttonIcon: "timer"
+            text: Translation.tr("Show seconds")
+            checked: Config.options.bar.clock.showSeconds ?? false
+            onCheckedChanged: {
+                Config.options.bar.clock.showSeconds = checked;
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Time format")
-            tooltip: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.bar.clock.timeFormat || Config.options.time.format || "hh:mm"
-                onSelected: newValue => {
-                    Config.options.bar.clock.timeFormat = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("24h (hh:mm)"), value: "hh:mm" },
-                    { displayName: Translation.tr("12h (h:mm ap)"), value: "h:mm ap" },
-                    { displayName: Translation.tr("12h (h:mm AP)"), value: "h:mm AP" },
-                    { displayName: Translation.tr("With seconds (hh:mm:ss)"), value: "hh:mm:ss" }
-                ]
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                MaterialTextField {
-                    id: barCustomTimeFormatInput
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
-                    text: Config.options.bar.clock.timeFormat || Config.options.time.format || ""
-                    onEditingFinished: {
-                        Config.options.bar.clock.timeFormat = text.trim();
-                    }
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, barCustomTimeFormatInput.text.trim() || Config.options.bar.clock.timeFormat || Config.options.time.format || "hh:mm")
-                }
-            }
+        // An empty custom format falls back to the one in General.
+        ConfigFormatPicker {
+            buttonIcon: "schedule"
+            text: Translation.tr("Time format")
+            formats: ["hh:mm", "h:mm ap", "h:mm AP", "hh:mm:ss"]
+            value: Config.options.bar.clock.timeFormat || Config.options.time.format || "hh:mm"
+            placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
+            hint: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")
+            onPicked: format => Config.options.bar.clock.timeFormat = format
         }
-
-        ContentSubsection {
-            title: Translation.tr("Date format")
-            tooltip: Translation.tr("Custom format tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || "ddd, dd/MM"
-                onSelected: newValue => {
-                    Config.options.bar.clock.dateFormat = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Date first (ddd, dd/MM)"), value: "ddd, dd/MM" },
-                    { displayName: Translation.tr("Month first (ddd, MM/dd)"), value: "ddd, MM/dd" },
-                    { displayName: Translation.tr("Full (dddd, MMMM dd)"), value: "dddd, MMMM dd" },
-                    { displayName: Translation.tr("ISO (yyyy-MM-dd)"), value: "yyyy-MM-dd" }
-                ]
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                MaterialTextField {
-                    id: barCustomDateFormatInput
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
-                    text: Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || ""
-                    onEditingFinished: {
-                        Config.options.bar.clock.dateFormat = text.trim();
-                    }
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, barCustomDateFormatInput.text.trim() || Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || "ddd, dd/MM")
-                }
-            }
+        ConfigFormatPicker {
+            buttonIcon: "calendar_today"
+            text: Translation.tr("Date format")
+            formats: ["ddd, dd/MM", "ddd, MM/dd", "dddd, MMMM dd", "yyyy-MM-dd"]
+            value: Config.options.bar.clock.dateFormat || Config.options.time.dateFormat || "ddd, dd/MM"
+            placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
+            hint: Translation.tr("Custom format tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
+            onPicked: format => Config.options.bar.clock.dateFormat = format
         }
     }
 
@@ -405,29 +310,24 @@ ContentPage {
         icon: "music_cast"
         title: Translation.tr("Media player")
 
-        ConfigRow {
-            uniform: true
-
-            ConfigSwitch {
-                buttonIcon: "crop_free"
-                text: Translation.tr("Use fixed size")
-                checked: Config.options.bar.mediaPlayer.useFixedSize
-                onCheckedChanged: {
-                    Config.options.bar.mediaPlayer.useFixedSize = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "crop_free"
+            text: Translation.tr("Use fixed size")
+            checked: Config.options.bar.mediaPlayer.useFixedSize
+            onCheckedChanged: {
+                Config.options.bar.mediaPlayer.useFixedSize = checked;
             }
-
-            ConfigSpinBox {
-                enabled: !Config.options.bar.vertical && Config.options.bar.mediaPlayer.useFixedSize
-                icon: "width_full"
-                text: Translation.tr("Custom size")
-                value: Config.options.bar.mediaPlayer.customSize
-                from: 100
-                to: 500
-                stepSize: 25
-                onValueChanged: {
-                    Config.options.bar.mediaPlayer.customSize = value;
-                }
+        }
+        ConfigSpinBox {
+            enabled: !Config.options.bar.vertical && Config.options.bar.mediaPlayer.useFixedSize
+            icon: "width_full"
+            text: Translation.tr("Custom size")
+            value: Config.options.bar.mediaPlayer.customSize
+            from: 100
+            to: 500
+            stepSize: 25
+            onValueChanged: {
+                Config.options.bar.mediaPlayer.customSize = value;
             }
         }
 
@@ -444,60 +344,50 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Artwork")
-
-            ConfigSwitch {
-                enabled: !Config.options.bar.vertical
-                buttonIcon: "image"
-                text: Translation.tr("Enable artwork")
-                checked: Config.options.bar.mediaPlayer.artwork.enable
-                onCheckedChanged: {
-                    Config.options.bar.mediaPlayer.artwork.enable = checked;
-                }
+        ConfigSwitch {
+            enabled: !Config.options.bar.vertical
+            buttonIcon: "image"
+            text: Translation.tr("Show artwork")
+            checked: Config.options.bar.mediaPlayer.artwork.enable
+            onCheckedChanged: {
+                Config.options.bar.mediaPlayer.artwork.enable = checked;
             }
         }
 
         ContentSubsection {
             title: Translation.tr("Lyrics")
 
-            ConfigRow {
-                ConfigSwitch {
-                    buttonIcon: "check"
-                    text: Translation.tr("Enable")
-                    Layout.fillWidth: false
-                    checked: Config.options.bar.mediaPlayer.lyrics.enable
-                    onCheckedChanged: {
-                        Config.options.bar.mediaPlayer.lyrics.enable = checked;
-                    }
-                    StyledToolTip {
-                        text: Translation.tr("Lyrics will be visible when they are fetched with API")
-                    }
+            ConfigSwitch {
+                buttonIcon: "check"
+                text: Translation.tr("Enable")
+                checked: Config.options.bar.mediaPlayer.lyrics.enable
+                onCheckedChanged: {
+                    Config.options.bar.mediaPlayer.lyrics.enable = checked;
                 }
-
-                Item {
-                    Layout.fillWidth: true
+                StyledToolTip {
+                    text: Translation.tr("Lyrics will be visible when they are fetched with API")
                 }
-
-                ConfigSelectionArray {
-                    Layout.fillWidth: false
-                    currentValue: Config.options.bar.mediaPlayer.lyrics.style
-                    onSelected: newValue => {
-                        Config.options.bar.mediaPlayer.lyrics.style = newValue
+            }
+            ConfigSelectionRow {
+                buttonIcon: "format_size"
+                text: Translation.tr("Lyrics style")
+                enabled: Config.options.bar.mediaPlayer.lyrics.enable
+                currentValue: Config.options.bar.mediaPlayer.lyrics.style
+                onSelected: newValue => {
+                    Config.options.bar.mediaPlayer.lyrics.style = newValue
+                }
+                options: [
+                    {
+                        displayName: Translation.tr("Static"),
+                        icon: "format_size",
+                        value: "static"
+                    },
+                    {
+                        displayName: Translation.tr("Scroller"),
+                        icon: "keyboard_double_arrow_up",
+                        value: "scroller"
                     }
-                    options: [
-                        {
-                            displayName: Translation.tr("Static"),
-                            icon: "format_size",
-                            value: "static"
-                        },
-                        {
-                            displayName: Translation.tr("Scroller"),
-                            icon: "keyboard_double_arrow_up",
-                            value: "scroller"
-                        }
-                    ]
-                }
+                ]
             }
 
             ConfigSwitch {
@@ -554,84 +444,72 @@ ContentPage {
         icon: "ad"
         title: Translation.tr("Indicators")
 
+        ConfigSwitch {
+            buttonIcon: "check_indeterminate_small"
+            text: Translation.tr("Minimal recording indicator")
+            checked: Config.options.bar.indicators.record.minimal
+            onCheckedChanged: {
+                Config.options.bar.indicators.record.minimal = checked;
+            }
+        }
+
         ContentSubsection {
             title: Translation.tr("Timer and pomodoro")
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "timer"
-                    text: Translation.tr("Show stopwatch")
-                    checked: Config.options.bar.timers.showStopwatch
-                    onCheckedChanged: {
-                        Config.options.bar.timers.showStopwatch = checked;
-                    }
-                }
-                ConfigSwitch {
-                    buttonIcon: "search_activity"
-                    text: Translation.tr("Show pomodoro")
-                    checked: Config.options.bar.timers.showPomodoro
-                    onCheckedChanged: {
-                        Config.options.bar.timers.showPomodoro = checked;
-                    }
-                }
-            }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Record")
-
             ConfigSwitch {
-                buttonIcon: "check_indeterminate_small"
-                text: Translation.tr("Minimal mode")
-                checked: Config.options.bar.indicators.record.minimal
+                buttonIcon: "timer"
+                text: Translation.tr("Show stopwatch")
+                checked: Config.options.bar.timers.showStopwatch
                 onCheckedChanged: {
-                    Config.options.bar.indicators.record.minimal = checked;
+                    Config.options.bar.timers.showStopwatch = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "search_activity"
+                text: Translation.tr("Show pomodoro")
+                checked: Config.options.bar.timers.showPomodoro
+                onCheckedChanged: {
+                    Config.options.bar.timers.showPomodoro = checked;
                 }
             }
         }
+
 
         ContentSubsection {
             title: Translation.tr("Privacy")
             tooltip: Translation.tr("Shows what is using your microphone, camera, screen and location")
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "mic"
-                    text: Translation.tr("Microphone")
-                    checked: Config.options.bar.indicators.privacy.microphone
-                    onCheckedChanged: {
-                        Config.options.bar.indicators.privacy.microphone = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "mic"
+                text: Translation.tr("Microphone")
+                checked: Config.options.bar.indicators.privacy.microphone
+                onCheckedChanged: {
+                    Config.options.bar.indicators.privacy.microphone = checked;
                 }
-                ConfigSwitch {
-                    buttonIcon: "photo_camera"
-                    text: Translation.tr("Camera")
-                    checked: Config.options.bar.indicators.privacy.camera
-                    onCheckedChanged: {
-                        Config.options.bar.indicators.privacy.camera = checked;
-                    }
+            }
+            ConfigSwitch {
+                buttonIcon: "photo_camera"
+                text: Translation.tr("Camera")
+                checked: Config.options.bar.indicators.privacy.camera
+                onCheckedChanged: {
+                    Config.options.bar.indicators.privacy.camera = checked;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "screen_share"
-                    text: Translation.tr("Screen sharing")
-                    checked: Config.options.bar.indicators.privacy.screen
-                    onCheckedChanged: {
-                        Config.options.bar.indicators.privacy.screen = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "screen_share"
+                text: Translation.tr("Screen sharing")
+                checked: Config.options.bar.indicators.privacy.screen
+                onCheckedChanged: {
+                    Config.options.bar.indicators.privacy.screen = checked;
                 }
-                ConfigSwitch {
-                    buttonIcon: "location_on"
-                    text: Translation.tr("Location")
-                    checked: Config.options.bar.indicators.privacy.location
-                    onCheckedChanged: {
-                        Config.options.bar.indicators.privacy.location = checked;
-                    }
+            }
+            ConfigSwitch {
+                buttonIcon: "location_on"
+                text: Translation.tr("Location")
+                checked: Config.options.bar.indicators.privacy.location
+                onCheckedChanged: {
+                    Config.options.bar.indicators.privacy.location = checked;
                 }
             }
         }
@@ -642,55 +520,47 @@ ContentPage {
         icon: "speed"
         title: Translation.tr("Network speed")
 
-        ContentSubsection {
-            title: Translation.tr("Mode selector")
-            ConfigSelectionArray {
-                // What the bar draws: a vertical one is always icon mode.
-                currentValue: Config.options.bar.vertical ? 4 : Config.options.bar.networkSpeed.displayMode
-                onSelected: newValue => {
-                    Config.options.bar.networkSpeed.displayMode = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Total"), icon: "expand", value: 0, enabled: !Config.options.bar.vertical },
-                    { displayName: Translation.tr("Download"), icon: "arrow_downward", value: 1, enabled: !Config.options.bar.vertical },
-                    { displayName: Translation.tr("Upload"), icon: "arrow_upward", value: 2, enabled: !Config.options.bar.vertical },
-                    { displayName: Translation.tr("Both"), icon: "unfold_more", value: 3, enabled: !Config.options.bar.vertical },
-                    { displayName: Translation.tr("Icon"), icon: "wifi", value: 4 }
-                ]
+        ConfigSelectionRow {
+            buttonIcon: "tune"
+            text: Translation.tr("Mode selector")
+            currentValue: Config.options.bar.vertical ? 4 : Config.options.bar.networkSpeed.displayMode
+            onSelected: newValue => {
+                Config.options.bar.networkSpeed.displayMode = newValue;
             }
+            options: [
+                { displayName: Translation.tr("Total"), icon: "expand", value: 0, enabled: !Config.options.bar.vertical },
+                { displayName: Translation.tr("Download"), icon: "arrow_downward", value: 1, enabled: !Config.options.bar.vertical },
+                { displayName: Translation.tr("Upload"), icon: "arrow_upward", value: 2, enabled: !Config.options.bar.vertical },
+                { displayName: Translation.tr("Both"), icon: "unfold_more", value: 3, enabled: !Config.options.bar.vertical },
+                { displayName: Translation.tr("Icon"), icon: "wifi", value: 4 }
+            ]
         }
 
         // The switches' disabled state dims them; the extra 0.5 on top of it
         // put them at 0.2. Icon position was nested inside Icon settings, one
         // indent deeper than its neighbours.
-        ContentSubsection {
-            title: Translation.tr("Icon settings")
-
-            ConfigSwitch {
-                buttonIcon: "vertical_align_center"
-                text: Translation.tr("Show speed indicators (↑↓)")
-                enabled: Config.options.bar.networkSpeed.displayMode !== 4
-                checked: Config.options.bar.networkSpeed.showIcons
-                onCheckedChanged: {
-                    Config.options.bar.networkSpeed.showIcons = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "vertical_align_center"
+            text: Translation.tr("Show speed indicators (↑↓)")
+            enabled: Config.options.bar.networkSpeed.displayMode !== 4
+            checked: Config.options.bar.networkSpeed.showIcons
+            onCheckedChanged: {
+                Config.options.bar.networkSpeed.showIcons = checked;
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Icon position")
+        ConfigSelectionRow {
+            buttonIcon: "swap_horiz"
+            text: Translation.tr("Icon position")
             enabled: Config.options.bar.networkSpeed.showIcons
-
-            ConfigSelectionArray {
-                currentValue: Config.options.bar.networkSpeed.iconPosition
-                onSelected: newValue => {
-                    Config.options.bar.networkSpeed.iconPosition = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Left"), icon: "align_horizontal_left", value: 0 },
-                    { displayName: Translation.tr("Right"), icon: "align_horizontal_right", value: 1 }
-                ]
+            currentValue: Config.options.bar.networkSpeed.iconPosition
+            onSelected: newValue => {
+                Config.options.bar.networkSpeed.iconPosition = newValue;
             }
+            options: [
+                { displayName: Translation.tr("Left"), icon: "align_horizontal_left", value: 0 },
+                { displayName: Translation.tr("Right"), icon: "align_horizontal_right", value: 1 }
+            ]
         }
 
         ContentSubsection {
@@ -727,78 +597,63 @@ ContentPage {
             title: Translation.tr("Visible statistics")
             tooltip: Translation.tr("Choose which resource monitors to display on the bar")
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "planner_review"
-                    text: Translation.tr("CPU usage")
-                    checked: Config.options.bar.resources.showCpu ?? true
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showCpu = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "planner_review"
+                text: Translation.tr("CPU usage")
+                checked: Config.options.bar.resources.showCpu ?? true
+                onCheckedChanged: {
+                    Config.options.bar.resources.showCpu = checked;
                 }
-                ConfigSwitch {
-                    buttonIcon: "memory"
-                    text: Translation.tr("RAM usage")
-                    checked: Config.options.bar.resources.showRam ?? true
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showRam = checked;
-                    }
+            }
+            ConfigSwitch {
+                buttonIcon: "memory"
+                text: Translation.tr("RAM usage")
+                checked: Config.options.bar.resources.showRam ?? true
+                onCheckedChanged: {
+                    Config.options.bar.resources.showRam = checked;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "thermostat"
-                    text: Translation.tr("Temperature")
-                    checked: Config.options.bar.resources.showTemp ?? true
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showTemp = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "thermostat"
+                text: Translation.tr("Temperature")
+                checked: Config.options.bar.resources.showTemp ?? true
+                onCheckedChanged: {
+                    Config.options.bar.resources.showTemp = checked;
                 }
-                ConfigSwitch {
-                    buttonIcon: "swap_vert"
-                    text: Translation.tr("Network load")
-                    checked: Config.options.bar.resources.showNetwork ?? false
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showNetwork = checked;
-                    }
+            }
+            ConfigSwitch {
+                buttonIcon: "swap_vert"
+                text: Translation.tr("Network load")
+                checked: Config.options.bar.resources.showNetwork ?? false
+                onCheckedChanged: {
+                    Config.options.bar.resources.showNetwork = checked;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "swap_horiz"
-                    text: Translation.tr("Swap usage")
-                    checked: Config.options.bar.resources.showSwap ?? false
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showSwap = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "swap_horiz"
+                text: Translation.tr("Swap usage")
+                checked: Config.options.bar.resources.showSwap ?? false
+                onCheckedChanged: {
+                    Config.options.bar.resources.showSwap = checked;
                 }
-                ConfigSwitch {
-                    buttonIcon: "videogame_asset"
-                    text: Translation.tr("GPU usage")
-                    checked: Config.options.bar.resources.showGpu ?? false
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showGpu = checked;
-                    }
+            }
+            ConfigSwitch {
+                buttonIcon: "videogame_asset"
+                text: Translation.tr("GPU usage")
+                checked: Config.options.bar.resources.showGpu ?? false
+                onCheckedChanged: {
+                    Config.options.bar.resources.showGpu = checked;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-                ConfigSwitch {
-                    buttonIcon: "hard_drive"
-                    text: Translation.tr("Disk usage")
-                    checked: Config.options.bar.resources.showDisk ?? false
-                    onCheckedChanged: {
-                        Config.options.bar.resources.showDisk = checked;
-                    }
-                }
-                Item {
-                    Layout.fillWidth: true
+            ConfigSwitch {
+                buttonIcon: "hard_drive"
+                text: Translation.tr("Disk usage")
+                checked: Config.options.bar.resources.showDisk ?? false
+                onCheckedChanged: {
+                    Config.options.bar.resources.showDisk = checked;
                 }
             }
         }
@@ -817,12 +672,9 @@ ContentPage {
                     text: Translation.tr("Displays unit symbols after numbers (e.g. 20%, 51°C, 3.8G)")
                 }
             }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("RAM & swap measurement unit")
-
-            ConfigSelectionArray {
+            ConfigSelectionRow {
+                buttonIcon: "straighten"
+                text: Translation.tr("RAM & swap measurement unit")
                 currentValue: Config.options.bar.resources.ramUnit ?? "percent"
                 onSelected: newValue => {
                     Config.options.bar.resources.ramUnit = newValue;
@@ -834,6 +686,7 @@ ContentPage {
                 ]
             }
         }
+
 
         ContentSubsection {
             title: Translation.tr("Network load settings")
@@ -853,12 +706,9 @@ ContentPage {
                     text: Translation.tr("Speed corresponding to 100% network load on the progress ring")
                 }
             }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Display value")
-            visible: Config.options.bar.resources.showNetwork ?? false
-            ConfigSelectionArray {
+            ConfigSelectionRow {
+                buttonIcon: "visibility"
+                text: Translation.tr("Display value")
                 currentValue: Config.options.bar.resources.networkUnit ?? "percent"
                 onSelected: newValue => {
                     Config.options.bar.resources.networkUnit = newValue;
@@ -870,58 +720,53 @@ ContentPage {
             }
         }
 
+
         ContentSubsection {
             title: Translation.tr("Warning thresholds")
 
-            ConfigRow {
-                uniform: true
-                ConfigSpinBox {
-                    icon: "planner_review"
-                    text: Translation.tr("CPU threshold (%)")
-                    value: Config.options.bar.resources.cpuWarningThreshold ?? 90
-                    from: 50
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.bar.resources.cpuWarningThreshold = value;
-                    }
+            ConfigSpinBox {
+                icon: "planner_review"
+                text: Translation.tr("CPU threshold (%)")
+                value: Config.options.bar.resources.cpuWarningThreshold ?? 90
+                from: 50
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.bar.resources.cpuWarningThreshold = value;
                 }
-                ConfigSpinBox {
-                    icon: "memory"
-                    text: Translation.tr("RAM threshold (%)")
-                    value: Config.options.bar.resources.memoryWarningThreshold ?? 95
-                    from: 50
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.bar.resources.memoryWarningThreshold = value;
-                    }
+            }
+            ConfigSpinBox {
+                icon: "memory"
+                text: Translation.tr("RAM threshold (%)")
+                value: Config.options.bar.resources.memoryWarningThreshold ?? 95
+                from: 50
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.bar.resources.memoryWarningThreshold = value;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-                ConfigSpinBox {
-                    icon: "thermostat"
-                    text: Translation.tr("Temperature threshold (°C)")
-                    value: Config.options.bar.resources.tempWarningThreshold ?? 85
-                    from: 40
-                    to: 110
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.bar.resources.tempWarningThreshold = value;
-                    }
+            ConfigSpinBox {
+                icon: "thermostat"
+                text: Translation.tr("Temperature threshold (°C)")
+                value: Config.options.bar.resources.tempWarningThreshold ?? 85
+                from: 40
+                to: 110
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.bar.resources.tempWarningThreshold = value;
                 }
-                ConfigSpinBox {
-                    icon: "swap_horiz"
-                    text: Translation.tr("Swap threshold (%)")
-                    value: Config.options.bar.resources.swapWarningThreshold ?? 85
-                    from: 50
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.bar.resources.swapWarningThreshold = value;
-                    }
+            }
+            ConfigSpinBox {
+                icon: "swap_horiz"
+                text: Translation.tr("Swap threshold (%)")
+                value: Config.options.bar.resources.swapWarningThreshold ?? 85
+                from: 50
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.bar.resources.swapWarningThreshold = value;
                 }
             }
         }
@@ -932,83 +777,68 @@ ContentPage {
         icon: "widgets"
         title: Translation.tr("Utility buttons")
 
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "content_cut"
-                text: Translation.tr("Screen snip")
-                checked: Config.options.bar.utilButtons.showScreenSnip
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showScreenSnip = checked;
-                }
-            }
-            ConfigSwitch {
-                buttonIcon: "colorize"
-                text: Translation.tr("Color picker")
-                checked: Config.options.bar.utilButtons.showColorPicker
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showColorPicker = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "content_cut"
+            text: Translation.tr("Screen snip")
+            checked: Config.options.bar.utilButtons.showScreenSnip
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showScreenSnip = checked;
             }
         }
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "keyboard"
-                text: Translation.tr("Keyboard toggle")
-                checked: Config.options.bar.utilButtons.showKeyboardToggle
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showKeyboardToggle = checked;
-                }
-            }
-            ConfigSwitch {
-                buttonIcon: "keyboard_full"
-                text: Translation.tr("Keyboard backlight")
-                checked: Config.options.bar.utilButtons.showKeyboardBacklight
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showKeyboardBacklight = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "colorize"
+            text: Translation.tr("Color picker")
+            checked: Config.options.bar.utilButtons.showColorPicker
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showColorPicker = checked;
             }
         }
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "mic"
-                text: Translation.tr("Mic toggle")
-                checked: Config.options.bar.utilButtons.showMicToggle
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showMicToggle = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "keyboard"
+            text: Translation.tr("Keyboard toggle")
+            checked: Config.options.bar.utilButtons.showKeyboardToggle
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showKeyboardToggle = checked;
             }
         }
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "dark_mode"
-                text: Translation.tr("Dark/light toggle")
-                checked: Config.options.bar.utilButtons.showDarkModeToggle
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showDarkModeToggle = checked;
-                }
-            }
-            ConfigSwitch {
-                buttonIcon: "speed"
-                text: Translation.tr("Performance profile toggle")
-                checked: Config.options.bar.utilButtons.showPerformanceProfileToggle
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "keyboard_full"
+            text: Translation.tr("Keyboard backlight")
+            checked: Config.options.bar.utilButtons.showKeyboardBacklight
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showKeyboardBacklight = checked;
             }
         }
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "videocam"
-                text: Translation.tr("Record")
-                checked: Config.options.bar.utilButtons.showScreenRecord
-                onCheckedChanged: {
-                    Config.options.bar.utilButtons.showScreenRecord = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "mic"
+            text: Translation.tr("Mic toggle")
+            checked: Config.options.bar.utilButtons.showMicToggle
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showMicToggle = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "dark_mode"
+            text: Translation.tr("Dark/light toggle")
+            checked: Config.options.bar.utilButtons.showDarkModeToggle
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showDarkModeToggle = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "speed"
+            text: Translation.tr("Performance profile toggle")
+            checked: Config.options.bar.utilButtons.showPerformanceProfileToggle
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showPerformanceProfileToggle = checked;
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "videocam"
+            text: Translation.tr("Record")
+            checked: Config.options.bar.utilButtons.showScreenRecord
+            onCheckedChanged: {
+                Config.options.bar.utilButtons.showScreenRecord = checked;
             }
         }
     }
@@ -1018,51 +848,41 @@ ContentPage {
         icon: "workspaces"
         title: Translation.tr("Workspaces")
 
-        ConfigRow {
-            uniform: true
-
-            ConfigSwitch {
-                buttonIcon: "grid_3x3"
-                text: Translation.tr('Use workspace map')
-                checked: Config.options.bar.workspaces.useWorkspaceMap
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.useWorkspaceMap = checked;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Only for multi-monitor setups, you must edit the workspace map manually in config.json\n Refer to the repo wiki for more information")
-                }
+        ConfigSwitch {
+            buttonIcon: "grid_3x3"
+            text: Translation.tr('Use workspace map')
+            checked: Config.options.bar.workspaces.useWorkspaceMap
+            onCheckedChanged: {
+                Config.options.bar.workspaces.useWorkspaceMap = checked;
             }
-
-            ConfigSwitch {
-                buttonIcon: "counter_1"
-                text: Translation.tr('Always show numbers')
-                checked: Config.options.bar.workspaces.alwaysShowNumbers
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.alwaysShowNumbers = checked;
-                }
+            StyledToolTip {
+                text: Translation.tr("Only for multi-monitor setups, you must edit the workspace map manually in config.json\n Refer to the repo wiki for more information")
+            }
+        }
+        ConfigSwitch {
+            buttonIcon: "counter_1"
+            text: Translation.tr('Always show numbers')
+            checked: Config.options.bar.workspaces.alwaysShowNumbers
+            onCheckedChanged: {
+                Config.options.bar.workspaces.alwaysShowNumbers = checked;
             }
         }
 
-        ConfigRow {
-            uniform: true
-
-            ConfigSwitch {
-                buttonIcon: "award_star"
-                text: Translation.tr('Show app icons')
-                checked: Config.options.bar.workspaces.showAppIcons
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.showAppIcons = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "award_star"
+            text: Translation.tr('Show app icons')
+            checked: Config.options.bar.workspaces.showAppIcons
+            onCheckedChanged: {
+                Config.options.bar.workspaces.showAppIcons = checked;
             }
-
-            ConfigSwitch {
-                enabled: Config.options.bar.workspaces.showAppIcons
-                buttonIcon: "colors"
-                text: Translation.tr('Tint app icons')
-                checked: Config.options.bar.workspaces.monochromeIcons
-                onCheckedChanged: {
-                    Config.options.bar.workspaces.monochromeIcons = checked;
-                }
+        }
+        ConfigSwitch {
+            enabled: Config.options.bar.workspaces.showAppIcons
+            buttonIcon: "colors"
+            text: Translation.tr('Tint app icons')
+            checked: Config.options.bar.workspaces.monochromeIcons
+            onCheckedChanged: {
+                Config.options.bar.workspaces.monochromeIcons = checked;
             }
         }
 
@@ -1115,32 +935,30 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Number style")
-
-            ConfigSelectionArray {
-                currentValue: JSON.stringify(Config.options.bar.workspaces.numberMap)
-                onSelected: newValue => {
-                    Config.options.bar.workspaces.numberMap = JSON.parse(newValue)
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Normal"),
-                        icon: "timer_10",
-                        value: '[]'
-                    },
-                    {
-                        displayName: Translation.tr("Han chars"),
-                        icon: "square_dot",
-                        value: '["一","二","三","四","五","六","七","八","九","十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十"]'
-                    },
-                    {
-                        displayName: Translation.tr("Roman"),
-                        icon: "account_balance",
-                        value: '["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX"]'
-                    }
-                ]
+        ConfigSelectionRow {
+            buttonIcon: "pin"
+            text: Translation.tr("Number style")
+            currentValue: JSON.stringify(Config.options.bar.workspaces.numberMap)
+            onSelected: newValue => {
+                Config.options.bar.workspaces.numberMap = JSON.parse(newValue)
             }
+            options: [
+                {
+                    displayName: Translation.tr("Normal"),
+                    icon: "timer_10",
+                    value: '[]'
+                },
+                {
+                    displayName: Translation.tr("Han chars"),
+                    icon: "square_dot",
+                    value: '["一","二","三","四","五","六","七","八","九","十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十"]'
+                },
+                {
+                    displayName: Translation.tr("Roman"),
+                    icon: "account_balance",
+                    value: '["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX"]'
+                }
+            ]
         }
     }
 

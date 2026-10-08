@@ -47,23 +47,20 @@ ContentPage {
             }
         }
 
-        ConfigRow {
-            uniform: true
-            ConfigSwitch {
-                buttonIcon: "counter_1"
-                text: Translation.tr("Depends on workspace")
-                checked: Config.options.background.parallax.enableWorkspace
-                onCheckedChanged: {
-                    Config.options.background.parallax.enableWorkspace = checked;
-                }
+        ConfigSwitch {
+            buttonIcon: "counter_1"
+            text: Translation.tr("Depends on workspace")
+            checked: Config.options.background.parallax.enableWorkspace
+            onCheckedChanged: {
+                Config.options.background.parallax.enableWorkspace = checked;
             }
-            ConfigSwitch {
-                buttonIcon: "side_navigation"
-                text: Translation.tr("Depends on sidebars")
-                checked: Config.options.background.parallax.enableSidebar
-                onCheckedChanged: {
-                    Config.options.background.parallax.enableSidebar = checked;
-                }
+        }
+        ConfigSwitch {
+            buttonIcon: "side_navigation"
+            text: Translation.tr("Depends on sidebars")
+            checked: Config.options.background.parallax.enableSidebar
+            onCheckedChanged: {
+                Config.options.background.parallax.enableSidebar = checked;
             }
         }
         ConfigSpinBox {
@@ -96,66 +93,63 @@ ContentPage {
             visible: Config.options.background.animateWallpaperChanges
             title: Translation.tr("Transition")
 
-            // Kept at full strength while the controls below it dim: a disabled
-            // control that cannot say why it is disabled is its own kind of
-            // silence, and this one is only off because of the wallpaper that
-            // happens to be set right now.
-            StyledText {
-                visible: page.wallpaperIsVideo
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                color: Appearance.colors.colSubtext
-                text: Translation.tr("A video wallpaper is swapped straight in by mpvpaper, which cannot play a transition. This applies to image wallpapers.")
-            }
-
-            StyledComboBox {
-                Layout.fillWidth: true
-                enabled: !page.wallpaperIsVideo
+            // The reason stays at full strength while the picker under it dims:
+            // a disabled control that cannot say why it is disabled is its own
+            // kind of silence, and this one is only off because of the
+            // wallpaper that happens to be set right now.
+            ConfigLabeledRow {
                 buttonIcon: "masked_transitions"
-                textRole: "displayName"
-                model: [
-                    {
-                        displayName: Translation.tr("Radial wipe"),
-                        icon: "circle",
-                        value: "radial"
-                    },
-                    {
-                        displayName: Translation.tr("Crossfade"),
-                        icon: "blur_on",
-                        value: "crossfade"
-                    },
-                    {
-                        displayName: Translation.tr("Linear wipe"),
-                        icon: "swap_horiz",
-                        value: "wipe"
-                    },
-                    {
-                        displayName: Translation.tr("Diamond wipe"),
-                        icon: "diamond",
-                        value: "diamond"
-                    },
-                    {
-                        displayName: Translation.tr("Slash wipe"),
-                        icon: "timeline",
-                        value: "slash"
-                    },
-                    {
-                        displayName: Translation.tr("Outer wipe"),
-                        icon: "radio_button_unchecked",
-                        value: "outer"
-                    },
-                    {
-                        displayName: Translation.tr("Wave wipe"),
-                        icon: "water",
-                        value: "wave"
+                text: Translation.tr("Style")
+                summary: page.wallpaperIsVideo ? Translation.tr("A video wallpaper is swapped straight in by mpvpaper, which cannot play a transition. This applies to image wallpapers.") : ""
+
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    enabled: !page.wallpaperIsVideo
+                    textRole: "displayName"
+                    model: [
+                        {
+                            displayName: Translation.tr("Radial wipe"),
+                            icon: "circle",
+                            value: "radial"
+                        },
+                        {
+                            displayName: Translation.tr("Crossfade"),
+                            icon: "blur_on",
+                            value: "crossfade"
+                        },
+                        {
+                            displayName: Translation.tr("Linear wipe"),
+                            icon: "swap_horiz",
+                            value: "wipe"
+                        },
+                        {
+                            displayName: Translation.tr("Diamond wipe"),
+                            icon: "diamond",
+                            value: "diamond"
+                        },
+                        {
+                            displayName: Translation.tr("Slash wipe"),
+                            icon: "timeline",
+                            value: "slash"
+                        },
+                        {
+                            displayName: Translation.tr("Outer wipe"),
+                            icon: "radio_button_unchecked",
+                            value: "outer"
+                        },
+                        {
+                            displayName: Translation.tr("Wave wipe"),
+                            icon: "water",
+                            value: "wave"
+                        }
+                    ]
+                    currentIndex: {
+                        const index = model.findIndex(item => item.value === Config.options.background.transitionType);
+                        return index !== -1 ? index : 0;
                     }
-                ]
-                currentIndex: {
-                    const index = model.findIndex(item => item.value === Config.options.background.transitionType);
-                    return index !== -1 ? index : 0;
-                }
-                onActivated: index => {
-                    Config.options.background.transitionType = model[index].value;
+                    onActivated: index => {
+                        Config.options.background.transitionType = model[index].value;
+                    }
                 }
             }
 
@@ -562,106 +556,119 @@ ContentPage {
             visible: WallpaperSubject.enabled
             title: Translation.tr("Subject")
 
-            RowLayout {
+            // A card like the rows around it: the status and its actions read as
+            // one setting, not as loose text between two runs.
+            Item {
+                readonly property bool wantsCard: true
                 Layout.fillWidth: true
-                spacing: 12
+                implicitHeight: subjectStatusRow.implicitHeight + 24
 
-                StyledText {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: Appearance.colors.colSubtext
-                    text: {
-                        if (!WallpaperSubject.wallpaperUsable)
-                            return Translation.tr("No wallpaper to cut a subject out of yet.");
-                        if (subjectPicker.missing)
-                            return Translation.tr("Picking an image needs kdialog or zenity, and neither is installed.");
-                        if (WallpaperSubject.custom && framePreview.subjectStatus === Image.Error)
-                            return Translation.tr("Couldn't read your cutout at %1.").arg(WallpaperSubject.customPath);
-                        if (WallpaperSubject.custom)
-                            return Translation.tr("Using your own cutout. Drag it into place on the Wallpaper fit preview.");
-                        if (WallpaperSubject.declined)
-                            return Translation.tr("Cancelled for this wallpaper. It stays uncut - reselecting it or restarting the shell will not start it again.");
-                        if (WallpaperSubject.working && WallpaperSubject.wallpaperIsVideo) {
-                            if (WallpaperSubject.progressTotal === 0)
-                                return Translation.tr("Reading the video…");
-                            // How long this takes is set by how much the video
-                            // moves, not its length: a near-still loop reuses
-                            // one matte for a dozen frames, one that really
-                            // moves is recut every frame. Minutes either way,
-                            // so the count and the estimate are the difference
-                            // between working and hung.
-                            const left = WallpaperSubject.etaSeconds;
-                            const when = left > 90
-                                ? Translation.tr("about %1 minutes left").arg(Math.round(left / 60))
-                                : Translation.tr("nearly done");
-                            return Translation.tr("Matting frame %1 of %2, %3. Runs once per wallpaper at lowest priority; the desktop stays usable, and closing this window will not stop it.")
-                                .arg(WallpaperSubject.progressFrames)
-                                .arg(WallpaperSubject.progressTotal)
-                                .arg(when);
+                RowLayout {
+                    id: subjectStatusRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 12
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: Appearance.colors.colSubtext
+                        text: {
+                            if (!WallpaperSubject.wallpaperUsable)
+                                return Translation.tr("No wallpaper to cut a subject out of yet.");
+                            if (subjectPicker.missing)
+                                return Translation.tr("Picking an image needs kdialog or zenity, and neither is installed.");
+                            if (WallpaperSubject.custom && framePreview.subjectStatus === Image.Error)
+                                return Translation.tr("Couldn't read your cutout at %1.").arg(WallpaperSubject.customPath);
+                            if (WallpaperSubject.custom)
+                                return Translation.tr("Using your own cutout. Drag it into place on the Wallpaper fit preview.");
+                            if (WallpaperSubject.declined)
+                                return Translation.tr("Cancelled for this wallpaper. It stays uncut - reselecting it or restarting the shell will not start it again.");
+                            if (WallpaperSubject.working && WallpaperSubject.wallpaperIsVideo) {
+                                if (WallpaperSubject.progressTotal === 0)
+                                    return Translation.tr("Reading the video…");
+                                // How long this takes is set by how much the video
+                                // moves, not its length: a near-still loop reuses
+                                // one matte for a dozen frames, one that really
+                                // moves is recut every frame. Minutes either way,
+                                // so the count and the estimate are the difference
+                                // between working and hung.
+                                const left = WallpaperSubject.etaSeconds;
+                                const when = left > 90
+                                    ? Translation.tr("about %1 minutes left").arg(Math.round(left / 60))
+                                    : Translation.tr("nearly done");
+                                return Translation.tr("Matting frame %1 of %2, %3. Runs once per wallpaper at lowest priority; the desktop stays usable, and closing this window will not stop it.")
+                                    .arg(WallpaperSubject.progressFrames)
+                                    .arg(WallpaperSubject.progressTotal)
+                                    .arg(when);
+                            }
+                            if (WallpaperSubject.working)
+                                return Translation.tr("Looking for the subject…");
+                            if (WallpaperSubject.error.length > 0)
+                                return WallpaperSubject.error;
+                            if (WallpaperSubject.hasSubject && WallpaperSubject.wallpaperIsVideo)
+                                return Translation.tr("Subject matted through the video, covering %1% of a typical frame. The shell plays the wallpaper itself while this is on, in place of mpvpaper.")
+                                    .arg(Math.round(WallpaperSubject.coverage * 100));
+                            if (WallpaperSubject.hasSubject)
+                                return Translation.tr("Subject found, covering %1% of the wallpaper.")
+                                    .arg(Math.round(WallpaperSubject.coverage * 100));
+                            if (WallpaperSubject.wallpaperIsVideo)
+                                return Translation.tr("Nothing stands out from the background in this video, so the widgets stay flat.");
+                            return Translation.tr("No subject stands out in this wallpaper, so the widgets stay flat.");
                         }
-                        if (WallpaperSubject.working)
-                            return Translation.tr("Looking for the subject…");
-                        if (WallpaperSubject.error.length > 0)
-                            return WallpaperSubject.error;
-                        if (WallpaperSubject.hasSubject && WallpaperSubject.wallpaperIsVideo)
-                            return Translation.tr("Subject matted through the video, covering %1% of a typical frame. The shell plays the wallpaper itself while this is on, in place of mpvpaper.")
-                                .arg(Math.round(WallpaperSubject.coverage * 100));
-                        if (WallpaperSubject.hasSubject)
-                            return Translation.tr("Subject found, covering %1% of the wallpaper.")
-                                .arg(Math.round(WallpaperSubject.coverage * 100));
-                        if (WallpaperSubject.wallpaperIsVideo)
-                            return Translation.tr("Nothing stands out from the background in this video, so the widgets stay flat.");
-                        return Translation.tr("No subject stands out in this wallpaper, so the widgets stay flat.");
                     }
-                }
 
-                // Shown the moment a run starts, before there is any frame
-                // count to report: a bake can be minutes, and the first of them
-                // are the ones you are most likely to want back.
-                RippleButtonWithIcon {
-                    visible: WallpaperSubject.working
-                    materialIcon: "close"
-                    mainText: Translation.tr("Cancel")
-                    onClicked: WallpaperSubject.cancel()
-                }
-
-                // Only a failed run is worth retrying on its own. A wallpaper
-                // the model simply found nothing in will find nothing again.
-                RippleButtonWithIcon {
-                    visible: WallpaperSubject.error.length > 0 && !WallpaperSubject.working && !WallpaperSubject.custom
-                    materialIcon: "refresh"
-                    mainText: Translation.tr("Try again")
-                    onClicked: WallpaperSubject.generate()
-                }
-
-                // The way back from a cancel, and the way to redo a cutout you
-                // are not happy with - one that found nothing included, since
-                // a better model or pipeline may well find something.
-                RippleButtonWithIcon {
-                    visible: !WallpaperSubject.working && !WallpaperSubject.custom
-                        && (WallpaperSubject.declined || WallpaperSubject.cutoutPath.length > 0)
-                    materialIcon: "restart_alt"
-                    mainText: Translation.tr("Rebake")
-                    onClicked: WallpaperSubject.rebake()
-                }
-
-                // A cutout made elsewhere - a phone's lift-subject, an editor -
-                // in place of the model's, or with no model installed at all.
-                // Still images only, like the rest of framing.
-                RippleButtonWithIcon {
-                    visible: !WallpaperSubject.custom && WallpaperSubject.wallpaperUsable && !WallpaperSubject.wallpaperIsVideo
-                    materialIcon: "add_photo_alternate"
-                    mainText: Translation.tr("Use your own")
-                    onClicked: {
-                        subjectPicker.pick();
+                    // Shown the moment a run starts, before there is any frame
+                    // count to report: a bake can be minutes, and the first of them
+                    // are the ones you are most likely to want back.
+                    RippleButtonWithIcon {
+                        visible: WallpaperSubject.working
+                        materialIcon: "close"
+                        mainText: Translation.tr("Cancel")
+                        onClicked: WallpaperSubject.cancel()
                     }
-                }
 
-                RippleButtonWithIcon {
-                    visible: WallpaperSubject.custom
-                    materialIcon: "auto_awesome"
-                    mainText: Translation.tr("Find automatically")
-                    onClicked: framePreview.setSubject("")
+                    // Only a failed run is worth retrying on its own. A wallpaper
+                    // the model simply found nothing in will find nothing again.
+                    RippleButtonWithIcon {
+                        visible: WallpaperSubject.error.length > 0 && !WallpaperSubject.working && !WallpaperSubject.custom
+                        materialIcon: "refresh"
+                        mainText: Translation.tr("Try again")
+                        onClicked: WallpaperSubject.generate()
+                    }
+
+                    // The way back from a cancel, and the way to redo a cutout you
+                    // are not happy with - one that found nothing included, since
+                    // a better model or pipeline may well find something.
+                    RippleButtonWithIcon {
+                        visible: !WallpaperSubject.working && !WallpaperSubject.custom
+                            && (WallpaperSubject.declined || WallpaperSubject.cutoutPath.length > 0)
+                        materialIcon: "restart_alt"
+                        mainText: Translation.tr("Rebake")
+                        onClicked: WallpaperSubject.rebake()
+                    }
+
+                    // A cutout made elsewhere - a phone's lift-subject, an editor -
+                    // in place of the model's, or with no model installed at all.
+                    // Still images only, like the rest of framing.
+                    RippleButtonWithIcon {
+                        visible: !WallpaperSubject.custom && WallpaperSubject.wallpaperUsable && !WallpaperSubject.wallpaperIsVideo
+                        materialIcon: "add_photo_alternate"
+                        mainText: Translation.tr("Use your own")
+                        onClicked: {
+                            subjectPicker.pick();
+                        }
+                    }
+
+                    RippleButtonWithIcon {
+                        visible: WallpaperSubject.custom
+                        materialIcon: "auto_awesome"
+                        mainText: Translation.tr("Find automatically")
+                        onClicked: framePreview.setSubject("")
+                    }
                 }
             }
 
@@ -906,22 +913,20 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
+        ConfigSelectionRow {
+            buttonIcon: "auto_fix_high"
+            text: Translation.tr("Effect")
             visible: !weatherSection.collapsed && weatherSection.opt.enable && !weatherSection.opt.followWeather
-            title: Translation.tr("Effect")
-
-            ConfigSelectionArray {
-                currentValue: weatherSection.opt.effect
-                onSelected: newValue => {
-                    weatherSection.opt.effect = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Rain"), icon: "rainy", value: "rain" },
-                    { displayName: Translation.tr("Fog"),  icon: "foggy", value: "fog" },
-                    { displayName: Translation.tr("Snow"), icon: "weather_snowy", value: "snow" },
-                    { displayName: Translation.tr("Sun"),  icon: "clear_day", value: "sun" }
-                ]
+            currentValue: weatherSection.opt.effect
+            onSelected: newValue => {
+                weatherSection.opt.effect = newValue;
             }
+            options: [
+                { displayName: Translation.tr("Rain"), icon: "rainy", value: "rain" },
+                { displayName: Translation.tr("Fog"),  icon: "foggy", value: "fog" },
+                { displayName: Translation.tr("Snow"), icon: "weather_snowy", value: "snow" },
+                { displayName: Translation.tr("Sun"),  icon: "clear_day", value: "sun" }
+            ]
         }
 
         ContentSubsection {

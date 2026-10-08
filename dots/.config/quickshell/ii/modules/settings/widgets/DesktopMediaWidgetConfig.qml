@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Circular media options")
 
@@ -28,27 +28,22 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("media_circular")
 
-            ContentSubsection {
-                title: Translation.tr("Background shape")
-                icon: "category"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.media.backgroundShape
-                    onSelected: newValue => {
-                        Config.options.background.widgets.media.backgroundShape = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Circle"), icon: "circle", value: "circle" },
-                        { displayName: Translation.tr("Square"), icon: "square", value: "square" },
-                        { displayName: Translation.tr("Cookie"), icon: "cookie", value: "cookie" }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Background shape")
+                buttonIcon: "category"
+                currentValue: Config.options.background.widgets.media.backgroundShape
+                onSelected: newValue => {
+                    Config.options.background.widgets.media.backgroundShape = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Circle"), icon: "circle", value: "circle" },
+                    { displayName: Translation.tr("Square"), icon: "square", value: "square" },
+                    { displayName: Translation.tr("Cookie"), icon: "cookie", value: "cookie" }
+                ]
             }
 
             Item { Layout.preferredHeight: 4 }

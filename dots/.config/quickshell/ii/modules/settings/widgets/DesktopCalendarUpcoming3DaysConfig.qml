@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Calendar upcoming 3 days 1x1 options")
 

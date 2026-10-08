@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Cookie clock options")
 
@@ -28,15 +28,13 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("clock_cookie")
 
             // Cookie Style Settings
-            ColumnLayout {
+            ContentGroup {
                 Layout.fillWidth: true
-                spacing: 4
 
                 ContentSubsectionLabel {
                     text: Translation.tr("Cookie style settings")
@@ -90,281 +88,249 @@ ContentPage {
                     }
                 }
 
-                ContentSubsection {
+                ConfigSelectionRow {
+                    text: Translation.tr("AI model")
+                    buttonIcon: "psychology"
                     visible: Config.options.background.widgets.clock_cookie.aiStyling
-                    title: Translation.tr("AI model")
-                    icon: "psychology"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.aiStylingModel
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.aiStylingModel = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Gemini"),
-                                icon: "smart_toy",
-                                value: "gemini"
-                            },
-                            {
-                                displayName: Translation.tr("ChatGPT"),
-                                icon: "smart_toy",
-                                value: "chatgpt"
-                            },
-                            {
-                                displayName: Translation.tr("Claude"),
-                                icon: "smart_toy",
-                                value: "claude"
-                            }
-                        ]
+                    currentValue: Config.options.background.widgets.clock_cookie.aiStylingModel
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.aiStylingModel = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("Gemini"),
+                            icon: "smart_toy",
+                            value: "gemini"
+                        },
+                        {
+                            displayName: Translation.tr("ChatGPT"),
+                            icon: "smart_toy",
+                            value: "chatgpt"
+                        },
+                        {
+                            displayName: Translation.tr("Claude"),
+                            icon: "smart_toy",
+                            value: "claude"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Dial style")
-                    icon: "settings_overscan"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.dialNumberStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.dialNumberStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("None"),
-                                icon: "do_not_disturb",
-                                value: "none"
-                            },
-                            {
-                                displayName: Translation.tr("Dots"),
-                                icon: "fiber_manual_record",
-                                value: "dots"
-                            },
-                            {
-                                displayName: Translation.tr("Shapes"),
-                                icon: "category",
-                                value: "shapes"
-                            },
-                            {
-                                displayName: Translation.tr("Numbers"),
-                                icon: "123",
-                                value: "numbers"
-                            },
-                            {
-                                displayName: Translation.tr("Lines"),
-                                icon: "horizontal_rule",
-                                value: "full"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Dial style")
+                    buttonIcon: "settings_overscan"
+                    currentValue: Config.options.background.widgets.clock_cookie.dialNumberStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.dialNumberStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("None"),
+                            icon: "do_not_disturb",
+                            value: "none"
+                        },
+                        {
+                            displayName: Translation.tr("Dots"),
+                            icon: "fiber_manual_record",
+                            value: "dots"
+                        },
+                        {
+                            displayName: Translation.tr("Shapes"),
+                            icon: "category",
+                            value: "shapes"
+                        },
+                        {
+                            displayName: Translation.tr("Numbers"),
+                            icon: "123",
+                            value: "numbers"
+                        },
+                        {
+                            displayName: Translation.tr("Lines"),
+                            icon: "horizontal_rule",
+                            value: "full"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Hour hand")
-                    icon: "arrow_downward"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.hourHandStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.hourHandStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Classic"),
-                                icon: "horizontal_rule",
-                                value: "classic"
-                            },
-                            {
-                                displayName: Translation.tr("Fill"),
-                                icon: "square",
-                                value: "fill"
-                            },
-                            {
-                                displayName: Translation.tr("Hollow"),
-                                icon: "crop_square",
-                                value: "hollow"
-                            },
-                            {
-                                displayName: Translation.tr("Hide"),
-                                icon: "do_not_disturb",
-                                value: "hide"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Hour hand")
+                    buttonIcon: "arrow_downward"
+                    currentValue: Config.options.background.widgets.clock_cookie.hourHandStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.hourHandStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("Classic"),
+                            icon: "horizontal_rule",
+                            value: "classic"
+                        },
+                        {
+                            displayName: Translation.tr("Fill"),
+                            icon: "square",
+                            value: "fill"
+                        },
+                        {
+                            displayName: Translation.tr("Hollow"),
+                            icon: "crop_square",
+                            value: "hollow"
+                        },
+                        {
+                            displayName: Translation.tr("Hide"),
+                            icon: "do_not_disturb",
+                            value: "hide"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Minute hand")
-                    icon: "arrow_downward"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.minuteHandStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.minuteHandStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Thin"),
-                                icon: "horizontal_rule",
-                                value: "thin"
-                            },
-                            {
-                                displayName: Translation.tr("Medium"),
-                                icon: "remove",
-                                value: "medium"
-                            },
-                            {
-                                displayName: Translation.tr("Bold"),
-                                icon: "add",
-                                value: "bold"
-                            },
-                            {
-                                displayName: Translation.tr("Classic"),
-                                icon: "format_list_bulleted",
-                                value: "classic"
-                            },
-                            {
-                                displayName: Translation.tr("Hide"),
-                                icon: "do_not_disturb",
-                                value: "hide"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Minute hand")
+                    buttonIcon: "arrow_downward"
+                    currentValue: Config.options.background.widgets.clock_cookie.minuteHandStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.minuteHandStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("Thin"),
+                            icon: "horizontal_rule",
+                            value: "thin"
+                        },
+                        {
+                            displayName: Translation.tr("Medium"),
+                            icon: "remove",
+                            value: "medium"
+                        },
+                        {
+                            displayName: Translation.tr("Bold"),
+                            icon: "add",
+                            value: "bold"
+                        },
+                        {
+                            displayName: Translation.tr("Classic"),
+                            icon: "format_list_bulleted",
+                            value: "classic"
+                        },
+                        {
+                            displayName: Translation.tr("Hide"),
+                            icon: "do_not_disturb",
+                            value: "hide"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Second hand")
-                    icon: "arrow_downward"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.secondHandStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.secondHandStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("None"),
-                                icon: "do_not_disturb",
-                                value: "hide"
-                            },
-                            {
-                                displayName: Translation.tr("Line"),
-                                icon: "horizontal_rule",
-                                value: "line"
-                            },
-                            {
-                                displayName: Translation.tr("Dot"),
-                                icon: "fiber_manual_record",
-                                value: "dot"
-                            },
-                            {
-                                displayName: Translation.tr("Classic"),
-                                icon: "format_list_bulleted",
-                                value: "classic"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Second hand")
+                    buttonIcon: "arrow_downward"
+                    currentValue: Config.options.background.widgets.clock_cookie.secondHandStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.secondHandStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("None"),
+                            icon: "do_not_disturb",
+                            value: "hide"
+                        },
+                        {
+                            displayName: Translation.tr("Line"),
+                            icon: "horizontal_rule",
+                            value: "line"
+                        },
+                        {
+                            displayName: Translation.tr("Dot"),
+                            icon: "fiber_manual_record",
+                            value: "dot"
+                        },
+                        {
+                            displayName: Translation.tr("Classic"),
+                            icon: "format_list_bulleted",
+                            value: "classic"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Date style")
-                    icon: "calendar_today"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.dateStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.dateStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("None"),
-                                icon: "do_not_disturb",
-                                value: "hide"
-                            },
-                            {
-                                displayName: Translation.tr("Bubble"),
-                                icon: "bubble_chart",
-                                value: "bubble"
-                            },
-                            {
-                                displayName: Translation.tr("Rectangle"),
-                                icon: "crop_square",
-                                value: "rect"
-                            },
-                            {
-                                displayName: Translation.tr("Border"),
-                                icon: "border_style",
-                                value: "border"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Date style")
+                    buttonIcon: "calendar_today"
+                    currentValue: Config.options.background.widgets.clock_cookie.dateStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.dateStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("None"),
+                            icon: "do_not_disturb",
+                            value: "hide"
+                        },
+                        {
+                            displayName: Translation.tr("Bubble"),
+                            icon: "bubble_chart",
+                            value: "bubble"
+                        },
+                        {
+                            displayName: Translation.tr("Rectangle"),
+                            icon: "crop_square",
+                            value: "rect"
+                        },
+                        {
+                            displayName: Translation.tr("Border"),
+                            icon: "border_style",
+                            value: "border"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
-                    title: Translation.tr("Background style")
-                    icon: "wallpaper"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.backgroundStyle
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.backgroundStyle = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Cookie"),
-                                icon: "cookie",
-                                value: "cookie"
-                            },
-                            {
-                                displayName: Translation.tr("Sine"),
-                                icon: "graphic_eq",
-                                value: "sine"
-                            },
-                            {
-                                displayName: Translation.tr("Shape"),
-                                icon: "category",
-                                value: "shape"
-                            }
-                        ]
+                ConfigSelectionRow {
+                    text: Translation.tr("Background style")
+                    buttonIcon: "wallpaper"
+                    currentValue: Config.options.background.widgets.clock_cookie.backgroundStyle
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.backgroundStyle = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("Cookie"),
+                            icon: "cookie",
+                            value: "cookie"
+                        },
+                        {
+                            displayName: Translation.tr("Sine"),
+                            icon: "graphic_eq",
+                            value: "sine"
+                        },
+                        {
+                            displayName: Translation.tr("Shape"),
+                            icon: "category",
+                            value: "shape"
+                        }
+                    ]
                 }
 
-                ContentSubsection {
+                ConfigSelectionRow {
+                    text: Translation.tr("Background shape")
+                    buttonIcon: "category"
                     visible: Config.options.background.widgets.clock_cookie.backgroundStyle === "shape"
-                    title: Translation.tr("Background shape")
-                    icon: "category"
-                    Layout.fillWidth: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.background.widgets.clock_cookie.backgroundShape
-                        onSelected: newValue => {
-                            Config.options.background.widgets.clock_cookie.backgroundShape = newValue;
-                        }
-                        options: [
-                            {
-                                displayName: Translation.tr("Circle"),
-                                icon: "circle",
-                                value: "Circle"
-                            },
-                            {
-                                displayName: Translation.tr("Square"),
-                                icon: "square",
-                                value: "Square"
-                            },
-                            {
-                                displayName: Translation.tr("Cookie"),
-                                icon: "cookie",
-                                value: "Cookie12Sided"
-                            }
-                        ]
+                    currentValue: Config.options.background.widgets.clock_cookie.backgroundShape
+                    onSelected: newValue => {
+                        Config.options.background.widgets.clock_cookie.backgroundShape = newValue;
                     }
+                    options: [
+                        {
+                            displayName: Translation.tr("Circle"),
+                            icon: "circle",
+                            value: "Circle"
+                        },
+                        {
+                            displayName: Translation.tr("Square"),
+                            icon: "square",
+                            value: "Square"
+                        },
+                        {
+                            displayName: Translation.tr("Cookie"),
+                            icon: "cookie",
+                            value: "Cookie12Sided"
+                        }
+                    ]
                 }
             }
 
@@ -373,9 +339,8 @@ ContentPage {
             }
 
             // Quote Settings
-            ColumnLayout {
+            ContentGroup {
                 Layout.fillWidth: true
-                spacing: 4
 
                 ContentSubsectionLabel {
                     text: Translation.tr("Quote settings")

@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Word clock options")
 
@@ -28,18 +28,13 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("clock_word")
-
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (px)")
                 value: Config.options.background.widgets.clock_word.size
                 from: 160
                 to: 420
@@ -49,60 +44,52 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                Layout.fillWidth: true
-                title: Translation.tr("Background style")
-                icon: "wallpaper"
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock_word.backgroundStyle ?? "shape"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock_word.backgroundStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Transparent"),
-                            icon: "visibility_off",
-                            value: "transparent"
-                        },
-                        {
-                            displayName: Translation.tr("Shape"),
-                            icon: "category",
-                            value: "shape"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Background style")
+                buttonIcon: "wallpaper"
+                currentValue: Config.options.background.widgets.clock_word.backgroundStyle ?? "shape"
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock_word.backgroundStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Transparent"),
+                        icon: "visibility_off",
+                        value: "transparent"
+                    },
+                    {
+                        displayName: Translation.tr("Shape"),
+                        icon: "category",
+                        value: "shape"
+                    }
+                ]
             }
 
-            ContentSubsection {
-                Layout.fillWidth: true
+            ConfigSelectionRow {
+                text: Translation.tr("Background shape")
+                buttonIcon: "category"
                 visible: (Config.options.background.widgets.clock_word.backgroundStyle ?? "shape") === "shape"
-                title: Translation.tr("Background shape")
-                icon: "category"
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock_word.backgroundShape ?? "Circle"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock_word.backgroundShape = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Circle"),
-                            icon: "circle",
-                            value: "Circle"
-                        },
-                        {
-                            displayName: Translation.tr("Square"),
-                            icon: "square",
-                            value: "Square"
-                        },
-                        {
-                            displayName: Translation.tr("Cookie"),
-                            icon: "cookie",
-                            value: "Cookie12Sided"
-                        }
-                    ]
+                currentValue: Config.options.background.widgets.clock_word.backgroundShape ?? "Circle"
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock_word.backgroundShape = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Circle"),
+                        icon: "circle",
+                        value: "Circle"
+                    },
+                    {
+                        displayName: Translation.tr("Square"),
+                        icon: "square",
+                        value: "Square"
+                    },
+                    {
+                        displayName: Translation.tr("Cookie"),
+                        icon: "cookie",
+                        value: "Cookie12Sided"
+                    }
+                ]
             }
 
             DesktopWidgetVisualOptions {

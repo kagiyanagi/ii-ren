@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Expressive media options")
 
@@ -28,9 +28,8 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("media_expressive")
 
             ContentSubsectionLabel {
@@ -75,9 +74,6 @@ ContentPage {
 
             Item { Layout.preferredHeight: 4 }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Colors")
-            }
 
             ConfigSwitch {
                 buttonIcon: "palette"

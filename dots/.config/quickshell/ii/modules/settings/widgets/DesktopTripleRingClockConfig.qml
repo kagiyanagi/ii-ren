@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Triple ring clock options")
 
@@ -28,18 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("triple_ring_clock")
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.triple_ring_clock.widgetSize ?? 100
                 from: 50
                 to: 200

@@ -61,6 +61,15 @@ ColumnLayout {
             text: root.text
             color: Appearance.colors.colOnSecondaryContainer
         }
+        // The value, always in view rather than only in a tooltip while the
+        // thumb is held; the label carries its unit, as "(px)" or "(%)".
+        StyledText {
+            opacity: 1 - highlightOverlay.opacity
+            text: slider.tooltipContent
+            font.family: Appearance.font.family.numbers
+            font.pixelSize: Appearance.font.pixelSize.small
+            color: Appearance.colors.colSubtext
+        }
         HighlightOverlay {
             id: highlightOverlay
             visible: false
@@ -75,6 +84,15 @@ ColumnLayout {
         Layout.bottomMargin: 8
         configuration: StyledSlider.Configuration.XS
         usePercentTooltip: root.usePercentTooltip
+        showTooltip: false
+        // The real value. StyledSlider's own default is the thumb's place along
+        // the track, which is right for a 0-1 level and wrong for anything else:
+        // a widget at 100% scale on a 50-200 slider read "33%". A range that
+        // tops out at 4 or less is a level or a multiplier (0-1, 0.5-2), so it
+        // reads as a percent of 1.
+        // ponytail: judged on the range alone; a small integer count (1-4)
+        // would need its own flag.
+        tooltipContent: root.to <= 4 ? `${Math.round(value * 100)}%` : `${Math.round(value)}`
         value: root.value
         from: root.from
         to: root.to

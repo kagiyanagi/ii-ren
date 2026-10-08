@@ -51,23 +51,20 @@ Item {
             icon: "keyboard"
             title: Translation.tr("Cheat sheet")
 
-            ContentSubsection {
-                title: Translation.tr("Super key symbol")
-                tooltip: Translation.tr("You can also manually edit cheatsheet.superKey")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.cheatsheet.superKey
-                    onSelected: (newValue) => {
-                        Config.options.cheatsheet.superKey = newValue;
-                    }
-                    // Use a nerdfont to see the icons
-                    options: (["󰖳", "", "󰨡", "", "󰌽", "󰣇", "", "", "", "", "", "󱄛", "", "", "", "⌘", "󰀲", "󰟍", ""]).map((icon) => {
-                        return {
-                            "displayName": icon,
-                            "value": icon
-                        };
-                    })
+            ConfigSelectionRow {
+                buttonIcon: "keyboard_command_key"
+                text: Translation.tr("Super key symbol")
+                summary: Translation.tr("You can also manually edit cheatsheet.superKey")
+                currentValue: Config.options.cheatsheet.superKey
+                onSelected: (newValue) => {
+                    Config.options.cheatsheet.superKey = newValue;
                 }
+                options: (["󰖳", "", "󰨡", "", "󰌽", "󰣇", "", "", "", "", "", "󱄛", "", "", "", "⌘", "󰀲", "󰟍", ""]).map((icon) => {
+                    return {
+                        "displayName": icon,
+                        "value": icon
+                    };
+                })
             }
 
             ConfigSwitch {
@@ -123,6 +120,7 @@ Item {
             }
 
             ConfigSpinBox {
+                icon: "keyboard"
                 text: Translation.tr("Keybind font size")
                 value: Config.options.cheatsheet.fontSize.key
                 from: 8
@@ -134,6 +132,7 @@ Item {
             }
 
             ConfigSpinBox {
+                icon: "format_size"
                 text: Translation.tr("Description font size")
                 value: Config.options.cheatsheet.fontSize.comment
                 from: 8
@@ -189,7 +188,6 @@ Item {
                     Config.options.dock.enable = checked;
                 }
             }
-
             ConfigSwitch {
                 buttonIcon: "desktop_windows"
                 text: Translation.tr("Isolate monitors")
@@ -198,7 +196,22 @@ Item {
                     Config.options.dock.isolateMonitors = checked;
                 }
             }
-
+            ConfigSwitch {
+                buttonIcon: "keep"
+                text: Translation.tr("Pinned on startup")
+                checked: Config.options.dock.pinnedOnStartup
+                onCheckedChanged: {
+                    Config.options.dock.pinnedOnStartup = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "computer_arrow_up"
+                text: Translation.tr("Reveal on empty workspace")
+                checked: Config.options.dock.revealOnEmptyWorkspace
+                onCheckedChanged: {
+                    Config.options.dock.revealOnEmptyWorkspace = checked;
+                }
+            }
             ConfigSwitch {
                 buttonIcon: "ad"
                 text: Translation.tr("Enable windows preview")
@@ -208,154 +221,92 @@ Item {
                 }
             }
 
-            ConfigRow {
-                uniform: true
+            ContentSubsection {
+                title: Translation.tr("Position")
 
-                ConfigSwitch {
-                    buttonIcon: "computer_arrow_up"
-                    text: Translation.tr("Reveal on empty workspace")
-                    checked: Config.options.dock.revealOnEmptyWorkspace
-                    onCheckedChanged: {
-                        Config.options.dock.revealOnEmptyWorkspace = checked;
+                ConfigSelectionRow {
+                    buttonIcon: "vertical_align_bottom"
+                    text: Translation.tr("Dock position")
+                    currentValue: Config.options.dock.position
+                    onSelected: (newValue) => {
+                        Config.options.dock.position = newValue;
                     }
+                    options: [{
+                        "displayName": Translation.tr("Auto"),
+                        "icon": "expand",
+                        "value": "auto"
+                    }, {
+                        "displayName": Translation.tr("Bottom"),
+                        "icon": "vertical_align_bottom",
+                        "value": "bottom"
+                    }, {
+                        "displayName": Translation.tr("Top"),
+                        "icon": "vertical_align_top",
+                        "value": "top"
+                    }, {
+                        "displayName": Translation.tr("Left"),
+                        "icon": "keyboard_tab_rtl",
+                        "value": "left"
+                    }, {
+                        "displayName": Translation.tr("Right"),
+                        "icon": "keyboard_tab",
+                        "value": "right"
+                    }]
                 }
-
                 ConfigSwitch {
-                    buttonIcon: "keep"
-                    text: Translation.tr("Pinned on startup")
-                    checked: Config.options.dock.pinnedOnStartup
+                    buttonIcon: "vertical_align_bottom"
+                    text: Translation.tr("Attach to screen edge")
+                    checked: Config.options.dock.attachToEdge
                     onCheckedChanged: {
-                        Config.options.dock.pinnedOnStartup = checked;
-                    }
-                }
-            }
-
-            ConfigRow {
-                uniform: true
-
-                ConfigSwitch {
-                    buttonIcon: "colors"
-                    text: Translation.tr("Tint app icons")
-                    checked: Config.options.dock.monochromeIcons
-                    onCheckedChanged: {
-                        Config.options.dock.monochromeIcons = checked;
-                    }
-                }
-
-                ConfigSwitch {
-                    buttonIcon: "contrast"
-                    text: Translation.tr("Dim inactive app icons")
-                    enabled: !Config.options.dock.monochromeIcons
-                    checked: Config.options.dock.dimInactiveIcons
-                    onCheckedChanged: {
-                        Config.options.dock.dimInactiveIcons = checked;
+                        Config.options.dock.attachToEdge = checked;
                     }
 
                     StyledToolTip {
-                        text: Translation.tr("Greyscale icons for pinned apps that are not running.\nDisabled when 'Tint app icons' is active.")
+                        text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
                     }
                 }
-            }
-
-            ConfigRow {
-                uniform: true
-
                 ConfigSwitch {
-                    buttonIcon: "play_pause"
-                    text: Translation.tr("Enable media widget")
-                    checked: Config.options.dock.enableMediaWidget
+                    buttonIcon: "rounded_corner"
+                    text: Translation.tr("Curve into screen edge")
+                    checked: Config.options.dock.curvedEdge
                     onCheckedChanged: {
-                        Config.options.dock.enableMediaWidget = checked;
-                    }
-                }
-
-                ConfigSwitch {
-                    buttonIcon: "pan_tool_alt"
-                    text: Translation.tr("Media controls on hover")
-                    enabled: Config.options.dock.enableMediaWidget
-                    checked: Config.options.dock.mediaPopupOnHover
-                    onCheckedChanged: {
-                        Config.options.dock.mediaPopupOnHover = checked;
+                        Config.options.dock.curvedEdge = checked;
                     }
 
                     StyledToolTip {
-                        text: Translation.tr("Show the media controls when hovering the widget.\nOff: click the widget to toggle them.")
+                        text: Translation.tr("Flare the corners touching the edge outward, like the bar's hug style.")
                     }
                 }
             }
 
-            ConfigSwitch {
-                buttonIcon: "hide_source"
-                text: Translation.tr("Hide media widget on empty workspace")
-                enabled: Config.options.dock.enableMediaWidget
-                checked: Config.options.dock.hideMediaOnEmptyWorkspace
-                onCheckedChanged: {
-                    Config.options.dock.hideMediaOnEmptyWorkspace = checked;
-                }
+            ContentSubsection {
+                title: Translation.tr("Size & spacing")
 
-                StyledToolTip {
-                    text: Translation.tr("The desktop's own media widget is visible there anyway.")
+                ConfigSpinBox {
+                    icon: "height"
+                    text: Translation.tr("Dock height")
+                    value: Config.options.dock.height
+                    from: 40
+                    to: 80
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.dock.height = value;
+                    }
                 }
-            }
-
-            ConfigSwitch {
-                buttonIcon: "lyrics"
-                text: Translation.tr("Media widget lyrics")
-                enabled: Config.options.dock.enableMediaWidget && Config.options.lyricsService.enable
-                checked: Config.options.dock.mediaLyrics
-                onCheckedChanged: {
-                    Config.options.dock.mediaLyrics = checked;
+                ConfigSpinBox {
+                    icon: "rounded_corner"
+                    text: Translation.tr("Corner radius")
+                    value: Config.options.dock.cornerRadius
+                    from: -1
+                    to: 40
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.dock.cornerRadius = value;
+                    }
+                    StyledToolTip {
+                        text: Translation.tr("Set to -1 to use default large rounding")
+                    }
                 }
-
-                StyledToolTip {
-                    text: Translation.tr("Show the current synced line under the title instead of the artist.\nNeeds the lrclib lyrics service (Settings > Services).")
-                }
-            }
-
-            ConfigSwitch {
-                buttonIcon: "graphic_eq"
-                text: Translation.tr("Media widget audio visualizer")
-                enabled: Config.options.dock.enableMediaWidget
-                checked: Config.options.dock.enableMediaVisualizer
-                onCheckedChanged: {
-                    Config.options.dock.enableMediaVisualizer = checked;
-                }
-
-                StyledToolTip {
-                    text: Translation.tr("The wave behind the dock's media widget.\nCava feeds it 60 updates a second and each one repaints the dock,\nso turning it off is the biggest saving the dock can make.")
-                }
-            }
-
-            ConfigSpinBox {
-                icon: "height"
-                text: Translation.tr("Dock height")
-                value: Config.options.dock.height
-                from: 40
-                to: 80
-                stepSize: 1
-                onValueChanged: {
-                    Config.options.dock.height = value;
-                }
-            }
-
-            ConfigSpinBox {
-                icon: "rounded_corner"
-                text: Translation.tr("Corner radius")
-                value: Config.options.dock.cornerRadius
-                from: -1
-                to: 40
-                stepSize: 1
-                onValueChanged: {
-                    Config.options.dock.cornerRadius = value;
-                }
-                StyledToolTip {
-                    text: Translation.tr("Set to -1 to use default large rounding")
-                }
-            }
-
-            ConfigRow {
-                uniform: true
-
                 ConfigSpinBox {
                     icon: "space_bar"
                     text: Translation.tr("Item spacing")
@@ -367,7 +318,6 @@ Item {
                         Config.options.dock.itemSpacing = value;
                     }
                 }
-
                 ConfigSpinBox {
                     icon: "format_line_spacing"
                     text: Translation.tr("Section spacing")
@@ -379,11 +329,6 @@ Item {
                         Config.options.dock.sectionSpacing = value;
                     }
                 }
-            }
-
-            ConfigRow {
-                uniform: true
-
                 ConfigSpinBox {
                     icon: "padding"
                     text: Translation.tr("Horizontal padding")
@@ -395,7 +340,6 @@ Item {
                         Config.options.dock.paddingHorizontal = value;
                     }
                 }
-
                 ConfigSpinBox {
                     icon: "padding"
                     text: Translation.tr("Vertical padding")
@@ -407,12 +351,9 @@ Item {
                         Config.options.dock.paddingVertical = value;
                     }
                 }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Separator style")
-
-                ConfigSelectionArray {
+                ConfigSelectionRow {
+                    buttonIcon: "more_vert"
+                    text: Translation.tr("Separator style")
                     currentValue: Config.options.dock.separatorStyle
                     onSelected: (newValue) => {
                         Config.options.dock.separatorStyle = newValue;
@@ -433,8 +374,34 @@ Item {
                 }
             }
 
-            ConfigRow {
-                uniform: true
+            ContentSubsection {
+                title: Translation.tr("Icons")
+
+                ConfigSwitch {
+                    buttonIcon: "colors"
+                    text: Translation.tr("Tint app icons")
+                    checked: Config.options.dock.monochromeIcons
+                    onCheckedChanged: {
+                        Config.options.dock.monochromeIcons = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "contrast"
+                    text: Translation.tr("Dim inactive app icons")
+                    enabled: !Config.options.dock.monochromeIcons
+                    checked: Config.options.dock.dimInactiveIcons
+                    onCheckedChanged: {
+                        Config.options.dock.dimInactiveIcons = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Greyscale icons for pinned apps that are not running.\nDisabled when 'Tint app icons' is active.")
+                    }
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Buttons")
 
                 ConfigSwitch {
                     buttonIcon: "keep"
@@ -448,7 +415,22 @@ Item {
                         text: Translation.tr("The button that keeps the dock open.\nWithout it, 'Pinned on startup' decides whether the dock stays out.")
                     }
                 }
-
+                ConfigSelectionRow {
+                    buttonIcon: "push_pin"
+                    text: Translation.tr("Pin button shape")
+                    enabled: Config.options.dock.showPinButton
+                    currentValue: Config.options.dock.pinButtonShape
+                    onSelected: (newValue) => {
+                        Config.options.dock.pinButtonShape = newValue;
+                    }
+                    options: (["Pill", "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"]).map((shape) => {
+                        return {
+                            "displayName": "",
+                            "shape": shape,
+                            "value": shape
+                        };
+                    })
+                }
                 ConfigSwitch {
                     buttonIcon: "apps"
                     text: Translation.tr("Show app menu button")
@@ -457,89 +439,10 @@ Item {
                         Config.options.dock.showAppsButton = checked;
                     }
                 }
-            }
-
-            ConfigRow {
-                uniform: true
-
-                ConfigSwitch {
-                    buttonIcon: "vertical_align_bottom"
-                    text: Translation.tr("Attach to screen edge")
-                    checked: Config.options.dock.attachToEdge
-                    onCheckedChanged: {
-                        Config.options.dock.attachToEdge = checked;
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Drop the gap under the dock and square off the two corners touching the edge.")
-                    }
-                }
-
-                ConfigSwitch {
-                    buttonIcon: "rounded_corner"
-                    text: Translation.tr("Curve into screen edge")
-                    checked: Config.options.dock.curvedEdge
-                    onCheckedChanged: {
-                        Config.options.dock.curvedEdge = checked;
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Flare the corners touching the edge outward, like the bar's hug style.")
-                    }
-                }
-
-                ConfigSwitch {
-                    buttonIcon: "format_color_fill"
-                    text: Translation.tr("Apps button background")
-                    checked: Config.options.dock.showAppsButtonBackground
-                    onCheckedChanged: {
-                        Config.options.dock.showAppsButtonBackground = checked;
-                    }
-
-                    StyledToolTip {
-                        text: Translation.tr("Show a filled background on the apps button.")
-                    }
-                }
-            }
-
-            ConfigRow {
-                ContentSubsection {
-                    title: Translation.tr("Dock position")
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.dock.position
-                        onSelected: (newValue) => {
-                            Config.options.dock.position = newValue;
-                        }
-                        options: [{
-                            "displayName": Translation.tr("Auto"),
-                            "icon": "expand",
-                            "value": "auto"
-                        }, {
-                            "displayName": Translation.tr("Bottom"),
-                            "icon": "vertical_align_bottom",
-                            "value": "bottom"
-                        }, {
-                            "displayName": Translation.tr("Top"),
-                            "icon": "vertical_align_top",
-                            "value": "top"
-                        }, {
-                            "displayName": Translation.tr("Left"),
-                            "icon": "keyboard_tab_rtl",
-                            "value": "left"
-                        }, {
-                            "displayName": Translation.tr("Right"),
-                            "icon": "keyboard_tab",
-                            "value": "right"
-                        }]
-                    }
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("App menu button shape")
-
-                ConfigSelectionArray {
+                ConfigSelectionRow {
+                    buttonIcon: "category"
+                    text: Translation.tr("App menu button shape")
+                    enabled: Config.options.dock.showAppsButton
                     currentValue: Config.options.dock.appsButtonShape
                     onSelected: (newValue) => {
                         Config.options.dock.appsButtonShape = newValue;
@@ -552,23 +455,83 @@ Item {
                         };
                     })
                 }
+                ConfigSwitch {
+                    buttonIcon: "format_color_fill"
+                    text: Translation.tr("Apps button background")
+                    enabled: Config.options.dock.showAppsButton
+                    checked: Config.options.dock.showAppsButtonBackground
+                    onCheckedChanged: {
+                        Config.options.dock.showAppsButtonBackground = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Show a filled background on the apps button.")
+                    }
+                }
             }
 
             ContentSubsection {
-                title: Translation.tr("Pin button shape")
+                title: Translation.tr("Media widget")
 
-                ConfigSelectionArray {
-                    currentValue: Config.options.dock.pinButtonShape
-                    onSelected: (newValue) => {
-                        Config.options.dock.pinButtonShape = newValue;
+                ConfigSwitch {
+                    buttonIcon: "play_pause"
+                    text: Translation.tr("Show media widget")
+                    checked: Config.options.dock.enableMediaWidget
+                    onCheckedChanged: {
+                        Config.options.dock.enableMediaWidget = checked;
                     }
-                    options: (["Pill", "Circle", "Square", "Slanted", "Arch", "Arrow", "SemiCircle", "Oval", "Triangle", "Diamond", "ClamShell", "Pentagon", "Gem", "Sunny", "VerySunny", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Clover4Leaf", "Clover8Leaf", "Burst", "SoftBurst", "Flower", "Puffy", "PuffyDiamond", "PixelCircle", "Bun", "Heart"]).map((shape) => {
-                        return {
-                            "displayName": "",
-                            "shape": shape,
-                            "value": shape
-                        };
-                    })
+                }
+                ConfigSwitch {
+                    buttonIcon: "pan_tool_alt"
+                    text: Translation.tr("Media controls on hover")
+                    enabled: Config.options.dock.enableMediaWidget
+                    checked: Config.options.dock.mediaPopupOnHover
+                    onCheckedChanged: {
+                        Config.options.dock.mediaPopupOnHover = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Show the media controls when hovering the widget.\nOff: click the widget to toggle them.")
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "hide_source"
+                    text: Translation.tr("Hide on empty workspace")
+                    enabled: Config.options.dock.enableMediaWidget
+                    checked: Config.options.dock.hideMediaOnEmptyWorkspace
+                    onCheckedChanged: {
+                        Config.options.dock.hideMediaOnEmptyWorkspace = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("The desktop's own media widget is visible there anyway.")
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "lyrics"
+                    text: Translation.tr("Lyrics")
+                    enabled: Config.options.dock.enableMediaWidget && Config.options.lyricsService.enable
+                    checked: Config.options.dock.mediaLyrics
+                    onCheckedChanged: {
+                        Config.options.dock.mediaLyrics = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Show the current synced line under the title instead of the artist.\nNeeds the lrclib lyrics service (Settings > Services).")
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "graphic_eq"
+                    text: Translation.tr("Audio visualizer")
+                    enabled: Config.options.dock.enableMediaWidget
+                    checked: Config.options.dock.enableMediaVisualizer
+                    onCheckedChanged: {
+                        Config.options.dock.enableMediaVisualizer = checked;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("The wave behind the dock's media widget.\nCava feeds it 60 updates a second and each one repaints the dock,\nso turning it off is the biggest saving the dock can make.")
+                    }
                 }
             }
         }
@@ -708,12 +671,14 @@ Item {
                 }
             }
 
-            ConfigRow {
+            ConfigLabeledRow {
+                buttonIcon: "monitor"
+                text: Translation.tr("Monitor")
                 enabled: Config.options.notifications.monitor.enable
 
                 MaterialTextArea {
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("Monitor name to show notifications on (e.g., eDP-1)")
+                    placeholderText: Translation.tr("Output name, e.g. eDP-1")
                     text: Config.options.notifications.monitor.name
                     wrapMode: TextEdit.Wrap
                     onEditingFinished: {
@@ -726,7 +691,7 @@ Item {
 
         ContentSection {
             icon: "select_window"
-            title: Translation.tr("Overlay: General")
+            title: Translation.tr("Overlay")
 
             ConfigSwitch {
                 buttonIcon: "high_density"
@@ -745,74 +710,63 @@ Item {
                     Config.options.overlay.darkenScreen = checked;
                 }
             }
-        }
 
-        ContentSection {
-            icon: "point_scan"
-            title: Translation.tr("Overlay: Crosshair")
+            ConfigLabeledRow {
+                buttonIcon: "point_scan"
+                text: Translation.tr("Crosshair")
+                summary: Translation.tr("Press Super+G to open the overlay and pin the crosshair.")
 
-            MaterialTextArea {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("Crosshair code (in Valorant's format)")
-                text: Config.options.crosshair.code
-                wrapMode: TextEdit.Wrap
-                onEditingFinished: {
-                    if (Config.options.crosshair.code !== text)
-                        Config.options.crosshair.code = text;
-                }
-            }
-
-            RowLayout {
-                StyledText {
-                    Layout.leftMargin: 10
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.smallie
-                    text: Translation.tr("Press Super+G to open the overlay and pin the crosshair")
-                }
-
-                Item {
+                MaterialTextArea {
                     Layout.fillWidth: true
+                    placeholderText: Translation.tr("Code, in Valorant's format")
+                    text: Config.options.crosshair.code
+                    wrapMode: TextEdit.Wrap
+                    onEditingFinished: {
+                        if (Config.options.crosshair.code !== text)
+                            Config.options.crosshair.code = text;
+                    }
                 }
 
-                RippleButtonWithIcon {
-                    id: editorButton
-
-                    buttonRadius: Appearance.rounding.full
-                    materialIcon: "open_in_new"
-                    mainText: Translation.tr("Open editor")
-                    onClicked: {
-                        Qt.openUrlExternally(`https://www.vcrdb.net/builder?c=${Config.options.crosshair.code}`);
+                RowLayout {
+                    Item {
+                        Layout.fillWidth: true
                     }
 
-                    StyledToolTip {
-                        text: "www.vcrdb.net"
+                    RippleButtonWithIcon {
+                        id: editorButton
+
+                        buttonRadius: Appearance.rounding.full
+                        materialIcon: "open_in_new"
+                        mainText: Translation.tr("Open editor")
+                        onClicked: {
+                            Qt.openUrlExternally(`https://www.vcrdb.net/builder?c=${Config.options.crosshair.code}`);
+                        }
+
+                        StyledToolTip {
+                            text: "www.vcrdb.net"
+                        }
                     }
                 }
             }
-        }
 
-        ContentSection {
-            icon: "point_scan"
-            title: Translation.tr("Overlay: Floating Image")
+            ConfigLabeledRow {
+                buttonIcon: "image"
+                text: Translation.tr("Floating image")
 
-            MaterialTextArea {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("Image source")
-                text: Config.options.overlay.floatingImage.imageSource
-                wrapMode: TextEdit.Wrap
-                onEditingFinished: {
-                    if (Config.options.overlay.floatingImage.imageSource !== text)
-                        Config.options.overlay.floatingImage.imageSource = text;
+                MaterialTextArea {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Image URL or path")
+                    text: Config.options.overlay.floatingImage.imageSource
+                    wrapMode: TextEdit.Wrap
+                    onEditingFinished: {
+                        if (Config.options.overlay.floatingImage.imageSource !== text)
+                            Config.options.overlay.floatingImage.imageSource = text;
+                    }
                 }
             }
-        }
 
-        ContentSection {
-            icon: "sticky_note_2"
-            title: Translation.tr("Overlay: Notes")
-
-            ConfigRow {
-                uniform: true
+            ContentSubsection {
+                title: Translation.tr("Notes")
 
                 ConfigSwitch {
                     buttonIcon: "tab"
@@ -822,7 +776,6 @@ Item {
                         Config.options.overlay.notes.showTabs = checked;
                     }
                 }
-
                 ConfigSwitch {
                     enabled: Config.options.overlay.notes.showTabs
                     buttonIcon: "edit_note"
@@ -833,35 +786,31 @@ Item {
                     }
                 }
             }
-        }
-
-        ContentSection {
-            icon: "music_note"
-            title: Translation.tr("Overlay: Media")
-
-            ConfigSwitch {
-                buttonIcon: "sliders"
-                text: Translation.tr("Show slider")
-                checked: Config.options.overlay.media.showSlider
-                onCheckedChanged: {
-                    Config.options.overlay.media.showSlider = checked;
-                }
-            }
-
-            ConfigSpinBox {
-                icon: "opacity"
-                text: Translation.tr("Background opacity (%)")
-                value: Config.options.overlay.media.backgroundOpacityPercentage
-                from: 0
-                to: 100
-                stepSize: 10
-                onValueChanged: {
-                    Config.options.overlay.media.backgroundOpacityPercentage = value;
-                }
-            }
 
             ContentSubsection {
-                title: Translation.tr("Lyrics")
+                title: Translation.tr("Media")
+
+                ConfigSwitch {
+                    buttonIcon: "sliders"
+                    text: Translation.tr("Show slider")
+                    checked: Config.options.overlay.media.showSlider
+                    onCheckedChanged: {
+                        Config.options.overlay.media.showSlider = checked;
+                    }
+                }
+
+                ConfigSpinBox {
+                    icon: "opacity"
+                    text: Translation.tr("Background opacity (%)")
+                    value: Config.options.overlay.media.backgroundOpacityPercentage
+                    from: 0
+                    to: 100
+                    stepSize: 10
+                    onValueChanged: {
+                        Config.options.overlay.media.backgroundOpacityPercentage = value;
+                    }
+                }
+
 
                 ConfigSwitch {
                     buttonIcon: "gradient"
@@ -971,58 +920,52 @@ Item {
             ContentSubsection {
                 title: Translation.tr("Hint target regions")
 
-                ConfigRow {
-                    ConfigSwitch {
-                        buttonIcon: "select_window"
-                        text: Translation.tr('Windows')
-                        checked: Config.options.regionSelector.targetRegions.windows
-                        onCheckedChanged: {
-                            Config.options.regionSelector.targetRegions.windows = checked;
-                        }
+                ConfigSwitch {
+                    buttonIcon: "select_window"
+                    text: Translation.tr('Windows')
+                    checked: Config.options.regionSelector.targetRegions.windows
+                    onCheckedChanged: {
+                        Config.options.regionSelector.targetRegions.windows = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "right_panel_open"
+                    text: Translation.tr('Layers')
+                    checked: Config.options.regionSelector.targetRegions.layers
+                    onCheckedChanged: {
+                        Config.options.regionSelector.targetRegions.layers = checked;
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "nearby"
+                    text: Translation.tr('Content')
+                    checked: Config.options.regionSelector.targetRegions.content
+                    onCheckedChanged: {
+                        Config.options.regionSelector.targetRegions.content = checked;
                     }
 
-                    ConfigSwitch {
-                        buttonIcon: "right_panel_open"
-                        text: Translation.tr('Layers')
-                        checked: Config.options.regionSelector.targetRegions.layers
-                        onCheckedChanged: {
-                            Config.options.regionSelector.targetRegions.layers = checked;
-                        }
-                    }
-
-                    ConfigSwitch {
-                        buttonIcon: "nearby"
-                        text: Translation.tr('Content')
-                        checked: Config.options.regionSelector.targetRegions.content
-                        onCheckedChanged: {
-                            Config.options.regionSelector.targetRegions.content = checked;
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("Could be images or parts of the screen that have some containment.\nMight not always be accurate.\nThis is done with an image processing algorithm run locally and no AI is used.")
-                        }
+                    StyledToolTip {
+                        text: Translation.tr("Could be images or parts of the screen that have some containment.\nMight not always be accurate.\nThis is done with an image processing algorithm run locally and no AI is used.")
                     }
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Google Lens")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.search.imageSearch.useCircleSelection ? "circle" : "rectangles"
-                    onSelected: (newValue) => {
-                        Config.options.search.imageSearch.useCircleSelection = (newValue === "circle");
-                    }
-                    options: [{
-                        "icon": "activity_zone",
-                        "value": "rectangles",
-                        "displayName": Translation.tr("Rectangular selection")
-                    }, {
-                        "icon": "gesture",
-                        "value": "circle",
-                        "displayName": Translation.tr("Circle to Search")
-                    }]
+            ConfigSelectionRow {
+                buttonIcon: "image_search"
+                text: Translation.tr("Google Lens")
+                currentValue: Config.options.search.imageSearch.useCircleSelection ? "circle" : "rectangles"
+                onSelected: (newValue) => {
+                    Config.options.search.imageSearch.useCircleSelection = (newValue === "circle");
                 }
+                options: [{
+                    "icon": "activity_zone",
+                    "value": "rectangles",
+                    "displayName": Translation.tr("Rectangular selection")
+                }, {
+                    "icon": "gesture",
+                    "value": "circle",
+                    "displayName": Translation.tr("Circle to Search")
+                }]
             }
 
             ContentSubsection {
@@ -1071,17 +1014,23 @@ Item {
             icon: "side_navigation"
             title: Translation.tr("Sidebars")
 
-            MaterialTextField {
-                Layout.fillWidth: true
-                placeholderText: Translation.tr("Uptime pill icon (empty = your user avatar)")
-                text: Config.options.sidebar.uptimeIcon
-                onEditingFinished: {
-                    if (Config.options.sidebar.uptimeIcon !== text)
-                        Config.options.sidebar.uptimeIcon = text;
-                }
+            ConfigLabeledRow {
+                buttonIcon: "account_circle"
+                text: Translation.tr("Uptime pill icon")
+                summary: Translation.tr("Leave empty to use your avatar.")
 
-                StyledToolTip {
-                    text: Translation.tr("Path to an image shown next to the uptime in the right sidebar.\nLeave empty to use your user avatar, which falls back to the distro logo.")
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Icon name or path")
+                    text: Config.options.sidebar.uptimeIcon
+                    onEditingFinished: {
+                        if (Config.options.sidebar.uptimeIcon !== text)
+                            Config.options.sidebar.uptimeIcon = text;
+                    }
+
+                    StyledToolTip {
+                        text: Translation.tr("Path to an image shown next to the uptime in the right sidebar.\nLeave empty to use your user avatar, which falls back to the distro logo.")
+                    }
                 }
             }
 
@@ -1111,34 +1060,30 @@ Item {
                 }
             }
 
-            ConfigRow {
-                ContentSubsection {
-                    title: Translation.tr("Sidebar position")
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.sidebar.position
-                        onSelected: (newValue) => {
-                            Config.options.sidebar.position = newValue;
-                        }
-                        options: [{
-                            "displayName": Translation.tr("Default"),
-                            "icon": "side_navigation",
-                            "value": "default"
-                        }, {
-                            "displayName": Translation.tr("Inverted"),
-                            "icon": "swap_horiz",
-                            "value": "inverted"
-                        }, {
-                            "displayName": Translation.tr("Left"),
-                            "icon": "align_horizontal_left",
-                            "value": "left"
-                        }, {
-                            "displayName": Translation.tr("Right"),
-                            "icon": "align_horizontal_right",
-                            "value": "right"
-                        }]
-                    }
+            ConfigSelectionRow {
+                buttonIcon: "view_sidebar"
+                text: Translation.tr("Sidebar position")
+                currentValue: Config.options.sidebar.position
+                onSelected: (newValue) => {
+                    Config.options.sidebar.position = newValue;
                 }
+                options: [{
+                    "displayName": Translation.tr("Default"),
+                    "icon": "side_navigation",
+                    "value": "default"
+                }, {
+                    "displayName": Translation.tr("Inverted"),
+                    "icon": "swap_horiz",
+                    "value": "inverted"
+                }, {
+                    "displayName": Translation.tr("Left"),
+                    "icon": "align_horizontal_left",
+                    "value": "left"
+                }, {
+                    "displayName": Translation.tr("Right"),
+                    "icon": "align_horizontal_right",
+                    "value": "right"
+                }]
             }
 
             ContentSubsection {
@@ -1249,30 +1194,26 @@ Item {
                 readonly property var shown: Config.options.sidebar.bottomGroup
                 readonly property int count: shown.calendar + shown.todo + shown.timer
 
-                ConfigRow {
-                    uniform: true
-
-                    ConfigSwitch {
-                        buttonIcon: "calendar_month"
-                        text: Translation.tr("Calendar")
-                        checked: bottomWidgets.shown.calendar
-                        enabled: !checked || bottomWidgets.count > 1
-                        onCheckedChanged: Config.options.sidebar.bottomGroup.calendar = checked
-                    }
-                    ConfigSwitch {
-                        buttonIcon: "done_outline"
-                        text: Translation.tr("To do")
-                        checked: bottomWidgets.shown.todo
-                        enabled: !checked || bottomWidgets.count > 1
-                        onCheckedChanged: Config.options.sidebar.bottomGroup.todo = checked
-                    }
-                    ConfigSwitch {
-                        buttonIcon: "schedule"
-                        text: Translation.tr("Timer")
-                        checked: bottomWidgets.shown.timer
-                        enabled: !checked || bottomWidgets.count > 1
-                        onCheckedChanged: Config.options.sidebar.bottomGroup.timer = checked
-                    }
+                ConfigSwitch {
+                    buttonIcon: "calendar_month"
+                    text: Translation.tr("Calendar")
+                    checked: bottomWidgets.shown.calendar
+                    enabled: !checked || bottomWidgets.count > 1
+                    onCheckedChanged: Config.options.sidebar.bottomGroup.calendar = checked
+                }
+                ConfigSwitch {
+                    buttonIcon: "done_outline"
+                    text: Translation.tr("To do")
+                    checked: bottomWidgets.shown.todo
+                    enabled: !checked || bottomWidgets.count > 1
+                    onCheckedChanged: Config.options.sidebar.bottomGroup.todo = checked
+                }
+                ConfigSwitch {
+                    buttonIcon: "schedule"
+                    text: Translation.tr("Timer")
+                    checked: bottomWidgets.shown.timer
+                    enabled: !checked || bottomWidgets.count > 1
+                    onCheckedChanged: Config.options.sidebar.bottomGroup.timer = checked
                 }
             }
 
@@ -1280,16 +1221,12 @@ Item {
                 title: Translation.tr("Corner open")
                 tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
 
-                ConfigRow {
-                    uniform: true
-
-                    ConfigSwitch {
-                        buttonIcon: "check"
-                        text: Translation.tr("Enable")
-                        checked: Config.options.sidebar.cornerOpen.enable
-                        onCheckedChanged: {
-                            Config.options.sidebar.cornerOpen.enable = checked;
-                        }
+                ConfigSwitch {
+                    buttonIcon: "check"
+                    text: Translation.tr("Enable")
+                    checked: Config.options.sidebar.cornerOpen.enable
+                    onCheckedChanged: {
+                        Config.options.sidebar.cornerOpen.enable = checked;
                     }
                 }
 
@@ -1306,60 +1243,54 @@ Item {
                     }
                 }
 
-                Row {
-                    ConfigSwitch {
-                        enabled: !Config.options.sidebar.cornerOpen.clickless
-                        text: Translation.tr("Force hover open at absolute corner")
-                        checked: Config.options.sidebar.cornerOpen.clicklessCornerEnd
-                        onCheckedChanged: {
-                            Config.options.sidebar.cornerOpen.clicklessCornerEnd = checked;
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll")
-                        }
+                ConfigSwitch {
+                    enabled: !Config.options.sidebar.cornerOpen.clickless
+                    buttonIcon: "crop_free"
+                    text: Translation.tr("Force hover open at absolute corner")
+                    checked: Config.options.sidebar.cornerOpen.clicklessCornerEnd
+                    onCheckedChanged: {
+                        Config.options.sidebar.cornerOpen.clicklessCornerEnd = checked;
                     }
 
-                    ConfigSpinBox {
-                        icon: "arrow_cool_down"
-                        text: Translation.tr("with vertical offset")
-                        value: Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset
-                        from: 0
-                        to: 20
-                        stepSize: 1
-                        onValueChanged: {
-                            Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset = value;
-                        }
+                    StyledToolTip {
+                        text: Translation.tr("When the previous option is off and this is on,\nyou can still hover the corner's end to open sidebar,\nand the remaining area can be used for volume/brightness scroll")
+                    }
+                }
+                ConfigSpinBox {
+                    enabled: !Config.options.sidebar.cornerOpen.clickless && Config.options.sidebar.cornerOpen.clicklessCornerEnd
+                    icon: "arrow_cool_down"
+                    text: Translation.tr("Vertical offset")
+                    value: Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset
+                    from: 0
+                    to: 20
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.sidebar.cornerOpen.clicklessCornerVerticalOffset = value;
                     }
                 }
 
-                ConfigRow {
-                    uniform: true
-
-                    ConfigSwitch {
-                        buttonIcon: "vertical_align_bottom"
-                        text: Translation.tr("Place at bottom")
-                        checked: Config.options.sidebar.cornerOpen.bottom
-                        onCheckedChanged: {
-                            Config.options.sidebar.cornerOpen.bottom = checked;
-                        }
-
-                        StyledToolTip {
-                            text: Translation.tr("Place the corners to trigger at the bottom")
-                        }
+                ConfigSwitch {
+                    buttonIcon: "vertical_align_bottom"
+                    text: Translation.tr("Place at bottom")
+                    checked: Config.options.sidebar.cornerOpen.bottom
+                    onCheckedChanged: {
+                        Config.options.sidebar.cornerOpen.bottom = checked;
                     }
 
-                    ConfigSwitch {
-                        buttonIcon: "unfold_more_double"
-                        text: Translation.tr("Value scroll")
-                        checked: Config.options.sidebar.cornerOpen.valueScroll
-                        onCheckedChanged: {
-                            Config.options.sidebar.cornerOpen.valueScroll = checked;
-                        }
+                    StyledToolTip {
+                        text: Translation.tr("Place the corners to trigger at the bottom")
+                    }
+                }
+                ConfigSwitch {
+                    buttonIcon: "unfold_more_double"
+                    text: Translation.tr("Value scroll")
+                    checked: Config.options.sidebar.cornerOpen.valueScroll
+                    onCheckedChanged: {
+                        Config.options.sidebar.cornerOpen.valueScroll = checked;
+                    }
 
-                        StyledToolTip {
-                            text: Translation.tr("Brightness and volume")
-                        }
+                    StyledToolTip {
+                        text: Translation.tr("Brightness and volume")
                     }
                 }
 
@@ -1372,29 +1303,26 @@ Item {
                     }
                 }
 
-                ConfigRow {
-                    ConfigSpinBox {
-                        icon: "arrow_range"
-                        text: Translation.tr("Region width")
-                        value: Config.options.sidebar.cornerOpen.cornerRegionWidth
-                        from: 1
-                        to: 300
-                        stepSize: 1
-                        onValueChanged: {
-                            Config.options.sidebar.cornerOpen.cornerRegionWidth = value;
-                        }
+                ConfigSpinBox {
+                    icon: "arrow_range"
+                    text: Translation.tr("Region width")
+                    value: Config.options.sidebar.cornerOpen.cornerRegionWidth
+                    from: 1
+                    to: 300
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.sidebar.cornerOpen.cornerRegionWidth = value;
                     }
-
-                    ConfigSpinBox {
-                        icon: "height"
-                        text: Translation.tr("Region height")
-                        value: Config.options.sidebar.cornerOpen.cornerRegionHeight
-                        from: 1
-                        to: 300
-                        stepSize: 1
-                        onValueChanged: {
-                            Config.options.sidebar.cornerOpen.cornerRegionHeight = value;
-                        }
+                }
+                ConfigSpinBox {
+                    icon: "height"
+                    text: Translation.tr("Region height")
+                    value: Config.options.sidebar.cornerOpen.cornerRegionHeight
+                    from: 1
+                    to: 300
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.sidebar.cornerOpen.cornerRegionHeight = value;
                     }
                 }
             }
@@ -1435,8 +1363,6 @@ Item {
                     checked: Config.options.osd.material.minimal
                     onCheckedChanged: {
                         Config.options.osd.material.minimal = checked;
-                        GlobalStates.osdVolumeOpen = true;
-                        GlobalStates.osdInteraction();
                     }
                 }
 
@@ -1446,8 +1372,6 @@ Item {
                     checked: Config.options.osd.material.shapedValues
                     onCheckedChanged: {
                         Config.options.osd.material.shapedValues = checked;
-                        GlobalStates.osdVolumeOpen = true;
-                        GlobalStates.osdInteraction();
                     }
                 }
 
@@ -1457,8 +1381,6 @@ Item {
                     checked: Config.options.osd.material.circledShapes
                     onCheckedChanged: {
                         Config.options.osd.material.circledShapes = checked;
-                        GlobalStates.osdVolumeOpen = true;
-                        GlobalStates.osdInteraction();
                     }
                 }
 
@@ -1468,8 +1390,6 @@ Item {
                     checked: Config.options.osd.material.rotateShape
                     onCheckedChanged: {
                         Config.options.osd.material.rotateShape = checked;
-                        GlobalStates.osdVolumeOpen = true;
-                        GlobalStates.osdInteraction();
                     }
                 }
             }
@@ -1480,14 +1400,12 @@ Item {
             title: Translation.tr("Language switcher notification")
             tooltip: Translation.tr("To add keyboard layouts (max 4 per device with XKB), set kb_layout in general.lua.\nSet kb_options = \"grp:alt_shift_toggle\" to switch with Alt+Shift.\nRefer to Hyprland wiki documentation for more details.")
 
-            ConfigRow {
-                ConfigSwitch {
-                    buttonIcon: "check"
-                    text: Translation.tr("Enable switcher notification")
-                    checked: Config.options.languageSwitcher.enable ?? true
-                    onCheckedChanged: {
-                        Config.options.languageSwitcher.enable = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "check"
+                text: Translation.tr("Enable switcher notification")
+                checked: Config.options.languageSwitcher.enable ?? true
+                onCheckedChanged: {
+                    Config.options.languageSwitcher.enable = checked;
                 }
             }
         }
@@ -1496,37 +1414,30 @@ Item {
             icon: "overview_key"
             title: Translation.tr("Overview")
 
-            ConfigRow {
-                ConfigSwitch {
-                    buttonIcon: "check"
-                    text: Translation.tr("Enable")
-                    checked: Config.options.overview.enable
-                    onCheckedChanged: {
-                        Config.options.overview.enable = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "check"
+                text: Translation.tr("Enable")
+                checked: Config.options.overview.enable
+                onCheckedChanged: {
+                    Config.options.overview.enable = checked;
                 }
             }
 
-            ConfigRow {
-                uniform: true
-
-                ConfigSwitch {
-                    buttonIcon: "visibility"
-                    text: Translation.tr("Show icons")
-                    checked: Config.options.overview.showIcons
-                    onCheckedChanged: {
-                        Config.options.overview.showIcons = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "visibility"
+                text: Translation.tr("Show icons")
+                checked: Config.options.overview.showIcons
+                onCheckedChanged: {
+                    Config.options.overview.showIcons = checked;
                 }
-
-                ConfigSwitch {
-                    enabled: Config.options.overview.showIcons
-                    buttonIcon: "center_focus_strong"
-                    text: Translation.tr("Center icons")
-                    checked: Config.options.overview.centerIcons
-                    onCheckedChanged: {
-                        Config.options.overview.centerIcons = checked;
-                    }
+            }
+            ConfigSwitch {
+                enabled: Config.options.overview.showIcons
+                buttonIcon: "center_focus_strong"
+                text: Translation.tr("Center icons")
+                checked: Config.options.overview.centerIcons
+                onCheckedChanged: {
+                    Config.options.overview.centerIcons = checked;
                 }
             }
 
@@ -1555,128 +1466,87 @@ Item {
                 }
             }
 
-            ConfigRow {
-                ConfigSwitch {
-                    buttonIcon: "high_density"
-                    text: Translation.tr("Enable zoom animation")
-                    checked: Config.options.overview.showOpeningAnimation
-                    onCheckedChanged: {
-                        Config.options.overview.showOpeningAnimation = checked;
-                    }
+            ConfigSwitch {
+                buttonIcon: "high_density"
+                text: Translation.tr("Enable zoom animation")
+                checked: Config.options.overview.showOpeningAnimation
+                onCheckedChanged: {
+                    Config.options.overview.showOpeningAnimation = checked;
+                }
 
-                    StyledToolTip {
-                        text: Translation.tr("Using zoom-in style zoomes the wallpaper in default state, may look pixelated on crisp wallpapers")
+                StyledToolTip {
+                    text: Translation.tr("Using zoom-in style zoomes the wallpaper in default state, may look pixelated on crisp wallpapers")
+                }
+            }
+
+            ContentSubsection {
+                title: Translation.tr("Classic overview")
+
+                ConfigSpinBox {
+                    icon: "splitscreen_bottom"
+                    text: Translation.tr("Rows")
+                    value: Config.options.overview.rows
+                    from: 1
+                    to: 20
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.overview.rows = value;
+                    }
+                }
+                ConfigSpinBox {
+                    icon: "splitscreen_right"
+                    text: Translation.tr("Columns")
+                    value: Config.options.overview.columns
+                    from: 1
+                    to: 20
+                    stepSize: 1
+                    onValueChanged: {
+                        Config.options.overview.columns = value;
                     }
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                ConfigSelectionArray {
-                    Layout.fillWidth: false
-                    enabled: Config.options.overview.showOpeningAnimation
-                    currentValue: Config.options.overview.scrollingStyle.zoomStyle
+                ConfigSelectionRow {
+                    buttonIcon: "swap_horiz"
+                    text: Translation.tr("Horizontal order")
+                    currentValue: Config.options.overview.orderRightLeft
                     onSelected: (newValue) => {
-                        Config.options.overview.scrollingStyle.zoomStyle = newValue;
+                        Config.options.overview.orderRightLeft = newValue;
                     }
                     options: [{
-                        "displayName": Translation.tr("In"),
-                        "icon": "zoom_in_map",
-                        "value": "in"
+                        "displayName": Translation.tr("Left to right"),
+                        "icon": "arrow_forward",
+                        "value": 0
                     }, {
-                        "displayName": Translation.tr("Out"),
-                        "icon": "zoom_out_map",
-                        "value": "out"
+                        "displayName": Translation.tr("Right to left"),
+                        "icon": "arrow_back",
+                        "value": 1
+                    }]
+                }
+                ConfigSelectionRow {
+                    buttonIcon: "swap_vert"
+                    text: Translation.tr("Vertical order")
+                    currentValue: Config.options.overview.orderBottomUp
+                    onSelected: (newValue) => {
+                        Config.options.overview.orderBottomUp = newValue;
+                    }
+                    options: [{
+                        "displayName": Translation.tr("Top-down"),
+                        "icon": "arrow_downward",
+                        "value": 0
+                    }, {
+                        "displayName": Translation.tr("Bottom-up"),
+                        "icon": "arrow_upward",
+                        "value": 1
                     }]
                 }
             }
 
             ContentSubsection {
-                title: Translation.tr("Classic overview style")
+                title: Translation.tr("Scrolling overview")
 
-                ConfigRow {
-                    uniform: true
-
-                    ConfigSpinBox {
-                        icon: "splitscreen_bottom"
-                        text: Translation.tr("Rows")
-                        value: Config.options.overview.rows
-                        from: 1
-                        to: 20
-                        stepSize: 1
-                        onValueChanged: {
-                            Config.options.overview.rows = value;
-                        }
-                    }
-
-                    ConfigSpinBox {
-                        icon: "splitscreen_right"
-                        text: Translation.tr("Columns")
-                        value: Config.options.overview.columns
-                        from: 1
-                        to: 20
-                        stepSize: 1
-                        onValueChanged: {
-                            Config.options.overview.columns = value;
-                        }
-                    }
-                }
-
-                ConfigRow {
-                    uniform: true
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.overview.orderRightLeft
-                        onSelected: (newValue) => {
-                            Config.options.overview.orderRightLeft = newValue;
-                        }
-                        options: [{
-                            "displayName": Translation.tr("Left to right"),
-                            "icon": "arrow_forward",
-                            "value": 0
-                        }, {
-                            "displayName": Translation.tr("Right to left"),
-                            "icon": "arrow_back",
-                            "value": 1
-                        }]
-                    }
-
-                    ConfigSelectionArray {
-                        currentValue: Config.options.overview.orderBottomUp
-                        onSelected: (newValue) => {
-                            Config.options.overview.orderBottomUp = newValue;
-                        }
-                        options: [{
-                            "displayName": Translation.tr("Top-down"),
-                            "icon": "arrow_downward",
-                            "value": 0
-                        }, {
-                            "displayName": Translation.tr("Bottom-up"),
-                            "icon": "arrow_upward",
-                            "value": 1
-                        }]
-                    }
-                }
-            }
-
-            ConfigSpinBox {
-                enabled: Config.options.overview.scrollingStyle.backgroundStyle === "dim"
-                icon: "backlight_low"
-                text: Translation.tr("Dim percentage")
-                value: Config.options.overview.scrollingStyle.dimPercentage
-                from: 0
-                to: 75
-                stepSize: 5
-                onValueChanged: {
-                    Config.options.overview.scrollingStyle.dimPercentage = value;
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Scrolling overview style")
-
-                ConfigSelectionArray {
+                ConfigSelectionRow {
+                    buttonIcon: "view_carousel"
+                    text: Translation.tr("Background")
                     currentValue: Config.options.overview.scrollingStyle.backgroundStyle
                     onSelected: (newValue) => {
                         Config.options.overview.scrollingStyle.backgroundStyle = newValue;
@@ -1695,7 +1565,41 @@ Item {
                         "value": "transparent"
                     }]
                 }
+
+                ConfigSpinBox {
+                    enabled: Config.options.overview.scrollingStyle.backgroundStyle === "dim"
+                    icon: "backlight_low"
+                    text: Translation.tr("Dim percentage")
+                    value: Config.options.overview.scrollingStyle.dimPercentage
+                    from: 0
+                    to: 75
+                    stepSize: 5
+                    onValueChanged: {
+                        Config.options.overview.scrollingStyle.dimPercentage = value;
+                    }
+                }
+
+                ConfigSelectionRow {
+                    buttonIcon: "zoom_in_map"
+                    text: Translation.tr("Zoom direction")
+                    enabled: Config.options.overview.showOpeningAnimation
+                    currentValue: Config.options.overview.scrollingStyle.zoomStyle
+                    onSelected: (newValue) => {
+                        Config.options.overview.scrollingStyle.zoomStyle = newValue;
+                    }
+                    options: [{
+                        "displayName": Translation.tr("In"),
+                        "icon": "zoom_in_map",
+                        "value": "in"
+                    }, {
+                        "displayName": Translation.tr("Out"),
+                        "icon": "zoom_out_map",
+                        "value": "out"
+                    }]
+                }
             }
+
+
         }
 
         ContentSection {

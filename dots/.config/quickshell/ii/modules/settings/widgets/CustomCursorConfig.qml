@@ -27,7 +27,7 @@ Item {
     ContentPage {
         id: page
         anchors.fill: parent
-        forceWidth: false
+        forceWidth: true
         title: Translation.tr("Cursor configuration")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
@@ -130,26 +130,22 @@ Item {
             }
 
             // Theme Selection -- the primary control, first under the header.
-            ContentSubsection {
+            ConfigSelectionRow {
+                text: Translation.tr("Installed cursor packs")
+                buttonIcon: "category"
+                summary: Translation.tr("Select a cursor theme detected from ~/.icons, ~/.local/share/icons, or /usr/share/icons")
                 visible: subPageRoot.hasCursorPacks
-                title: Translation.tr("Installed cursor packs")
-                icon: "category"
-                Layout.fillWidth: true
-                tooltip: Translation.tr("Select a cursor theme detected from ~/.icons, ~/.local/share/icons, or /usr/share/icons")
-
-                ConfigSelectionArray {
-                    currentValue: CursorTheme.configuredTheme
-                    onSelected: (newValue) => {
-                        CursorTheme.setCursor(newValue, CursorTheme.configuredSize);
-                    }
-                    options: CursorTheme.availableThemes.map((theme) => {
-                        return ({
-                            "displayName": theme.name,
-                            "value": theme.id,
-                            "icon": "arrow_selector_tool"
-                        });
-                    })
+                currentValue: CursorTheme.configuredTheme
+                onSelected: (newValue) => {
+                    CursorTheme.setCursor(newValue, CursorTheme.configuredSize);
                 }
+                options: CursorTheme.availableThemes.map((theme) => {
+                    return ({
+                        "displayName": theme.name,
+                        "value": theme.id,
+                        "icon": "arrow_selector_tool"
+                    });
+                })
             }
 
             // Size: the presets, the exact value and the warning about it are one
@@ -217,11 +213,10 @@ Item {
 
             // Custom Theme Name Override -- also the only way out of the empty
             // state, which is why it stays visible when nothing was detected.
-            ContentSubsection {
-                title: Translation.tr("Custom cursor theme name")
-                icon: "edit"
-                Layout.fillWidth: true
-                tooltip: Translation.tr("Manually enter a cursor theme name if you have a custom pack installed")
+            ConfigLabeledRow {
+                buttonIcon: "edit"
+                text: Translation.tr("Custom cursor theme name")
+                summary: Translation.tr("For a pack installed somewhere the list above does not look.")
 
                 // Not ConfigTextField: it publishes `inputText` on every
                 // keystroke and exposes no commit signal, and each keystroke here

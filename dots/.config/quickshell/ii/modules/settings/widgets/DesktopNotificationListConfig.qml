@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Notification list options")
 
@@ -30,16 +30,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("notification_list")
 
-            ContentSubsectionLabel {
+            ConfigSelectionRow {
+                buttonIcon: "view_agenda"
                 text: Translation.tr("View")
-            }
-
-            ConfigSelectionArray {
+                summary: Translation.tr("Compact is Android 16's default: one notification in full, the rest reduced to icons underneath. Click the icons to expand.")
                 currentValue: root.conf.view
                 options: [
                     {
@@ -54,16 +52,6 @@ ContentPage {
                 onSelected: newValue => {
                     root.conf.view = newValue;
                 }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                Layout.leftMargin: 8
-                Layout.topMargin: 4
-                wrapMode: Text.Wrap
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                text: Translation.tr("Compact is Android 16's default: one notification in full, the rest reduced to icons underneath. Click the icons to expand.")
             }
 
             ContentSubsectionLabel {
@@ -98,7 +86,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "format_size"
-                text: Translation.tr("Text size")
+                text: Translation.tr("Text size (%)")
                 value: root.conf.fontScale ?? 100
                 from: 80
                 to: 140
@@ -110,7 +98,7 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "opacity"
-                text: Translation.tr("Card opacity")
+                text: Translation.tr("Card opacity (%)")
                 value: root.conf.backgroundOpacity ?? 100
                 from: 20
                 to: 100
@@ -124,7 +112,9 @@ ContentPage {
                 text: Translation.tr("Lock screen")
             }
 
-            ConfigSelectionArray {
+            ConfigSelectionRow {
+                buttonIcon: "lock"
+                text: Translation.tr("Privacy")
                 currentValue: root.conf.privacy
                 options: [
                     {
@@ -157,19 +147,11 @@ ContentPage {
             ConfigSwitch {
                 buttonIcon: "visibility_off"
                 text: Translation.tr("Hide when there is nothing to show")
+                summary: Translation.tr("On the lock screen only; on the desktop a placeholder stays, so there is something to grab and move.")
                 checked: root.conf.hideWhenEmpty ?? true
                 onCheckedChanged: {
                     root.conf.hideWhenEmpty = checked;
                 }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                Layout.leftMargin: 8
-                wrapMode: Text.Wrap
-                font.pixelSize: Appearance.font.pixelSize.smaller
-                color: Appearance.colors.colSubtext
-                text: Translation.tr("Hiding an empty stack applies on the lock screen only - on the desktop a placeholder stays, or there would be nothing left to grab and move.")
             }
 
             ContentSubsectionLabel {
@@ -203,11 +185,9 @@ ContentPage {
                 }
             }
 
-            ContentSubsectionLabel {
+            ConfigSelectionRow {
+                buttonIcon: "touch_app"
                 text: Translation.tr("Clicking a card")
-            }
-
-            ConfigSelectionArray {
                 currentValue: root.conf.bodyAction
                 options: [
                     {
@@ -248,7 +228,7 @@ ContentPage {
 
             StyledText {
                 Layout.fillWidth: true
-                Layout.leftMargin: 8
+                Layout.leftMargin: 10
                 wrapMode: Text.Wrap
                 font.pixelSize: Appearance.font.pixelSize.smaller
                 color: Appearance.colors.colSubtext

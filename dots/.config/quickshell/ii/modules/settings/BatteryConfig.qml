@@ -680,24 +680,22 @@ ContentPage {
                     text: Translation.tr("Notifies when charged to this level. 101 turns it off")
                 }
             }
-            ContentSubsection {
-                title: Translation.tr("Ripple when plugged in")
-                tooltip: Translation.tr("Plays from the side your charger port is on")
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.battery.chargingRipple
-                    onSelected: newValue => {
-                        Config.options.battery.chargingRipple = newValue;
-                        if (newValue !== "off")
-                            Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "chargingRipple", "play", newValue]);
-                    }
-                    options: [
-                        { displayName: Translation.tr("Off"), icon: "block", value: "off" },
-                        { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottomLeft" },
-                        { displayName: Translation.tr("Center"), icon: "filter_center_focus", value: "center" },
-                        { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottomRight" }
-                    ]
+            ConfigSelectionRow {
+                buttonIcon: "bolt"
+                text: Translation.tr("Ripple when plugged in")
+                summary: Translation.tr("Plays from the side your charger port is on")
+                currentValue: Config.options.battery.chargingRipple
+                onSelected: newValue => {
+                    Config.options.battery.chargingRipple = newValue;
+                    if (newValue !== "off")
+                        Quickshell.execDetached(["qs", "-c", "ii", "ipc", "call", "chargingRipple", "play", newValue]);
                 }
+                options: [
+                    { displayName: Translation.tr("Off"), icon: "block", value: "off" },
+                    { displayName: Translation.tr("Bottom left"), icon: "south_west", value: "bottomLeft" },
+                    { displayName: Translation.tr("Center"), icon: "filter_center_focus", value: "center" },
+                    { displayName: Translation.tr("Bottom right"), icon: "south_east", value: "bottomRight" }
+                ]
             }
         }
 
@@ -757,29 +755,26 @@ ContentPage {
             icon: "battery_alert"
             title: Translation.tr("Low battery")
 
-            ConfigRow {
-                uniform: true
-                ConfigSpinBox {
-                    icon: "warning"
-                    text: Translation.tr("Low warning")
-                    value: Config.options.battery.low
-                    from: 0
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.battery.low = value;
-                    }
+            ConfigSpinBox {
+                icon: "warning"
+                text: Translation.tr("Low warning")
+                value: Config.options.battery.low
+                from: 0
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.battery.low = value;
                 }
-                ConfigSpinBox {
-                    icon: "dangerous"
-                    text: Translation.tr("Critical warning")
-                    value: Config.options.battery.critical
-                    from: 0
-                    to: 100
-                    stepSize: 5
-                    onValueChanged: {
-                        Config.options.battery.critical = value;
-                    }
+            }
+            ConfigSpinBox {
+                icon: "dangerous"
+                text: Translation.tr("Critical warning")
+                value: Config.options.battery.critical
+                from: 0
+                to: 100
+                stepSize: 5
+                onValueChanged: {
+                    Config.options.battery.critical = value;
                 }
             }
 
@@ -833,30 +828,28 @@ ContentPage {
                     text: Translation.tr("Plugged in, hypridle's timeouts still apply. A playing video holds both")
                 }
             }
-            ConfigRow {
-                uniform: true
+            ConfigSpinBox {
                 enabled: Config.options.battery.idle.enable
-                ConfigSpinBox {
-                    icon: "mode_standby"
-                    text: Translation.tr("Screen off after (min)")
-                    value: Config.options.battery.idle.screenOff
-                    from: 1
-                    to: 60
-                    stepSize: 1
-                    onValueChanged: {
-                        Config.options.battery.idle.screenOff = value;
-                    }
+                icon: "mode_standby"
+                text: Translation.tr("Screen off after (min)")
+                value: Config.options.battery.idle.screenOff
+                from: 1
+                to: 60
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.battery.idle.screenOff = value;
                 }
-                ConfigSpinBox {
-                    icon: "bedtime"
-                    text: Translation.tr("Sleep after (min)")
-                    value: Config.options.battery.idle.sleep
-                    from: 1
-                    to: 120
-                    stepSize: 1
-                    onValueChanged: {
-                        Config.options.battery.idle.sleep = value;
-                    }
+            }
+            ConfigSpinBox {
+                enabled: Config.options.battery.idle.enable
+                icon: "bedtime"
+                text: Translation.tr("Sleep after (min)")
+                value: Config.options.battery.idle.sleep
+                from: 1
+                to: 120
+                stepSize: 1
+                onValueChanged: {
+                    Config.options.battery.idle.sleep = value;
                 }
             }
         }
@@ -866,12 +859,12 @@ ContentPage {
             icon: "battery_android_full"
             title: Translation.tr("Battery indicator")
 
-            // The same card the rows sit on.
-            Rectangle {
+            // The first card of the run the rows sit on, painted by ContentGroup
+            // so it reaches the same edges and takes the run's corners.
+            Item {
+                readonly property bool wantsCard: true
                 Layout.fillWidth: true
                 implicitHeight: 64
-                radius: Appearance.rounding.large
-                color: Appearance.colors.colSurfaceContainerHigh
 
                 RowLayout {
                     anchors.centerIn: parent
@@ -897,71 +890,62 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Battery icon style")
-                tooltip: Translation.tr("Custom ROM style battery icons (Evolution X & Iconify)")
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.battery.style ?? "filled"
-                    onSelected: newValue => {
-                        Config.options.bar.battery.style = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Filled (M3 pill)"), icon: "pill", value: "filled" },
-                        { displayName: Translation.tr("Portrait"), icon: "battery_android_full", value: "portrait" },
-                        { displayName: Translation.tr("Landscape (right)"), icon: "battery_horiz_075", value: "landscape" },
-                        { displayName: Translation.tr("Landscape (left)"), icon: "battery_horiz_050", value: "landscape_left" },
-                        { displayName: Translation.tr("Landscape (iOS)"), icon: "battery_saver", value: "landscape_ios" },
-                        { displayName: Translation.tr("Landscape (line)"), icon: "horizontal_rule", value: "landscape_line" },
-                        { displayName: Translation.tr("Landscape (Musku)"), icon: "shapes", value: "landscape_musku" },
-                        { displayName: Translation.tr("Landscape (Origami)"), icon: "polyline", value: "landscape_origami" },
-                        { displayName: Translation.tr("Landscape (signal)"), icon: "signal_cellular_4_bar", value: "landscape_signal" },
-                        { displayName: Translation.tr("Circle"), icon: "progress_activity", value: "circle" },
-                        { displayName: Translation.tr("Dotted circle"), icon: "motion_mode", value: "dotted" },
-                        { displayName: Translation.tr("Filled circle"), icon: "radio_button_checked", value: "filled_circle" },
-                        { displayName: Translation.tr("Big circle"), icon: "adjust", value: "big_circle" },
-                        { displayName: Translation.tr("Big dotted circle"), icon: "scatter_plot", value: "big_dotted_circle" },
-                        { displayName: Translation.tr("Text only"), icon: "match_case", value: "text" }
-                    ]
+            ConfigSelectionRow {
+                buttonIcon: "battery_full"
+                text: Translation.tr("Battery icon style")
+                summary: Translation.tr("Custom ROM style battery icons (Evolution X & Iconify)")
+                currentValue: Config.options.bar.battery.style ?? "filled"
+                onSelected: newValue => {
+                    Config.options.bar.battery.style = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Filled (M3 pill)"), icon: "pill", value: "filled" },
+                    { displayName: Translation.tr("Portrait"), icon: "battery_android_full", value: "portrait" },
+                    { displayName: Translation.tr("Landscape (right)"), icon: "battery_horiz_075", value: "landscape" },
+                    { displayName: Translation.tr("Landscape (left)"), icon: "battery_horiz_050", value: "landscape_left" },
+                    { displayName: Translation.tr("Landscape (iOS)"), icon: "battery_saver", value: "landscape_ios" },
+                    { displayName: Translation.tr("Landscape (line)"), icon: "horizontal_rule", value: "landscape_line" },
+                    { displayName: Translation.tr("Landscape (Musku)"), icon: "shapes", value: "landscape_musku" },
+                    { displayName: Translation.tr("Landscape (Origami)"), icon: "polyline", value: "landscape_origami" },
+                    { displayName: Translation.tr("Landscape (signal)"), icon: "signal_cellular_4_bar", value: "landscape_signal" },
+                    { displayName: Translation.tr("Circle"), icon: "progress_activity", value: "circle" },
+                    { displayName: Translation.tr("Dotted circle"), icon: "motion_mode", value: "dotted" },
+                    { displayName: Translation.tr("Filled circle"), icon: "radio_button_checked", value: "filled_circle" },
+                    { displayName: Translation.tr("Big circle"), icon: "adjust", value: "big_circle" },
+                    { displayName: Translation.tr("Big dotted circle"), icon: "scatter_plot", value: "big_dotted_circle" },
+                    { displayName: Translation.tr("Text only"), icon: "match_case", value: "text" }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Percentage display")
+            ConfigSelectionRow {
+                buttonIcon: "percent"
+                text: Translation.tr("Percentage display")
                 enabled: Config.options.bar.battery.style !== "text"
-                ConfigSelectionArray {
-                    currentValue: Config.options.bar.battery.showPercentage ?? 1
-                    onSelected: newValue => {
-                        Config.options.bar.battery.showPercentage = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Hidden"), icon: "visibility_off", value: 0 },
-                        { displayName: Translation.tr("Inside"), icon: "center_focus_strong", value: 1 },
-                        { displayName: Translation.tr("Outside"), icon: "align_horizontal_right", value: 2 }
-                    ]
+                currentValue: Config.options.bar.battery.showPercentage ?? 1
+                onSelected: newValue => {
+                    Config.options.bar.battery.showPercentage = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Hidden"), icon: "visibility_off", value: 0 },
+                    { displayName: Translation.tr("Inside"), icon: "center_focus_strong", value: 1 },
+                    { displayName: Translation.tr("Outside"), icon: "align_horizontal_right", value: 2 }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Options")
-
-                ConfigRow {
-                    uniform: true
-                    ConfigSwitch {
-                        buttonIcon: "percent"
-                        text: Translation.tr("Show percentage symbol (%)")
-                        checked: Config.options.bar.battery.showPercentSign ?? true
-                        onCheckedChanged: {
-                            Config.options.bar.battery.showPercentSign = checked;
-                        }
-                    }
-                    ConfigSwitch {
-                        buttonIcon: "bolt"
-                        text: Translation.tr("Show charging indicator")
-                        checked: Config.options.bar.battery.showChargingIndicator ?? true
-                        onCheckedChanged: {
-                            Config.options.bar.battery.showChargingIndicator = checked;
-                        }
-                    }
+            ConfigSwitch {
+                buttonIcon: "percent"
+                text: Translation.tr("Show percentage symbol (%)")
+                checked: Config.options.bar.battery.showPercentSign ?? true
+                onCheckedChanged: {
+                    Config.options.bar.battery.showPercentSign = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "bolt"
+                text: Translation.tr("Show charging indicator")
+                checked: Config.options.bar.battery.showChargingIndicator ?? true
+                onCheckedChanged: {
+                    Config.options.bar.battery.showChargingIndicator = checked;
                 }
             }
         }

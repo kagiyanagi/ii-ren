@@ -54,9 +54,13 @@ Item {
         contentColor: Appearance.colors.colOnLayer1
     }
 
+    // On ConfigSwitch's 8 inset, so the icon lines up with the rows around it.
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 10
+        anchors.leftMargin: 8
+        anchors.rightMargin: 8
+        anchors.topMargin: 10
+        anchors.bottomMargin: 10
         spacing: 10
 
         OptionalMaterialSymbol {
@@ -95,6 +99,9 @@ Item {
             selectionColor: Appearance.colors.colSecondaryContainer
             background: null
             verticalAlignment: Text.AlignVCenter
+            // The value sits at the end of the row, as a switch or a spin box
+            // does, so a column of these lines up whatever the labels' lengths.
+            horizontalAlignment: Text.AlignRight
 
             onEditingFinished: root.editingFinished()
             onTextChanged: {

@@ -22,15 +22,21 @@ ColumnLayout {
 
     // With extensions off the switch above says so already, and
     // "click refresh" pointed at a button that was disabled.
-    StyledText {
+    Item {
         Layout.fillWidth: true
-        Layout.topMargin: 40
+        implicitHeight: Appearance.sizes.pagePlaceholderHeight
         visible: root.model.length === 0 && Config.options.extensions.enable
-        text: root.loading ? Translation.tr("Searching GitHub…")
-            : root.searchText.trim() ? Translation.tr("No extensions match your search")
-            : Translation.tr("No extensions found. Click refresh to search GitHub.")
-        horizontalAlignment: Text.AlignHCenter
-        color: Appearance.colors.colSubtext
-        font.pixelSize: Appearance.font.pixelSize.normal
+
+        PagePlaceholder {
+            anchors.fill: parent
+            shape: MaterialShape.Shape.Circle
+            icon: root.loading ? "travel_explore" : root.searchText.trim() ? "search_off" : "extension"
+            title: root.loading ? Translation.tr("Searching GitHub…")
+                : root.searchText.trim() ? Translation.tr("No matches")
+                : Translation.tr("No extensions yet")
+            description: root.loading ? ""
+                : root.searchText.trim() ? Translation.tr("No extensions match your search")
+                : Translation.tr("Refresh to search GitHub for extensions.")
+        }
     }
 }

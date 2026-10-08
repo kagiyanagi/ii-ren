@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Scallop dot clock options")
 
@@ -28,18 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("scallop_dot_clock")
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.scallop_dot_clock.widgetSize ?? 100
                 from: 50
                 to: 200

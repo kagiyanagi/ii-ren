@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Dial clock options")
 
@@ -28,86 +28,77 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("clock_dial")
 
             // ── Hour Hand Style ──
-            ContentSubsection {
-                title: Translation.tr("Hour hand")
-                icon: "arrow_upward"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock_dial.hourHandStyle
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock_dial.hourHandStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Classic"),
-                            icon: "horizontal_rule",
-                            value: "classic"
-                        },
-                        {
-                            displayName: Translation.tr("Fill"),
-                            icon: "square",
-                            value: "fill"
-                        },
-                        {
-                            displayName: Translation.tr("Hollow"),
-                            icon: "crop_square",
-                            value: "hollow"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "do_not_disturb",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Hour hand")
+                buttonIcon: "arrow_upward"
+                currentValue: Config.options.background.widgets.clock_dial.hourHandStyle
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock_dial.hourHandStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "horizontal_rule",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Fill"),
+                        icon: "square",
+                        value: "fill"
+                    },
+                    {
+                        displayName: Translation.tr("Hollow"),
+                        icon: "crop_square",
+                        value: "hollow"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "do_not_disturb",
+                        value: "hide"
+                    }
+                ]
             }
 
             // ── Minute Hand Style ──
-            ContentSubsection {
-                title: Translation.tr("Minute hand")
-                icon: "arrow_downward"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.clock_dial.minuteHandStyle
-                    onSelected: newValue => {
-                        Config.options.background.widgets.clock_dial.minuteHandStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Thin"),
-                            icon: "horizontal_rule",
-                            value: "thin"
-                        },
-                        {
-                            displayName: Translation.tr("Medium"),
-                            icon: "remove",
-                            value: "medium"
-                        },
-                        {
-                            displayName: Translation.tr("Bold"),
-                            icon: "add",
-                            value: "bold"
-                        },
-                        {
-                            displayName: Translation.tr("Classic"),
-                            icon: "format_list_bulleted",
-                            value: "classic"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "do_not_disturb",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Minute hand")
+                buttonIcon: "arrow_downward"
+                currentValue: Config.options.background.widgets.clock_dial.minuteHandStyle
+                onSelected: newValue => {
+                    Config.options.background.widgets.clock_dial.minuteHandStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Thin"),
+                        icon: "horizontal_rule",
+                        value: "thin"
+                    },
+                    {
+                        displayName: Translation.tr("Medium"),
+                        icon: "remove",
+                        value: "medium"
+                    },
+                    {
+                        displayName: Translation.tr("Bold"),
+                        icon: "add",
+                        value: "bold"
+                    },
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "format_list_bulleted",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "do_not_disturb",
+                        value: "hide"
+                    }
+                ]
             }
 
             Item { Layout.preferredHeight: 4 }

@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Nagasaki text clock options")
 
@@ -28,14 +28,10 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("nagasaki_text")
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "format_size"

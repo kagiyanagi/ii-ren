@@ -200,6 +200,10 @@ Item {
 
                     // Electron configuration and the shell diagram read together.
                     ContentSubsection {
+                        // ContentSubsection no longer insets itself (settings pages align their
+                        // cards to the section edge); this panel keeps its text off the clip.
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Electronic configuration")
                         RowLayout {
                             Layout.fillWidth: true
@@ -232,6 +236,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Ionisation enthalpy")
                         StyledText {
                             Layout.fillWidth: true
@@ -248,6 +254,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Atomic properties")
                         GridLayout {
                             Layout.fillWidth: true
@@ -267,6 +275,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Oxidation states")
                         Flow {
                             Layout.fillWidth: true
@@ -288,6 +298,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Physical")
                         GridLayout {
                             Layout.fillWidth: true
@@ -305,6 +317,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("Discovery")
                         Fact {
                             Layout.fillWidth: true
@@ -314,6 +328,8 @@ Item {
                     }
 
                     ContentSubsection {
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
                         title: Translation.tr("About")
                         StyledText {
                             Layout.fillWidth: true

@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Resource fill cards options")
 
@@ -28,34 +28,28 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Shape")
+        ConfigSelectionRow {
+            buttonIcon: "interests"
+            text: Translation.tr("Shape")
             visible: Config.isWidgetActive("resource_fill_cards")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.background.widgets.resource_fill_cards.orientation ?? "horizontal"
-                onSelected: value => Config.options.background.widgets.resource_fill_cards.orientation = value
-                options: [
-                    { displayName: Translation.tr("Horizontal"), icon: "view_column", value: "horizontal" },
-                    { displayName: Translation.tr("Vertical"), icon: "view_stream", value: "vertical" }
-                ]
-            }
+            currentValue: Config.options.background.widgets.resource_fill_cards.orientation ?? "horizontal"
+            onSelected: value => Config.options.background.widgets.resource_fill_cards.orientation = value
+            options: [
+                { displayName: Translation.tr("Horizontal"), icon: "view_column", value: "horizontal" },
+                { displayName: Translation.tr("Vertical"), icon: "view_stream", value: "vertical" }
+            ]
         }
 
-        ContentSubsection {
-            title: Translation.tr("Size")
+        ConfigSlider {
             visible: Config.isWidgetActive("resource_fill_cards")
-
-            ConfigSlider {
-                buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget scale")
-                value: Config.options.background.widgets.resource_fill_cards.widgetSize ?? 100
-                from: 50
-                to: 200
-                stepSize: 10
-                onValueChanged: {
-                    Config.options.background.widgets.resource_fill_cards.widgetSize = value;
-                }
+            buttonIcon: "aspect_ratio"
+            text: Translation.tr("Widget scale (%)")
+            value: Config.options.background.widgets.resource_fill_cards.widgetSize ?? 100
+            from: 50
+            to: 200
+            stepSize: 10
+            onValueChanged: {
+                Config.options.background.widgets.resource_fill_cards.widgetSize = value;
             }
         }
 

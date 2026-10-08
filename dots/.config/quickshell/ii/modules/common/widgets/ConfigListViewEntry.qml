@@ -11,11 +11,12 @@ Item {
     required property var modelData
     readonly property var compInfo: BarComponentRegistry.getComponent(modelData.id)
 
-    property bool alternateColor: visualIndex % 2 == 0
-    property color colBackground: alternateColor ? Appearance.colors.colLayer3 : Appearance.colors.colLayer2
+    // One tone for every row, as an Android list in a card has: rows are told
+    // apart by their content and the hover/drag film, not by zebra stripes.
+    property color colBackground: Appearance.colors.colLayer2
     // The content colour of the layer the row actually paints with, not layer
     // 0's: the state film and the title both read off it (6.1).
-    property color colOnBackground: alternateColor ? Appearance.colors.colOnLayer3 : Appearance.colors.colOnLayer2
+    property color colOnBackground: Appearance.colors.colOnLayer2
 
     property color colTitle: colOnBackground
 

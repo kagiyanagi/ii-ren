@@ -65,7 +65,7 @@ Item {
     ContentPage {
         id: page
         anchors.fill: parent
-        forceWidth: false
+        forceWidth: true
         title: Translation.tr("Notification history")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
@@ -94,15 +94,24 @@ Item {
                 }
             }
 
-            StyledText {
+            // The page's empty state, one per reason it is empty (TASTE 6.2-6.3).
+            Item {
                 Layout.fillWidth: true
+                implicitHeight: Appearance.sizes.pagePlaceholderHeight
                 visible: subPageRoot.groups.length === 0
-                wrapMode: Text.WordWrap
-                text: subPageRoot.entries.length > 0 ? Translation.tr("No notifications match your search.")
-                    : Config.options.notifications.history.enable ? Translation.tr("Notifications you receive will show up here.")
-                    : Translation.tr("Turn on notification history to keep a record of the notifications you receive.")
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colSubtext
+
+                PagePlaceholder {
+                    anchors.fill: parent
+                    shape: MaterialShape.Shape.Circle
+                    icon: subPageRoot.entries.length > 0 ? "search_off"
+                        : Config.options.notifications.history.enable ? "notifications" : "history_toggle_off"
+                    title: subPageRoot.entries.length > 0 ? Translation.tr("No matches")
+                        : Config.options.notifications.history.enable ? Translation.tr("No notifications yet")
+                        : Translation.tr("Notification history is off")
+                    description: subPageRoot.entries.length > 0 ? Translation.tr("No notifications match your search.")
+                        : Config.options.notifications.history.enable ? Translation.tr("Notifications you receive will show up here.")
+                        : Translation.tr("Turn on notification history to keep a record of the notifications you receive.")
+                }
             }
 
             Repeater {

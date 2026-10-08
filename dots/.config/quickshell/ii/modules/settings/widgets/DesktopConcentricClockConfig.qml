@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Concentric clock options")
 
@@ -28,19 +28,13 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("concentric_clock")
-
-            // ── Size ──
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.concentric_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -55,110 +49,102 @@ ContentPage {
             }
 
             // ── Dial Style ──
-            ContentSubsection {
-                title: Translation.tr("Dial style")
-                icon: "timelapse"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.dialStyle ?? "concentric"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.dialStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Concentric"),
-                            icon: "timelapse",
-                            value: "concentric"
-                        },
-                        {
-                            displayName: Translation.tr("Outer only"),
-                            icon: "panorama_fish_eye",
-                            value: "outer_only"
-                        },
-                        {
-                            displayName: Translation.tr("Inner only"),
-                            icon: "adjust",
-                            value: "inner_only"
-                        },
-                        {
-                            displayName: Translation.tr("Pixel Watch 3 dial"),
-                            icon: "watch",
-                            value: "full_pixel3"
-                        },
-                        {
-                            displayName: Translation.tr("Full dense"),
-                            icon: "grid_on",
-                            value: "full_dense"
-                        },
-                        {
-                            displayName: Translation.tr("Minimal arc"),
-                            icon: "donut_large",
-                            value: "minimal_arc"
-                        },
-                        {
-                            displayName: Translation.tr("Dots"),
-                            icon: "more_horiz",
-                            value: "dots"
-                        },
-                        {
-                            displayName: Translation.tr("Numbers (3-6-9-12)"),
-                            icon: "format_list_numbered",
-                            value: "numbers"
-                        },
-                        {
-                            displayName: Translation.tr("Full ticks"),
-                            icon: "graphic_eq",
-                            value: "full"
-                        },
-                        {
-                            displayName: Translation.tr("Material Shapes"),
-                            icon: "category",
-                            value: "shapes"
-                        },
-                        {
-                            displayName: Translation.tr("None"),
-                            icon: "visibility_off",
-                            value: "none"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Dial style")
+                buttonIcon: "timelapse"
+                currentValue: Config.options.background.widgets.concentric_clock.dialStyle ?? "concentric"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.dialStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Concentric"),
+                        icon: "timelapse",
+                        value: "concentric"
+                    },
+                    {
+                        displayName: Translation.tr("Outer only"),
+                        icon: "panorama_fish_eye",
+                        value: "outer_only"
+                    },
+                    {
+                        displayName: Translation.tr("Inner only"),
+                        icon: "adjust",
+                        value: "inner_only"
+                    },
+                    {
+                        displayName: Translation.tr("Pixel Watch 3 dial"),
+                        icon: "watch",
+                        value: "full_pixel3"
+                    },
+                    {
+                        displayName: Translation.tr("Full dense"),
+                        icon: "grid_on",
+                        value: "full_dense"
+                    },
+                    {
+                        displayName: Translation.tr("Minimal arc"),
+                        icon: "donut_large",
+                        value: "minimal_arc"
+                    },
+                    {
+                        displayName: Translation.tr("Dots"),
+                        icon: "more_horiz",
+                        value: "dots"
+                    },
+                    {
+                        displayName: Translation.tr("Numbers (3-6-9-12)"),
+                        icon: "format_list_numbered",
+                        value: "numbers"
+                    },
+                    {
+                        displayName: Translation.tr("Full ticks"),
+                        icon: "graphic_eq",
+                        value: "full"
+                    },
+                    {
+                        displayName: Translation.tr("Material Shapes"),
+                        icon: "category",
+                        value: "shapes"
+                    },
+                    {
+                        displayName: Translation.tr("None"),
+                        icon: "visibility_off",
+                        value: "none"
+                    }
+                ]
             }
 
             // ── Frame Style ──
-            ContentSubsection {
-                title: Translation.tr("Frame style")
-                icon: "panorama_fish_eye"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.frameStyle ?? "none"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.frameStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("None"),
-                            icon: "do_not_disturb",
-                            value: "none"
-                        },
-                        {
-                            displayName: Translation.tr("Thin ring"),
-                            icon: "radio_button_unchecked",
-                            value: "ring_thin"
-                        },
-                        {
-                            displayName: Translation.tr("Thick ring"),
-                            icon: "circle",
-                            value: "ring_thick"
-                        },
-                        {
-                            displayName: Translation.tr("Dot ring"),
-                            icon: "more_horiz",
-                            value: "dot_ring"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Frame style")
+                buttonIcon: "panorama_fish_eye"
+                currentValue: Config.options.background.widgets.concentric_clock.frameStyle ?? "none"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.frameStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("None"),
+                        icon: "do_not_disturb",
+                        value: "none"
+                    },
+                    {
+                        displayName: Translation.tr("Thin ring"),
+                        icon: "radio_button_unchecked",
+                        value: "ring_thin"
+                    },
+                    {
+                        displayName: Translation.tr("Thick ring"),
+                        icon: "circle",
+                        value: "ring_thick"
+                    },
+                    {
+                        displayName: Translation.tr("Dot ring"),
+                        icon: "more_horiz",
+                        value: "dot_ring"
+                    }
+                ]
             }
 
             ConfigSwitch {
@@ -197,114 +183,102 @@ ContentPage {
                 text: Translation.tr("Analog hands & marks")
             }
 
-            ContentSubsection {
-                title: Translation.tr("Hour hand style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.hourHandStyle ?? "hide"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.hourHandStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Fill"),
-                            icon: "crop_square",
-                            value: "fill"
-                        },
-                        {
-                            displayName: Translation.tr("Hollow"),
-                            icon: "crop_square",
-                            value: "hollow"
-                        },
-                        {
-                            displayName: Translation.tr("Classic"),
-                            icon: "format_list_bulleted",
-                            value: "classic"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "visibility_off",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Hour hand style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.concentric_clock.hourHandStyle ?? "hide"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.hourHandStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Fill"),
+                        icon: "crop_square",
+                        value: "fill"
+                    },
+                    {
+                        displayName: Translation.tr("Hollow"),
+                        icon: "crop_square",
+                        value: "hollow"
+                    },
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "format_list_bulleted",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "visibility_off",
+                        value: "hide"
+                    }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Minute hand style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.minuteHandStyle ?? "hide"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.minuteHandStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Thin"),
-                            icon: "horizontal_rule",
-                            value: "thin"
-                        },
-                        {
-                            displayName: Translation.tr("Medium"),
-                            icon: "remove",
-                            value: "medium"
-                        },
-                        {
-                            displayName: Translation.tr("Bold"),
-                            icon: "add",
-                            value: "bold"
-                        },
-                        {
-                            displayName: Translation.tr("Classic"),
-                            icon: "format_list_bulleted",
-                            value: "classic"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "visibility_off",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Minute hand style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.concentric_clock.minuteHandStyle ?? "hide"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.minuteHandStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Thin"),
+                        icon: "horizontal_rule",
+                        value: "thin"
+                    },
+                    {
+                        displayName: Translation.tr("Medium"),
+                        icon: "remove",
+                        value: "medium"
+                    },
+                    {
+                        displayName: Translation.tr("Bold"),
+                        icon: "add",
+                        value: "bold"
+                    },
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "format_list_bulleted",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "visibility_off",
+                        value: "hide"
+                    }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Second hand style")
-                icon: "timer"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.secondHandStyle ?? "hide"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.secondHandStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Dot"),
-                            icon: "fiber_manual_record",
-                            value: "dot"
-                        },
-                        {
-                            displayName: Translation.tr("Line"),
-                            icon: "horizontal_rule",
-                            value: "line"
-                        },
-                        {
-                            displayName: Translation.tr("Classic"),
-                            icon: "format_list_bulleted",
-                            value: "classic"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "visibility_off",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Second hand style")
+                buttonIcon: "timer"
+                currentValue: Config.options.background.widgets.concentric_clock.secondHandStyle ?? "hide"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.secondHandStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Dot"),
+                        icon: "fiber_manual_record",
+                        value: "dot"
+                    },
+                    {
+                        displayName: Translation.tr("Line"),
+                        icon: "horizontal_rule",
+                        value: "line"
+                    },
+                    {
+                        displayName: Translation.tr("Classic"),
+                        icon: "format_list_bulleted",
+                        value: "classic"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "visibility_off",
+                        value: "hide"
+                    }
+                ]
             }
 
             ConfigSwitch {
@@ -325,39 +299,35 @@ ContentPage {
                 text: Translation.tr("Minute pill complication")
             }
 
-            ContentSubsection {
-                title: Translation.tr("Minute pill style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.minuteStyle ?? "pill_horizontal"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.minuteStyle = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Horizontal"),
-                            icon: "crop_7_5",
-                            value: "pill_horizontal"
-                        },
-                        {
-                            displayName: Translation.tr("Round"),
-                            icon: "circle",
-                            value: "pill_round"
-                        },
-                        {
-                            displayName: Translation.tr("Text only"),
-                            icon: "title",
-                            value: "text_only"
-                        },
-                        {
-                            displayName: Translation.tr("Hide"),
-                            icon: "visibility_off",
-                            value: "hide"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Minute pill style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.concentric_clock.minuteStyle ?? "pill_horizontal"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.minuteStyle = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Horizontal"),
+                        icon: "crop_7_5",
+                        value: "pill_horizontal"
+                    },
+                    {
+                        displayName: Translation.tr("Round"),
+                        icon: "circle",
+                        value: "pill_round"
+                    },
+                    {
+                        displayName: Translation.tr("Text only"),
+                        icon: "title",
+                        value: "text_only"
+                    },
+                    {
+                        displayName: Translation.tr("Hide"),
+                        icon: "visibility_off",
+                        value: "hide"
+                    }
+                ]
             }
 
             ConfigSwitch {
@@ -405,34 +375,30 @@ ContentPage {
                 }
             }
 
-            ContentSubsection {
-                title: Translation.tr("Bottom complication")
-                icon: "widgets"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.concentric_clock.bottomSubDialContent ?? "battery"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.concentric_clock.bottomSubDialContent = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("Battery"),
-                            icon: "battery_full",
-                            value: "battery"
-                        },
-                        {
-                            displayName: Translation.tr("Weather"),
-                            icon: "device_thermostat",
-                            value: "weather_temp"
-                        },
-                        {
-                            displayName: Translation.tr("None"),
-                            icon: "visibility_off",
-                            value: "none"
-                        }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Bottom complication")
+                buttonIcon: "widgets"
+                currentValue: Config.options.background.widgets.concentric_clock.bottomSubDialContent ?? "battery"
+                onSelected: newValue => {
+                    Config.options.background.widgets.concentric_clock.bottomSubDialContent = newValue;
                 }
+                options: [
+                    {
+                        displayName: Translation.tr("Battery"),
+                        icon: "battery_full",
+                        value: "battery"
+                    },
+                    {
+                        displayName: Translation.tr("Weather"),
+                        icon: "device_thermostat",
+                        value: "weather_temp"
+                    },
+                    {
+                        displayName: Translation.tr("None"),
+                        icon: "visibility_off",
+                        value: "none"
+                    }
+                ]
             }
 
             Item {

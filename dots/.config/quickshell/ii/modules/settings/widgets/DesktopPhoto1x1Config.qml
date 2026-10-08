@@ -8,7 +8,7 @@ import qs.modules.common.utils
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Photo 1x1 widget options")
 
@@ -37,46 +37,36 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("photo_1x1")
 
-            // ── Photo Selection ──────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Photo file") }
+            // One card: the file in use as the summary, its two actions under it.
+            ConfigLabeledRow {
+                buttonIcon: "image"
+                text: Translation.tr("Photo")
+                summary: (Config.options.background.widgets.photo_1x1.imagePath ?? "") || Translation.tr("No photo chosen")
 
-            RippleButtonWithIcon {
-                Layout.fillWidth: true
-                materialIcon: "folder_open"
-                mainText: Translation.tr("Choose image")
-                onClicked: {
-                    pickImageProc.pick();
-                }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                visible: Config.options.background.widgets.photo_1x1.imagePath && Config.options.background.widgets.photo_1x1.imagePath !== ""
-                text: Translation.tr("Current image: %1").arg(Config.options.background.widgets.photo_1x1.imagePath ?? "")
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
-                wrapMode: Text.Wrap
-            }
-
-            RippleButtonWithIcon {
-                Layout.fillWidth: true
-                visible: Config.options.background.widgets.photo_1x1.imagePath && Config.options.background.widgets.photo_1x1.imagePath !== ""
-                materialIcon: "delete"
-                mainText: Translation.tr("Remove custom image")
-                onClicked: {
-                    Config.options.background.widgets.photo_1x1.imagePath = "";
+                RowLayout {
+                    spacing: 4
+                    RippleButtonWithIcon {
+                        materialIcon: "folder_open"
+                        mainText: Translation.tr("Choose image")
+                        onClicked: pickImageProc.pick()
+                    }
+                    RippleButtonWithIcon {
+                        visible: (Config.options.background.widgets.photo_1x1.imagePath ?? "").length > 0
+                        materialIcon: "delete"
+                        mainText: Translation.tr("Remove custom image")
+                        onClicked: Config.options.background.widgets.photo_1x1.imagePath = ""
+                    }
                 }
             }
 
             // ── Material Shape Selection ─────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Material Shape") }
-
-            ConfigSelectionArray {
+            ConfigSelectionRow {
+                buttonIcon: "interests"
+                text: Translation.tr("Shape")
                 currentValue: Config.options.background.widgets.photo_1x1.backgroundShape ?? "Cookie9Sided"
                 onSelected: value => Config.options.background.widgets.photo_1x1.backgroundShape = value
                 options: ([
@@ -95,12 +85,10 @@ ContentPage {
                 })
             }
 
-            // ── Size ─────────────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Size") }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text:  Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.photo_1x1.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.photo_1x1.widgetSize = value

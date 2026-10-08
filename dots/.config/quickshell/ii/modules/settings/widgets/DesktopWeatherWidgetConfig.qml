@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     // One page for two registry entries — Default Weather and Expressive
     // Weather both point here, so it names both rather than a single widget.
@@ -30,30 +30,25 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 12
             visible: Config.isWidgetActive("weather_default") || Config.isWidgetActive("weather_expressive")
 
-            ContentSubsection {
-                Layout.fillWidth: true
+            ConfigSelectionRow {
+                text: Translation.tr("Background shape")
+                buttonIcon: "category"
                 visible: Config.isWidgetActive("weather_expressive")
-                title: Translation.tr("Background shape")
-                icon: "category"
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.weather.backgroundShape
-                    onSelected: newValue => {
-                        Config.options.background.widgets.weather.backgroundShape = newValue;
-                    }
-                    options: ["Circle", "Pill", "Oval", "SemiCircle", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Puffy", "PuffyDiamond", "Bun", "SoftBurst", "Sunny", "VerySunny"].map(shape => {
-                        return {
-                            displayName: "",
-                            shape: shape,
-                            value: shape
-                        };
-                    })
+                currentValue: Config.options.background.widgets.weather.backgroundShape
+                onSelected: newValue => {
+                    Config.options.background.widgets.weather.backgroundShape = newValue;
                 }
+                options: ["Circle", "Pill", "Oval", "SemiCircle", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Puffy", "PuffyDiamond", "Bun", "SoftBurst", "Sunny", "VerySunny"].map(shape => {
+                    return {
+                        displayName: "",
+                        shape: shape,
+                        value: shape
+                    };
+                })
             }
 
             // Only the Expressive style has a shape to pick, so with just the
