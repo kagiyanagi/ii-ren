@@ -30,14 +30,13 @@ ClippingRectangle {
 
     readonly property string path: FileUtils.trimFileProtocol(Config.options.background.wallpaperPath ?? "")
     readonly property bool isVideo: Wallpapers.isVideoFile(root.path.toLowerCase())
-    // A video is mpvpaper's to fit, so it is shown as the desktop shows it -
-    // its thumbnail, at the defaults - and cannot be framed.
-    readonly property bool usable: root.path.length > 0 && !root.isVideo
+    // A video is framed on its thumbnail, its first frame at full size.
+    readonly property bool usable: root.path.length > 0
     readonly property string shownPath: root.isVideo
         ? FileUtils.trimFileProtocol(Config.options.background.thumbnailPath ?? "") : root.path
     readonly property var framing: Framing.entry(root.usable ? Persistent.states.wallpaperFraming : null, root.path)
     // Drawn only where the desktop draws it too.
-    readonly property bool showSubject: root.framing.subject !== null && WallpaperSubject.ready
+    readonly property bool showSubject: root.framing.subject !== null && WallpaperSubject.custom && WallpaperSubject.ready
     readonly property bool editingSubject: root.target === "subject" && root.showSubject
     readonly property int subjectStatus: subjectImage.status
     readonly property bool canReset: root.usable && (root.editingSubject

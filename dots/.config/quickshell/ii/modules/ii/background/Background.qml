@@ -61,6 +61,8 @@ Variants {
         // Subject depth on a video means we play it here, packed with its matte,
         // instead of letting mpvpaper have it.
         readonly property bool depthVideo: WallpaperSubject.packedVideo.length > 0
+        // So does a framed one: mpvpaper always fills the screen.
+        readonly property bool framedVideo: !Framing.isDefault(Object.assign({}, bgRoot.framing, { subject: null }))
 
         // mpvpaper draws a video wallpaper on its own layer under this one. Once this
         // window plays the video itself (effects, weather, subject depth) it covers
@@ -73,7 +75,7 @@ Variants {
         // Decided only while unlocked: the lock's blur plays the video too, and comes
         // and goes with every lock.
         readonly property bool ownsVideo: bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered
-            && (bgRoot.depthVideo || wallpaperEffects.takesOver || weatherEffects.takesOver)
+            && (bgRoot.depthVideo || bgRoot.framedVideo || wallpaperEffects.takesOver || weatherEffects.takesOver)
         readonly property bool shellPlaysVideo: videoLoader.item?.playing ?? false
         readonly property bool videoHandoverSettled: bgRoot.wallpaperIsVideo && !GlobalStates.screenLocked && !blurLoader.active
         property bool mpvpaperDown: false
@@ -186,9 +188,9 @@ Variants {
         property real movableXSpace: ((wallpaperWidth / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.width) / 2
         property real movableYSpace: ((wallpaperHeight / wallpaperToScreenRatio * effectiveWallpaperScale) - screen.height) / 2
         // How this wallpaper fits, zooms and pans, framed from its preview on the
-        // Background settings page. Images only: a video is mpvpaper's to draw,
-        // and mpvpaper fits it its own way.
-        readonly property var framing: Framing.entry(bgRoot.wallpaperIsVideo ? null : Persistent.states.wallpaperFraming,
+        // Background settings page. A framed video is played here rather than by
+        // mpvpaper (framedVideo above), framed off its thumbnail's size.
+        readonly property var framing: Framing.entry(Persistent.states.wallpaperFraming,
             CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath))
         readonly property var framedRect: Framing.rect(bgRoot.framing, bgRoot.wallpaperWidth, bgRoot.wallpaperHeight,
             screen.width, screen.height, bgRoot.effectiveWallpaperScale)
@@ -562,7 +564,7 @@ Variants {
                 // picture is still growing into it.
                 Rectangle {
                     anchors.fill: parent
-                    visible: !bgRoot.wallpaperIsVideo && !bgRoot.wallpaperSafetyTriggered
+                    visible: !bgRoot.wallpaperSafetyTriggered
                         && !Framing.covers(Qt.rect(wallpaper.x, wallpaper.y, wallpaper.width, wallpaper.height),
                             bgRoot.screen.width, bgRoot.screen.height)
                     color: Appearance.colors.colLayer0Base
@@ -684,7 +686,7 @@ Variants {
                         // player reports Playing a few frames before it has a picture.
                         readonly property bool playing: videoPlayer.playbackState === MediaPlayer.PlayingState && videoPlayer.hasVideo && vidOutput.hasFrame
                         property bool hasFrame: false
-                        fillMode: VideoOutput.PreserveAspectCrop
+                        fillMode: bgRoot.framing.mode === "stretch" ? VideoOutput.Stretch : VideoOutput.PreserveAspectCrop
 
                         Connections {
                             target: vidOutput.videoSink ?? null
@@ -704,7 +706,7 @@ Variants {
                                 // downstream - effects, lock blur - sees a wallpaper.
                                 if (bgRoot.depthVideo)
                                     return WallpaperSubject.packedVideo;
-                                if (bgRoot.wallpaperIsVideo && (wallpaperEffects.takesOver || weatherEffects.takesOver || blurLoader.active || bgRoot.mpvpaperDown))
+                                if (bgRoot.wallpaperIsVideo && (bgRoot.ownsVideo || blurLoader.active || bgRoot.mpvpaperDown))
                                     return "file://" + CF.FileUtils.trimFileProtocol(Config.options.background.wallpaperPath);
                                 return "";
                             }

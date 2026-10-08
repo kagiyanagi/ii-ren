@@ -228,7 +228,7 @@ ContentPage {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: Appearance.colors.colSubtext
-            text: Translation.tr("A video wallpaper is drawn by mpvpaper, which always fills the screen with it. This applies to image wallpapers.")
+            text: Translation.tr("Framing a video has the shell play it in place of mpvpaper.")
         }
 
         WallpaperFramePreview {
@@ -659,7 +659,8 @@ ContentPage {
 
                     // A cutout made elsewhere - a phone's lift-subject, an editor -
                     // in place of the model's, or with no model installed at all.
-                    // Still images only, like the rest of framing.
+                    // Still images only: a video's subject moves, so only the
+                    // model's frame-by-frame matte can follow it.
                     RippleButtonWithIcon {
                         visible: !WallpaperSubject.custom && WallpaperSubject.wallpaperUsable && !WallpaperSubject.wallpaperIsVideo
                         materialIcon: "add_photo_alternate"
