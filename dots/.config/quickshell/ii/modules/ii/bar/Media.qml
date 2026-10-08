@@ -5,10 +5,12 @@ import qs
 import qs.modules.common.functions
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import Quickshell.Services.Mpris
 import Quickshell.Hyprland
 import Quickshell.Widgets
 import qs.modules.common.utils
+import QtQuick.Effects
 
 Item {
     id: root
@@ -32,7 +34,8 @@ Item {
 
     property int textMetricsSpacing: artworkEnabled ? 70 : 50 // text metrics returns width without spacing
     property int textMetricsAdvance: Math.min(textMetrics.advanceWidth + textMetricsSpacing, Config.options.bar.mediaPlayer.maxSize)
-    implicitWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
+    readonly property int classicWidth: LyricsService.hasSyncedLines && root.lyricsEnabled ? lyricsCustomSize : useFixedSize ? customSize : textMetricsAdvance
+    implicitWidth: root.material ? (materialPill.item?.implicitWidth ?? 0) : classicWidth
     implicitHeight: Appearance.sizes.barHeight
 
     // The bar slot's width is size, not a tint: the resize spec, not the
@@ -68,9 +71,19 @@ Item {
 
     readonly property string artSource: MprisController.artUrlFor(activePlayer)
 
+    // Material style (bar.barGroupStyle 3): the dock's media card as a bar pill
+    // (DockMediaWidget) -- blurred art under the bar's own layer, title over
+    // artist, play/pause on a primary pill and next beside it. Theme colours,
+    // not the dock's art-derived scheme: bright art turned that scheme's text
+    // and fill the same light tint.
+    readonly property bool material: Config.options.bar.barGroupStyle === 3
+    readonly property bool isPlaying: activePlayer?.isPlaying ?? false
+    // As the dock: title and artist until the first lyric plays, then the lyric alone.
+    readonly property bool lyricsMode: lyricsEnabled && LyricsService.hasSyncedLines && LyricsService.currentIndex >= 0
+
     Item {
         id: artworkItem
-        visible: artworkEnabled
+        visible: artworkEnabled && !root.material
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         width: artworkEnabled ? artworkBoxSize : 0
@@ -106,7 +119,9 @@ Item {
     }
 
     MouseArea {
+        id: mouseArea
         anchors.fill: parent
+        hoverEnabled: true
         acceptedButtons: Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton | Qt.RightButton | Qt.LeftButton
         cursorShape: Qt.PointingHandCursor
         onPressed: (event) => {
@@ -125,6 +140,7 @@ Item {
 
     Item {
         id: mediaCircProgSlot
+        visible: !root.material
         width: root.progressButtonSize
         height: root.progressButtonSize
         anchors.verticalCenter: parent.verticalCenter
@@ -162,7 +178,7 @@ Item {
     }
 
     StyledText {
-        visible: (!LyricsService.hasSyncedLines || !lyricsEnabled)
+        visible: (!LyricsService.hasSyncedLines || !lyricsEnabled) && !root.material
         anchors {
             horizontalCenter: parent.horizontalCenter
             horizontalCenterOffset: artworkEnabled ? 0 : mediaCircProgSlot.width / 2
@@ -178,7 +194,7 @@ Item {
 
     Loader {
         id: lyricsItemLoader 
-        active: lyricsEnabled
+        active: lyricsEnabled && !root.material
 
         width: artworkEnabled ? parent.width - (artworkItem.width + mediaCircProg.implicitSize * 2) : parent.width - mediaCircProg.implicitSize * 2
         height: parent.height
@@ -221,5 +237,137 @@ Item {
                 }
             }
         }   
+    }
+
+    Loader {
+        id: materialPill
+        active: root.material
+        anchors.centerIn: parent
+        sourceComponent: ClippingRectangle {
+            id: pill
+            readonly property string art: CoverArt.source(root.artSource)
+            readonly property int maxWidth: root.useFixedSize ? root.customSize
+                : root.lyricsMode ? root.lyricsCustomSize : Config.options.bar.mediaPlayer.maxSize
+
+            implicitHeight: Appearance.sizes.baseBarHeight - 8
+            // Fixed under lyrics, or every new line would resize the pill.
+            implicitWidth: root.useFixedSize || root.lyricsMode ? maxWidth : Math.min(pillRow.implicitWidth + 12 + 4, maxWidth)
+            radius: Appearance.rounding.full
+            color: Appearance.colors.colLayer2
+
+            // The pill's one effect. Overscanned so the blur has pixels to
+            // pull from at the edges; the ClippingRectangle trims it.
+            Image {
+                anchors.fill: parent
+                anchors.margins: -pill.height * 0.4
+                visible: pill.art.length > 0
+                source: pill.art
+                fillMode: Image.PreserveAspectCrop
+                cache: false
+                asynchronous: true
+                sourceSize.width: pill.maxWidth
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    blurEnabled: true
+                    blurMax: 32
+                    blur: 1
+                    saturation: 0.6
+                }
+            }
+            Rectangle {
+                anchors.fill: parent
+                visible: pill.art.length > 0
+                color: ColorUtils.transparentize(Appearance.colors.colLayer0, 0.45)
+            }
+
+            StateOverlay {
+                anchors.fill: parent
+                radius: pill.radius
+                contentColor: Appearance.colors.colOnLayer0
+                hover: mouseArea.containsMouse
+                press: mouseArea.pressed
+            }
+
+            RowLayout {
+                id: pillRow
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 4
+                spacing: 8
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: -2
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: root.lyricsMode ? (LyricsService.syncedLines[LyricsService.currentIndex]?.text ?? "") : root.cleanedTitle
+                        animateChange: root.lyricsEnabled
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colOnLayer0
+                        elide: Text.ElideRight
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: !root.lyricsMode && text.length > 0
+                        text: root.activePlayer?.trackArtist ?? ""
+                        font.pixelSize: Appearance.font.pixelSize.smaller
+                        color: Appearance.colors.colSubtext
+                        elide: Text.ElideRight
+                    }
+                }
+
+                // The accent: BarMaterialPill's 4 in from the end, a pill while
+                // playing, a circle while paused, as the dock's button morphs.
+                RippleButton {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitHeight: pill.height - 8
+                    implicitWidth: root.isPlaying ? implicitHeight + 16 : implicitHeight
+                    buttonRadius: Appearance.rounding.full
+                    colBackground: Appearance.colors.colPrimary
+                    colBackgroundHover: Appearance.colors.colPrimaryHover
+                    colRipple: Appearance.colors.colPrimaryActive
+                    colStateLayer: Appearance.colors.colOnPrimary
+                    downAction: () => root.activePlayer?.togglePlaying()
+                    Behavior on implicitWidth {
+                        animation: Appearance.animation.elementMoveSmall.numberAnimation.createObject(this)
+                    }
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        text: root.isPlaying ? "pause" : "play_arrow"
+                        iconSize: Appearance.font.pixelSize.large
+                        fill: 1
+                        color: Appearance.colors.colOnPrimary
+                    }
+                    PopupToolTip {
+                        text: root.isPlaying ? Translation.tr("Pause") : Translation.tr("Play")
+                    }
+                }
+
+                RippleButton {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitHeight: pill.height - 8
+                    implicitWidth: implicitHeight
+                    buttonRadius: Appearance.rounding.full
+                    colBackgroundHover: Appearance.colors.colLayer0Hover
+                    colRipple: Appearance.colors.colLayer0Active
+                    colStateLayer: Appearance.colors.colOnLayer0
+                    downAction: () => root.activePlayer?.next()
+                    contentItem: MaterialSymbol {
+                        anchors.centerIn: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "skip_next"
+                        iconSize: Appearance.font.pixelSize.large
+                        fill: 1
+                        color: Appearance.colors.colOnLayer0
+                    }
+                    PopupToolTip {
+                        text: Translation.tr("Next")
+                    }
+                }
+            }
+        }
     }
 }

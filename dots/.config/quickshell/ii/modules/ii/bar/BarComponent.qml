@@ -118,10 +118,10 @@ Item {
     readonly property bool isSpacer: modelData?.id === "sacebar" || modelData?.id === "spacebar"
 
     // Material (3): every widget its own pill, none joining corners, and the
-    // clock, weather and battery draw theirs (BarMaterialPill) over a bare group.
+    // clock, weather, battery and media draw theirs (BarMaterialPill) over a bare group.
     readonly property bool material: Config.options.bar.barGroupStyle === 3
     readonly property bool drawsOwnPill: material && !rootItem.vertical
-        && ["clock", "weather", "battery"].includes(modelData?.id)
+        && ["clock", "weather", "battery", "music_player"].includes(modelData?.id)
     // And no inset where the widget is one control with its own hover film, so
     // the film fills the pill rather than sitting 4 inside it.
     readonly property bool fillsPill: drawsOwnPill || (material && !rootItem.vertical
