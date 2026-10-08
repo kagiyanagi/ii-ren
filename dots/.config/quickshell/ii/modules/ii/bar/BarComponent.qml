@@ -168,14 +168,9 @@ Item {
         }
     }
 
-    readonly property int barGroupStyle: Config.options.bar.barGroupStyle
-    readonly property int barBackgroundStyle: Config.options.bar.barBackgroundStyle
-    property color colBackground: (isSpacer || drawsOwnPill) ? "transparent" :
-                                   // Layer 2, not 1: surfaceContainerLow sits one tone above the bar
-                                   // and the pills all but vanish on a dark scheme.
-                                   (barGroupStyle == 0 || barGroupStyle == 3 || (barGroupStyle == 1 && barBackgroundStyle == 1)) ? Appearance.colors.colLayer2 :
-                                   (barGroupStyle == 1) ? Appearance.m3colors.m3surfaceContainerLow :
-                                   "transparent";
+    // Layer 2, not 1: surfaceContainerLow sits one tone above the bar and the
+    // pills all but vanish on a dark scheme.
+    property color colBackground: (material && !isSpacer && !drawsOwnPill) ? Appearance.colors.colLayer2 : "transparent"
     
     property color colBackgroundHighlight: rootItem.customHighlightColor ?? Appearance.colors.colPrimary
 

@@ -8,17 +8,13 @@ import QtQuick.Layouts
 Item {
     id: root
     readonly property bool showDate: (Config.options.bar.clock.showDate ?? true) && Config.options.bar.verbose
+    // Show seconds applies to a picked format too, not only the General one.
     readonly property string timeFormat: {
-        if (Config.options.bar.clock.timeFormat && Config.options.bar.clock.timeFormat.trim().length > 0) {
-            return Config.options.bar.clock.timeFormat;
-        }
-        let base = Config.options?.time?.format ?? "hh:mm";
-        if (Config.options.bar.clock.showSeconds && !base.includes("s")) {
-            if (base.includes("ap")) return base.replace("ap", ":ss ap");
-            if (base.includes("AP")) return base.replace("AP", ":ss AP");
-            return base + ":ss";
-        }
-        return base;
+        const custom = Config.options.bar.clock.timeFormat?.trim();
+        const base = custom || (Config.options?.time?.format ?? "hh:mm");
+        if (!Config.options.bar.clock.showSeconds || base.includes("s"))
+            return base;
+        return base.includes("mm") ? base.replace("mm", "mm:ss") : base + ":ss";
     }
     readonly property string dateFormat: (Config.options.bar.clock.dateFormat && Config.options.bar.clock.dateFormat.trim().length > 0)
         ? Config.options.bar.clock.dateFormat

@@ -218,22 +218,13 @@ ContentPage {
         ConfigSelectionRow {
             buttonIcon: "category"
             text: Translation.tr("Group style")
-            summary: Translation.tr("Island makes groups opaque on a transparent bar. Material gives the clock, weather and battery pills of their own")
-            currentValue: Config.options.bar.barGroupStyle
+            summary: Translation.tr("Material gives the clock, weather and battery pills of their own")
+            // The retired Pills (0) and Island (1) draw as Transparent now.
+            currentValue: Config.options.bar.barGroupStyle === 3 ? 3 : 2
             onSelected: newValue => {
                 Config.options.bar.barGroupStyle = newValue;
             }
             options: [
-                {
-                    displayName: Translation.tr("Pills"),
-                    icon: "location_chip",
-                    value: 0
-                },
-                {
-                    displayName: Translation.tr("Island"),
-                    icon: "shadow",
-                    value: 1
-                },
                 {
                     displayName: Translation.tr("Transparent"),
                     icon: "opacity",
