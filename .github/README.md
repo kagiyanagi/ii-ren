@@ -11,7 +11,7 @@ Fast, pretty, and lightweight enough that your fans won't spool up just looking 
 
 ## what's in it (besides vynx & p3)
 
-<!-- hero.gif: live weather on the wallpaper, then a window opening on the springs -->
+<p align="center"><img src="assets/screenshots/showcase.gif" width="80%"></p>
 
 **✦ motion** · Hyprland windows on Android 16's motion springs · compose state layers and ripples · stretch overscroll on every list · AOSP icons
 
