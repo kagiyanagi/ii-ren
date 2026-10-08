@@ -10,7 +10,10 @@ Item {
 
     required property string imageSource
 
-    property string transitionType: Config.options.background.transitionType ?? "radial"
+    // "random" rolls a new style on every wallpaper change, in fadeTo().
+    readonly property string configuredType: Config.options.background.transitionType ?? "radial"
+    property string randomType: "radial"
+    property string transitionType: configuredType === "random" ? randomType : configuredType
 
     // design-ok: full-screen wallpaper crossing, screen-sized per DESIGN.md 2.4 --
     // no Appearance spec covers this scale, so it is a config knob instead of a
@@ -49,7 +52,11 @@ Item {
 
         if (root.animated && ready && root.width > 0 && root.height > 0 && hasWallpaper) {
             cleanupTransition()
-            
+            if (configuredType === "random") {
+                const types = ["radial", "crossfade", "wipe", "diamond", "slash", "outer", "wave"]
+                randomType = types[Math.floor(Math.random() * types.length)]
+            }
+
             // Flip AT THE START so frontImg is ALWAYS the new image with z=1
             root.imgAIsBack = !root.imgAIsBack
             

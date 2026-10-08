@@ -141,6 +141,11 @@ ContentPage {
                             displayName: Translation.tr("Wave wipe"),
                             icon: "water",
                             value: "wave"
+                        },
+                        {
+                            displayName: Translation.tr("Random"),
+                            icon: "shuffle",
+                            value: "random"
                         }
                     ]
                     currentIndex: {

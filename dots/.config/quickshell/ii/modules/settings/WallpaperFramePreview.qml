@@ -442,7 +442,9 @@ ClippingRectangle {
         StyledSlider {
             id: zoomSlider
             Layout.preferredWidth: root.width / 5
-            Layout.alignment: Qt.AlignVCenter
+            // Its 33px handle plus the style's padding is 45px, taller than the
+            // toolbar's 40px row: unfilled, it pushed the row 2.5px off center.
+            Layout.fillHeight: true
             configuration: StyledSlider.Configuration.XS
             from: root.editingSubject ? Framing.MIN_SUBJECT_ZOOM * 100 : 100
             to: Framing.MAX_ZOOM * 100
