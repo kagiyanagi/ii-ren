@@ -486,89 +486,6 @@ Variants {
                 wallpaperDrop.pendingPath = "";
                 wallpaperDrop.pendingShelfCount = 0;
             }
-
-            Rectangle {
-                id: dropHint
-                anchors.centerIn: parent
-                implicitWidth: dropHintRow.implicitWidth + 40
-                implicitHeight: dropHintRow.implicitHeight + 28
-                radius: Appearance.rounding.large
-                color: Appearance.colors.colLayer1
-                border.width: 2
-                border.color: Appearance.colors.colPrimary
-
-                readonly property bool shown: wallpaperDrop.containsDrag
-                    && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)
-
-                visible: opacity > 0
-                property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
-                opacity: {
-                    dropHint.opacitySpec = dropHint.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
-                    return dropHint.shown ? 1 : 0;
-                }
-                // Grows from its own centre, and that origin is deliberate: the card
-                // is pinned to the middle of the screen while the drag it answers can
-                // be anywhere, so there is no corner for it to come out of.
-                property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
-                scale: {
-                    dropHint.scaleSpec = dropHint.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
-                    return dropHint.shown ? 1 : 0.9;
-                }
-
-                // The one surface in this file that arrives and leaves, so both
-                // directions are spelled out: in on the default spatial curve with
-                // the opacity riding the effects curve, out on fast effects at about
-                // half the time - the drag has already left.
-                // The spec is picked inside the bindings above (DESIGN.md 2.9).
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: dropHint.opacitySpec.duration
-                        easing.type: dropHint.opacitySpec.type
-                        easing.bezierCurve: dropHint.opacitySpec.bezierCurve
-                    }
-                }
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: dropHint.scaleSpec.duration
-                        easing.type: dropHint.scaleSpec.type
-                        easing.bezierCurve: dropHint.scaleSpec.bezierCurve
-                    }
-                }
-
-                RowLayout {
-                    id: dropHintRow
-                    anchors.centerIn: parent
-                    spacing: 12
-
-                    MaterialSymbol {
-                        text: wallpaperDrop.pendingPath.length > 0 ? "wallpaper" : "stacks"
-                        iconSize: Appearance.font.pixelSize.huge
-                        color: Appearance.colors.colPrimary
-                    }
-
-                    ColumnLayout {
-                        spacing: 0
-
-                        StyledText {
-                            text: wallpaperDrop.pendingPath.length > 0
-                                ? Translation.tr("Set as wallpaper")
-                                : Translation.tr("Hold on the shelf")
-                            color: Appearance.colors.colOnLayer1
-                            font.weight: Font.DemiBold
-                        }
-
-                        StyledText {
-                            Layout.maximumWidth: 320
-                            text: wallpaperDrop.pendingPath.length > 0
-                                ? wallpaperDrop.pendingPath.split("/").pop()
-                                : Translation.tr("%1 files").arg(wallpaperDrop.pendingShelfCount)
-                            color: Appearance.colors.colSubtext
-                            font.pixelSize: Appearance.font.pixelSize.small
-                            elide: Text.ElideMiddle
-                        }
-                    }
-                }
-            }
         }
 
         Item {
@@ -1077,6 +994,101 @@ Variants {
             // Frozen on its last frame while windows hide the wallpaper: a full-screen
             // shader every frame for nobody. The lock screen's workspace has no windows.
             paused: HyprlandData.wallpaperCovered(bgRoot.modelData.name)
+        }
+
+        // The drop hint, last so it draws over the wallpaper and the weather.
+        // It used to be a child of wallpaperDrop, which sits under the opaque
+        // wallpaperItem on purpose - so the hint was painted and never seen.
+        // The scrim under it dims the desktop and flattens its contrast, the
+        // way a modal dims what is behind it; it rides the hint's own fade.
+        Rectangle {
+            anchors.fill: parent
+            color: Appearance.colors.colScrim
+            opacity: dropHint.opacity
+            visible: opacity > 0
+        }
+
+        Rectangle {
+            id: dropHint
+            anchors.centerIn: parent
+            implicitWidth: dropHintRow.implicitWidth + 40
+            implicitHeight: dropHintRow.implicitHeight + 28
+            radius: Appearance.rounding.large
+            color: Appearance.colors.colLayer1
+            border.width: 2
+            border.color: Appearance.colors.colPrimary
+
+            readonly property bool shown: wallpaperDrop.containsDrag
+                && (wallpaperDrop.pendingPath.length > 0 || wallpaperDrop.pendingShelfCount > 0)
+
+            visible: opacity > 0
+            property AnimSpec opacitySpec: Appearance.animation.elementMoveFast
+            opacity: {
+                dropHint.opacitySpec = dropHint.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+                return dropHint.shown ? 1 : 0;
+            }
+            // Grows from its own centre, and that origin is deliberate: the card
+            // is pinned to the middle of the screen while the drag it answers can
+            // be anywhere, so there is no corner for it to come out of.
+            property AnimSpec scaleSpec: Appearance.animation.elementMoveEnter
+            scale: {
+                dropHint.scaleSpec = dropHint.shown ? Appearance.animation.elementMoveEnter : Appearance.animation.elementMoveExit;
+                return dropHint.shown ? 1 : 0.9;
+            }
+
+            // The one surface in this file that arrives and leaves, so both
+            // directions are spelled out: in on the default spatial curve with
+            // the opacity riding the effects curve, out on fast effects at about
+            // half the time - the drag has already left.
+            // The spec is picked inside the bindings above (DESIGN.md 2.9).
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: dropHint.opacitySpec.duration
+                    easing.type: dropHint.opacitySpec.type
+                    easing.bezierCurve: dropHint.opacitySpec.bezierCurve
+                }
+            }
+            Behavior on scale {
+                NumberAnimation {
+                    duration: dropHint.scaleSpec.duration
+                    easing.type: dropHint.scaleSpec.type
+                    easing.bezierCurve: dropHint.scaleSpec.bezierCurve
+                }
+            }
+
+            RowLayout {
+                id: dropHintRow
+                anchors.centerIn: parent
+                spacing: 12
+
+                MaterialSymbol {
+                    text: wallpaperDrop.pendingPath.length > 0 ? "wallpaper" : "stacks"
+                    iconSize: Appearance.font.pixelSize.huge
+                    color: Appearance.colors.colPrimary
+                }
+
+                ColumnLayout {
+                    spacing: 0
+
+                    StyledText {
+                        text: wallpaperDrop.pendingPath.length > 0
+                            ? Translation.tr("Set as wallpaper")
+                            : Translation.tr("Hold on the shelf")
+                        color: Appearance.colors.colOnLayer1
+                        font.weight: Font.DemiBold
+                    }
+
+                    StyledText {
+                        Layout.maximumWidth: 320
+                        text: wallpaperDrop.pendingPath.length > 0
+                            ? wallpaperDrop.pendingPath.split("/").pop()
+                            : Translation.tr("%1 files").arg(wallpaperDrop.pendingShelfCount)
+                        color: Appearance.colors.colSubtext
+                        font.pixelSize: Appearance.font.pixelSize.small
+                        elide: Text.ElideMiddle
+                    }
+                }
+            }
         }
     }
 }
