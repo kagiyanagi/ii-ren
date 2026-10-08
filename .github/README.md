@@ -31,9 +31,11 @@ Fast, pretty, and lightweight enough that your fans won't spool up just looking 
 
 **✦ little things** · AOSP volume dialog · notification cooldown · Android copy card · snip preview · QR scan from search · offline screen translator with Mokuro · searchable cheatsheet with your own binds · Google Calendar via iCal · Markdown to-do · keep-awake duration dial · SDDM theme
 
-> I borrowed a lot of features and design ideas from [p3drovfx](https://github.com/P3DROVFX/ii-p3drovfx), like the Material panel and the desktop widgets. I also added plenty of my own: a better periodic table, weather in the cheatsheet, a redesigned countdown timer and recording chips, the policies and right sidebars, and more.
+I borrowed a lot of features and design ideas from [p3drovfx](https://github.com/P3DROVFX/ii-p3drovfx), like the Material panel and the desktop widgets. I also added plenty of my own: a better periodic table, weather in the cheatsheet, a redesigned countdown timer and recording chips, the policies and right sidebars, and more.
 
 ## install
+
+> Note: These are my personal dotfiles. I tend to break things often, so do not rely on them or expect stability. Feel free to report bugs or open pull requests. I will be maintaining these configs. With that in mind, let's begin.
 
 Needs Hyprland 0.56 or later (the config is Lua). The setup installs it, with every other dependency, on:
 
