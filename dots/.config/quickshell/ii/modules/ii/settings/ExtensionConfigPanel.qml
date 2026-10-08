@@ -42,20 +42,11 @@ ContentGroup {
             DelegateChoice {
                 roleValue: "bool"
                 ConfigSwitch {
-                    id: toggle
                     required property var modelData
                     buttonIcon: modelData.entry.icon ?? ""
                     text: modelData.entry.label ?? modelData.key
                     checked: root.valueOf(modelData.key, modelData.entry, false)
                     onCheckedChanged: root.write(modelData.key, modelData.entry, checked)
-                    // A click assigns `checked` and drops the binding; a reset
-                    // has to put the stored value back by hand.
-                    Connections {
-                        target: ExtensionManager
-                        function onExtensionConfigsChanged() {
-                            toggle.checked = root.valueOf(toggle.modelData.key, toggle.modelData.entry, false)
-                        }
-                    }
                 }
             }
 

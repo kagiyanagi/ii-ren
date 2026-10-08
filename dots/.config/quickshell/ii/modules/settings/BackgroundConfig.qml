@@ -287,8 +287,9 @@ ContentPage {
                 checked: shapeSection.opt.enable
                 onCheckedChanged: {
                     shapeSection.opt.enable = checked;
-                    // Subject depth wants the same pixels, and only on the
-                    // desktop does it have widgets to layer into.
+                    // Subject depth wants the same pixels. Turned off on the
+                    // desktop so nothing cuts a subject nobody sees; under a
+                    // lock shape, Background's depthActive just hides it.
                     if (checked && shapeSection.editingDesktop) {
                         Config.options.background.depth.desktop.enable = false;
                     }
@@ -711,8 +712,13 @@ ContentPage {
                         label: modelData.name
                         selected: fxSection.opt.filter === modelData.value
                         // Preview the filter alone, with the adjustments off.
+                        // Its own knobs come from the target being edited; left
+                        // out, they fell back to the desktop's on the lock tab.
                         filterPreset: ({
                             filter: modelData.value,
+                            posterizeLevels: fxSection.opt.posterizeLevels, pixelSize: fxSection.opt.pixelSize,
+                            sharpen: fxSection.opt.sharpen, chromatic: fxSection.opt.chromatic,
+                            radialBlur: fxSection.opt.radialBlur,
                             saturation: 100, dim: 0, vignette: 0, grain: 0
                         })
                         onClicked: {

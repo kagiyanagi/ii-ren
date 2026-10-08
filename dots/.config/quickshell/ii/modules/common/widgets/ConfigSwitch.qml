@@ -27,7 +27,11 @@ RippleButton {
     // False for a switch that mirrors a service: its onClicked asks the service,
     // and the `checked` binding, left intact, shows what really happened (TASTE 3.1).
     property bool toggles: true
-    onClicked: if (toggles) checked = !checked
+    // toggle(), not `checked = !checked`: a JS assignment drops the caller's
+    // `checked` binding, and a row whose binding retargets (the Background
+    // page's Desktop / Lock screen sections) then shows one target's state
+    // while its handler writes the other's.
+    onClicked: if (toggles) root.toggle()
 
     property color normalColor: ColorUtils.transparentize(Appearance?.colors.colLayer1Hover, 1) 
     property color highlightColor: Appearance.colors.colSecondaryContainer

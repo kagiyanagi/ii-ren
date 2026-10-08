@@ -165,10 +165,13 @@ Variants {
         // Desktop and lock screen decide independently whether the cutout
         // actually draws, same as the shape mask - the cutout itself is one
         // shared resource (WallpaperSubject.enabled), this is who gets to see it.
-        readonly property bool depthActive: GlobalStates.screenLocked
+        // The shape mask wins on whichever side it is on: the settings page
+        // greys depth out under it, but a lock shape of its own over a lock
+        // depth that mirrors the desktop left the subject floating unmasked.
+        readonly property bool depthActive: !wallpaperItem.shapeActive && (GlobalStates.screenLocked
             ? (Config.options.background.depth.lock.sync
                 ? Config.options.background.depth.desktop.enable : Config.options.background.depth.lock.enable)
-            : Config.options.background.depth.desktop.enable
+            : Config.options.background.depth.desktop.enable)
         property bool wallpaperSafetyTriggered: {
             const enabled = Config.options.workSafety.enable.wallpaper;
             const sensitiveWallpaper = (CF.StringUtils.stringListContainsSubstring(wallpaperPath.toLowerCase(), Config.options.workSafety.triggerCondition.fileKeywords));
