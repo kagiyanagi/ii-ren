@@ -88,16 +88,8 @@ ContentPage {
                 text: Translation.tr("Water reminder")
                 placeholderText: Translation.tr("e.g. Time to hydrate! 💧")
 
-                Component.onCompleted: {
-                    reminderTextField.textField.text = Config.options.background.widgets.water_reminder.reminderText || "";
-                }
-
-                Connections {
-                    target: reminderTextField.textField
-                    function onTextChanged() {
-                        Config.options.background.widgets.water_reminder.reminderText = reminderTextField.textField.text;
-                    }
-                }
+                inputText: Config.options.background.widgets.water_reminder.reminderText || ""
+                onInputTextChanged: Config.options.background.widgets.water_reminder.reminderText = inputText
             }
 
             RippleButtonWithIcon {

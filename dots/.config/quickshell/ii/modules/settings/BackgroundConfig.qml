@@ -635,10 +635,11 @@ ContentPage {
                 }
 
                 // The way back from a cancel, and the way to redo a cutout you
-                // are not happy with.
+                // are not happy with - one that found nothing included, since
+                // a better model or pipeline may well find something.
                 RippleButtonWithIcon {
                     visible: !WallpaperSubject.working && !WallpaperSubject.custom
-                        && (WallpaperSubject.declined || WallpaperSubject.hasSubject)
+                        && (WallpaperSubject.declined || WallpaperSubject.cutoutPath.length > 0)
                     materialIcon: "restart_alt"
                     mainText: Translation.tr("Rebake")
                     onClicked: WallpaperSubject.rebake()
