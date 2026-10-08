@@ -69,10 +69,13 @@ Scope {
     }
 
     // AOSP's `cmd statusbar charging-ripple`; settings previews a side with it.
+    // A preview restarts from the newly picked side rather than being dropped
+    // while the last one still plays.
     IpcHandler {
         target: "chargingRipple"
         function play(from: string): void {
-            root.play(from);
+            root.from = from;
+            rippleAnim.restart();
         }
     }
 
