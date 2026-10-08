@@ -10,10 +10,14 @@ Item { // Cava audio visualizer
     property int barCount: 14
     property real barThickness: 3
     property real barSpacing: 3
-    readonly property real maxLength: (vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.barHeight) * 0.55
+    // Material style: the bars ride a primary-container accent filling its
+    // BarMaterialPill, 4 in from the accent's top and bottom.
+    readonly property bool material: Config.options.bar.barGroupStyle === 3 && !root.vertical
+    readonly property real maxLength: root.material ? Appearance.sizes.baseBarHeight - 24
+        : (vertical ? Appearance.sizes.verticalBarWidth : Appearance.sizes.barHeight) * 0.55
     readonly property real span: barCount * (barThickness + barSpacing) - barSpacing
 
-    implicitWidth: vertical ? Appearance.sizes.verticalBarWidth : span
+    implicitWidth: vertical ? Appearance.sizes.verticalBarWidth : root.material ? (materialPill.item?.implicitWidth ?? 0) : span
     implicitHeight: vertical ? span : Appearance.sizes.barHeight
 
     function levelAt(i) { // loudest of this bar's slice of cava's points, 0..1
@@ -25,42 +29,62 @@ Item { // Cava audio visualizer
         return Math.min(Math.max.apply(null, points.slice(lo, hi)) / root.maxValue, 1);
     }
 
-    Grid { // fixed-size cells: audio drives paint, never layout
+    Loader {
+        active: !root.material
         anchors.centerIn: parent
-        rows: root.vertical ? root.barCount : 1
-        columns: root.vertical ? 1 : root.barCount
-        spacing: root.barSpacing
+        sourceComponent: bars
+    }
 
-        Repeater {
-            model: root.barCount
-            Item {
-                id: cell
-                required property int index
-                width: root.vertical ? root.maxLength : root.barThickness
-                height: root.vertical ? root.barThickness : root.maxLength
+    Loader {
+        id: materialPill
+        active: root.material
+        anchors.centerIn: parent
+        sourceComponent: BarMaterialPill {
+            Loader {
+                anchors.centerIn: parent
+                sourceComponent: bars
+            }
+        }
+    }
 
-                Rectangle {
-                    anchors.centerIn: parent
-                    readonly property real length: root.barThickness + Math.round(root.levelAt(cell.index) * (root.maxLength - root.barThickness))
-                    width: root.vertical ? length : root.barThickness
-                    height: root.vertical ? root.barThickness : length
-                    radius: root.barThickness / 2
-                    color: Appearance.colors.colPrimary
-                    opacity: root.active ? 1 : 0.4
+    Component {
+        id: bars
+        Grid { // fixed-size cells: audio drives paint, never layout
+            rows: root.vertical ? root.barCount : 1
+            columns: root.vertical ? 1 : root.barCount
+            spacing: root.barSpacing
 
-                    // A level follower, not a transition: it must never overshoot
-                    // the sample it is chasing, so it rides the critically damped
-                    // effects curve rather than a spatial one, at the shortest
-                    // duration the token table has (fast effects, 130ms).
-                    Behavior on width {
-                        enabled: root.vertical
-                        animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
+            Repeater {
+                model: root.barCount
+                Item {
+                    id: cell
+                    required property int index
+                    width: root.vertical ? root.maxLength : root.barThickness
+                    height: root.vertical ? root.barThickness : root.maxLength
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        readonly property real length: root.barThickness + Math.round(root.levelAt(cell.index) * (root.maxLength - root.barThickness))
+                        width: root.vertical ? length : root.barThickness
+                        height: root.vertical ? root.barThickness : length
+                        radius: root.barThickness / 2
+                        color: root.material ? Appearance.colors.colOnPrimaryContainer : Appearance.colors.colPrimary
+                        opacity: root.active ? 1 : 0.4
+
+                        // A level follower, not a transition: it must never overshoot
+                        // the sample it is chasing, so it rides the critically damped
+                        // effects curve rather than a spatial one, at the shortest
+                        // duration the token table has (fast effects, 130ms).
+                        Behavior on width {
+                            enabled: root.vertical
+                            animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
+                        }
+                        Behavior on height {
+                            enabled: !root.vertical
+                            animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
+                        }
+                        Behavior on opacity { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
                     }
-                    Behavior on height {
-                        enabled: !root.vertical
-                        animation: Appearance.animation.elementMoveExit.numberAnimation.createObject(this)
-                    }
-                    Behavior on opacity { animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this) }
                 }
             }
         }

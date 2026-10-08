@@ -15,9 +15,9 @@ exit that never renders because the thing stops existing on the first frame of i
    one was fixed, and its right-hand bar hid by `barHeight`, the *horizontal* bar's
    thickness, leaving a strip of a wider vertical bar on screen.
 
-2. **A widget coming and going (`BarComponent.qml`).** The record, screenshare and
-   privacy indicators, the timer and an emptying tray call `toggleVisible()`. The
-   delegate collapses along the bar's axis instead of popping, which only works if it
+2. **A widget coming and going (`BarComponent.qml`).** The record and privacy
+   indicators, the timer and an emptying tray call `toggleVisible()`. The delegate
+   collapses along the bar's axis instead of popping, which only works if it
    stays `visible` while the collapse runs -- bind `visible` to the flag alone and the
    RowLayout drops it on frame one, so the exit is a pop after all. The cross axis has to
    keep its size, or the strip's height animates too.
@@ -190,9 +190,9 @@ SIZE_PICK = grab(comp, r"rootItem\.sizeSpec = ([^;]+);",
 NATURAL_W, NATURAL_H = 120, 40
 
 
-def widget(shown, vertical, mid_w=None, mid_h=None):
+def widget(shown, vertical, mid_w=None, mid_h=None, comp=True):
     """One delegate, at rest or `mid_*` of the way through its collapse."""
-    wrapper = NS(implicitWidth=NATURAL_W, implicitHeight=NATURAL_H)
+    wrapper = NS(implicitWidth=NATURAL_W, implicitHeight=NATURAL_H, _currentComp=comp or None)
     root = NS(shown=shown, vertical=vertical)
     env = {"rootItem": root, "wrapper": wrapper, "Appearance": APPEARANCE}
     root.implicitWidth = eval(js(IW), env) if mid_w is None else mid_w
@@ -211,6 +211,9 @@ assert gone.w == 0 and gone.h == NATURAL_H, \
     f"hiding collapsed the cross axis too ({gone.w}x{gone.h}) -- the strip's height would animate"
 assert not gone.visible, "a finished collapse still holds the row's spacing open"
 assert gone.spec == "elementMoveExit", f"a widget leaves on {gone.spec}, not the accelerating exit"
+
+assert not widget(True, False, comp=False).visible, \
+    "a layout id with no component behind it (retired widget, removed extension) draws an empty pill"
 
 going = widget(False, False, mid_w=NATURAL_W / 2)
 assert going.visible, \

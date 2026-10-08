@@ -26,8 +26,8 @@ Item {
     property bool shown: modelData?.visible !== false
 
     /**
-     * A widget that comes and goes -- the record, screenshare and privacy
-     * indicators, the timer, a tray that empties -- used to pop out of the row
+     * A widget that comes and goes -- the record and privacy indicators, the
+     * timer, a tray that empties -- used to pop out of the row
      * with nothing in either direction (DESIGN.md 2.5, anti-pattern 10). It
      * collapses along the bar's axis instead: in on fast spatial, out on fast
      * effects at about a third, staying in the layout until the collapse has
@@ -53,7 +53,9 @@ Item {
         rootItem.pickSizeSpec();
         return (rootItem.shown || !rootItem.vertical) ? wrapper.implicitHeight : 0;
     }
-    visible: rootItem.shown || (rootItem.vertical ? rootItem.implicitHeight > 0 : rootItem.implicitWidth > 0)
+    // An id with nothing behind it (a retired widget, an uninstalled extension)
+    // left in the saved layout would otherwise draw an empty pill.
+    visible: !!wrapper._currentComp && (rootItem.shown || (rootItem.vertical ? rootItem.implicitHeight > 0 : rootItem.implicitWidth > 0))
     // Only while a collapse is under way. A permanent scissor on every bar
     // delegate costs more than the frames it is wanted for (DESIGN.md 8).
     clip: rootItem.vertical ? (rootItem.implicitHeight < wrapper.implicitHeight) : (rootItem.implicitWidth < wrapper.implicitWidth)
@@ -77,8 +79,8 @@ Item {
     function toggleVisible(visibility) {
         // This writes the layout back, and the layout is the Repeater's model, so
         // an unconditional write rebuilds every delegate and calls us again.
-        // Callers (SysTray, timer, record/screenshare/privacy indicators) fire on
-        // every update, so only write on a real change.
+        // Callers (SysTray, timer, record/privacy indicators) fire on every
+        // update, so only write on a real change.
         if (rootItem.shown === visibility) return;
         rootItem.shown = visibility
         const section = barSection == 0 ? Config.options.bar.layouts.left : barSection == 1 ? Config.options.bar.layouts.center : Config.options.bar.layouts.right;
@@ -103,7 +105,6 @@ Item {
         "active_window": [activeWindowComp, activeWindowComp],
         "date": [dateCompVert, dateCompVert],
         "record_indicator": [recordIndicatorComp, recordIndicatorComp],
-        "screen_share_indicator": [screenshareIndicatorComp, screenshareIndicatorComp],
         "timer": [timerComp, timerCompVert],
         "weather": [weatherComp, weatherComp],
         "policies_panel_button": [policiesPanelButton, policiesPanelButton],
@@ -118,32 +119,34 @@ Item {
     readonly property bool isSpacer: modelData?.id === "sacebar" || modelData?.id === "spacebar"
 
     // Material (3): every widget its own pill, none joining corners, and the
-    // clock, weather, battery and media draw theirs (BarMaterialPill) over a bare group.
+    // clock, weather, battery, media, network speed and visualizer draw theirs
+    // (BarMaterialPill) over a bare group.
     readonly property bool material: Config.options.bar.barGroupStyle === 3
     readonly property bool drawsOwnPill: material && !rootItem.vertical
-        && ["clock", "weather", "battery", "music_player"].includes(modelData?.id)
+        && ["clock", "weather", "battery", "music_player", "network_speed", "visualizer"].includes(modelData?.id)
     // And no inset where the widget is one control with its own hover film, so
-    // the film fills the pill rather than sitting 4 inside it.
+    // the film fills the pill rather than sitting 4 inside it -- or, for the
+    // util buttons, insets its own circles.
     readonly property bool fillsPill: drawsOwnPill || (material && !rootItem.vertical
-        && ["system_monitor", "policies_panel_button", "dashboard_panel_button", "system_tray"].includes(modelData?.id))
+        && ["system_monitor", "policies_panel_button", "dashboard_panel_button", "system_tray", "utility_buttons"].includes(modelData?.id))
 
     property real startRadius: {
         if (rootItem.isolated || rootItem.isSpacer || rootItem.material) return Appearance.rounding.full
         if (barSection === 0) {
             if (originalIndex == 0) return Appearance.rounding.full
             let prevList = list.slice(0, originalIndex).reverse()
-            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (prevVisible && (prevVisible.id === "sacebar" || prevVisible.id === "spacebar")) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 2) {
             let prevList = list.slice(0, originalIndex).reverse()
-            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (!prevVisible || prevVisible.id === "sacebar" || prevVisible.id === "spacebar") return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
             let prevList = list.slice(0, originalIndex).reverse()
-            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let prevVisible = prevList.find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (!prevVisible || prevVisible.id === "sacebar" || prevVisible.id === "spacebar") return Appearance.rounding.full
             return Appearance.rounding.verysmall
         }
@@ -153,16 +156,16 @@ Item {
         if (rootItem.isolated || rootItem.isSpacer || rootItem.material) return Appearance.rounding.full
         if (barSection === 2) {
             if (originalIndex == list.length - 1) return Appearance.rounding.full
-            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (nextVisible && (nextVisible.id === "sacebar" || nextVisible.id === "spacebar")) return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else if (barSection === 0) {
-            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (!nextVisible || nextVisible.id === "sacebar" || nextVisible.id === "spacebar") return Appearance.rounding.full
             return Appearance.rounding.verysmall
         } else { // barSection 1 
             if (list.length === 1) return Appearance.rounding.full
-            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator" && item.id !== "screen_share_indicator")
+            let nextVisible = list.slice(originalIndex + 1).find(item => item.visible !== false && item.id !== "record_indicator" && item.id !== "privacy_indicator")
             if (!nextVisible || nextVisible.id === "sacebar" || nextVisible.id === "spacebar") return Appearance.rounding.full
             return Appearance.rounding.verysmall
         }
@@ -223,8 +226,6 @@ Item {
 
     Component { id: timerComp; TimerWidget {} }
     Component { id: timerCompVert; Vertical.VerticalTimerWidget {} }
-
-    Component { id: screenshareIndicatorComp; ScreenShareIndicator {} }
 
     Component { id: privacyIndicatorComp; PrivacyIndicator { vertical: rootItem.vertical } }
 

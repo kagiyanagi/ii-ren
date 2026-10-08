@@ -80,6 +80,8 @@ Item {
     readonly property bool isPlaying: activePlayer?.isPlaying ?? false
     // As the dock: title and artist until the first lyric plays, then the lyric alone.
     readonly property bool lyricsMode: lyricsEnabled && LyricsService.hasSyncedLines && LyricsService.currentIndex >= 0
+    // "static" is the one line below; "scroller" swaps it for the classic bar's scroller.
+    readonly property bool scrollerLyrics: lyricsMode && lyricsStyle === "scroller"
 
     Item {
         id: artworkItem
@@ -298,6 +300,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
+                    visible: !root.scrollerLyrics
                     spacing: -2
 
                     StyledText {
@@ -315,6 +318,23 @@ Item {
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         color: Appearance.colors.colSubtext
                         elide: Text.ElideRight
+                    }
+                }
+
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.scrollerLyrics
+                    visible: active
+                    sourceComponent: LyricScroller {
+                        defaultLyricsSize: Appearance.font.pixelSize.smallest
+                        useGradientMask: root.useGradientMask
+                        halfVisibleLines: 1
+                        downScale: 0.98
+                        rowHeight: 10
+                        gradientDensity: 0.25
+                        // Off the pill's left edge like the title it replaces.
+                        textAlign: "left"
                     }
                 }
 

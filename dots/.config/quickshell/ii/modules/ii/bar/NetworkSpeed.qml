@@ -25,7 +25,8 @@ Item {
     property bool showWidget: true
 
     visible: autoHide ? showWidget : true
-    implicitWidth: visible ? (vertical ? Appearance.sizes.verticalBarWidth : networkLayout.implicitWidth + 6 + (displayMode === 4 ? 16 : 0)) : 0
+    readonly property bool material: Config.options.bar.barGroupStyle === 3 && !root.vertical
+    implicitWidth: visible ? (vertical ? Appearance.sizes.verticalBarWidth : root.material ? (materialPill.item?.implicitWidth ?? 0) : networkLayout.implicitWidth + 6 + (displayMode === 4 ? 16 : 0)) : 0
     implicitHeight: visible ? (vertical ? (displayMode === 4 ? singleLineText.implicitHeight + 20 : networkLayout.implicitHeight + 6) : Appearance.sizes.barHeight) : 0
 
     // Auto-hide delay timer (10 seconds grace period to prevent layour flickering)
@@ -110,6 +111,7 @@ Item {
 
     RowLayout {
         id: networkLayout
+        visible: !root.material
         anchors.centerIn: parent
         spacing: 6
 
@@ -145,6 +147,45 @@ Item {
                 font.pixelSize: Appearance.font.pixelSize.small
                 color: Appearance.colors.colOnLayer1
                 text: applyIcon(formatSpeed(NetworkUsage.networkUploadSpeed), "↑")
+            }
+        }
+    }
+
+    // Material style (BarMaterialPill): an icon on the accent naming the figure
+    // beside it, which the arrows used to do. Side by side keeps the clock's
+    // two-value shape instead -- download on the accent, upload beside it.
+    Loader {
+        id: materialPill
+        active: root.material
+        anchors.centerIn: parent
+        sourceComponent: BarMaterialPill {
+            accentIsCircle: root.displayMode !== 3
+            hover: mouseArea.containsMouse
+            press: mouseArea.pressed
+            text: {
+                switch (root.displayMode) {
+                case 1: return root.formatSpeed(NetworkUsage.networkDownloadSpeed);
+                case 2: return root.formatSpeed(NetworkUsage.networkUploadSpeed);
+                case 3: return "↑ " + root.formatSpeed(NetworkUsage.networkUploadSpeed);
+                case 4: return "";
+                default: return root.formatSpeed(NetworkUsage.networkDownloadSpeed + NetworkUsage.networkUploadSpeed);
+                }
+            }
+
+            // First, so the accent sizes to it when it is a pill rather than a circle.
+            StyledText {
+                anchors.centerIn: parent
+                visible: root.displayMode === 3
+                text: "↓ " + root.formatSpeed(NetworkUsage.networkDownloadSpeed)
+                font.pixelSize: Appearance.font.pixelSize.small
+                color: Appearance.colors.colOnPrimaryContainer
+            }
+            MaterialSymbol {
+                anchors.centerIn: parent
+                visible: root.displayMode !== 3
+                text: root.displayMode === 1 ? "arrow_downward" : root.displayMode === 2 ? "arrow_upward" : "swap_vert"
+                iconSize: Appearance.font.pixelSize.large
+                color: Appearance.colors.colOnPrimaryContainer
             }
         }
     }
