@@ -14,10 +14,11 @@ alpha edge, which the shell then draws on top of the desktop widgets so the
 clock tucks in behind someone's shoulder.
 
 ML Kit ships a trained model on device; there is no equivalent here, so the
-model is ISNet (DIS general-use), fetched once and run through onnxruntime on
-the CPU. Its raw mask is good but soft along hair and fur, so it gets refined
-against the image itself with a guided filter before it becomes alpha - the
-usual matting cleanup, and the reason edges hold up at wallpaper resolution.
+model is ISNet - an anime-trained one first, the general-use one when that finds
+nothing (see ANIME below) - fetched once and run through onnxruntime on the CPU.
+Its raw mask is good but soft along hair and fur, so it gets refined against the
+image itself with a guided filter before it becomes alpha - the usual matting
+cleanup, and the reason edges hold up at wallpaper resolution.
 
 Video runs the same model, which is not obvious: ISNet costs seconds a frame,
 so matting a ten-second loop honestly would take twenty minutes. It does not,
@@ -32,7 +33,7 @@ stylised art it locates the subject and then refuses to commit to it, returning
 a median alpha of 0.54 where ISNet returns 1.0. A ghost, accurately placed.
 
 A finished cutout is reused: re-running with the same pair is a no-op unless
-the wallpaper is newer than it, or --force is passed. The shell leans on that
+the wallpaper is newer than it, it predates STALE_BEFORE, or --force is passed. The shell leans on that
 and simply asks for the cutout every time the wallpaper changes.
 
 Usage:
@@ -53,15 +54,34 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# ISNet general-use, the model rembg exposes under the same name. 176MB, 1024²
-# input, and the most accurate salient-object net that still runs in a couple of
-# seconds on a laptop CPU.
-# ponytail: one model, no picker. BiRefNet scores higher on fine structures but
-# is ~1GB and an order of magnitude slower on CPU; swap MODEL_URL/MODEL_SIZE if
-# that trade ever looks worth it.
-MODEL_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/isnet-general-use.onnx"
-MODEL_SHA256 = "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a"
+# Two ISNets, 176MB and 1024² input each, from rembg's releases, each fetched
+# the first time it is needed.
+#
+# The anime one (skytnt's anime-segmentation) is tried first, because a drawn
+# character is what this is mostly used on and the general net cannot see one:
+# on line art it keeps the dark hair and the sword and throws a flat grey coat
+# away as background. It is also honest when there is no character - its output
+# is a probability that stays near zero, where the general net's is min-max
+# stretched into a mask whether or not anything is there - so finding nothing is
+# a clean cue to hand photos, scenery and objects to the general net instead.
+# ponytail: BiRefNet scores higher on fine structures but is ~1GB and an order
+# of magnitude slower on CPU; add it here if that trade ever looks worth it.
+ANIME = ("isnet-anime.onnx", "f15622d853e8260172812b657053460e20806f04b9e05147d49af7bed31a6e99")
+GENERAL = ("isnet-general-use.onnx", "60920e99c45464f2ba57bee2ad08c919a52bbf852739e96947fbb4358c0d964a")
+MODEL_RELEASE = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/"
 MODEL_SIZE = 1024
+
+# Outside this share of the frame a net has found nothing it can use: the same
+# band the shell's WallpaperSubject.hasSubject holds a cutout to before drawing
+# it. The top end matters too - on a cluttered 3D render the anime net claims
+# the whole frame, where the general net finds the object in front.
+NO_SUBJECT = 0.01
+WHOLE_FRAME = 0.92
+
+# Cutouts older than this came from a pipeline that got them wrong - the general
+# net alone, fed BGR - and are recut on next use instead of being trusted. Move
+# it forward whenever a change here makes old cutouts wrong, not just different.
+STALE_BEFORE = 1791438407  # 2026-10-08
 
 VIDEO_SUFFIXES = {".mp4", ".webm", ".mkv", ".avi", ".mov", ".m4v", ".ogv"}
 
@@ -185,25 +205,26 @@ def cache_dir() -> Path:
     return Path(base) / "quickshell" / "models"
 
 
-def fetch_model(log) -> Path:
-    path = cache_dir() / "isnet-general-use.onnx"
+def fetch_model(model, log) -> Path:
+    name, sha256 = model
+    path = cache_dir() / name
     if path.exists() and path.stat().st_size > 0:
         return path
 
     import requests
 
-    log("downloading model")
+    log(f"downloading {name}")
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_suffix(".onnx.part")
     digest = hashlib.sha256()
-    with requests.get(MODEL_URL, stream=True, timeout=60) as response:
+    with requests.get(MODEL_RELEASE + name, stream=True, timeout=60) as response:
         response.raise_for_status()
         with open(partial, "wb") as handle:
             for chunk in response.iter_content(chunk_size=1 << 20):
                 digest.update(chunk)
                 handle.write(chunk)
 
-    if digest.hexdigest() != MODEL_SHA256:
+    if digest.hexdigest() != sha256:
         partial.unlink(missing_ok=True)
         raise RuntimeError("model download is corrupt (checksum mismatch)")
 
@@ -211,31 +232,62 @@ def fetch_model(log) -> Path:
     return path
 
 
-def run_model(model_path: Path, image: np.ndarray) -> np.ndarray:
+_sessions = {}
+
+
+def run_model(model, image: np.ndarray, log) -> np.ndarray:
     """Return a float mask in [0, 1] at the model's own resolution."""
-    import onnxruntime
+    if model not in _sessions:
+        import onnxruntime
 
-    options = onnxruntime.SessionOptions()
-    options.log_severity_level = 3
-    session = onnxruntime.InferenceSession(
-        str(model_path), options, providers=["CPUExecutionProvider"]
-    )
+        options = onnxruntime.SessionOptions()
+        options.log_severity_level = 3
+        _sessions[model] = onnxruntime.InferenceSession(
+            str(fetch_model(model, log)), options, providers=["CPUExecutionProvider"]
+        )
+    session = _sessions[model]
 
-    resized = cv2.resize(image, (MODEL_SIZE, MODEL_SIZE), interpolation=cv2.INTER_AREA)
-    # ISNet wants 0..1 scaled by its own mean/std, then CHW with a batch axis.
-    tensor = resized.astype(np.float32) / 255.0
-    tensor = (tensor - 0.5) / 1.0
-    tensor = np.expand_dims(tensor.transpose(2, 0, 1), 0)
+    # Both nets were trained on RGB and OpenCV hands over BGR. Fed straight in,
+    # a red backdrop reads as blue - enough on its own to lose a subject.
+    rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+
+    if model is ANIME:
+        # Its own reference: plain 0..1, letterboxed to keep the aspect.
+        height, width = image.shape[:2]
+        scale = MODEL_SIZE / max(height, width)
+        h, w = round(height * scale), round(width * scale)
+        top, left = (MODEL_SIZE - h) // 2, (MODEL_SIZE - w) // 2
+        tensor = np.zeros((MODEL_SIZE, MODEL_SIZE, 3), np.float32)
+        tensor[top:top + h, left:left + w] = cv2.resize(rgb, (w, h), interpolation=cv2.INTER_AREA)
+        crop = (slice(top, top + h), slice(left, left + w))
+    else:
+        # ISNet's: stretched square, centred on 0.5.
+        tensor = cv2.resize(rgb, (MODEL_SIZE, MODEL_SIZE), interpolation=cv2.INTER_AREA) - 0.5
+        crop = (slice(None), slice(None))
 
     name = session.get_inputs()[0].name
-    prediction = session.run(None, {name: tensor})[0][0][0]
+    prediction = session.run(None, {name: tensor.transpose(2, 0, 1)[None]})[0][0][0][crop]
 
-    # The net's output range drifts per image; normalising it is part of the
-    # reference implementation, not a fudge.
+    # The anime net's output is already a probability. Stretching it would
+    # invent a subject in a frame with none - the very signal cut() relies on.
+    if model is ANIME:
+        return prediction
+
+    # The general net's output range drifts per image; normalising it is part
+    # of the reference implementation, not a fudge.
     low, high = float(prediction.min()), float(prediction.max())
     if high - low < 1e-6:
         return np.zeros_like(prediction)
     return (prediction - low) / (high - low)
+
+
+def cut(image: np.ndarray, log, models=(ANIME, GENERAL)):
+    """Matte one frame with the first net that finds a subject in it."""
+    for model in models:
+        mask = refine(run_model(model, image, log), image)
+        if NO_SUBJECT < coverage(mask) < WHOLE_FRAME:
+            break
+    return mask, model
 
 
 def refine(mask: np.ndarray, image: np.ndarray) -> np.ndarray:
@@ -300,7 +352,6 @@ def bake_video(source: Path, output: Path, log, progress) -> float:
     if width <= 0 or height <= 0:
         raise RuntimeError(f"video has no usable frame size: {source}")
 
-    model_path = fetch_model(log)
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_suffix(f".part{os.getpid()}" + output.suffix)
     encoder = subprocess.Popen(
@@ -323,6 +374,7 @@ def bake_video(source: Path, output: Path, log, progress) -> float:
 
     mask = None
     keyframe = None
+    models = (ANIME, GENERAL)
     coverages = []
     frames = 0
     cuts = 0
@@ -339,7 +391,13 @@ def bake_video(source: Path, output: Path, log, progress) -> float:
             ).astype(np.float32)
 
             if mask is None or float(np.abs(proxy - keyframe).mean()) > KEYFRAME_DIFF:
-                mask = refine(run_model(model_path, frame), frame)
+                # The first cut picks the net and the rest of the loop keeps it:
+                # the two disagree about edges, and swapping mid-loop would make
+                # the outline jump.
+                # ponytail: a subject that only walks in after the first frame
+                # stays with the general net; pick per keyframe if that shows up.
+                mask, model = cut(frame, log, models)
+                models = (model,)
                 keyframe = proxy
                 cuts += 1
                 coverages.append(coverage(mask))
@@ -435,6 +493,16 @@ def self_check() -> int:
     # shell is told so.
     assert 0.1 < coverage(refined) < 0.2, f"coverage off: {coverage(refined)}"
 
+    # The anime net goes first and hands the frame over when what it finds is
+    # no use - nothing at all, or the whole frame.
+    answers = {GENERAL: mask}
+    globals()["run_model"] = lambda model, *_: answers[model].copy()
+    for anime_says, winner in ((np.zeros_like(mask), GENERAL),
+                               (np.ones_like(mask), GENERAL),
+                               (mask, ANIME)):
+        answers[ANIME] = anime_says
+        assert cut(image, None)[1] is winner, f"cut() picked the wrong net, wanted {winner[0]}"
+
     print("self-check ok")
     return 0
 
@@ -489,7 +557,8 @@ def main() -> int:
 
         sweep_dead_partials(output.parent)
 
-        fresh = output.exists() and output.stat().st_mtime >= source.stat().st_mtime
+        fresh = output.exists() and output.stat().st_mtime >= max(
+            source.stat().st_mtime, STALE_BEFORE)
 
         if not args.force and fresh:
             found = cached_coverage(output, video)
@@ -516,8 +585,7 @@ def main() -> int:
         if image is None:
             raise RuntimeError(f"cannot read image: {source}")
 
-        model_path = fetch_model(log)
-        mask = refine(run_model(model_path, image), image)
+        mask, _ = cut(image, log)
         found = coverage(mask)
 
         cutout = np.dstack([image, np.rint(mask * 255).astype(np.uint8)])
