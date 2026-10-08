@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Circle pointer clock options")
 
@@ -28,18 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("circle_pointer_clock")
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.circle_pointer_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -47,9 +43,6 @@ ContentPage {
                 onValueChanged: Config.options.background.widgets.circle_pointer_clock.widgetSize = value
             }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Display elements")
-            }
 
             ConfigSwitch {
                 buttonIcon: "tag"

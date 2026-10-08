@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Circular media (watch) options")
 
@@ -28,18 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("circular_media")
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.circular_media.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -51,9 +47,6 @@ ContentPage {
 
             Item { Layout.preferredHeight: 4 }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Colors")
-            }
 
             ConfigSwitch {
                 buttonIcon: "palette"
@@ -66,9 +59,6 @@ ContentPage {
 
             Item { Layout.preferredHeight: 4 }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Style")
-            }
 
             ConfigSwitch {
                 buttonIcon: "blur_on"

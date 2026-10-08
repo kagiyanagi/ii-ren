@@ -98,37 +98,13 @@ ContentGroup {
 
             DelegateChoice {
                 roleValue: "enum"
-                // Label above the chips, as ConfigSlider puts it above its
-                // track. A ContentSubsection would open a second group inside
-                // this one and card the chips in the wrong tone.
-                ColumnLayout {
-                    id: choice
+                ConfigSelectionRow {
                     required property var modelData
-                    readonly property bool wantsCard: true
-                    Layout.fillWidth: true
-                    spacing: 0
-
-                    RowLayout {
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        Layout.topMargin: 12
-                        spacing: 10
-                        OptionalMaterialSymbol {
-                            icon: choice.modelData.entry.icon ?? ""
-                            iconSize: Appearance.font.pixelSize.larger
-                        }
-                        StyledText {
-                            Layout.fillWidth: true
-                            text: choice.modelData.entry.label ?? choice.modelData.key
-                            color: Appearance.colors.colOnSecondaryContainer
-                        }
-                    }
-                    ConfigSelectionArray {
-                        topPadding: 8
-                        options: choice.modelData.entry.options ?? []
-                        currentValue: root.valueOf(choice.modelData.key, choice.modelData.entry, "")
-                        onSelected: newValue => root.write(choice.modelData.key, choice.modelData.entry, newValue)
-                    }
+                    buttonIcon: modelData.entry.icon ?? ""
+                    text: modelData.entry.label ?? modelData.key
+                    options: modelData.entry.options ?? []
+                    currentValue: root.valueOf(modelData.key, modelData.entry, "")
+                    onSelected: newValue => root.write(modelData.key, modelData.entry, newValue)
                 }
             }
 

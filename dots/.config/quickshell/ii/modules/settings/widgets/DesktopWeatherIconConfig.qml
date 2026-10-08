@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Weather icon shape options")
 
@@ -28,29 +28,24 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 12
             visible: Config.isWidgetActive("weather_icon")
 
-            ContentSubsection {
-                Layout.fillWidth: true
-                title: Translation.tr("Background shape")
-                icon: "category"
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.weather_icon.backgroundShape ?? "Cookie12Sided"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.weather_icon.backgroundShape = newValue;
-                    }
-                    options: ["Circle", "Pill", "Oval", "SemiCircle", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Puffy", "PuffyDiamond", "Bun", "SoftBurst", "Sunny", "VerySunny"].map(shape => {
-                        return {
-                            displayName: "",
-                            shape: shape,
-                            value: shape
-                        };
-                    })
+            ConfigSelectionRow {
+                text: Translation.tr("Background shape")
+                buttonIcon: "category"
+                currentValue: Config.options.background.widgets.weather_icon.backgroundShape ?? "Cookie12Sided"
+                onSelected: newValue => {
+                    Config.options.background.widgets.weather_icon.backgroundShape = newValue;
                 }
+                options: ["Circle", "Pill", "Oval", "SemiCircle", "Cookie4Sided", "Cookie6Sided", "Cookie7Sided", "Cookie9Sided", "Cookie12Sided", "Ghostish", "Puffy", "PuffyDiamond", "Bun", "SoftBurst", "Sunny", "VerySunny"].map(shape => {
+                    return {
+                        displayName: "",
+                        shape: shape,
+                        value: shape
+                    };
+                })
             }
 
             DesktopWidgetVisualOptions {

@@ -93,7 +93,7 @@ ContentPage {
             // a greyed one that reads as broken.
             ConfigSwitch {
                 visible: monitors.monitors.length > 1
-                buttonIcon: "tv_off"
+                buttonIcon: "desktop_windows"
                 text: Translation.tr("Enabled")
                 checked: !(page.selectedMonitor?.disabled ?? false)
                 onCheckedChanged: {
@@ -103,20 +103,28 @@ ContentPage {
                 }
             }
 
-            StyledComboBox {
+            // An output that reports no modes (a nested or virtual one) has
+            // nothing to pick, so there is no empty box to open.
+            ConfigLabeledRow {
+                visible: (page.selectedMonitor?.availableModes ?? []).length > 0
                 buttonIcon: "aspect_ratio"
-                model: page.selectedMonitor?.availableModes ?? []
-                currentIndex: Math.max(0, model.indexOf(page.selectedMonitor?.currentMode ?? ""))
-                onActivated: index => {
-                    const mode = model[index];
-                    const parts = mode.match(/(\d+)x(\d+)@([\d.]+)Hz/);
-                    if (!parts) return;
-                    page.updateSelected({
-                        currentMode: mode,
-                        width: parseInt(parts[1]),
-                        height: parseInt(parts[2]),
-                        refreshRate: parseFloat(parts[3])
-                    });
+                text: Translation.tr("Resolution")
+
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    model: page.selectedMonitor?.availableModes ?? []
+                    currentIndex: Math.max(0, model.indexOf(page.selectedMonitor?.currentMode ?? ""))
+                    onActivated: index => {
+                        const mode = model[index];
+                        const parts = mode.match(/(\d+)x(\d+)@([\d.]+)Hz/);
+                        if (!parts) return;
+                        page.updateSelected({
+                            currentMode: mode,
+                            width: parseInt(parts[1]),
+                            height: parseInt(parts[2]),
+                            refreshRate: parseFloat(parts[3])
+                        });
+                    }
                 }
             }
 
@@ -136,19 +144,17 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Orientation")
-
-            ConfigSelectionArray {
-                currentValue: page.selectedMonitor?.transform ?? 0
-                onSelected: newValue => page.updateSelected({ transform: newValue })
-                options: [
-                    { displayName: Translation.tr("Normal"), icon: "screen_rotation_alt", value: 0 },
-                    { displayName: "90°", icon: "rotate_90_degrees_cw", value: 1 },
-                    { displayName: "180°", icon: "screen_rotation", value: 2 },
-                    { displayName: "270°", icon: "rotate_90_degrees_ccw", value: 3 }
-                ]
-            }
+        ConfigSelectionRow {
+            buttonIcon: "screen_rotation"
+            text: Translation.tr("Orientation")
+            currentValue: page.selectedMonitor?.transform ?? 0
+            onSelected: newValue => page.updateSelected({ transform: newValue })
+            options: [
+                { displayName: Translation.tr("Normal"), icon: "screen_rotation_alt", value: 0 },
+                { displayName: "90°", icon: "rotate_90_degrees_cw", value: 1 },
+                { displayName: "180°", icon: "screen_rotation", value: 2 },
+                { displayName: "270°", icon: "rotate_90_degrees_ccw", value: 3 }
+            ]
         }
     }
 
@@ -171,20 +177,18 @@ ContentPage {
             ]
         }
 
-        ContentSubsection {
-            title: Translation.tr("Floating window controls")
-            tooltip: Translation.tr("Where floating mode puts close, maximize and minimize, for apps that have none of their own. Ctrl+Super+Space turns floating mode on and off.")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.windows.floatingControls
-                onSelected: newValue => {
-                    Config.options.windows.floatingControls = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Top bar"), icon: "toolbar", value: "top" },
-                    { displayName: Translation.tr("Side rail"), icon: "side_navigation", value: "right" }
-                ]
+        ConfigSelectionRow {
+            buttonIcon: "web_asset"
+            text: Translation.tr("Floating window controls")
+            summary: Translation.tr("Where floating mode puts close, maximize and minimize, for apps that have none of their own. Ctrl+Super+Space turns floating mode on and off.")
+            currentValue: Config.options.windows.floatingControls
+            onSelected: newValue => {
+                Config.options.windows.floatingControls = newValue;
             }
+            options: [
+                { displayName: Translation.tr("Top bar"), icon: "toolbar", value: "top" },
+                { displayName: Translation.tr("Side rail"), icon: "side_navigation", value: "right" }
+            ]
         }
     }
 
@@ -304,10 +308,13 @@ ContentPage {
         ContentSubsection {
             title: Translation.tr("Keyboard")
 
-            ConfigRow {
+            ConfigLabeledRow {
+                buttonIcon: "keyboard"
+                text: Translation.tr("Layouts")
+
                 MaterialTextField {
                     Layout.fillWidth: true
-                    placeholderText: Translation.tr("Layouts, e.g. us,es")
+                    placeholderText: Translation.tr("Layout codes, e.g. us,es")
                     text: String(optKbLayout.value ?? "")
                     onEditingFinished: page.put(optKbLayout, text.trim())
                 }
@@ -344,11 +351,13 @@ ContentPage {
         ContentSubsection {
             title: Translation.tr("Cursor")
 
-            ConfigRow {
+            ConfigLabeledRow {
+                buttonIcon: "arrow_selector_tool"
+                text: Translation.tr("Theme")
+
                 StyledComboBox {
                     id: hyprCursorSelector
                     Layout.fillWidth: true
-                    buttonIcon: "arrow_selector_tool"
                     textRole: "name"
                     model: CursorTheme.availableThemes
                     currentIndex: {
@@ -364,36 +373,33 @@ ContentPage {
                         }
                     }
                 }
-
-                ConfigSpinBox {
-                    icon: "format_size"
-                    text: Translation.tr("Size")
-                    from: 12
-                    to: 64
-                    stepSize: 2
-                    value: CursorTheme.configuredSize
-                    onValueChanged: {
-                        if (value !== CursorTheme.configuredSize) {
-                            CursorTheme.setCursor(CursorTheme.configuredTheme, value);
-                        }
+            }
+            ConfigSpinBox {
+                icon: "format_size"
+                text: Translation.tr("Size (px)")
+                from: 12
+                to: 64
+                stepSize: 2
+                value: CursorTheme.configuredSize
+                onValueChanged: {
+                    if (value !== CursorTheme.configuredSize) {
+                        CursorTheme.setCursor(CursorTheme.configuredTheme, value);
                     }
                 }
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Focus follows mouse")
-
-            ConfigSelectionArray {
-                currentValue: optFollowMouse.numericValue
-                onSelected: newValue => page.put(optFollowMouse, newValue)
-                options: [
-                    { displayName: Translation.tr("Off"), icon: "mouse", value: 0 },
-                    { displayName: Translation.tr("Full"), icon: "open_with", value: 1 },
-                    { displayName: Translation.tr("Loose"), icon: "drag_pan", value: 2 },
-                    { displayName: Translation.tr("Explicit"), icon: "ads_click", value: 3 }
-                ]
-            }
+        ConfigSelectionRow {
+            buttonIcon: "mouse"
+            text: Translation.tr("Focus follows mouse")
+            currentValue: optFollowMouse.numericValue
+            onSelected: newValue => page.put(optFollowMouse, newValue)
+            options: [
+                { displayName: Translation.tr("Off"), icon: "mouse", value: 0 },
+                { displayName: Translation.tr("Full"), icon: "open_with", value: 1 },
+                { displayName: Translation.tr("Loose"), icon: "drag_pan", value: 2 },
+                { displayName: Translation.tr("Explicit"), icon: "ads_click", value: 3 }
+            ]
         }
 
         ContentSubsection {

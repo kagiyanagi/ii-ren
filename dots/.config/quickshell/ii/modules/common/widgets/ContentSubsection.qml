@@ -14,10 +14,8 @@ ColumnLayout {
     default property alias contentData: sectionContent.contentData
 
     Layout.fillWidth: true
-    // Inset by exactly the card's bleed, so two subsections sharing a ConfigRow
-    // end up with the row's gap between their cards instead of overlapping by it.
-    Layout.leftMargin: 8
-    Layout.rightMargin: 8
+    // Not inset: its cards bleed to the same edges as the section's own rows,
+    // so a page keeps one card width. Nothing sets subsections side by side.
     Layout.topMargin: 8
     // Side by side, the shorter one would otherwise centre itself and drop its
     // label below its neighbour's.
@@ -37,7 +35,7 @@ ColumnLayout {
         // `ConfigRow` cell with `Layout.fillWidth: false` is sized by it -- an
         // Item that reports only a height collapses that cell to zero, which
         // stacks its chips in a column and leaves the card a 4px sliver.
-        implicitWidth: headerRow.implicitWidth + headerRow.anchors.leftMargin
+        implicitWidth: headerRow.implicitWidth
         // A collapsible header is a hit target and takes 3.4's 32px minimum; a
         // plain label header stays as tall as its text, so the 63 callers that
         // never collapse keep their spacing.
@@ -73,9 +71,10 @@ ColumnLayout {
         RowLayout {
             id: headerRow
             anchors.fill: parent
-            anchors.leftMargin: 6
 
+            // The label carries its own inset to the rows' icon column.
             ContentSubsectionLabel {
+                Layout.topMargin: 0
                 opacity: 1 - highlightOverlay.opacity
                 visible: root.title && root.title.length > 0
                 text: root.title

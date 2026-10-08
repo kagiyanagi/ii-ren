@@ -248,18 +248,21 @@ Item {
                     title: Translation.tr("Widget color scheme")
                     Layout.fillWidth: true
 
-                    Rectangle {
+                    // A plain card in the run, like every other row: ContentGroup
+                    // paints it, so it takes the card's corners and reach. The
+                    // outline it used to draw is the only one on the page.
+                    Item {
+                        readonly property bool wantsCard: true
                         Layout.fillWidth: true
                         implicitHeight: schemeGrid.implicitHeight + 24
-                        color: Appearance.colors.colLayer1
-                        radius: Appearance.rounding.normal
-                        border.color: Appearance.colors.colLayer0Border
-                        border.width: 1
 
                         GridLayout {
                             id: schemeGrid
                             anchors.fill: parent
-                            anchors.margins: 12
+                            anchors.topMargin: 12
+                            anchors.bottomMargin: 12
+                            anchors.leftMargin: 4
+                            anchors.rightMargin: 4
                             columns: 3
                             rowSpacing: 8
                             columnSpacing: 8
@@ -361,10 +364,8 @@ Item {
             icon: "dashboard_customize"
             tooltip: Translation.tr("Browse, preview, and configure widgets across all categories")
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
+            // One card run, one card per category, as the rest of the page.
+            ContentGroup {
                 Repeater {
                     model: widgetsConfigRoot.categoriesList
                     delegate: categorySectionComponent
@@ -377,21 +378,26 @@ Item {
     Component {
         id: categorySectionComponent
 
-        Rectangle {
+        // ContentGroup paints the card and hands this tile the card's corners
+        // and reach; the header passes them on to its hover film (5.6). The
+        // outline it used to draw, primary when open, was the page's only one:
+        // open is the chevron and the tinted icon tile.
+        Item {
             id: catCard
             required property var modelData
             required property int index
 
+            readonly property bool wantsCard: true
+            property real buttonRadius: Appearance.rounding.verysmall
+            property real topLeftRadius: buttonRadius
+            property real topRightRadius: buttonRadius
+            property real bottomLeftRadius: buttonRadius
+            property real bottomRightRadius: buttonRadius
+            property real backgroundBleedLeft: 0
+            property real backgroundBleedRight: 0
+
             Layout.fillWidth: true
             implicitHeight: catCol.implicitHeight
-            radius: Appearance.rounding.normal
-            color: Appearance.colors.colLayer1
-            border.color: isExpanded ? Appearance.colors.colPrimary : Appearance.colors.colLayer0Border
-            border.width: 1
-
-            Behavior on border.color {
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-            }
 
             readonly property string catId: modelData.id
             readonly property var catWidgets: modelData.widgets || []
@@ -411,7 +417,12 @@ Item {
                     id: headerBtn
                     Layout.fillWidth: true
                     implicitHeight: 52
-                    buttonRadius: Appearance.rounding.normal
+                    topLeftRadius: catCard.topLeftRadius
+                    topRightRadius: catCard.topRightRadius
+                    bottomLeftRadius: catCard.isExpanded ? Appearance.rounding.verysmall : catCard.bottomLeftRadius
+                    bottomRightRadius: catCard.isExpanded ? Appearance.rounding.verysmall : catCard.bottomRightRadius
+                    backgroundBleedLeft: catCard.backgroundBleedLeft
+                    backgroundBleedRight: catCard.backgroundBleedRight
                     colBackground: "transparent"
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colRipple: Appearance.colors.colLayer1Active
@@ -420,8 +431,8 @@ Item {
                     RowLayout {
                         anchors {
                             fill: parent
-                            leftMargin: 12
-                            rightMargin: 16
+                            leftMargin: 8
+                            rightMargin: 8
                         }
                         spacing: 12
 

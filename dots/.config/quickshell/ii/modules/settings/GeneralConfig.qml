@@ -28,29 +28,28 @@ ContentPage {
                 text: Translation.tr("Prevents abrupt increments and restricts volume limit")
             }
         }
-        ConfigRow {
+        ConfigSpinBox {
             enabled: Config.options.audio.protection.enable
-            ConfigSpinBox {
-                icon: "arrow_warm_up"
-                text: Translation.tr("Max allowed increase")
-                value: Config.options.audio.protection.maxAllowedIncrease
-                from: 0
-                to: 100
-                stepSize: 2
-                onValueChanged: {
-                    Config.options.audio.protection.maxAllowedIncrease = value;
-                }
+            icon: "arrow_warm_up"
+            text: Translation.tr("Max allowed increase")
+            value: Config.options.audio.protection.maxAllowedIncrease
+            from: 0
+            to: 100
+            stepSize: 2
+            onValueChanged: {
+                Config.options.audio.protection.maxAllowedIncrease = value;
             }
-            ConfigSpinBox {
-                icon: "vertical_align_top"
-                text: Translation.tr("Volume limit")
-                value: Config.options.audio.protection.maxAllowed
-                from: 0
-                to: 154 // pavucontrol allows up to 153%
-                stepSize: 2
-                onValueChanged: {
-                    Config.options.audio.protection.maxAllowed = value;
-                }
+        }
+        ConfigSpinBox {
+            enabled: Config.options.audio.protection.enable
+            icon: "vertical_align_top"
+            text: Translation.tr("Volume limit")
+            value: Config.options.audio.protection.maxAllowed
+            from: 0
+            to: 154 // pavucontrol allows up to 153%
+            stepSize: 2
+            onValueChanged: {
+                Config.options.audio.protection.maxAllowed = value;
             }
         }
     }
@@ -59,13 +58,12 @@ ContentPage {
         icon: "language"
         title: Translation.tr("Language")
 
-        ContentSubsection {
-            title: Translation.tr("Interface language")
-            tooltip: Translation.tr("Select the language for the user interface.\n\"Auto\" will use your system's locale.")
-
+        ConfigLabeledRow {
+            buttonIcon: "language"
+            text: Translation.tr("Interface language")
+            summary: Translation.tr("Select the language for the user interface.\n\"Auto\" will use your system's locale.")
             StyledComboBox {
                 id: languageSelector
-                buttonIcon: "language"
                 textRole: "displayName"
 
                 model: [
@@ -91,12 +89,11 @@ ContentPage {
             }
         }
 
-        ContentSubsection {
-            title: Translation.tr("Screen translator engine")
-            tooltip: Translation.tr("Engine for screen translation. Web engines require no setup.\nLocal Model (Manga) requires: pip install mokuro argostranslate\nLocal Argos (General) requires: pip install argostranslate")
-
+        ConfigLabeledRow {
+            buttonIcon: "memory"
+            text: Translation.tr("Screen translator engine")
+            summary: Translation.tr("Engine for screen translation. Web engines require no setup.\nLocal Model (Manga) requires: pip install mokuro argostranslate\nLocal Argos (General) requires: pip install argostranslate")
             StyledComboBox {
-                buttonIcon: "memory"
                 textRole: "displayName"
 
                 model: [
@@ -122,117 +119,53 @@ ContentPage {
         }
     }
 
+    // Each policy is a page in the left sidebar, listed in the sidebar's own
+    // order. Weeb's three states are two switches: the page, then its tab. The
+    // rows don't toggle themselves, so each switch keeps showing the config.
     ContentSection {
         icon: "rule"
         title: Translation.tr("Policies")
 
-        ConfigRow {
-            Layout.fillHeight: false
-
-            ContentSubsection {
-                title: Translation.tr("Weeb")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.policies.weeb
-                    onSelected: newValue => {
-                        Config.options.policies.weeb = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        },
-                        {
-                            displayName: Translation.tr("Closet"),
-                            icon: "ev_shadow",
-                            value: 2
-                        }
-                    ]
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Translator")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.policies.translator
-                    onSelected: newValue => {
-                        Config.options.policies.translator = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        }
-                    ]
-                }
-            }
+        ConfigSwitch {
+            buttonIcon: "auto_awesome"
+            text: Translation.tr("Hermes")
+            summary: Translation.tr("Chat with your Hermes agent")
+            toggles: false
+            checked: Config.options.hermes.enable
+            onClicked: Config.options.hermes.enable = !checked
         }
-
-        ConfigRow {
-            Layout.fillHeight: false
-
-            ContentSubsection {
-                title: Translation.tr("Continuity")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.policies.continuity
-                    onSelected: newValue => {
-                        Config.options.policies.continuity = newValue;
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        }
-                    ]
-                }
-            }
-
-            ContentSubsection {
-                title: Translation.tr("Hermes")
-                Layout.fillWidth: false
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.hermes.enable ? 1 : 0
-                    onSelected: newValue => {
-                        Config.options.hermes.enable = (newValue === 1);
-                    }
-                    options: [
-                        {
-                            displayName: Translation.tr("No"),
-                            icon: "close",
-                            value: 0
-                        },
-                        {
-                            displayName: Translation.tr("Yes"),
-                            icon: "check",
-                            value: 1
-                        }
-                    ]
-                }
-            }
+        ConfigSwitch {
+            buttonIcon: "translate"
+            text: Translation.tr("Translator")
+            summary: Translation.tr("Translate text without leaving the desktop")
+            toggles: false
+            checked: Config.options.policies.translator !== 0
+            onClicked: Config.options.policies.translator = checked ? 0 : 1
+        }
+        ConfigSwitch {
+            buttonIcon: "bookmark_heart"
+            text: Translation.tr("Weeb")
+            summary: Translation.tr("Browse anime image boards")
+            toggles: false
+            checked: Config.options.policies.weeb !== 0
+            onClicked: Config.options.policies.weeb = checked ? 0 : 1
+        }
+        ConfigSwitch {
+            enabled: Config.options.policies.weeb !== 0
+            buttonIcon: "ev_shadow"
+            text: Translation.tr("Closet")
+            summary: Translation.tr("Keep the anime page but hide its tab")
+            toggles: false
+            checked: Config.options.policies.weeb === 2
+            onClicked: Config.options.policies.weeb = checked ? 1 : 2
+        }
+        ConfigSwitch {
+            buttonIcon: "devices"
+            text: Translation.tr("Continuity")
+            summary: Translation.tr("Your phone and other devices")
+            toggles: false
+            checked: Config.options.policies.continuity !== 0
+            onClicked: Config.options.policies.continuity = checked ? 0 : 1
         }
     }
 
@@ -240,131 +173,41 @@ ContentPage {
         icon: "nest_clock_farsight_analog"
         title: Translation.tr("Time & date")
 
+        ConfigFormatPicker {
+            buttonIcon: "schedule"
+            text: Translation.tr("Time format")
+            formats: ["hh:mm", "h:mm ap", "h:mm AP"]
+            value: Config.options.time.format
+            placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
+            hint: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")
+            onPicked: format => {
+                if (format.length === 0)
+                    return;
+                // hyprlock has its own 12h clock variable; keep it on the same clock.
+                const hyprlock = `${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf`;
+                Quickshell.execDetached(["sed", "-i", format.toLowerCase().includes("a") ? "s/\\bTIME\\b/TIME12/" : "s/\\bTIME12\\b/TIME/", hyprlock]);
+                Config.options.time.format = format;
+            }
+        }
         ConfigSwitch {
-            buttonIcon: "pace"
+            buttonIcon: "timer"
             text: Translation.tr("Second precision")
+            summary: Translation.tr("Enable if you want clocks to show seconds accurately")
             checked: Config.options.time.secondPrecision
             onCheckedChanged: {
                 Config.options.time.secondPrecision = checked;
             }
-            StyledToolTip {
-                text: Translation.tr("Enable if you want clocks to show seconds accurately")
-            }
         }
-        ContentSubsection {
-            title: Translation.tr("Time format")
-            tooltip: Translation.tr("Custom format tokens: hh (24h), h (12h), mm (min), ss (sec), ap (am/pm), AP (AM/PM)")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.time.format
-                onSelected: newValue => {
-                    if (newValue === "hh:mm") {
-                        Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME12\\b/TIME/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
-                    } else {
-                        Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME\\b/TIME12/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
-                    }
-
-                    Config.options.time.format = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("24h"),
-                        value: "hh:mm"
-                    },
-                    {
-                        displayName: Translation.tr("12h am/pm"),
-                        value: "h:mm ap"
-                    },
-                    {
-                        displayName: Translation.tr("12h AM/PM"),
-                        value: "h:mm AP"
-                    },
-                ]
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                MaterialTextField {
-                    id: genCustomTimeFormatInput
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Custom time format (e.g. hh:mm, h:mm ap)")
-                    text: Config.options.time.format ?? ""
-                    onEditingFinished: {
-                        const trimmed = text.trim();
-                        if (trimmed.length > 0) {
-                            if (!trimmed.toLowerCase().includes("ap") && !trimmed.toLowerCase().includes("a")) {
-                                Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME12\\b/TIME/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
-                            } else {
-                                Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME\\b/TIME12/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);
-                            }
-                            Config.options.time.format = trimmed;
-                        }
-                    }
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, genCustomTimeFormatInput.text.trim() || Config.options.time.format || "hh:mm")
-                }
-            }
-        }
-
-        ContentSubsection {
-            title: Translation.tr("Date format")
-            tooltip: Translation.tr("Changes the date format in the bar. Tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
-
-            ConfigSelectionArray {
-                currentValue: Config.options.time.dateFormat
-                onSelected: newValue => {
-                    Config.options.time.dateFormat = newValue;
-                }
-                options: [
-                    {
-                        displayName: Translation.tr("Date first dd/MM"),
-                        value: "ddd dd/MM"
-                    },
-                    {
-                        displayName: Translation.tr("Month first MM/dd"),
-                        value: "ddd MM/dd"
-                    },
-                    {
-                        displayName: Translation.tr("Full (dddd, MMMM dd)"),
-                        value: "dddd, MMMM dd"
-                    },
-                    {
-                        displayName: Translation.tr("ISO (yyyy-MM-dd)"),
-                        value: "yyyy-MM-dd"
-                    }
-                ]
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                MaterialTextField {
-                    id: genCustomDateFormatInput
-                    Layout.fillWidth: true
-                    placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
-                    text: Config.options.time.dateFormat ?? ""
-                    onEditingFinished: {
-                        const trimmed = text.trim();
-                        if (trimmed.length > 0) {
-                            Config.options.time.dateFormat = trimmed;
-                        }
-                    }
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignVCenter
-                    color: Appearance.colors.colSubtext
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    text: Translation.tr("Preview: ") + Qt.locale().toString(DateTime.clock.date, genCustomDateFormatInput.text.trim() || Config.options.time.dateFormat || "ddd, dd/MM")
-                }
+        ConfigFormatPicker {
+            buttonIcon: "calendar_today"
+            text: Translation.tr("Date format")
+            formats: ["ddd dd/MM", "ddd MM/dd", "dddd, MMMM dd", "yyyy-MM-dd"]
+            value: Config.options.time.dateFormat
+            placeholderText: Translation.tr("Custom date format (e.g. ddd, dd/MM)")
+            hint: Translation.tr("Custom format tokens: ddd (short day), dddd (full day), dd (day), MM (month), yyyy (year)")
+            onPicked: format => {
+                if (format.length > 0)
+                    Config.options.time.dateFormat = format;
             }
         }
     }

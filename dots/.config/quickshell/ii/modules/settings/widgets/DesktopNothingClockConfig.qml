@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Nothing digital clock options")
 
@@ -28,9 +28,8 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("clock_nothing")
 
             ContentSubsectionLabel {
@@ -73,9 +72,6 @@ ContentPage {
                 }
             }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Style & appearance")
-            }
 
             ConfigSwitch {
                 buttonIcon: "palette"

@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("At a Glance widget options")
 
@@ -28,10 +28,9 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignTop
-            spacing: 4
             visible: Config.isWidgetActive("at_a_glance")
 
             // ── Layout & Size ───────────────────────────────────────────────
@@ -41,13 +40,15 @@ ContentPage {
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget scale")
+                text: Translation.tr("Widget scale (%)")
                 value: Config.options.background.widgets.at_a_glance.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.at_a_glance.widgetSize = value
             }
 
-            ConfigSelectionArray {
+            ConfigSelectionRow {
+                buttonIcon: "view_column"
+                text: Translation.tr("Width")
                 currentValue: Config.options.background.widgets.at_a_glance.widthCells ?? 3
                 options: [
                     { displayName: Translation.tr("2x1 compact"), icon: "view_week", value: 2 },
@@ -110,10 +111,6 @@ ContentPage {
                 onCheckedChanged: Config.options.background.widgets.at_a_glance.enableWeather = checked
             }
 
-            // ── Context Windows ──────────────────────────────────────────────
-            ContentSubsectionLabel {
-                text: Translation.tr("Context Windows")
-            }
 
             ConfigSpinBox {
                 icon: "event_upcoming"

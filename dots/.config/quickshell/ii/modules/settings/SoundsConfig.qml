@@ -431,24 +431,22 @@ ContentPage {
         }
 
         // Android Clock's "Gradually increase volume", as chips.
-        ContentSubsection {
-            title: Translation.tr("Gradually increase alarm volume")
+        ConfigSelectionRow {
+            buttonIcon: "trending_up"
+            text: Translation.tr("Gradually increase alarm volume")
             enabled: page.opts.alarm
-
-            ConfigSelectionArray {
-                currentValue: page.opts.alarmFadeIn ? page.opts.alarmFadeInSeconds : 0
-                onSelected: newValue => {
-                    Config.options.sounds.alarmFadeIn = newValue > 0;
-                    if (newValue > 0)
-                        Config.options.sounds.alarmFadeInSeconds = newValue;
-                }
-                options: [
-                    { displayName: Translation.tr("Off"), value: 0 },
-                    { displayName: Translation.tr("10 s"), value: 10 },
-                    { displayName: Translation.tr("30 s"), value: 30 },
-                    { displayName: Translation.tr("1 min"), value: 60 }
-                ]
+            currentValue: page.opts.alarmFadeIn ? page.opts.alarmFadeInSeconds : 0
+            onSelected: newValue => {
+                Config.options.sounds.alarmFadeIn = newValue > 0;
+                if (newValue > 0)
+                    Config.options.sounds.alarmFadeInSeconds = newValue;
             }
+            options: [
+                { displayName: Translation.tr("Off"), value: 0 },
+                { displayName: Translation.tr("10 s"), value: 10 },
+                { displayName: Translation.tr("30 s"), value: 30 },
+                { displayName: Translation.tr("1 min"), value: 60 }
+            ]
         }
     }
 

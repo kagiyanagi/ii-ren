@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Water reminder widget options")
 
@@ -28,9 +28,8 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("water_reminder")
 
             ContentSubsectionLabel {
@@ -62,9 +61,6 @@ ContentPage {
                 }
             }
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Daily goal")
-            }
 
             ConfigSpinBox {
                 icon: "flag"

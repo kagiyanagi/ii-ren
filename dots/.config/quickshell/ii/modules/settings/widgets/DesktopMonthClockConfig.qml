@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("Month clock options")
 
@@ -28,17 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("month_clock")
 
-            // ── Size ─────────────────────────────────────────────────────────
-            ContentSubsectionLabel { text: Translation.tr("Size") }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text:  Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.month_clock.widgetSize ?? 100
                 from: 50; to: 200; stepSize: 10
                 onValueChanged: Config.options.background.widgets.month_clock.widgetSize = value
@@ -91,62 +88,50 @@ ContentPage {
             // ── Analog Hands ──────────────────────────────────────────────────
             ContentSubsectionLabel { text: Translation.tr("Analog hands") }
 
-            ContentSubsection {
-                title: Translation.tr("Hour hand style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.month_clock.hourHandStyle ?? "fill"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.month_clock.hourHandStyle = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Fill"), icon: "crop_square", value: "fill" },
-                        { displayName: Translation.tr("Hollow"), icon: "crop_square", value: "hollow" },
-                        { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
-                        { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Hour hand style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.month_clock.hourHandStyle ?? "fill"
+                onSelected: newValue => {
+                    Config.options.background.widgets.month_clock.hourHandStyle = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Fill"), icon: "crop_square", value: "fill" },
+                    { displayName: Translation.tr("Hollow"), icon: "crop_square", value: "hollow" },
+                    { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
+                    { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Minute hand style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.month_clock.minuteHandStyle ?? "medium"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.month_clock.minuteHandStyle = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Thin"), icon: "horizontal_rule", value: "thin" },
-                        { displayName: Translation.tr("Medium"), icon: "remove", value: "medium" },
-                        { displayName: Translation.tr("Bold"), icon: "add", value: "bold" },
-                        { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
-                        { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Minute hand style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.month_clock.minuteHandStyle ?? "medium"
+                onSelected: newValue => {
+                    Config.options.background.widgets.month_clock.minuteHandStyle = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Thin"), icon: "horizontal_rule", value: "thin" },
+                    { displayName: Translation.tr("Medium"), icon: "remove", value: "medium" },
+                    { displayName: Translation.tr("Bold"), icon: "add", value: "bold" },
+                    { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
+                    { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
+                ]
             }
 
-            ContentSubsection {
-                title: Translation.tr("Second hand style")
-                icon: "schedule"
-                Layout.fillWidth: true
-
-                ConfigSelectionArray {
-                    currentValue: Config.options.background.widgets.month_clock.secondHandStyle ?? "line"
-                    onSelected: newValue => {
-                        Config.options.background.widgets.month_clock.secondHandStyle = newValue;
-                    }
-                    options: [
-                        { displayName: Translation.tr("Line"), icon: "remove", value: "line" },
-                        { displayName: Translation.tr("Dot"), icon: "circle", value: "dot" },
-                        { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
-                        { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
-                    ]
+            ConfigSelectionRow {
+                text: Translation.tr("Second hand style")
+                buttonIcon: "schedule"
+                currentValue: Config.options.background.widgets.month_clock.secondHandStyle ?? "line"
+                onSelected: newValue => {
+                    Config.options.background.widgets.month_clock.secondHandStyle = newValue;
                 }
+                options: [
+                    { displayName: Translation.tr("Line"), icon: "remove", value: "line" },
+                    { displayName: Translation.tr("Dot"), icon: "circle", value: "dot" },
+                    { displayName: Translation.tr("Classic"), icon: "format_list_bulleted", value: "classic" },
+                    { displayName: Translation.tr("Hide"), icon: "visibility_off", value: "hide" }
+                ]
             }
 
             // ── Style ─────────────────────────────────────────────────────────

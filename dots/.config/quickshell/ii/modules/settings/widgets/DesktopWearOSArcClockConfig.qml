@@ -6,7 +6,7 @@ import qs.modules.common.widgets
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     title: Translation.tr("WearOS arc clock options")
 
@@ -28,19 +28,14 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive("wearos_arc_clock")
 
-            // ── Size ──
-            ContentSubsectionLabel {
-                text: Translation.tr("Size")
-            }
 
             ConfigSlider {
                 buttonIcon: "aspect_ratio"
-                text: Translation.tr("Widget size")
+                text: Translation.tr("Widget size (%)")
                 value: Config.options.background.widgets.wearos_arc_clock.widgetSize ?? 100
                 from: 50
                 to: 200
@@ -101,11 +96,9 @@ ContentPage {
             }
 
             // Left Complication selection
-            ContentSubsection {
-                title: Translation.tr("Left complication")
-                icon: "west"
-                Layout.fillWidth: true
-
+            ConfigLabeledRow {
+                text: Translation.tr("Left complication")
+                buttonIcon: "west"
                 StyledComboBox {
                     buttonIcon: "star"
                     textRole: "displayName"
@@ -131,11 +124,9 @@ ContentPage {
             }
 
             // Right Complication selection
-            ContentSubsection {
-                title: Translation.tr("Right complication")
-                icon: "east"
-                Layout.fillWidth: true
-
+            ConfigLabeledRow {
+                text: Translation.tr("Right complication")
+                buttonIcon: "east"
                 StyledComboBox {
                     buttonIcon: "star"
                     textRole: "displayName"
@@ -161,11 +152,9 @@ ContentPage {
             }
 
             // Bottom Complication selection
-            ContentSubsection {
-                title: Translation.tr("Bottom complication")
-                icon: "south"
-                Layout.fillWidth: true
-
+            ConfigLabeledRow {
+                text: Translation.tr("Bottom complication")
+                buttonIcon: "south"
                 StyledComboBox {
                     buttonIcon: "title"
                     textRole: "displayName"

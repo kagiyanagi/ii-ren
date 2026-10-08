@@ -12,10 +12,9 @@ import qs.modules.common.widgets
  *
  *   DesktopWidgetVisualOptions { visible: Config.isWidgetActive("date_default") }
  */
-ColumnLayout {
+ContentGroup {
     id: root
 
-    spacing: 4
 
     ContentSubsectionLabel {
         text: Translation.tr("Visual Options")

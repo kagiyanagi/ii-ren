@@ -8,7 +8,7 @@ import qs.modules.common.utils
 
 ContentPage {
     id: root
-    forceWidth: false
+    forceWidth: true
 
     property string configEntryName: "photo"
     property string widgetIdName: "photo"
@@ -46,57 +46,30 @@ ContentPage {
             }
         }
 
-        ColumnLayout {
+        ContentGroup {
             Layout.fillWidth: true
-            spacing: 4
             visible: Config.isWidgetActive(root.widgetIdName)
 
-            ContentSubsectionLabel {
-                text: Translation.tr("Photo file")
-            }
+            // One card: the file in use as the summary, its two actions under it.
+            ConfigLabeledRow {
+                buttonIcon: "image"
+                text: Translation.tr("Photo")
+                summary: (Config.options.background.widgets[root.configEntryName]?.imagePath ?? "") || Translation.tr("No photo chosen")
 
-            RippleButtonWithIcon {
-                Layout.fillWidth: true
-                materialIcon: "folder_open"
-                mainText: Translation.tr("Choose image")
-                onClicked: {
-                    pickImageProc.pick();
+                RowLayout {
+                    spacing: 4
+                    RippleButtonWithIcon {
+                        materialIcon: "folder_open"
+                        mainText: Translation.tr("Choose image")
+                        onClicked: pickImageProc.pick()
+                    }
+                    RippleButtonWithIcon {
+                        visible: (Config.options.background.widgets[root.configEntryName]?.imagePath ?? "").length > 0
+                        materialIcon: "delete"
+                        mainText: Translation.tr("Remove image")
+                        onClicked: { const entry = Config.options.background.widgets[root.configEntryName]; if (entry) entry.imagePath = ""; }
+                    }
                 }
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-                visible: {
-                    let entry = Config.options.background.widgets[root.configEntryName];
-                    return entry && entry.imagePath && entry.imagePath !== "";
-                }
-                text: {
-                    let entry = Config.options.background.widgets[root.configEntryName];
-                    let path = entry ? entry.imagePath : "";
-                    return Translation.tr("Current image: %1").arg(path);
-                }
-                font.pixelSize: Appearance.font.pixelSize.small
-                color: Appearance.colors.colOnSurfaceVariant
-                wrapMode: Text.Wrap
-            }
-
-            RippleButtonWithIcon {
-                Layout.fillWidth: true
-                visible: {
-                    let entry = Config.options.background.widgets[root.configEntryName];
-                    return entry && entry.imagePath && entry.imagePath !== "";
-                }
-                materialIcon: "delete"
-                mainText: Translation.tr("Remove image")
-                onClicked: {
-                    let entry = Config.options.background.widgets[root.configEntryName];
-                    if (entry) entry.imagePath = "";
-                }
-            }
-
-            ContentSubsectionLabel {
-                visible: root.configEntryName !== "photo"
-                text: Translation.tr("Overlay")
             }
 
             ConfigSwitch {

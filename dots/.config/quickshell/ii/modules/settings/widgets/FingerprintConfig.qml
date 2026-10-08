@@ -45,7 +45,7 @@ Item {
     ContentPage {
         id: page
         anchors.fill: parent
-        forceWidth: false
+        forceWidth: true
         title: Translation.tr("Fingerprint")
         showBackButton: subPageRoot.showBackButton
         onGoBack: subPageRoot.goBack()
@@ -55,19 +55,20 @@ Item {
             icon: "fingerprint"
             title: Translation.tr("Reader")
 
-            Rectangle {
+            // A card of the section's run, painted by ContentGroup so it
+            // reaches the same edges as the switch rows on this page.
+            Item {
+                readonly property bool wantsCard: true
                 Layout.fillWidth: true
                 implicitHeight: readerLayout.implicitHeight + 28
-                radius: Appearance.rounding.small
-                color: Appearance.colors.colLayer2
 
                 RowLayout {
                     id: readerLayout
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 12
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
                     spacing: 12
 
                     MaterialSymbol {
@@ -198,8 +199,9 @@ Item {
             Repeater {
                 model: Fingerprint.enrolled
 
-                delegate: Rectangle {
+                delegate: Item {
                     id: printRow
+                    readonly property bool wantsCard: true
 
                     required property string modelData
 
@@ -210,16 +212,14 @@ Item {
 
                     Layout.fillWidth: true
                     implicitHeight: rowLayout.implicitHeight + 20
-                    radius: Appearance.rounding.small
-                    color: Appearance.colors.colLayer2
 
                     RowLayout {
                         id: rowLayout
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 10
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
                         spacing: 12
 
                         MaterialSymbol {
