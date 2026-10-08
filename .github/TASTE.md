@@ -364,6 +364,8 @@ The tokens are in `DESIGN.md`. These are the calls about when to use which.
 | Dialog | `WindowDialog`, `WindowDialogTitle`, `WindowDialogButtonRow`, `DialogButton` | ii-polkit |
 | Dialog row with a status line | `DialogListItem`; a switch row takes a non-checkable `StyledSwitch` | ii-sidebarDashboard-hotspot |
 | Settings rows | `Config*` rows in a `ContentGroup` run; a sub-page is `ConfigNavRow` | settings-LockConfig |
+| A setting whose control is too wide to sit beside its label (chips, a combo box, a field) | `ConfigSelectionRow` / `ConfigLabeledRow`: label inside the card, control below; never a `ContentSubsection` header over a bare control. One setting per row, no `ConfigRow` of switches | settings redesign 2026-10-08, `check-settings-rows.py` |
+| A date or time format | `ConfigFormatPicker`: chips that show what they render, Custom reveals the field | settings-GeneralConfig |
 | Hover, focus and press films | `StateOverlay`, or `colLayerNHover`/`colLayerNActive` | ii-sidebarPolicies-continuity |
 | A list that animates | `StyledListView` plus a keyed `ScriptModel` | ii-sidebarDashboard-todo |
 | A warning in the flow | `NoticeBox` | ii-sessionScreen |
