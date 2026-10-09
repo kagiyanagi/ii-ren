@@ -34,6 +34,7 @@ Item {
     property int iconBoxWrapperSize: 26
     property int workspaceDotSize: 4
     property real iconRatio: 0.8
+    readonly property real heldIconSize: Math.min(Appearance.font.pixelSize.smallie, individualIconBoxHeight * iconRatio)
     property bool showIcons: Config.options.bar.workspaces.showAppIcons
 
     readonly property bool isScrollingLayout: Persistent.states.hyprland.layout === "scrolling"
@@ -557,67 +558,77 @@ Item {
                     activeWorkspace: monitor?.activeWorkspace?.id === workspaceValue
                 }
                 
-                GridLayout {
-                    id: layout
+                Item {
+                    id: iconSurface
                     anchors.centerIn: parent
-                    columnSpacing: 0
-                    rowSpacing: 0
-                    columns: root.vertical ? 1 : 99
-                    rows: root.vertical ? 99 : 1
+                    width: layout.implicitWidth + 16
+                    height: layout.implicitHeight + 16
 
                     /*
                      * Monochrome icons used to cost a Desaturate *and* a
                      * ColorOverlay per icon, inside a repeated delegate (law 8,
                      * 8) -- and the option is on by default, so every app icon
                      * in the bar paid for two framebuffers. One MultiEffect on
-                     * the row does the same desaturate-then-tint for every icon
+                     * the surface does the same desaturate-then-tint for every icon
                      * in the workspace at once. It sits here and not on the
-                     * delegate above because this layout holds nothing but the
+                     * delegate above because this surface holds nothing but the
                      * icons; the number and the dot are its siblings.
                      */
                     layer.enabled: Config.options.bar.workspaces.monochromeIcons && layout.width > 0
+                    // Both the texture AND MultiEffect need room for the corner
+                    // badges. sourceRect alone still crops at the effect's bounds.
+                    // Reserve 8px on every side without changing workspace slots.
                     layer.effect: MultiEffect {
                         saturation: -0.8
                         colorization: 0.1
                         colorizationColor: Appearance.colors.colOnLayer1
                     }
 
-                    Repeater {
-                        property int workspaceIndex: workspaceOffset + workspaceGroup * workspacesShown + index + 1
-                        // root.maxWindowCount, not the config key it is derived
-                        // from: the scrolling-layout cap was computed above and
-                        // then bypassed here, so it never applied.
-                        model: root.showIcons ? root.monitorWindows?.filter(win => win.workspace === workspaceIndex).splice(0, root.maxWindowCount) : []
-                        delegate: Item {
-                            Layout.alignment: Qt.AlignHCenter
-                            width: root.individualIconBoxHeight
-                            height: root.individualIconBoxHeight
-                            IconImage {
-                                id: mainAppIcon
-                                Layout.alignment: Qt.AlignHCenter
-                                anchors {
-                                    left: parent.left
-                                    top: parent.top
-                                    leftMargin: root.showNumbersByMs ? 15 : 2
-                                    topMargin: root.showNumbersByMs ? 15 : 2
-                                }
-                                source: modelData.icon
-                                // Shrinks by scale, not implicitSize: IconImage binds
-                                // sourceSize to its size, so animating the size decoded
-                                // every icon again on every frame of the Super-hold morph.
-                                implicitSize: root.individualIconBoxHeight * root.iconRatio
-                                transformOrigin: Item.TopLeft
-                                scale: root.showNumbersByMs ? 1 / 1.5 : 1
+                    GridLayout {
+                        id: layout
+                        anchors.centerIn: parent
+                        columnSpacing: 0
+                        rowSpacing: 0
+                        columns: root.vertical ? 1 : 99
+                        rows: root.vertical ? 99 : 1
 
-                                // Position and size: a spatial spring, not the effects spec.
-                                Behavior on anchors.leftMargin {
-                                    NumbersMorph {}
-                                }
-                                Behavior on anchors.topMargin {
-                                    NumbersMorph {}
-                                }
-                                Behavior on scale {
-                                    NumbersMorph {}
+                        Repeater {
+                            property int workspaceIndex: workspaceOffset + workspaceGroup * workspacesShown + index + 1
+                            // root.maxWindowCount, not the config key it is derived
+                            // from: the scrolling-layout cap was computed above and
+                            // then bypassed here, so it never applied.
+                            model: root.showIcons ? root.monitorWindows?.filter(win => win.workspace === workspaceIndex).splice(0, root.maxWindowCount) : []
+                            delegate: Item {
+                                Layout.alignment: Qt.AlignHCenter
+                                width: root.individualIconBoxHeight
+                                height: root.individualIconBoxHeight
+                                IconImage {
+                                    id: mainAppIcon
+                                    Layout.alignment: Qt.AlignHCenter
+                                    anchors {
+                                        left: parent.left
+                                        top: parent.top
+                                        leftMargin: root.showNumbersByMs ? root.iconBoxWrapperSize - root.heldIconSize : 2
+                                        topMargin: root.showNumbersByMs ? root.iconBoxWrapperSize - root.heldIconSize : 2
+                                    }
+                                    source: modelData.icon
+                                    // Shrinks by scale, not implicitSize: IconImage binds
+                                    // sourceSize to its size, so animating the size decoded
+                                    // every icon again on every frame of the Super-hold morph.
+                                    implicitSize: root.individualIconBoxHeight * root.iconRatio
+                                    transformOrigin: Item.TopLeft
+                                    scale: root.showNumbersByMs ? root.heldIconSize / implicitSize : 1
+
+                                    // Position and size: a spatial spring, not the effects spec.
+                                    Behavior on anchors.leftMargin {
+                                        NumbersMorph {}
+                                    }
+                                    Behavior on anchors.topMargin {
+                                        NumbersMorph {}
+                                    }
+                                    Behavior on scale {
+                                        NumbersMorph {}
+                                    }
                                 }
                             }
                         }
