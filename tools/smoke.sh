@@ -23,7 +23,8 @@ layers() { hyprctl layers 2>/dev/null | sed -n 's/.*namespace: \([^,]*\).*/\1/p'
 
 pkill -x qs 2>/dev/null
 sleep 0.5
-nohup qs -c ii --no-color >"$LOG" 2>&1 &
+# The shell and the apps it launches must not inherit an agent's Electron Node mode.
+nohup env -u ELECTRON_RUN_AS_NODE qs -c ii --no-color >"$LOG" 2>&1 &
 
 for _ in $(seq "$TIMEOUT"); do
     sleep 1

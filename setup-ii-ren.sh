@@ -477,7 +477,8 @@ else
     sleep 1.0
 
     log_verbose "Starting Quickshell with config: ii"
-    nohup qs -c ii > /dev/null 2>&1 &
+    # An Electron-based terminal/agent may export Node mode for its own helpers.
+    nohup env -u ELECTRON_RUN_AS_NODE qs -c ii > /dev/null 2>&1 &
     echo -e "${GREEN}✓ Quickshell started${NC}"
     echo -e "${BLUE}Press SUPER+CTRL+R if your shell does not start.${NC}"
 fi

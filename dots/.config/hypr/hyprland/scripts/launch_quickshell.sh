@@ -13,7 +13,9 @@
 # (pkill, `iiren run`, Super+Ctrl+R): whoever killed it starts the next one.
 state="${XDG_STATE_HOME:-$HOME/.local/state}/quickshell/states.json"
 
-while qs -n -c "${qsConfig:-ii}"; s=$?
+# Electron-based terminals/agents can export this for their own helpers. If qs
+# inherits it, every Electron app opened from the launcher runs as Node and exits.
+while env -u ELECTRON_RUN_AS_NODE qs -n -c "${qsConfig:-ii}"; s=$?
     ((s != 0 && s != 143)) && grep -q '"locked": true' "$state"; do
     sleep 1
 done
