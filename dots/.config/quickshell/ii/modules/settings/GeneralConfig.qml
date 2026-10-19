@@ -128,11 +128,11 @@ ContentPage {
 
         ConfigSwitch {
             buttonIcon: "auto_awesome"
-            text: Translation.tr("Hermes")
-            summary: Translation.tr("Chat with your Hermes agent")
+            text: Translation.tr("Agent")
+            summary: Translation.tr("Claude Code or Codex in the left sidebar, on your own plan")
             toggles: false
-            checked: Config.options.hermes.enable
-            onClicked: Config.options.hermes.enable = !checked
+            checked: Config.options.agent.enable
+            onClicked: Config.options.agent.enable = !checked
         }
         ConfigSwitch {
             buttonIcon: "translate"

@@ -36,7 +36,7 @@ WindowDialog {
         return matches.filter(name => name.startsWith(root.query)).concat(matches.filter(name => !name.startsWith(root.query)));
     }
 
-    // Delete takes a second press, as a chat in Hermes' history does: the toggle
+    // Delete takes a second press, as a chat in the agent's history does: the toggle
     // and its commands are gone for good, with no undo.
     property bool confirmingDelete: false
 

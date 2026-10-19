@@ -1,0 +1,140 @@
+pragma ComponentBehavior: Bound
+
+import qs.services // Translation
+import qs.modules.common
+import qs.modules.common.widgets
+import QtQuick
+import QtQuick.Layouts
+import Quickshell // ScriptModel
+
+/**
+ * A turn's tool run, as one line.
+ *
+ * Agent apps reduce a whole run to "Explored 9 files, ran 6
+ * commands, used 2 tools" and keeps the detail behind it. Printing every call as
+ * its own row -- which this used to do -- buries the answer the user actually
+ * wanted under twenty lines of `read_file` and `terminal`, and in a sidebar that
+ * is the entire visible height.
+ */
+ColumnLayout {
+    id: root
+
+    required property var toolCalls
+
+    property bool expanded: false
+
+    /** Passed down; a group holding a search hit opens so the hit can be seen. */
+    property string searchQuery: ""
+    readonly property bool matchesSearch: {
+        const needle = root.searchQuery.trim().toLowerCase();
+        if (needle.length === 0)
+            return false;
+        return (root.toolCalls ?? []).some(call =>
+            `${call.toolName ?? ""} ${call.toolInput ?? ""} ${call.toolFullInput ?? ""} ${call.toolResult ?? ""}`
+                .toLowerCase().includes(needle));
+    }
+    readonly property bool open: root.expanded || root.matchesSearch
+    // Rows are built the first time the group opens and kept, so a close
+    // collapses over them. Binding the model to `open` destroyed them on the frame
+    // the fold started closing, and the Revealer shrank over nothing.
+    property bool built: false
+    onOpenChanged: if (root.open) root.built = true
+    Component.onCompleted: if (root.open) root.built = true
+
+    readonly property int total: root.toolCalls?.length ?? 0
+    readonly property bool anyRunning: (root.toolCalls ?? []).some(call => call.toolRunning ?? false)
+    readonly property bool anyFailed: (root.toolCalls ?? []).some(call => call.toolFailed ?? false)
+
+    // Grouped the way the agent's own summary groups them.
+    readonly property var fileTools: ["read_file", "search_files", "write_file", "patch", "view_file", "skill_view", "skills_list", "skill_manage"]
+    readonly property var commandTools: ["terminal", "execute_code", "browser_exec", "shell", "bash"]
+
+    function countOf(names: var): int {
+        return (root.toolCalls ?? []).filter(call => names.includes((call.toolName ?? "").toLowerCase())).length;
+    }
+
+    readonly property string summary: {
+        const files = root.countOf(root.fileTools);
+        const commands = root.countOf(root.commandTools);
+        const others = root.total - files - commands;
+        const parts = [];
+        if (files > 0)
+            parts.push(files === 1 ? Translation.tr("Explored 1 file") : Translation.tr("Explored %1 files").arg(files));
+        if (commands > 0)
+            parts.push(commands === 1 ? Translation.tr("ran 1 command") : Translation.tr("ran %1 commands").arg(commands));
+        if (others > 0)
+            parts.push(others === 1 ? Translation.tr("used 1 tool") : Translation.tr("used %1 tools").arg(others));
+        return parts.join(", ");
+    }
+
+    spacing: 4
+
+    RippleButton {
+        id: summaryButton
+        Layout.fillWidth: true
+        implicitHeight: 28
+        buttonRadius: Appearance.rounding.small
+        colBackground: "transparent"
+
+        releaseAction: () => root.expanded = !root.expanded
+
+        contentItem: RowLayout {
+            spacing: 6
+
+            MaterialSymbol {
+                Layout.leftMargin: 2
+                iconSize: Appearance.font.pixelSize.normal
+                color: root.anyFailed ? Appearance.m3colors.m3error : Appearance.colors.colSubtext
+                text: root.anyRunning ? "pending" : root.anyFailed ? "error" : "check"
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                elide: Text.ElideRight
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colSubtext
+                text: root.summary
+            }
+
+            MaterialSymbol {
+                Layout.rightMargin: 2
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.colors.colSubtext
+                text: "keyboard_arrow_down"
+
+                rotation: root.open ? 180 : 0
+                Behavior on rotation {
+                    animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
+                }
+            }
+        }
+    }
+
+    // The calls themselves, once asked for, revealed on the same recipe as each
+    // row's own details.
+    Revealer {
+        Layout.fillWidth: true
+        vertical: true
+        reveal: root.open
+
+        ColumnLayout {
+            x: 8
+            width: root.width - x
+            spacing: 4
+
+            Repeater {
+                model: ScriptModel {
+                    values: root.built ? (root.toolCalls ?? []) : []
+                }
+
+                delegate: ToolActivityRow {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    part: modelData
+                    searchQuery: root.searchQuery
+                }
+            }
+        }
+    }
+}

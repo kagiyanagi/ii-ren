@@ -26,8 +26,11 @@ Item { // Model indicator
         // overhang their advance -- service_toolbox was printing over its own count.
         spacing: 8
 
+        // `visible: active` on both: a RowLayout spaces every visible child, so the
+        // empty slot of the two still took a gap and the icon sat 16 from its label.
         Loader {
             active: root.icon.length > 0
+            visible: active
             sourceComponent: MaterialSymbol {
                 text: root.icon
                 iconSize: Appearance.font.pixelSize.normal
@@ -35,6 +38,7 @@ Item { // Model indicator
         }
         Loader {
             active: root.symbol.length > 0
+            visible: active
             sourceComponent: CustomIcon {
                 source: root.symbol
                 width: Appearance.font.pixelSize.normal

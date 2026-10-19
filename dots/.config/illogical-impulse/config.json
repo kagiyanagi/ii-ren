@@ -1,4 +1,16 @@
 {
+    "agent": {
+        "enable": true,
+        "maxSuggestions": 12,
+        "notifyWhenAway": true,
+        "showStatusLine": true,
+        "showToolCalls": true,
+        "sttLanguage": "en",
+        "sttModel": "",
+        "sttPrompt": "Terms: QML, Quickshell, Hyprland, ii-vynx, Conduit, LaTeX, extension, sidebar, attachment, transcript.",
+        "sttQuality": "best",
+        "sttSource": "default"
+    },
     "altTab": {
         "currentWorkspaceOnly": true,
         "enable": true,
@@ -1319,19 +1331,6 @@
     "hacks": {
         "arbitraryRaceConditionDelay": 20
     },
-    "hermes": {
-        "enable": true,
-        "maxSuggestions": 12,
-        "notifyWhenAway": true,
-        "showStatusLine": true,
-        "showToolCalls": true,
-        "sttEngine": "hermes",
-        "sttLanguage": "en",
-        "sttModel": "",
-        "sttPrompt": "Terms: QML, Quickshell, Hyprland, ii-vynx, Conduit, LaTeX, extension, sidebar, attachment, transcript.",
-        "sttQuality": "best",
-        "sttSource": "default"
-    },
     "hyprland": {
         "autostartApps": {
             "apps": [],
@@ -1538,8 +1537,8 @@
     },
     "panelFamily": "ii",
     "policies": {
+        "agent": 1,
         "continuity": 0,
-        "hermes": 1,
         "translator": 1,
         "wallpapers": 1,
         "weeb": 0

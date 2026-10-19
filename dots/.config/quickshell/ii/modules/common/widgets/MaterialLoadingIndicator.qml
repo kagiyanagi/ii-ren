@@ -37,7 +37,7 @@ Rectangle {
     property double leapRotation: 0
     rotation: pullRotation + continuousRotation + leapRotation
 
-    // Hidden is not loading. One parked behind `visible: false` -- the Hermes
+    // Hidden is not loading. One parked behind `visible: false` -- the agent
     // page's activity line, for as long as the shell ran -- kept turning and
     // morphing, and ticked the GUI thread every frame for it.
     readonly property bool animating: root.loading && root.visible

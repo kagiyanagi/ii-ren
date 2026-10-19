@@ -16,7 +16,7 @@ Item {
     property bool animeEnabled: Config.options.policies.weeb !== 0
     property bool animeCloset: Config.options.policies.weeb === 2
     property bool continuityEnabled: Config.options.policies.continuity !== 0
-    property bool hermesEnabled: Config.options.policies.hermes !== 0 && (Config.options.hermes?.enable ?? false)
+    property bool agentEnabled: Config.options.policies.agent !== 0 && (Config.options.agent?.enable ?? false)
 
     property bool _sidebarExtended: scopeRoot.extend
     property int _maxTextTabs: _sidebarExtended ? 4 : 3
@@ -24,8 +24,8 @@ Item {
     property var extensionPages: ExtensionManager.ready
         ? ExtensionManager.getContributionPoint("sidebarLeftPages") : []
 
-    // Hermes sits in front of the built-in pages and is focused on open.
-    readonly property int pinnedTabIndex: root.hermesEnabled ? 0 : -1
+    // The agent sits in front of the built-in pages and is focused on open.
+    readonly property int pinnedTabIndex: root.agentEnabled ? 0 : -1
 
     Connections {
         target: GlobalStates
@@ -41,7 +41,7 @@ Item {
     readonly property int currentTab: Math.min(Persistent.states.sidebar.policies.tab, Math.max(0, root.tabButtonList.length - 1))
 
     property var tabButtonList: [
-        ...(root.hermesEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Hermes")}] : []),
+        ...(root.agentEnabled ? [{"icon": "auto_awesome", "name": Translation.tr("Agent")}] : []),
         ...(root.translatorEnabled ? [{"icon": "translate", "name": Translation.tr("Translator")}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{"icon": "bookmark_heart", "name": Translation.tr("Anime")}] : []),
         ...(root.continuityEnabled ? [{"icon": "devices", "name": Translation.tr("Continuity")}] : []),
@@ -53,7 +53,7 @@ Item {
     // lands on the same pages (a language load, an extensions-file refresh, any config
     // write) notifies nothing and the Repeater keeps every page it has.
     readonly property string pages: JSON.stringify([
-        ...(root.hermesEnabled ? [{kind: "hermes"}] : []),
+        ...(root.agentEnabled ? [{kind: "agent"}] : []),
         ...(root.translatorEnabled ? [{kind: "translator"}] : []),
         ...(root.tabButtonList.length === 0 ? [{kind: "placeholder"}] : []),
         ...((root.animeEnabled && !root.animeCloset) ? [{kind: "anime"}] : []),
@@ -147,7 +147,7 @@ Item {
                 Repeater {
                     model: JSON.parse(root.pages)
                     // Every page in the view re-evaluates on open, whether or not it is the
-                    // tab being looked at: measured on this machine, Hermes ~40 and
+                    // tab being looked at: measured on this machine, the agent page ~40 and
                     // Continuity ~63 CPU ticks per open, and they add up. Only the current
                     // tab is kept alive; a page is built when you switch to it and dropped
                     // when you leave. Extension pages stay up and keep their state.
@@ -162,7 +162,7 @@ Item {
                         // tab is ever built.
                         asynchronous: false
                         active: SwipeView.isCurrentItem || modelData.kind === "extension"
-                        sourceComponent: ({hermes, translator, anime, continuity, placeholder})[modelData.kind] ?? null
+                        sourceComponent: ({agent, translator, anime, continuity, placeholder})[modelData.kind] ?? null
                         source: modelData.kind === "extension" ? "file://" + modelData.path + "?_t=" + Date.now() : ""
                         onLoaded: {
                             if (modelData.kind !== "extension") return
@@ -175,8 +175,8 @@ Item {
         }
 
         Component {
-            id: hermes
-            Hermes {}
+            id: agent
+            Agent {}
         }
         Component {
             id: translator
@@ -198,7 +198,7 @@ Item {
                     icon: "view_sidebar"
                     // Closet mode keeps its bare "Nothing": it is the cover the hidden page sits behind.
                     title: root.animeCloset ? Translation.tr("Nothing") : Translation.tr("Nothing in this sidebar")
-                    description: root.animeCloset ? "" : Translation.tr("Turn on Hermes, the translator or Anime in Settings > General > Policies")
+                    description: root.animeCloset ? "" : Translation.tr("Turn on the agent, the translator or Anime in Settings > General > Policies")
                 }
             }
         }

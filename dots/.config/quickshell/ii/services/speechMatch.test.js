@@ -80,8 +80,8 @@ assert.strictEqual(findWordAt(views[0], across, 0.999), null);
 assert.notStrictEqual(findWordAt(views[1], across, 0.999), null);
 
 // The read-aloud chunks are slices of the message, newlines kept, so a marker
-// stays at the start of its line. Lifted from HermesService.qml.
-const svc = require("fs").readFileSync(__dirname + "/HermesService.qml", "utf8");
+// stays at the start of its line. Lifted from AgentService.qml.
+const svc = require("fs").readFileSync(__dirname + "/AgentService.qml", "utf8");
 const splitSrc = svc.slice(svc.indexOf("function _splitForSpeech(text: string): var {"));
 const split = new Function("root", "return " + splitSrc.slice(0, splitSrc.indexOf("\n    }\n") + 6)
     .replace("function _splitForSpeech(text: string): var", "function (text)"))({ _minFirstChunk: 60, _minChunk: 140, _maxChunks: 8 });

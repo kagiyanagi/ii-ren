@@ -726,7 +726,7 @@ px scale (M3.md §1.1); this is where each M3 style lands on it:
 | M3 style (size/line) | Repo token | Notes |
 |---|---|---|
 | display large 57/64 | `displayLarge` 57 | a page's hero number only: the battery level, the keep-awake readout, the temperature |
-| display small 36/44 | `display` 36 | one per page at most (the Hermes greeting), short text or numerals |
+| display small 36/44 | `display` 36 | one per page at most (the agent greeting), short text or numerals |
 | headline small 24/32 | `hugeass` 23 | `font.family.title`; dialog titles |
 | title large 22/28 | `huge` 22 | `font.family.title`; page and panel titles |
 | title medium 16/24, title small 14/20 | `large` 17 / `normal` 16, `small` 15 | title family, wght 550; section heads, tabs. `larger` 19 sits between title medium and large — only where a sibling already uses it |

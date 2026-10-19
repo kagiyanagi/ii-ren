@@ -81,7 +81,7 @@ Singleton {
                 property int wallpapers: 1 // 0: No | 1: Yes
                 property int translator: 0 // 0: No | 1: Yes
                 property int continuity: 1 // 0: No | 1: Yes
-                property int hermes: 1 // 0: No | 1: Yes
+                property int agent: 1 // 0: No | 1: Yes
             }
 
             property JsonObject extensions: JsonObject {
@@ -100,12 +100,14 @@ Singleton {
                 property string filePath: Directories.todoPath
             }
 
-            property JsonObject hermes: JsonObject {
+            property JsonObject agent: JsonObject {
+                // The left sidebar's agent: Claude Code or Codex, whichever is
+                // installed and signed in (services/AgentService.qml).
                 property bool enable: true
                 property bool showToolCalls: true
                 property bool showStatusLine: true
                 // Slash completions come from the agent, which knows its own
-                // skills and plugins; this only bounds how many are offered.
+                // commands and skills; this only bounds how many are offered.
                 property int maxSuggestions: 12
 
                 // Notify when a reply lands somewhere you cannot see it -- the panel
@@ -113,18 +115,13 @@ Singleton {
                 property bool notifyWhenAway: true
 
                 // Dictation, from the mic button and Super+Shift+B, records with
-                // pw-record -- see services/hermes/SpeechToText.qml.
-                //
-                // "hermes" transcribes with whatever provider Hermes is configured
-                // with (`stt.provider` in ~/.hermes/config.yaml), so changing it
-                // there changes dictation too. "local" pins dictation to whisper.cpp
-                // on this machine. The settings below configure whisper.cpp, and
-                // apply whenever it runs -- by choice, or as the fallback.
-                property string sttEngine: "hermes"    // hermes | local
+                // pw-record and transcribes with whisper.cpp on this machine -- see
+                // services/agent/SpeechToText.qml. Without whisper.cpp the mic is
+                // hidden.
                 property string sttQuality: "balanced" // fast | balanced | accurate | best
                 property string sttModel: ""           // explicit path wins over the preset
                 property string sttLanguage: "en"      // en | auto
-                property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, Hermes, LaTeX, extension, sidebar, attachment, transcript."
+                property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, LaTeX, extension, sidebar, attachment, transcript."
                 property string sttSource: ""
 
             }

@@ -84,7 +84,7 @@ ColumnLayout {
      * there is closing emphasis or a link. Fences are left alone. With the brackets
      * removed the plain text is the same as the unstyled markdown's, so copying,
      * selection, search marks and read-aloud all still line up.
-     * tools/check-hermes-thread.py runs this under node.
+     * tools/check-agent-thread.py runs this under node.
      */
     function styleCodeSpans(md: string, foreground: string, family: string, gap: real): string {
         const mark = "\u2063";
@@ -189,7 +189,7 @@ ColumnLayout {
      * paragraph formatMarkdown() puts between paragraphs and the views meet with no
      * padding, so they lay out exactly as the one view they become once the reveal
      * settles, which is when a selection can run across the whole reply again.
-     * tools/check-hermes-stream.py runs this.
+     * tools/check-agent-stream.py runs this.
      */
     function viewTexts(): var {
         const text = root.shownText;

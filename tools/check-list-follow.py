@@ -2,7 +2,7 @@
 """A list that follows its end gets there without rebuilding every row, forever.
 
 positionViewAtEnd() on a last row the view has not built makes Qt throw every row
-away and rebuild them around a guessed position. A Hermes turn is built short -- its
+away and rebuild them around a guessed position. An agent turn is built short -- its
 text wraps a frame later, once its layout hands it a width -- so the rebuilt row
 straddling the top of the view grew, shoved the end out of the view and out of the
 cache, and the follow pinned again: a rebuild every other frame, contentY racing
@@ -19,7 +19,7 @@ None of it has a still frame. What is pinned:
   end and left any growth that landed there hanging below it;
 - the button scrolls through `scrollToEnd` on the programmatic scroll spec, not on a
   curve of its own (an overshooting one bounced the list past its end, DESIGN.md 3.6);
-- Hermes never calls positionViewAtEnd() itself, and never clamps contentY against
+- the agent page never calls positionViewAtEnd() itself, and never clamps contentY against
   a bare contentHeight, which ignores where the estimated content starts (originY).
 """
 import re
@@ -30,7 +30,7 @@ II = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii"
 lv = "\n".join(line for line in (II / "modules/common/widgets/StyledListView.qml").read_text().splitlines()
                if not line.lstrip().startswith(("*", "/*", "//")))
 button = (II / "modules/ii/sidebarPolicies/ScrollToBottomButton.qml").read_text()
-hermes = (II / "modules/ii/sidebarPolicies/Hermes.qml").read_text()
+page = (II / "modules/ii/sidebarPolicies/Agent.qml").read_text()
 
 
 def body(src: str, head: str) -> str:
@@ -71,9 +71,9 @@ assert not re.search(r"NumberAnimation\s*\{[^}]*property:\s*\"contentY\"", lv), 
 assert re.search(r"downAction:\s*\(\)\s*=>\s*target\.scrollToEnd\(\)", button), \
     "ScrollToBottomButton: the button must go through scrollToEnd()"
 
-assert "positionViewAtEnd" not in hermes, "Hermes: call jumpToEnd(), not positionViewAtEnd()"
-for m in re.finditer(r"messageListView\.contentY\s*=\s*(.+);", hermes):
+assert "positionViewAtEnd" not in page, "Agent: call jumpToEnd(), not positionViewAtEnd()"
+for m in re.finditer(r"messageListView\.contentY\s*=\s*(.+);", page):
     assert not re.search(r"contentHeight|Math\.max\(0,", m.group(1)), \
-        f"Hermes: `{m.group(1)}` clamps against a bare contentHeight or 0, ignoring originY"
+        f"Agent: `{m.group(1)}` clamps against a bare contentHeight or 0, ignoring originY"
 
 print("ok: the end is walked to rather than rebuilt, and the follow is not gated on a stale atYEnd")

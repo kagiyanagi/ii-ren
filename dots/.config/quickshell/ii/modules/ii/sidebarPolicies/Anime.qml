@@ -121,7 +121,7 @@ Item {
     }
 
     property real pageKeyScrollAmount: booruResponseListView.height / 2
-    // Hermes's type-anywhere guard: a modifier's own key-down must not take focus
+    // The agent page's type-anywhere guard: a modifier's own key-down must not take focus
     // from a selection the user is about to copy.
     readonly property var modifierKeys: [Qt.Key_Control, Qt.Key_Shift, Qt.Key_Alt, Qt.Key_Meta,
                                          Qt.Key_AltGr, Qt.Key_CapsLock, Qt.Key_NumLock, Qt.Key_Super_L, Qt.Key_Super_R]

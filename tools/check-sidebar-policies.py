@@ -32,7 +32,7 @@ P = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules
 content = (P / "SidebarPoliciesContent.qml").read_text()
 frame = (P / "SidebarPolicies.qml").read_text()
 anime = (P / "Anime.qml").read_text()
-hermes = (P / "Hermes.qml").read_text()
+agent = (P / "Agent.qml").read_text()
 indicator = (P / "ApiInputBoxIndicator.qml").read_text()
 scroll = (P / "ScrollToBottomButton.qml").read_text()
 
@@ -49,13 +49,13 @@ code = re.sub(r"//.*", "", content)
 assert "contentChildren" not in code and "createObject" not in code, \
     "SidebarPoliciesContent: pages built into contentChildren go blank after a live reload"
 assert "model: JSON.parse(root.pages)" in content, "SidebarPoliciesContent: the page Repeater must read the string"
-combos = [dict(weeb=w, translator=t, continuity=c, hermes=h, ext=e)
+combos = [dict(weeb=w, translator=t, continuity=c, agent=h, ext=e)
           for w, t, c, h, e in product([0, 1, 2], [0, 1], [0, 1], [0, 1], [0, 1])]
 got = node(f"""
 const out = {json.dumps(combos)}.map(p => {{
     const Translation = {{ tr: s => s }};
     const root = {{
-        hermesEnabled: !!p.hermes, translatorEnabled: !!p.translator, continuityEnabled: !!p.continuity,
+        agentEnabled: !!p.agent, translatorEnabled: !!p.translator, continuityEnabled: !!p.continuity,
         animeEnabled: p.weeb !== 0, animeCloset: p.weeb === 2,
         extensionPages: p.ext ? [{{ icon: "x", title: "Ext", fullPath: "/x.qml", extensionId: "Ext" }}] : [],
     }};
@@ -64,7 +64,7 @@ const out = {json.dumps(combos)}.map(p => {{
     return {{ p, tabs: root.tabButtonList.map(t => t.name), pages }};
 }});
 console.log(JSON.stringify(out));""")
-name_to_page = {"Hermes": "hermes", "Translator": "translator", "Anime": "anime", "Continuity": "continuity", "Ext": "ext:Ext"}
+name_to_page = {"Agent": "agent", "Translator": "translator", "Anime": "anime", "Continuity": "continuity", "Ext": "ext:Ext"}
 for r in got:
     want = [name_to_page[t] for t in r["tabs"]]
     head, tail = r["pages"][:len(want)], r["pages"][len(want):]
@@ -92,13 +92,17 @@ assert send and "MouseArea {" not in send.group(1) and "releaseAction" in send.g
     "Anime: the send button takes its own press (releaseAction), no MouseArea over it"
 
 # ── Type-anywhere leaves a modifier's key-down alone ─────────────────
-for name, qml in [("Anime", anime), ("Hermes", hermes)]:
+for name, qml in [("Anime", anime), ("Agent", agent)]:
     assert "root.modifierKeys.indexOf(event.key) === -1" in qml, f"{name}: type-anywhere steals focus on a modifier key"
 
 # ── Clickable readout shows hover and press ─────────────────────────
 overlay = re.search(r"StateOverlay \{(.*?)\n            \}", indicator, re.S)
 assert overlay and "hover: mouseArea.containsMouse" in overlay.group(1) and "press: mouseArea.pressed" in overlay.group(1), \
     "ApiInputBoxIndicator: a clickable readout needs hover and press films"
+# A RowLayout spaces every visible child: the unused one of the two icon slots took
+# a gap of its own, putting every chip's icon 16 from its label instead of 8 (5.2).
+slots = re.findall(r"Loader \{\s*active: root\.(icon|symbol)\.length > 0\s*visible: active", indicator)
+assert sorted(slots) == ["icon", "symbol"], "ApiInputBoxIndicator: an inactive icon slot still takes a RowLayout gap"
 
 # ── Scroll to bottom: asymmetric, grows from its edge ───────────────
 assert "transformOrigin: Item.Bottom" in scroll, "ScrollToBottomButton: grows out of the bottom edge it is anchored to"
@@ -109,6 +113,6 @@ detached = frame[frame.index("detachedSidebarLoader\n"):]
 assert "Dismissable(panelWindow" not in detached.split("IpcHandler")[0], \
     "SidebarPolicies: the detached window names `panelWindow`, an id from the other component"
 assert re.search(r"Behavior on radius \{", frame), "SidebarPolicies: pin snaps the radius while height springs"
-assert not (P / "StatusSeparator.qml").exists() and "StatusSeparator" not in hermes, "no separator dots (DESIGN.md 5.5)"
+assert not (P / "StatusSeparator.qml").exists() and "StatusSeparator" not in agent, "no separator dots (DESIGN.md 5.5)"
 
 print("check-sidebar-policies: ok")

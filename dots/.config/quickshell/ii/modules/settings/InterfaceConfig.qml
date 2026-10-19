@@ -643,10 +643,10 @@ Item {
 
             ConfigSwitch {
                 buttonIcon: "smart_toy"
-                text: Translation.tr("Notify when Hermes replies and its tab isn't visible")
-                checked: Config.options.hermes.notifyWhenAway
+                text: Translation.tr("Notify when the agent replies and its tab isn't visible")
+                checked: Config.options.agent.notifyWhenAway
                 onCheckedChanged: {
-                    Config.options.hermes.notifyWhenAway = checked;
+                    Config.options.agent.notifyWhenAway = checked;
                 }
             }
 

@@ -23,7 +23,7 @@ Fast, pretty, and lightweight enough that your fans won't spool up just looking 
 
 **✦ dock** · app folders · curves into the screen edge
 
-**✦ together** · **Hermes** in the left sidebar, with an MCP server that drives apps through accessibility · Continuity: phone, earbuds and Tailscale peers in one panel · Fast Pair · several speakers at once, each at its own volume
+**✦ together** · an **agent** in the left sidebar: Claude Code or Codex on your own plan, able to see the screen and drive the shell · Continuity: phone, earbuds and Tailscale peers in one panel · Fast Pair · several speakers at once, each at its own volume
 
 **✦ windows** · floating mode with title bars, minimize and rails · shake the cursor to find it
 

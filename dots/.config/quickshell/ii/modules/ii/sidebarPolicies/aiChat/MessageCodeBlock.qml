@@ -35,6 +35,20 @@ Rectangle {
     property real codeBlockBackgroundRounding: Appearance.rounding.small
     property real codeBlockPadding: 4
 
+    /*
+     * What is drawn, not what is copied. Past this the block shows its start and
+     * says so: it is one TextArea under a highlighter, re-set on every streamed
+     * token, and a runaway million-character block took the shell to 1.3 GB.
+     * Copy, Save, Open and Run all take the whole of it. Same ceiling idea as
+     * ToolActivityRow's maxShownChars.
+     */
+    readonly property int maxShownChars: 20000
+    readonly property string fullText: `${root.segmentContent ?? ""}`
+    readonly property bool clipped: !root.editing && root.fullText.length > root.maxShownChars
+    // Only whitespace looks like an empty box, so it is named rather than left to
+    // read as a block that failed to render.
+    readonly property bool blank: root.fullText.length > 0 && root.fullText.trim().length === 0
+
     // One card, on whitespace: the header, the line numbers and the code used to
     // be three separately rounded rectangles 2px apart, and the seams showed the
     // turn's card through as divider lines (DESIGN.md 11).
@@ -99,7 +113,7 @@ Rectangle {
                         // so saving a second one silently replaced the first. The
                         // name carries a timestamp now, and the write is a heredoc
                         // rather than an `echo` that mangled backslashes.
-                        HermesService.runner.saveToFile(segmentContent, segmentLang,
+                        AgentService.runner.saveToFile(segmentContent, segmentLang,
                             FileUtils.trimFileProtocol(Directories.downloads))
                         saveCodeButton.activated = true
                         saveIconTimer.restart()
@@ -119,7 +133,7 @@ Rectangle {
                 }
                 AiMessageControlButton {
                     buttonIcon: "open_in_new"
-                    onClicked: HermesService.runner.openInEditor(segmentContent, segmentLang)
+                    onClicked: AgentService.runner.openInEditor(segmentContent, segmentLang)
 
                     StyledToolTip {
                         text: Translation.tr("Open in editor")
@@ -128,10 +142,10 @@ Rectangle {
                 AiMessageControlButton {
                     // Hidden, not greyed, when nothing here can run this language:
                     // a button that could only ever fail is worse than no button.
-                    visible: root.enableRunActions && HermesService.runner.canRun(root.segmentLang)
-                    enabled: !HermesService.runner.running
+                    visible: root.enableRunActions && AgentService.runner.canRun(root.segmentLang)
+                    enabled: !AgentService.runner.running
                     buttonIcon: "play_arrow"
-                    onClicked: HermesService.runner.runCode(segmentContent, segmentLang)
+                    onClicked: AgentService.runner.runCode(segmentContent, segmentLang)
 
                     StyledToolTip {
                         text: Translation.tr("Run this")
@@ -215,7 +229,7 @@ Rectangle {
                     selectionColor: Appearance.colors.colSecondaryContainer
                     color: root.messageData?.thinking ? Appearance.colors.colSubtext : Appearance.colors.colOnLayer3
 
-                    text: segmentContent
+                    text: root.clipped ? root.fullText.slice(0, root.maxShownChars) : root.fullText
                     // Written back only while editing, as MessageTextBlock does. Unguarded,
                     // the first streamed chunk replaced the caller's
                     // `segmentContent: modelData.content` binding with a value, and a
@@ -272,6 +286,25 @@ Rectangle {
                     }
                 }
             }
+        }
+
+        StyledText { // What the block holds that the box cannot show
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            Layout.topMargin: 4
+            Layout.bottomMargin: 4
+            visible: root.clipped || root.blank
+            wrapMode: Text.Wrap
+            font.pixelSize: Appearance.font.pixelSize.smaller
+            color: Appearance.colors.colSubtext
+            readonly property string total: root.fullText.length.toLocaleString(Qt.locale())
+            readonly property string shown: root.maxShownChars.toLocaleString(Qt.locale())
+            text: root.blank
+                ? (root.clipped ? Translation.tr("Only whitespace: %1 characters, the first %2 shown").arg(total).arg(shown)
+                                : Translation.tr("Only whitespace: %1 characters").arg(total))
+                : Translation.tr("Showing the first %1 of %2 characters — Copy takes all of it").arg(shown).arg(total)
         }
     }
 }

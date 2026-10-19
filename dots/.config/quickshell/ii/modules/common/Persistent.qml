@@ -58,13 +58,9 @@ Singleton {
 
             property string hyprlandInstanceSignature: ""
 
-            property JsonObject hermes: JsonObject {
-                // Applied to each new session with `--session`, so the sidebar's
-                // model never overwrites what the hermes CLI starts on.
-                property string model: ""
-                property string provider: ""
-                // A connection id from the Hermes desktop app's connections.json.
-                property string gateway: "local"
+            property JsonObject agent: JsonObject {
+                // claude | codex; empty means the first one installed.
+                property string backend: ""
             }
 
             property JsonObject water: JsonObject {

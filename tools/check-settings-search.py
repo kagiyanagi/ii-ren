@@ -49,7 +49,7 @@ for rel in pages:
 
 # The static index finds sections by brace matching over the file text. It treated
 # an apostrophe in a `//` comment as a string quote, and everything after it was one
-# unterminated string: Quick indexed one section of three and Hermes four of six.
+# unterminated string: Quick indexed one section of three and another page four of six.
 # Run the real extractBlocks under node and compare with a line count.
 fn = registry[registry.index("    function extractBlocks"):registry.index("    // Helper function for indexQmlFile(), extracts properties")]
 js = fn.replace("    function extractBlocks", "function extractBlocks", 1) + """

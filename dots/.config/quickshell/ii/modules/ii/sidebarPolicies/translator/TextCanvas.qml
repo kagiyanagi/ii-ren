@@ -19,7 +19,7 @@ Rectangle {
     property string text: ""
     property bool error: false
     property bool busy: false
-    // An empty card with an icon shows it as a placeholder, as Hermes does.
+    // An empty card with an icon shows it as a placeholder, as the agent page does.
     property string emptyIcon: ""
     property string emptyTitle: ""
     property string emptyDescription: ""

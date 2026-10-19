@@ -3,35 +3,32 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.services
-import qs.modules.ii.sidebarPolicies.hermes
+import qs.modules.ii.sidebarPolicies.agent
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.ii.overlay
 import Quickshell // ScriptModel
 
 /**
- * Hermes as a floating overlay: ask about whatever is already on screen without
+ * The sidebar agent as a floating overlay: ask about whatever is already on screen without
  * going to the sidebar for it. It drives the same singleton, so a conversation
  * started here is the one the sidebar page shows, and pinning the widget leaves it
  * over every window.
  *
- * Nothing here captures the screen. Looking is the agent's own move, through the
- * tools it loaded itself, so the eye toggle costs one line of prompt instead of a
- * screenshot pipeline. Without a tool that can see, it is hidden -- there would be
+ * Nothing here captures the screen. Looking is the agent's own move, through its
+ * desktop tools (scripts/agent/desktop_mcp.py), so the eye toggle costs one line of
+ * prompt instead of a screenshot pipeline. Without a tool that can see, it is hidden -- there would be
  * nothing behind it.
  */
 OverlayBackground {
     id: root
 
-    readonly property var service: HermesService
+    readonly property var service: AgentService
     readonly property var messageIDs: (root.service?.messageIDs ?? []).filter(id => root.service?.messageByID[id]?.visibleToUser ?? true)
     readonly property bool responding: root.service?.busy ?? false
-    // The agent publishes the toolset it actually loaded, so the eye is offered
-    // only when something behind it can really look.
-    readonly property bool canLook: {
-        const tools = root.service?.sessionTools ?? ({});
-        return Object.values(tools).some(group => (group ?? []).some(name => name === "computer_use" || name === "vision_analyze"));
-    }
+    // The agent says whether it has the desktop tools, so the eye is offered only
+    // when something behind it can really look.
+    readonly property bool canLook: root.service?.can("screen") ?? false
     property bool seeScreen: true
 
     function ask(text: string): void {
@@ -39,7 +36,7 @@ OverlayBackground {
         if (trimmed.length === 0) return;
         // The agent decides on its own whether a look is worth it, which for a question
         // about the screen is a coin flip; naming the tool settles it.
-        const prompt = (root.canLook && root.seeScreen) ? `[Use computer_use to take a screenshot first — the question is about what is on my screen.]\n${trimmed}` : trimmed;
+        const prompt = (root.canLook && root.seeScreen) ? `[Use the desktop screenshot tool first — the question is about what is on my screen.]\n${trimmed}` : trimmed;
         root.service?.sendMessage(prompt);
     }
 
@@ -64,7 +61,7 @@ OverlayBackground {
             // ScriptModel, not the bare array: `root.messageIDs` is a fresh
             // `.filter()` result every time, and assigning a new array to `model`
             // tears down and rebuilds every turn delegate on each turn. Same reason
-            // as Hermes.qml -- diff the ids and insert, don't reset the view.
+            // as Agent.qml -- diff the ids and insert, don't reset the view.
             model: ScriptModel {
                 values: root.messageIDs
             }
@@ -72,7 +69,7 @@ OverlayBackground {
             onCountChanged: Qt.callLater(transcript.positionViewAtEnd)
             onContentHeightChanged: if (transcript.atYEnd || root.responding) Qt.callLater(transcript.positionViewAtEnd)
 
-            delegate: HermesMessage {
+            delegate: AgentMessage {
                 required property var modelData
                 width: transcript.width
                 messageData: root.service?.messageByID[modelData] ?? null

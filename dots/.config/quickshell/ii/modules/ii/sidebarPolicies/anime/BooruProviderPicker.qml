@@ -4,15 +4,15 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
-import qs.modules.ii.sidebarPolicies.hermes
+import qs.modules.ii.sidebarPolicies.agent
 import QtQuick
 import QtQuick.Layouts
 
 /**
  * Provider selection, opened from the composer's provider chip -- the same card
- * as Hermes' model picker. Few enough providers that it needs no search field.
+ * as the agent's model picker. Few enough providers that it needs no search field.
  */
-HermesPopover {
+AgentPopover {
     id: root
 
     opensUp: true

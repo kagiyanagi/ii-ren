@@ -106,7 +106,7 @@ answer to Windows 11, but §3, §4, §6 and §7 apply to it unchanged.
     place [ii-screenTranslator]. The three corner cards swipe away identically
     [ii-regionSelector]. The lock screen and the polkit dialog explain a failed password in
     the same order [ii-polkit]. Three in-file copies of one icon button became
-    `HermesIconButton` [ii-sidebarPolicies-hermes-panels]. For the vertical bar: "where the
+    `AgentIconButton` [ii-sidebarPolicies-hermes-panels]. For the vertical bar: "where the
     two differ and the vertical one is not forced by its axis, the vertical one is wrong"
     [ii-verticalBar].
     The same applies to text fields and empty states [cohesion].

@@ -120,7 +120,7 @@ modules/
   ii/           # Illogical-impulse panel components
   waffle/       # Waffle panel components
   settings/     # Settings app pages (QuickConfig, BarConfig, etc.)
-services/       # Backend services (Audio, Battery, Network, MprisController, HermesService, etc.)
+services/       # Backend services (Audio, Battery, Network, MprisController, AgentService, etc.)
 defaults/       # Shipped default assets/config the shell falls back to
 scripts/        # Shell-invoked helper scripts
 ```
@@ -153,8 +153,8 @@ Config lives in `Config.qml` as nested `JsonObject` properties. Key top-level gr
 - `background` — wallpaper, widgets (clock/media/weather), parallax
 - `lock` — lock screen, blur, `useHyprlock`
 - `waffles` — Waffle-specific tweaks (bar, actionCenter toggles)
-- `hermes` — the left sidebar's chat with a hermes-agent install (local or over ssh): tool calls, notifications, dictation
-- `policies` — feature flags (weeb, wallpapers, translator, continuity, hermes)
+- `agent` — the left sidebar's agent: Claude Code or Codex, run as the user's own signed-in CLI (`scripts/agent/bridge.py`), with desktop tools (`scripts/agent/desktop_mcp.py`); tool rows, notifications, optional dictation (whisper.cpp) and read-aloud (edge-tts)
+- `policies` — feature flags (weeb, wallpapers, translator, continuity, agent)
 
 Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`, etc.
 
@@ -173,6 +173,18 @@ Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`,
 - **Shell commands:** never splice a value into `sh -c` text; pass it as `"$1"`... after the
   script (`["sh", "-c", 'cmd "$1"', "sh", value]`). Media metadata, file names, model
   output and extension metadata all reach commands here
+
+## Sidebar agent
+
+The left sidebar's agent is the user's own signed-in Claude Code or Codex CLI -- never
+an API key, never their login token. `scripts/agent/bridge.py` starts `claude` in
+stream-json mode (the Agent SDK's subprocess protocol) or `codex app-server`, and speaks
+the sidebar's JSON-RPC to `services/AgentService.qml`; standard library only. Both CLIs
+get the desktop tools as an MCP server (`scripts/agent/desktop_mcp.py`, over
+`desktop.py` and `qs ipc`). What an agent can do arrives as `capabilities` with its
+`ready` event, and the page offers only that (`AgentService.can()`). The gate is
+`tools/check-agent-bridge.py` (fake CLIs, no tokens spent); `tools/probe-agent.py
+claude|codex [scenario]` drives the real one and spends a little of the plan.
 
 ## Extension System
 

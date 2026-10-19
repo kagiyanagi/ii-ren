@@ -18,3 +18,4 @@ numpy
 opencv-contrib-python-headless
 requests
 onnxruntime
+edge-tts

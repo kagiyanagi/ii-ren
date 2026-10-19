@@ -59,7 +59,10 @@ Singleton {
                 }
             }
             if (match[0].startsWith('```')) {
-                if (match[2] && match[2].trim()) {
+                // Any content at all, whitespace included: a block of spaces is still
+                // a block the model wrote, and dropping it showed a reply with nothing
+                // in it while a million spaces streamed in.
+                if (match[2] && match[2].length > 0) {
                     result.push({
                         type: "code",
                         lang: match[1] || "",
@@ -119,7 +122,7 @@ Singleton {
                     codeContentStart += 1;
                 }
                 const codeContent = text.slice(codeContentStart);
-                if (codeContent.trim()) {
+                if (codeContent.length > 0) {
                     result.push({
                         type: "code",
                         lang,

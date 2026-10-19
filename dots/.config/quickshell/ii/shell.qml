@@ -47,7 +47,7 @@ ShellRoot {
         Wallpapers.load()
         Autostart.load()
         Updates.load()
-        HermesService.load()
+        AgentService.load()
         SoundService.load()
         LocalSend.live = true
         if (Config.ready) root.activeFamily = Config.options.panelFamily
