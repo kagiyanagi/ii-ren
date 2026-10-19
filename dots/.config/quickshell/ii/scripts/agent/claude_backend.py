@@ -5,7 +5,7 @@ _internal/query.py and transport/subprocess_cli.py), spoken directly so the shel
 needs no Python package: user turns go in on stdin as JSON lines, the CLI's
 messages come back on stdout, and both sides send `control_request`s -- the CLI
 to ask permission (`can_use_tool`, because of `--permission-prompt-tool stdio`),
-us to interrupt, switch model or mode, or read the context window.
+us to interrupt, switch model or mode, or read the plan's limits (`get_usage`).
 
 The binary is run unmodified and signs in on its own, so usage is the user's plan.
 ANTHROPIC_API_KEY is dropped from its environment for the same reason: with it
@@ -29,7 +29,8 @@ import sys
 import time
 import uuid
 
-from bridge import HOME, BridgeError, MissingAgent, desktop_server, effort_label, first_string, load_state, one_line, persona, save_state
+from bridge import (HOME, BridgeError, MissingAgent, desktop_server, effort_label, epoch, first_string, limit_window, load_state,
+                    one_line, persona, save_state)
 
 # Read-only desktop tools need no approval in any mode; clicking and IPC calls do.
 DESKTOP_READ_ONLY = ("screenshot", "windows", "see", "ipc_show")
@@ -56,6 +57,52 @@ EFFORT_NOTES = {
     "xhigh": "Thinks longer still",
     "max": "As long as it needs: slowest, and uses the most of your plan",
 }
+
+# Plan limits, from the CLI's own `get_usage` (what its /usage shows).
+PLANS = {"pro": "Claude Pro", "max": "Claude Max", "team": "Claude Team", "enterprise": "Claude Enterprise"}
+LIMIT_KINDS = {"session": ("5-hour", 300), "weekly_all": ("Weekly", 10080)}
+# The streamed rate_limit_event's windows, by the id get_usage gives them.
+EVENT_WINDOWS = {"five_hour": "session", "seven_day": "weekly_all"}
+LIMITS_EVERY = 30  # seconds between asks after a turn; opening the button always asks
+
+
+def claude_limits(body: dict, current: str = "") -> dict:
+    """`get_usage`'s answer as the sidebar's limits. `current` is the model in use:
+    a weekly window scoped to another model does not limit it."""
+    plan = PLANS.get(body.get("subscription_type") or "", "")
+    limits = body.get("rate_limits") or {}
+    out = {"plan": plan, "windows": [], "notes": [], "checked_at": int(time.time())}
+    if not body.get("rate_limits_available") or not limits:
+        out["notes"].append("This login has no plan limits (an API key, Bedrock or Vertex is billed instead).")
+        return out
+    rows = limits.get("limits")
+    if isinstance(rows, list) and rows:
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("percent"), (int, float)):
+                continue
+            kind = row.get("kind") or ""
+            model = (((row.get("scope") or {}).get("model") or {}).get("display_name") or "").strip()
+            label, minutes = LIMIT_KINDS.get(kind, ("", 10080 if row.get("group") == "weekly" else 0))
+            if not label:
+                label = f"Weekly · {model}" if kind == "weekly_scoped" and model else kind.replace("_", " ").capitalize()
+            wid = f"{kind}:{model}" if model else kind
+            out["windows"].append(limit_window(wid, label, row["percent"], epoch(row.get("resets_at")), minutes,
+                                               counts=not model or model.lower() in current.lower()))
+    else:  # an older CLI: the fixed windows, then the per-model weekly ones
+        for key, (wid, label, minutes) in {"five_hour": ("session", "5-hour", 300), "seven_day": ("weekly_all", "Weekly", 10080)}.items():
+            window = limits.get(key) or {}
+            if isinstance(window.get("utilization"), (int, float)):
+                out["windows"].append(limit_window(wid, label, window["utilization"], epoch(window.get("resets_at")), minutes))
+        for row in limits.get("model_scoped") or []:
+            model = (row.get("display_name") or "").strip()
+            if model and isinstance(row.get("utilization"), (int, float)):
+                out["windows"].append(limit_window(f"weekly_scoped:{model}", f"Weekly · {model}", row["utilization"],
+                                                   epoch(row.get("resets_at")), 10080, counts=model.lower() in current.lower()))
+    extra = limits.get("extra_usage") or {}
+    if extra.get("is_enabled") and isinstance(extra.get("utilization"), (int, float)):
+        out["notes"].append(f"Extra usage: {round(extra['utilization'])}% of this month's credits used.")
+    return out
+
 
 _SKIP_PROMPT = re.compile(r"^(?:<local-command-stdout>|<local-command-caveat>|<session-start-hook>|<tick>|<goal>|\[Request interrupted by user[^\]]*\])")
 _COMMAND_NAME = re.compile(r"<command-name>(.*?)</command-name>")
@@ -303,7 +350,8 @@ class ClaudeBackend:
         self._compacting = None
         self._stderr = []
         self._message = None
-        self._usage = {}
+        self._limits = None     # the last get_usage, as the sidebar's limits
+        self._limits_at = 0.0
         # What Claude Code's own settings pick when the sidebar pins nothing.
         self.cli_defaults = {}
 
@@ -320,9 +368,8 @@ class ClaudeBackend:
             logged_in = status.returncode == 0
         if not logged_in:
             raise BridgeError("Claude Code is signed out. Run `claude` in a terminal and log in, then reopen this tab.")
-        return {"retry": True, "undo": True, "clarify": True, "contextBreakdown": True,
-                "compress": True, "compactFocus": True, "slash": True, "images": True, "models": True, "screen": True, "effort": True,
-                "name": "Claude Code"}
+        return {"retry": True, "undo": True, "clarify": True, "slash": True, "images": True, "models": True,
+                "screen": True, "effort": True, "limits": True, "name": "Claude Code"}
 
     async def stop(self) -> None:
         await self._close_proc()
@@ -482,6 +529,9 @@ class ClaudeBackend:
             elif msg.get("subtype") == "compact_boundary" and not self._compacting:
                 self.bridge.event("notice", {"message": "Claude Code folded the conversation to make room."})
             return
+        if kind == "rate_limit_event":
+            self._rate_limit(msg.get("rate_limit_info") or {})
+            return
         if self._compacting is not None:
             if kind == "result" and not self._compacting.done():
                 self._compacting.set_result(msg)
@@ -543,7 +593,7 @@ class ClaudeBackend:
                 run.finish(error=one_line(msg.get("result") or (errors[0] if errors else "") or "Claude Code reported an error", 400))
             else:
                 run.finish("interrupted" if interrupted else "complete")
-            asyncio.create_task(self._publish_usage())
+            asyncio.create_task(self._refresh_limits())
             self.bridge.event("sessions.changed", {})
 
     async def _answer(self, rid: str, request: dict) -> None:
@@ -586,16 +636,50 @@ class ClaudeBackend:
         except BridgeError:
             pass
 
-    async def _publish_usage(self) -> None:
+    # ── Plan limits ──
+
+    async def limits(self, refresh: bool) -> dict:
+        if self._limits is not None and not refresh:
+            return self._limits
+        if self.proc is None:
+            return self._limits or {"plan": "", "windows": [], "notes": ["Claude Code reports its limits once a chat is open."], "checked_at": 0}
         try:
-            usage = await self._control({"subtype": "get_context_usage"})
-        except BridgeError:
+            body = await self._control({"subtype": "get_usage", "skip_behaviors": True})
+        except BridgeError as e:
+            if self._limits is not None:
+                return self._limits
+            raise BridgeError(f"Claude Code did not report its limits: {e}")
+        self._limits = claude_limits(body, self.info()["model"])
+        self._limits_at = time.monotonic()
+        return self._limits
+
+    async def _refresh_limits(self) -> None:
+        """After a turn, at most every LIMITS_EVERY seconds: a turn is what spends them."""
+        if self._limits is not None and time.monotonic() - self._limits_at < LIMITS_EVERY:
             return
-        self._usage = usage
-        self.bridge.event("session.usage", {"usage": {
-            "context_percent": round(usage.get("percentage") or 0),
-            "context_used": usage.get("totalTokens") or 0,
-            "context_max": usage.get("maxTokens") or 0}})
+        try:
+            self.bridge.event("usage.limits", await self.limits(True))
+        except BridgeError:
+            pass
+
+    def _rate_limit(self, info: dict) -> None:
+        """The CLI's rate_limit_event, mid-turn: the 5-hour and weekly windows as the
+        API's own headers last put them (0-1 here, 0-100 in get_usage)."""
+        if self._limits is None:
+            asyncio.create_task(self._refresh_limits())
+            return
+        changed = False
+        for key, value in (info.get("unifiedWindows") or {}).items():
+            wid = EVENT_WINDOWS.get(key)
+            window = next((w for w in self._limits["windows"] if w["id"] == wid), None)
+            if window is None or not isinstance((value or {}).get("utilization"), (int, float)):
+                continue
+            window["used"] = max(0, min(100, round(value["utilization"] * 100)))
+            window["resets_at"] = int(value.get("resetsAt") or window["resets_at"])
+            changed = True
+        if changed:
+            self._limits["checked_at"] = int(time.time())
+            self.bridge.event("usage.limits", self._limits)
 
     # ── Sessions ──
 
@@ -779,18 +863,7 @@ class ClaudeBackend:
             self._compacting = None
         if result.get("is_error"):
             raise BridgeError(one_line(result.get("result") or "Could not fold this conversation", 300))
-        await self._publish_usage()
         return "Folded this conversation."
-
-    async def context_breakdown(self) -> dict:
-        if self.proc is None:
-            return {"categories": []}
-        await self._publish_usage()
-        usage = self._usage or {}
-        categories = [{"name": c.get("name"), "tokens": c.get("tokens")} for c in usage.get("categories") or []
-                      if c.get("name") and isinstance(c.get("tokens"), (int, float)) and c.get("tokens") > 0]
-        files = [f.get("path") for f in usage.get("memoryFiles") or [] if isinstance(f, dict) and f.get("path")]
-        return {"categories": categories, "context_files": files}
 
     # ── Settings ──
 

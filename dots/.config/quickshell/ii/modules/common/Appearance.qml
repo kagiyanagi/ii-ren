@@ -306,7 +306,7 @@ Singleton {
          * `modules/common/widgets/ArrowPopupMotion.qml`. Use that rather than
          * reading these directly; four callers assembled them by hand and two
          * of the four had drifted by the time anyone checked. DesktopMenu,
-         * AgentContextMeter and AgentApprovalModeMenu are the three still to
+         * AgentUsageMeter and AgentApprovalModeMenu are the three still to
          * move over.
          */
         readonly property list<real> arrowPopupSettle: [0.3, 0, 0.33, 1, 1, 1]

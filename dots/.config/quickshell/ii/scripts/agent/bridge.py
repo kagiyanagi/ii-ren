@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""The left sidebar's agent connector: Claude Code or Codex behind one protocol.
+"""The left sidebar's agent connector: Claude Code, Codex or Antigravity behind one protocol.
 
 The sidebar (services/AgentService.qml) is only a client, and so is this. The agent
-is whichever official CLI the user has signed in to; this process starts it, speaks
-its protocol, and speaks the sidebar's back. Nothing here reads, copies or forwards
-a login -- the CLI keeps its own, which is the only way its plan's limits apply.
+is whichever official program the user has signed in to; this process starts it,
+speaks its protocol, and speaks the sidebar's back. Nothing here reads, copies or
+forwards a login -- the program keeps its own, which is the only way its plan's
+limits apply.
 
-  claude   `claude` in stream-json mode, the subprocess protocol the Agent SDK
-           drives (claude_backend.py)
-  codex    `codex app-server`, JSON-RPC (codex_backend.py)
+  claude       `claude` in stream-json mode, the subprocess protocol the Agent SDK
+               drives (claude_backend.py)
+  codex        `codex app-server`, JSON-RPC (codex_backend.py)
+  antigravity  Google's Antigravity ACP server over the Agent Client Protocol
+               (antigravity_backend.py): Google's program for other apps to drive,
+               not the `agy` CLI, which Google does not allow wrapping
 
-Standard library only: the sidebar needs nothing installed beyond the CLI itself.
+Standard library only: the sidebar needs nothing installed beyond the agent itself.
 
 Wire, one JSON object per line:
   shell -> bridge   {"id", "method", "params"}                     a request
@@ -22,7 +26,7 @@ Wire, one JSON object per line:
 Every request is answered, error or not: the shell holds a callback per id and
 has no timeout. Events never carry an id, or the shell would read them as answers.
 
-Usage: bridge.py claude|codex
+Usage: bridge.py claude|codex|antigravity
 """
 import asyncio
 import json
@@ -170,7 +174,7 @@ class Run:
         self._open()
         self.emit("tool.complete", {"tool_id": tool_id, "result": result, "duration_s": round(duration, 3)})
 
-    def finish(self, status: str = "complete", error: str = "", usage: dict | None = None) -> None:
+    def finish(self, status: str = "complete", error: str = "") -> None:
         """The answer is over. `error` fails the card; an interrupted one just ends."""
         if not self.active:
             return
@@ -180,10 +184,7 @@ class Run:
             return
         if not self.open:
             self._open()
-        payload = {"text": "", "status": status}
-        if usage:
-            payload["usage"] = usage
-        self.emit("message.complete", payload)
+        self.emit("message.complete", {"text": "", "status": status})
         self.open = self.active = False
 
 
@@ -250,6 +251,52 @@ def one_line(text: str, limit: int = 200) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+# ── Plan limits ──────────────────────────────────────────────────────────────
+#
+# What the sidebar's usage button shows: the plan's own windows (5-hour, weekly),
+# as each agent reports them about itself -- Claude Code's `get_usage`, Codex's
+# `account/rateLimits/read`, Antigravity's `/usage`. Never read from a login.
+#
+#   {"plan": "Claude Team", "windows": [window, ...], "notes": [str], "checked_at": epoch s}
+#   window: {"id", "group", "label", "used": 0-100, "resets_at": epoch s or 0,
+#            "minutes": window length or 0, "counts": whether it limits the model in use}
+
+
+def window_label(minutes: int) -> str:
+    """A window named by its length: 300 -> "5-hour", 10080 -> "Weekly"."""
+    if minutes >= 28 * 1440:
+        return "Monthly"
+    if minutes == 10080:
+        return "Weekly"
+    if minutes >= 1440 and minutes % 1440 == 0:
+        return "Daily" if minutes == 1440 else f"{minutes // 1440}-day"
+    if minutes >= 60 and minutes % 60 == 0:
+        return f"{minutes // 60}-hour"
+    return f"{minutes}-minute" if minutes else "Limit"
+
+
+def limit_window(wid: str, label: str, used, resets_at=0, minutes: int = 0, group: str = "", counts: bool = True) -> dict:
+    try:
+        used = max(0, min(100, round(float(used))))
+    except (TypeError, ValueError):
+        used = 0
+    return {"id": wid, "group": group, "label": label, "used": used, "resets_at": int(resets_at or 0),
+            "minutes": int(minutes or 0), "counts": bool(counts)}
+
+
+def epoch(stamp) -> int:
+    """An ISO 8601 time (or epoch seconds) as epoch seconds; 0 when unreadable."""
+    if isinstance(stamp, (int, float)):
+        return int(stamp)
+    if not isinstance(stamp, str) or not stamp:
+        return 0
+    from datetime import datetime
+    try:
+        return int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp())
+    except ValueError:
+        return 0
+
+
 # ── Bridge ───────────────────────────────────────────────────────────────────
 
 
@@ -263,6 +310,8 @@ class Bridge:
             from claude_backend import ClaudeBackend as Backend
         elif backend_name == "codex":
             from codex_backend import CodexBackend as Backend
+        elif backend_name == "antigravity":
+            from antigravity_backend import AntigravityBackend as Backend
         else:
             raise MissingAgent(f"unknown agent '{backend_name}'")
         self.backend = Backend(self)
@@ -294,17 +343,25 @@ class Bridge:
         return str(result.get("choice") or "deny")
 
     async def clarify(self, questions: list[dict]) -> dict:
-        """Ask the user questions: [{id, question, choices, multi}] -> {id: answer}.
+        """Ask the user questions: [{id, question, choices, multi, custom}] -> {id: answer}.
+
+        `custom: False` is for an agent that only takes one of its choices
+        (Antigravity): the card then offers no typed answer.
 
         One question is answered by the reply frame; a batch is answered one
         clarify.lock at a time and settles on the last (rpc_clarify_lock)."""
         self.event("status.update", {"text": "Waiting for your answer"})
+
+        def card(q):
+            return {"question": q["question"], "choices": q.get("choices") or [], "multi_select": bool(q.get("multi")),
+                    "allow_custom": q.get("custom", True) is not False or not q.get("choices")}
+
         if len(questions) == 1:
             q = questions[0]
-            rid, future = self.wire.ask("clarify", {"question": q["question"], "choices": q.get("choices") or [], "multi_select": bool(q.get("multi"))})
+            rid, future = self.wire.ask("clarify", card(q))
             result = await self._wait(rid, future)
             return {q["id"]: str(result.get("answer") or "")}
-        params = {"questions": [{"qid": q["id"], "question": q["question"], "choices": q.get("choices") or [], "multi_select": bool(q.get("multi"))} for q in questions]}
+        params = {"questions": [dict(card(q), qid=q["id"]) for q in questions]}
         rid, future = self.wire.ask("clarify", params)
         self._batches[rid] = {"want": [q["id"] for q in questions], "got": {}}
         return await self._wait(rid, future)
@@ -354,11 +411,10 @@ class Bridge:
     async def rpc_session_status(self, params):
         return {"info": self.backend.info()}
 
-    async def rpc_session_compress(self, params):
-        return {"message": await self.backend.compact(str(params.get("focus_topic") or ""))}
-
-    async def rpc_session_context_breakdown(self, params):
-        return await self.backend.context_breakdown()
+    async def rpc_usage_limits(self, params):
+        """The plan's limits; `refresh` asks the agent again rather than answering
+        from what it last said (each backend still spaces its own asks out)."""
+        return await self.backend.limits(bool(params.get("refresh")))
 
     async def rpc_session_retry(self, params):
         await self.backend.rewind(1, resend=True)

@@ -153,7 +153,7 @@ Config lives in `Config.qml` as nested `JsonObject` properties. Key top-level gr
 - `background` — wallpaper, widgets (clock/media/weather), parallax
 - `lock` — lock screen, blur, `useHyprlock`
 - `waffles` — Waffle-specific tweaks (bar, actionCenter toggles)
-- `agent` — the left sidebar's agent: Claude Code or Codex, run as the user's own signed-in CLI (`scripts/agent/bridge.py`), with desktop tools (`scripts/agent/desktop_mcp.py`); tool rows, notifications, optional dictation (whisper.cpp) and read-aloud (edge-tts)
+- `agent` — the left sidebar's agent: Claude Code, Codex or Antigravity, run as the user's own signed-in program (`scripts/agent/bridge.py`), with desktop tools (`scripts/agent/desktop_mcp.py`); tool rows, notifications, optional dictation (whisper.cpp) and read-aloud (edge-tts)
 - `policies` — feature flags (weeb, wallpapers, translator, continuity, agent)
 
 Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`, etc.
@@ -176,15 +176,19 @@ Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`,
 
 ## Sidebar agent
 
-The left sidebar's agent is the user's own signed-in Claude Code or Codex CLI -- never
-an API key, never their login token. `scripts/agent/bridge.py` starts `claude` in
-stream-json mode (the Agent SDK's subprocess protocol) or `codex app-server`, and speaks
-the sidebar's JSON-RPC to `services/AgentService.qml`; standard library only. Both CLIs
-get the desktop tools as an MCP server (`scripts/agent/desktop_mcp.py`, over
-`desktop.py` and `qs ipc`). What an agent can do arrives as `capabilities` with its
-`ready` event, and the page offers only that (`AgentService.can()`). The gate is
-`tools/check-agent-bridge.py` (fake CLIs, no tokens spent); `tools/probe-agent.py
-claude|codex [scenario]` drives the real one and spends a little of the plan.
+The left sidebar's agent is the user's own signed-in Claude Code, Codex or Antigravity
+-- never an API key, never their login token. `scripts/agent/bridge.py` starts `claude`
+in stream-json mode (the Agent SDK's subprocess protocol), `codex app-server`, or
+Google's Antigravity ACP server over the Agent Client Protocol, and speaks the
+sidebar's JSON-RPC to `services/AgentService.qml`; standard library only. Antigravity
+is never the `agy` CLI, which Google forbids wrapping: its ACP server is Google's
+program for other apps, downloaded from the ACP registry on first use, with a Google
+sign-in of its own. All three get the desktop tools as an MCP server
+(`scripts/agent/desktop_mcp.py`, over `desktop.py` and `qs ipc`). What an agent can do
+arrives as `capabilities` with its `ready` event, and the page offers only that
+(`AgentService.can()`). The gate is `tools/check-agent-bridge.py` (fake agents, no
+tokens spent); `tools/probe-agent.py claude|codex|antigravity [scenario]` drives the
+real one and spends a little of the plan.
 
 ## Extension System
 

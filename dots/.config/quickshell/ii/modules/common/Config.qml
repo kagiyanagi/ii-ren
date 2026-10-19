@@ -101,8 +101,8 @@ Singleton {
             }
 
             property JsonObject agent: JsonObject {
-                // The left sidebar's agent: Claude Code or Codex, whichever is
-                // installed and signed in (services/AgentService.qml).
+                // The left sidebar's agent: Claude Code, Codex or Antigravity,
+                // whichever is installed and signed in (services/AgentService.qml).
                 property bool enable: true
                 property bool showToolCalls: true
                 property bool showStatusLine: true

@@ -10,10 +10,13 @@ import QtQuick
 import QtMultimedia
 
 /**
- * The left sidebar's agent: Claude Code or Codex, whichever the user has signed in to.
+ * The left sidebar's agent: Claude Code, Codex or Antigravity, whichever the user has
+ * signed in to.
  *
- * The agent is the vendor's own CLI, run unmodified under the user's own login --
- * the only way their plan's limits apply. scripts/agent/bridge.py starts it and
+ * The agent is the vendor's own program, run unmodified under the user's own login --
+ * the only way their plan's limits apply. For Antigravity that is Google's ACP
+ * server, not the `agy` CLI: Google does not allow wrapping the CLI, and ships the
+ * server for other apps to drive. scripts/agent/bridge.py starts it and
  * translates: one stdio process speaking line-delimited JSON-RPC, no port, and it
  * dies with the shell. Frames are a response (`id` set), an event
  * (`{method: "event", params: {type, payload}}`), or a question for the user
@@ -52,11 +55,15 @@ Singleton {
 
     // ── Agent ────────────────────────────────────────────────────────────
     //
-    // Which CLI answers. Only those found on PATH are offered, so the menu never
+    // Which agent answers. Only those found here are offered, so the menu never
     // lists an agent that cannot start; the probe settles a moment after startup.
+    // Antigravity is offered with the `agy` CLI installed even before Google's ACP
+    // server is: the bridge downloads that on first use, and the row says so.
     readonly property var knownBackends: [
-        { id: "claude", command: "claude", label: "Claude Code", plan: Translation.tr("Uses your Claude plan") },
-        { id: "codex", command: "codex", label: "Codex", plan: Translation.tr("Uses your ChatGPT plan") }
+        { id: "claude", commands: ["claude"], label: "Claude Code", plan: Translation.tr("Uses your Claude plan") },
+        { id: "codex", commands: ["codex"], label: "Codex", plan: Translation.tr("Uses your ChatGPT plan") },
+        { id: "antigravity", commands: ["agy", "agy_acp_server", "antigravity-server"], label: "Antigravity", plan: Translation.tr("Uses your Google AI plan"),
+          firstUse: Translation.tr("Uses your Google AI plan. First use downloads Google's agent server (about 340 MB)") }
     ]
     property var backends: []
     property bool backendsProbed: false
@@ -67,6 +74,11 @@ Singleton {
 
     // What this agent can genuinely do, from its ready event.
     property var capabilities: ({})
+    // The subscription the agent reports, when it does (Antigravity: "Google AI Pro").
+    property string planName: ""
+    // What the agent is doing before it can answer: a first-use download, a
+    // sign-in it is waiting on. Shown in the activity line until cleared.
+    property string setupText: ""
     function can(feature: string): bool {
         return root.capabilities?.[feature] === true;
     }
@@ -79,7 +91,6 @@ Singleton {
             root.interrupt();
         root.clearMessages();
         root.sessionTitle = "";
-        root.usage = null;
         root.recentSessions = [];
         root.providers = [];
         root.slashCommands = [];
@@ -88,6 +99,9 @@ Singleton {
         root.currentEffort = "";
         root.approvalMode = "";
         root.capabilities = ({});
+        root.planName = "";
+        root.setupText = "";
+        root.usageLimits = null;
         root.lastError = "";
         root.consecutiveFailures = 0;
         restartTimer.stop();
@@ -104,11 +118,16 @@ Singleton {
     Process {
         id: backendProbe
         running: true
-        command: ["sh", "-c", 'for c in "$@"; do command -v "$c" >/dev/null 2>&1 && echo "$c"; done', "sh", "claude", "codex"]
+        // The CLIs on PATH, and "antigravity-server" for a server the bridge installed.
+        command: ["sh", "-c", 'for c in "$@"; do command -v "$c" >/dev/null 2>&1 && echo "$c"; done; '
+            + 'for f in "${XDG_DATA_HOME:-$HOME/.local/share}"/quickshell/agent/antigravity-acp/*/.complete; do [ -f "$f" ] && echo antigravity-server && break; done',
+            "sh", "claude", "codex", "agy", "agy_acp_server"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const found = this.text.split("\n").map(line => line.trim());
-                root.backends = root.knownBackends.filter(b => found.includes(b.command));
+                const serverHere = found.includes("antigravity-server") || found.includes("agy_acp_server");
+                root.backends = root.knownBackends.filter(b => b.commands.some(c => found.includes(c)))
+                    .map(b => Object.assign({}, b, { plan: b.firstUse && !serverHere ? b.firstUse : b.plan }));
                 root.backendsProbed = true;
                 root.missing = root.backends.length === 0;
                 if (root._startWhenProbed) {
@@ -137,7 +156,6 @@ Singleton {
     // Claude Code's model default). Empty for a model that takes none.
     property string currentEffort: ""
     property string approvalMode: ""
-    property var usage: null
 
     // ── Inventory ────────────────────────────────────────────────────────
 
@@ -153,15 +171,14 @@ Singleton {
     property var slashCommands: []
     property var recentSessions: []
 
-    // ── Context ──────────────────────────────────────────────────────────
+    // ── Plan limits ──────────────────────────────────────────────────────
     //
-    // The live percentage rides along on every usage payload, so the meter costs
-    // nothing; the breakdown is only fetched when the meter is actually opened.
-    readonly property int contextPercent: root.usage?.context_percent ?? 0
-    readonly property int contextUsed: root.usage?.context_used ?? 0
-    readonly property int contextMax: root.usage?.context_max ?? 0
-    property bool compressing: false
-    property var contextBreakdown: null
+    // The plan's own windows (5-hour, weekly) as the agent reports them about
+    // itself -- see bridge.py "Plan limits". Fetched once a chat is open and when
+    // the usage button is opened; the bridge pushes changes as replies spend them.
+    property var usageLimits: null
+    property bool limitsLoading: false
+    readonly property var limitWindows: root.usageLimits?.windows ?? []
 
     // ── Transcript ───────────────────────────────────────────────────────
 
@@ -421,6 +438,7 @@ Singleton {
             root._adoptSession(result);
             root.refreshProviders();
             root.refreshSlashCommands();
+            root.refreshUsageLimits(false);
         });
     }
 
@@ -436,6 +454,8 @@ Singleton {
             return;
         if (info.model !== undefined)
             root.currentModel = info.model ?? "";
+        if (info.plan !== undefined)
+            root.planName = info.plan ?? "";
         if (info.provider !== undefined)
             root.currentProvider = info.provider ?? "";
         if (info.approval_mode !== undefined)
@@ -453,7 +473,6 @@ Singleton {
         const previous = root.sessionId;
         root.sessionId = "";
         root.sessionTitle = "";
-        root.usage = null;
         root.clearMessages();
         if (previous.length > 0)
             root.call("session.close", { session_id: previous }, null);
@@ -583,32 +602,14 @@ Singleton {
         });
     }
 
-    // ── Context ───────────────────────────────────────────────────────────
-
-    /** Folds the conversation down so a long session can keep going. */
-    function compressSession(focusTopic: string): void {
-        if (root.compressing || root.busy || root.sessionId.length === 0)
+    function refreshUsageLimits(force: bool): void {
+        if (!root.can("limits") || root.limitsLoading)
             return;
-        root.compressing = true;
-        const params = { session_id: root.sessionId };
-        if ((focusTopic ?? "").trim().length > 0)
-            params.focus_topic = focusTopic.trim();
-        root.call("session.compress", params, (result, error) => {
-            root.compressing = false;
-            if (error) {
-                root.addMessage(error.message ?? Translation.tr("Could not compress this conversation."), root.interfaceRole);
-                return;
-            }
-            root.addMessage(result.message ?? Translation.tr("Compressed this conversation."), root.interfaceRole);
-            root.refreshContextBreakdown();
-        });
-    }
-
-    function refreshContextBreakdown(): void {
-        if (root.sessionId.length === 0)
-            return;
-        root.call("session.context_breakdown", { session_id: root.sessionId }, (result, error) => {
-            root.contextBreakdown = error ? null : result;
+        root.limitsLoading = true;
+        root.call("usage.limits", { refresh: force }, (result, error) => {
+            root.limitsLoading = false;
+            if (!error)
+                root.usageLimits = result;
         });
     }
 
@@ -1328,8 +1329,6 @@ Singleton {
             root.streamingId = "";
             root.busy = false;
             root.statusText = "";
-            if (payload.usage)
-                root.usage = payload.usage;
             // A turn that called tools is mid-run, and the agent is about to speak
             // again -- notifying on it would fire once per step of one answer.
             if (!root._runSegmentUsedTools)
@@ -1362,9 +1361,6 @@ Singleton {
             root._applyInfo(payload);
             break;
 
-        case "session.usage":
-            root.usage = payload.usage ?? root.usage;
-            break;
 
         case "session.title":
             root.sessionTitle = payload.title ?? root.sessionTitle;
@@ -1372,6 +1368,14 @@ Singleton {
 
         case "status.update":
             root.statusText = (payload.text ?? "").trim();
+            break;
+
+        case "status.setup":
+            root.setupText = (payload.text ?? "").trim();
+            break;
+
+        case "usage.limits":
+            root.usageLimits = payload;
             break;
 
         case "notice":
@@ -2059,7 +2063,7 @@ Singleton {
         function newSession(): void {
             root.newSession();
         }
-        /** claude | codex -- only one that is installed. */
+        /** claude | codex | antigravity -- only one that is installed. */
         function backend(id: string): void {
             root.setBackend(id);
         }
@@ -2105,6 +2109,9 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             root.ready = false;
             root.starting = false;
+            root.setupText = "";
+            // Its pending callbacks are dropped below, so nothing else would clear it.
+            root.limitsLoading = false;
             root.sessionId = "";
             root.streamingId = "";
             root._releaseRun();

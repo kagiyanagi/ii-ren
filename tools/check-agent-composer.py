@@ -26,7 +26,7 @@ from pathlib import Path
 H = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules/ii/sidebarPolicies/agent"
 pop = (H / "AgentPopover.qml").read_text()
 menu = (H / "AgentApprovalModeMenu.qml").read_text()
-meter = (H / "AgentContextMeter.qml").read_text()
+meter = (H / "AgentUsageMeter.qml").read_text()
 sel = (H / "AgentSelectionActions.qml").read_text()
 approval = (H / "AgentApprovalCard.qml").read_text()
 clarify = (H / "AgentClarifyCard.qml").read_text()
@@ -68,17 +68,17 @@ def card_of(src, ident):
 
 
 # One recipe: nothing here transcribes the ArrowPopup numbers by hand any more.
-for name, src in (("AgentPopover", pop), ("AgentApprovalModeMenu", menu), ("AgentContextMeter", meter), ("AgentSelectionActions", sel)):
+for name, src in (("AgentPopover", pop), ("AgentApprovalModeMenu", menu), ("AgentUsageMeter", meter), ("AgentSelectionActions", sel)):
     assert "arrowPopupScaleDuration" not in src and "enter: Transition" not in src, \
         f"{name}: the ArrowPopup animation is hand-assembled again; use ArrowPopupMotion"
     assert "Appearance.colors.colSurfaceContainer" not in src, f"{name}: a colSurfaceContainer token; each is solved for one base, not a floating card"
 assert "ArrowPopupMotion {" in pop and "ArrowPopupMotion {" in sel
 assert not re.search(r"^\s*Popup\s*\{", menu, re.M), "AgentApprovalModeMenu: back in a QQC2 Popup"
 assert "AgentPopover {" in menu and "AgentPopover {" in meter, "a popover no longer goes through AgentPopover"
-assert re.search(r"AgentPopover\s*\{[^}]*opensUp:\s*true", meter), "AgentContextMeter: the breakdown must open upward, out of the composer"
+assert re.search(r"AgentPopover\s*\{[^}]*opensUp:\s*true", meter), "AgentUsageMeter: the card must open upward, out of the composer"
 assert not re.search(r"AgentPopover\s*\{[^}]*opensUp:\s*true", menu), "AgentApprovalModeMenu: the menu hangs below the status pill"
-assert "popoverComponent" not in meter and "QsWindow" not in meter,"AgentContextMeter: the card is created by hand again, and outlives the page"
-assert "extraVisibleCondition: true" not in meter, "AgentContextMeter: the always-true tooltip condition is back"
+assert "popoverComponent" not in meter and "QsWindow" not in meter,"AgentUsageMeter: the card is created by hand again, and outlives the page"
+assert "extraVisibleCondition: true" not in meter, "AgentUsageMeter: the always-true tooltip condition is back"
 assert "colLayer2Hover" not in card_of(menu, "modeRow"), \
     "AgentApprovalModeMenu: a mode row paints colLayer2Hover, which is solved for a layer the opaque card is not"
 

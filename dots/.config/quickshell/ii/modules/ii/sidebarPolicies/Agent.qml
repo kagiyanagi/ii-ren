@@ -11,7 +11,7 @@ import Quickshell
 import Quickshell.Wayland
 
 /**
- * The agent page: Claude Code or Codex, chatting from the sidebar.
+ * The agent page: Claude Code, Codex or Antigravity, chatting from the sidebar.
  *
  * Slash completions and the model list are pulled from the running agent rather
  * than mirrored here, so commands and skills the user adds to their CLI show up
@@ -587,7 +587,7 @@ Item {
 
                 rotateIconWithShape: true
                 shown: AgentService.messageIDs.length === 0 && AgentService.missing
-                description: Translation.tr("Install Claude Code or Codex and sign in to it,\nthen reopen this tab. It runs on your own plan.")
+                description: Translation.tr("Install Claude Code, Codex or Antigravity and sign in\nto it, then reopen this tab. It runs on your own plan.")
                 descriptionHorizontalAlignment: Text.AlignHCenter
 
                 triggerAnimationOn: GlobalStates.policiesPanelOpen
@@ -667,8 +667,10 @@ Item {
             // Shown for the whole of a turn, not only while there is a caption:
             // it is now the only "working" indicator, so a gap in it would read as
             // the agent having stopped.
+            // Also while the agent is getting ready to answer at all: a first-use
+            // download, a sign-in it is waiting on.
             readonly property bool shown: (Config.options.agent?.showStatusLine ?? true)
-                && (AgentService.busy || AgentService.dictating || AgentService.speakingMessageId.length > 0)
+                && (AgentService.busy || AgentService.dictating || AgentService.speakingMessageId.length > 0 || AgentService.setupText.length > 0)
 
             // This fires on every turn, which makes it the most frequent
             // transition on the page -- the one thing that must not snap. Same
@@ -726,7 +728,7 @@ Item {
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
-                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : AgentService.speakingMessageId.length > 0 && !AgentService.busy ? Translation.tr("Reading aloud…") : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
+                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : AgentService.speakingMessageId.length > 0 && !AgentService.busy ? Translation.tr("Reading aloud…") : AgentService.setupText.length > 0 ? AgentService.setupText : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
                 }
 
                 InputIconButton { // Silence playback without hunting for the message
@@ -1063,7 +1065,7 @@ Item {
                     id: effortPicker
                 }
 
-                AgentContextMeter {}
+                AgentUsageMeter {}
 
                 Item {
                     Layout.fillWidth: true

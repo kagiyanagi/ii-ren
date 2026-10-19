@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive the sidebar's agent connector against the real CLI, the way the shell does.
 
-    python3 tools/probe-agent.py claude|codex [scenario ...]
+    python3 tools/probe-agent.py claude|codex|antigravity [scenario ...]
 
 Starts scripts/agent/bridge.py, plays the shell's side of the protocol and prints
 every frame it gets back, one line each. Approvals are answered with --approve
@@ -11,7 +11,8 @@ Scenarios (default: basic):
   basic       one short reply, streamed
   tool        manual approvals, then a command that has to be approved
   look        the desktop tools: list windows, take a screenshot
-  ask         the agent asks a multiple-choice question (Claude: AskUserQuestion)
+  ask         the agent asks a multiple-choice question (Claude: AskUserQuestion,
+              Antigravity: its own ask-the-user tool)
   stop        interrupt a long answer midway
   retry       answer, then retry it; then undo it
   history     list conversations, resume the newest, check it came back
@@ -121,7 +122,7 @@ class Shell:
 
 
 def main(argv):
-    if len(argv) < 2 or argv[1] not in ("claude", "codex"):
+    if len(argv) < 2 or argv[1] not in ("claude", "codex", "antigravity"):
         print(__doc__)
         return 2
     approve = "once"
@@ -132,7 +133,8 @@ def main(argv):
         del args[i:i + 2]
     scenarios = args or ["basic"]
     shell = Shell(argv[1], approve)
-    shell.until(lambda f: f.get("method") == "event" and f["params"]["type"] == "ready", 120, "ready")
+    # Long enough for a first-use install (Antigravity downloads its server).
+    shell.until(lambda f: f.get("method") == "event" and f["params"]["type"] == "ready", 900, "ready")
     created = shell.call("session.create")
     shell.sid = (created.get("result") or {}).get("session_id") or ""
     print(f"\n== session {shell.sid}")
@@ -147,7 +149,7 @@ def main(argv):
         elif name == "look":
             shell.turn("Use the desktop tools: list my windows, then take a screenshot and tell me in one sentence what is on screen.")
         elif name == "ask":
-            hint = "your AskUserQuestion tool" if argv[1] == "claude" else "your request_user_input tool"
+            hint = {"claude": "your AskUserQuestion tool", "codex": "your request_user_input tool"}.get(argv[1], "your tool for asking the user a question")
             shell.turn(f"Use {hint} to ask me which colour I prefer, with the options red and blue. Then reply with only the colour I picked.")
         elif name == "stop":
             shell.call("prompt.submit", {"session_id": shell.sid, "text": "Count slowly from 1 to 400, one number per line."})
@@ -189,7 +191,7 @@ def main(argv):
                 shell.call("effort.set", {"session_id": shell.sid, "effort": levels[0]})
         elif name == "compact":
             shell.turn("Say hello in five languages.")
-            shell.call("session.compress", {"session_id": shell.sid}, timeout=600)
+            shell.call("slash.exec", {"session_id": shell.sid, "command": "/compact"}, timeout=600)
         else:
             print("unknown scenario", name)
     shell.proc.stdin.close()

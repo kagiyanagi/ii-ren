@@ -10,9 +10,9 @@ import Quickshell
 
 /**
  * Which agent answers -- the connection indicator in the status strip, named by
- * the agent, which opens a picker over the CLIs installed here (Claude Code,
- * Codex). Picking one restarts the bridge on it, so the chats, model list and
- * memory that follow are that agent's own. Every "selected" row and status line
+ * the agent, which opens a picker over the agents installed here (Claude Code,
+ * Codex, Antigravity). Picking one restarts the bridge on it, so the chats, model
+ * list and memory that follow are that agent's own. Every "selected" row and status line
  * is read off AgentService, as AgentApprovalModeMenu does.
  */
 RippleButton {
@@ -23,10 +23,11 @@ RippleButton {
         if (AgentService.missing)
             return Translation.tr("No agent installed");
         if (AgentService.ready)
-            return Translation.tr("Connected");
+            return AgentService.planName.length > 0 ? Translation.tr("Connected · %1").arg(AgentService.planName) : Translation.tr("Connected");
         if (root.failed)
             return AgentService.lastError;
-        return Translation.tr("Connecting…");
+        // A first-use download says how far along it is rather than "Connecting…".
+        return AgentService.setupText.length > 0 ? AgentService.setupText : Translation.tr("Connecting…");
     }
 
     buttonRadius: Appearance.rounding.full
@@ -115,7 +116,7 @@ RippleButton {
             MaterialSymbol {
                 Layout.leftMargin: 12
                 Layout.alignment: Qt.AlignVCenter
-                text: backendRow.modelData.id === "codex" ? "code" : "auto_awesome"
+                text: ({ codex: "code", antigravity: "rocket_launch" })[backendRow.modelData.id] ?? "auto_awesome"
                 iconSize: Appearance.font.pixelSize.normal
                 fill: backendRow.selected ? 1 : 0
                 color: backendRow.onColor
@@ -200,7 +201,7 @@ RippleButton {
             font.pixelSize: Appearance.font.pixelSize.smaller
             lineHeight: 1.3
             color: Appearance.colors.colSubtext
-            text: Translation.tr("Each runs as its own CLI, signed in on its own, and its chats stay with it. Install Claude Code or Codex to see it here.")
+            text: Translation.tr("Each runs as its own program, signed in on its own, and its chats stay with it. Install Claude Code, Codex or Antigravity to see it here.")
         }
     }
 }

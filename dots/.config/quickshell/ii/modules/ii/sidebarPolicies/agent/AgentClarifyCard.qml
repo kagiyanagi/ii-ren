@@ -12,6 +12,8 @@ import QtQuick.Layouts
  * The turn is parked until this is answered, so it is deliberately as loud as the
  * approval card. Choices come from the payload; a question with none takes a typed
  * answer instead, and one marked `multi_select` accumulates picks until confirmed.
+ * A typed answer is offered beside the choices unless the payload says
+ * `allow_custom: false` -- Antigravity takes only one of its own options.
  *
  * An M3 single- or multi-choice dialog laid inline: the choices are full-width
  * rows, a single choice answers on press, a multi-select row toggles its check.
@@ -46,6 +48,7 @@ Rectangle {
     readonly property string questionText: root.current?.question ?? ""
     readonly property var choices: root.current?.choices ?? []
     readonly property bool multiSelect: root.current?.multi_select ?? false
+    readonly property bool typedAnswer: (root.current?.allow_custom ?? true) || root.choices.length === 0
     readonly property string questionId: root.isBatch ? (root.current?.qid ?? "") : ""
 
     property var selected: []
@@ -214,12 +217,13 @@ Rectangle {
 
         RowLayout { // Typed answer, and Confirm for a multi-select
             Layout.fillWidth: true
+            visible: root.multiSelect || root.typedAnswer
             spacing: 8
 
             MaterialTextField {
                 id: answerField
                 Layout.fillWidth: true
-                visible: !root.multiSelect
+                visible: !root.multiSelect && root.typedAnswer
                 placeholderText: root.choices.length > 0 ? Translation.tr("…or type an answer") : Translation.tr("Type an answer")
                 onAccepted: {
                     if (text.trim().length > 0)

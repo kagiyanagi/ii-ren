@@ -129,7 +129,7 @@ ContentPage {
         ConfigSwitch {
             buttonIcon: "auto_awesome"
             text: Translation.tr("Agent")
-            summary: Translation.tr("Claude Code or Codex in the left sidebar, on your own plan")
+            summary: Translation.tr("Claude Code, Codex or Antigravity in the left sidebar, on your own plan")
             toggles: false
             checked: Config.options.agent.enable
             onClicked: Config.options.agent.enable = !checked
