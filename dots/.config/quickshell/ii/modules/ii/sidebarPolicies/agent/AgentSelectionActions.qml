@@ -83,20 +83,26 @@ Item {
 
     // Not while the selection is scrolled out of the transcript: the toolbar
     // would hang off an edge over text it does not belong to.
-    readonly property bool shown: root.selecting && root.liveRect.y + root.liveRect.height > 0 && root.liveRect.y < root.height
+    function showsAt(rect: rect): bool {
+        return root.selecting && rect.y + rect.height > 0 && rect.y < root.height;
+    }
+    readonly property bool shown: root.showsAt(root.liveRect)
 
     // Latched while shown. Through the exit the selection is already gone and
-    // the live rect is empty, which would drag the pivot into the corner.
+    // the live rect is empty, which would drag the pivot into the corner. Tested
+    // on the new rect, not `shown`, which is still stale inside this handler.
     property rect selectionRect
     onLiveRectChanged: {
-        if (root.shown)
+        if (root.showsAt(root.liveRect))
             root.selectionRect = root.liveRect;
     }
     onShownChanged: {
-        if (root.shown)
+        if (root.shown) {
+            root.selectionRect = root.liveRect;
             motion.open();
-        else
+        } else {
             motion.close();
+        }
     }
 
     readonly property real gap: 8

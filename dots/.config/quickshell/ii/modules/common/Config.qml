@@ -110,8 +110,9 @@ Singleton {
                 // commands and skills; this only bounds how many are offered.
                 property int maxSuggestions: 12
 
-                // Notify when a reply lands somewhere you cannot see it -- the panel
-                // shut, or open on another tab.
+                // Notify when a reply lands, or the agent stops to ask for approval or
+                // an answer, somewhere you cannot see it -- the panel shut, or open on
+                // another tab.
                 property bool notifyWhenAway: true
 
                 // Dictation, from the mic button and Super+Shift+B, records with

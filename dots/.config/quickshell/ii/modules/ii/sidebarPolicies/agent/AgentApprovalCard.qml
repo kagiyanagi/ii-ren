@@ -28,10 +28,12 @@ Rectangle {
 
     // The request goes null the instant it is answered, which would empty the card
     // mid-exit. Render from the last real one so the collapse animates on content
-    // that is still there.
+    // that is still there. Tested on `request` itself: `shown` is a binding on it
+    // and still holds the old value inside this handler, which latched nothing and
+    // drew an empty card on the fallback choices.
     property var latchedRequest: null
     onRequestChanged: {
-        if (root.shown)
+        if (root.request)
             root.latchedRequest = root.request;
     }
 

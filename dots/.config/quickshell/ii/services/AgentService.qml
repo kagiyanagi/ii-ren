@@ -1233,10 +1233,12 @@ Singleton {
         case "approval":
             root.pendingApproval = request;
             root.statusText = Translation.tr("Waiting for your approval");
+            root.notifyWaiting(request, true);
             break;
         case "clarify":
             root.pendingClarify = request;
             root.statusText = Translation.tr("Waiting for your answer");
+            root.notifyWaiting(request, false);
             break;
         default:
             // Anything else has no card here. Saying so ends the agent's wait now
@@ -2007,6 +2009,88 @@ Singleton {
         notifier.running = true;
         console.log("[Agent] Notification sent.");
     }
+
+    // ── Waiting-on-you notification ────────────────────────────────
+    //
+    // A turn parked on an approval or a question goes nowhere until it is answered,
+    // so it is worth a notification more than a reply is. It stays up until the
+    // request is answered or its card comes on screen, then closes itself; its
+    // Open action brings the panel up on the agent.
+
+    property var _waitingNotices: []
+
+    property Component waitingNotice: Component {
+        Process {
+            id: notice
+            required property var srq
+            property int serverId: -1
+            property bool closed: false
+
+            // `--print-id` writes the id first; a chosen action is written as its key.
+            stdout: SplitParser {
+                onRead: line => {
+                    if (notice.serverId < 0) {
+                        const id = parseInt(line);
+                        if (isNaN(id))
+                            return;
+                        notice.serverId = id;
+                        root._closeAnsweredNotices(); // Answered before the id came back
+                    } else if (line.trim() === "open") {
+                        GlobalStates.policiesPanelOpen = true;
+                        root.focusAgentTab();
+                    }
+                }
+            }
+            onExited: {
+                root._waitingNotices = root._waitingNotices.filter(other => other !== notice);
+                notice.destroy();
+            }
+        }
+    }
+
+    function notifyWaiting(request: var, approval: bool): void {
+        if (!(Config.options.agent?.notifyWhenAway ?? true))
+            return;
+        if (root.viewingAgent) {
+            console.log("[Agent] No notification: the request is on screen.");
+            return;
+        }
+
+        const question = request.questions?.[0]?.question ?? request.question ?? "";
+        const body = (approval ? (request.command || request.description || "") : question).trim();
+        const notice = root.waitingNotice.createObject(root, {
+            srq: request.srq
+        });
+        notice.command = ["notify-send", "--print-id", "--wait",
+            "-a", root.agentName,
+            "-u", "critical",
+            "-t", "0", // Up until answered, not until the popup timeout
+            "-h", `string:image-path:${root.notifyIconPath}`,
+            "-A", `open=${Translation.tr("Open")}`,
+            "--", // A command can start with a dash
+            approval ? Translation.tr("%1 needs your approval").arg(root.agentName) : Translation.tr("%1 has a question").arg(root.agentName),
+            // The server renders markup, and a command is full of < > &
+            body.length > 0 ? StringUtils.escapeHtml(body.slice(0, 300)) : (approval ? Translation.tr("Waiting for your approval") : Translation.tr("Waiting for your answer"))];
+        root._waitingNotices = [...root._waitingNotices, notice];
+        notice.running = true;
+        console.log("[Agent] Waiting notification sent.");
+    }
+
+    function _closeAnsweredNotices(): void {
+        const waiting = [root.pendingApproval?.srq, root.pendingClarify?.srq];
+        for (const notice of root._waitingNotices) {
+            if (notice.closed || notice.serverId < 0)
+                continue;
+            if (root.viewingAgent || !waiting.includes(notice.srq)) {
+                notice.closed = true;
+                Notifications.discardNotification(notice.serverId + Notifications.idOffset);
+            }
+        }
+    }
+
+    onPendingApprovalChanged: root._closeAnsweredNotices()
+    onPendingClarifyChanged: root._closeAnsweredNotices()
+    onViewingAgentChanged: root._closeAnsweredNotices()
 
     // ── Shell entry points ─────────────────────────────────────────
 

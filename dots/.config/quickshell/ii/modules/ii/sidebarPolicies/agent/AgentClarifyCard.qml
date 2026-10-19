@@ -27,9 +27,10 @@ Rectangle {
 
     // The request clears the instant it is answered, which would empty the card
     // mid-exit. Render from the last real one so the collapse animates on content.
+    // Not on `shown`: that binding on `request` is still stale inside this handler.
     property var latched: null
     onRequestChanged: {
-        if (root.shown) {
+        if (root.request) {
             root.latched = root.request;
             // A replaced batch starts at its first question, not where the
             // last one was left.

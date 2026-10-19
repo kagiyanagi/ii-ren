@@ -643,7 +643,7 @@ Item {
 
             ConfigSwitch {
                 buttonIcon: "smart_toy"
-                text: Translation.tr("Notify when the agent replies and its tab isn't visible")
+                text: Translation.tr("Notify when the agent replies or needs you and its tab isn't visible")
                 checked: Config.options.agent.notifyWhenAway
                 onCheckedChanged: {
                     Config.options.agent.notifyWhenAway = checked;

@@ -15,6 +15,11 @@ None of it shows in a still frame:
 - The sidebar window is wider than the panel and masks input to the panel, so a
   card clamped to the window's edges can sit where clicks go to the app behind.
 - A clarify batch replaced mid-answer opened at the old question index.
+- Both cards latched their request only `if (root.shown)`. Inside
+  `onRequestChanged`, `shown` (a binding on `request`) still holds the old value,
+  so the first request was never latched: the approval card said "wants to run
+  something" over no command, on the fallback buttons, for every agent. The
+  handlers are run here with `shown` stale, as QML runs them.
 The clamps, the toolbar's in-view guard and the clarify reset are lifted out and
 run under node.
 """
@@ -122,15 +127,21 @@ for c in got:
 # Selection toolbar: latched, pivoted, and off when the text is out of view.
 assert not re.search(r"^    visible:\s*root\.shown", sel, re.M), \
     "AgentSelectionActions: `visible: shown` again, which deletes the fade-out"
-assert re.search(r"onLiveRectChanged:\s*\{\s*if \(root\.shown\)\s*root\.selectionRect = root\.liveRect", sel), \
-    "AgentSelectionActions: the rect is not latched, so the exit drags the pivot to the corner"
+assert re.search(r"onLiveRectChanged:\s*\{\s*if \(root\.showsAt\(root\.liveRect\)\)\s*root\.selectionRect = root\.liveRect", sel), \
+    "AgentSelectionActions: the rect is not latched on the new rect, so the exit drags the pivot to the corner"
+for name, src in (("AgentApprovalCard", approval), ("AgentClarifyCard", clarify), ("AgentSelectionActions", sel)):
+    for handler in re.findall(r"on(\w+)Changed:\s*\{", src):
+        body = block(src, f"on{handler}Changed:")
+        if handler != "Shown" and "root.shown" in body:
+            raise AssertionError(f"{name}: on{handler}Changed reads `shown`, which is stale there")
 assert sel.count("focusPolicy: Qt.NoFocus") == 3, "AgentSelectionActions: a button takes focus, and the selection it acts on vanishes"
 assert "radius: Appearance.rounding.full" in card_of(sel, "toolbar"), "AgentSelectionActions: the toolbar is not a pill"
+shows_at = block(sel, "function showsAt(")
 shown = prop(sel, "readonly property bool shown")
 tx = prop(card_of(sel, "toolbar"), "x")
 got = node(f"""
 const cases = [[-60, 20, false], [-10, 20, true], [100, 20, true], [490, 20, true], [500, 20, false], [700, 20, false]];
-const shown = cases.map(([y, h, _]) => {{ const root = {{selecting: true, height: 500, liveRect: {{y, height: h}}}}; return {shown}; }});
+const shown = cases.map(([y, h, _]) => {{ const root = {{selecting: true, height: 500, liveRect: {{y, height: h}}}}; root.showsAt = rect => {{ {shows_at} }}; return {shown}; }});
 const xs = [];
 for (let px = -40; px <= 460; px += 7) {{ const root = {{edgeMargin: 4, width: 420}}, pivot = {{x: px}}, width = 120; xs.push(px + {tx}); }}
 console.log(JSON.stringify({{shown, want: cases.map(c => c[2]), xs}}));
@@ -154,7 +165,7 @@ got = node(f"""
 const answered = [];
 const AgentService = {{ respondToClarify: (t, q) => answered.push([t, q]) }};
 const answerField = {{ text: "draft" }};
-const root = {{ shown: true, request: null, latched: null, questionIndex: 0, selected: [], questions: [1, 2, 3], isBatch: true, questionId: "q" }};
+const root = {{ shown: false, request: null, latched: null, questionIndex: 0, selected: [], questions: [1, 2, 3], isBatch: true, questionId: "q" }};
 function answer(text) {{ {answer} }}
 root.questionIndex = 2; root.selected = ["x"];
 root.request = {{ questions: [1, 2] }};
@@ -167,6 +178,18 @@ console.log(JSON.stringify({{afterReplace, afterAnswer}}));
 assert got["afterReplace"] == [0, 0, ""], f"AgentClarifyCard: a replaced batch opens at {got['afterReplace']}, not its first question"
 assert got["afterAnswer"] == 1, "AgentClarifyCard: answering a batch no longer walks to the next question"
 assert re.search(r"onCurrentChanged:\s*root\.focusIfTyped\(\)", clarify), "AgentClarifyCard: a typed-only question no longer takes the caret"
+
+# Approval card: the first request is latched though `shown` is still false.
+latch = block(approval, "onRequestChanged:")
+got = node(f"""
+const root = {{ shown: false, request: {{ command: "ls", choices: ["once", "session", "deny"] }}, latchedRequest: null }};
+(function () {{ {latch} }})();
+const first = root.latchedRequest?.command ?? null;
+root.shown = true; root.request = null;
+(function () {{ {latch} }})();
+console.log(JSON.stringify([first, root.latchedRequest?.command ?? null]));
+""")
+assert got == ["ls", "ls"], f"AgentApprovalCard: latched {got}; the card draws without its command"
 
 # The cards are fed by server->client requests: a frame with an id AND a method.
 # Routed as a reply, a request would be dropped and no card would open; the old
