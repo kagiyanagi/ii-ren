@@ -11,7 +11,8 @@ Item {
 
     property int monthShift: 0
     property var locale: Qt.locale(Config.options.calendar.locale)
-    property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
+    // On DateTime.today, so the grid and its highlight move on at midnight
+    property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift, DateTime.today)
     property var calendarLayout: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0, Config.options.time.firstDayOfWeek)
 
     anchors.topMargin: 10

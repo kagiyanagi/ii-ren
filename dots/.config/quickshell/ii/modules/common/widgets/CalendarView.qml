@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import qs.services
 
 Item {
     id: root
@@ -64,7 +65,7 @@ Item {
     readonly property int focusedWeekIndex: 2 // The third row, 0-indexed
     readonly property int focusDayOfWeekIndex: 6
     property date dateInFirstWeek: {
-        const currentDate = new Date();
+        const currentDate = DateTime.today;
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
         const firstDayThisMonth = new Date(currentYear, currentMonth, 1);

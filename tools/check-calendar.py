@@ -14,11 +14,17 @@ day it describes and stays on screen.
 - **The clamp.** The card hangs off a zero-size pivot at the day's top centre, so
   it scales out of the day. It is shifted inside the window near an edge, and
   the shift is lifted out of the QML and swept here.
+- **It turns over at midnight.** The grid was built from a bare `new Date()`,
+  which no binding can see change, so today's highlight and the month stayed
+  where the shell started until a restart. It is built from `DateTime.today`
+  now, and the layout is run under `node` for a day either side of a month end.
 
     python3 tools/check-calendar.py
 """
 
+import json
 import re
+import subprocess
 from pathlib import Path
 
 DIR = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii/modules/ii/sidebarDashboard/calendar"
@@ -59,4 +65,23 @@ for W in (300, 340, 400):
                 failures += 1
 assert failures == 0, f"{failures} clamp positions leave the window or drift off the day"
 
-print("ok: calendar cells carry no effect, one card on ArrowPopupMotion, clamp holds")
+assert re.search(r"viewingDate:.*getDateInXMonthsTime\(monthShift, DateTime\.today\)", widget), \
+    "the grid must be built from DateTime.today, or it stops at the day the shell started"
+assert re.search(r"readonly property date today:.*dayKey", (DIR.parents[3] / "services/DateTime.qml").read_text(), re.S), \
+    "DateTime.today must hang off the day-only key, or the grid rebuilds on every clock tick"
+
+# The day after the shell started: the highlight sits on that day, in that month.
+js = (DIR / "calendar_layout.js").read_text() + """
+const out = [];
+for (const [y, m, d] of [[2026, 9, 31], [2026, 10, 1], [2026, 11, 31], [2027, 0, 1]]) {
+    const v = getDateInXMonthsTime(0, new Date(y, m, d));
+    const cells = getCalendarLayout(v, true, 0).flat().filter(c => c.today === 1);
+    out.push([v.getMonth(), cells.map(c => [c.day, c.month, c.year])]);
+}
+console.log(JSON.stringify(out));
+"""
+got = json.loads(subprocess.run(["node", "-e", js], capture_output=True, text=True, check=True).stdout)
+assert got == [[9, [[31, 9, 2026]]], [10, [[1, 10, 2026]]], [11, [[31, 11, 2026]]], [0, [[1, 0, 2027]]]], \
+    f"the layout does not follow the date it is given: {got}"
+
+print("ok: calendar cells carry no effect, one card on ArrowPopupMotion, clamp holds, turns over at midnight")

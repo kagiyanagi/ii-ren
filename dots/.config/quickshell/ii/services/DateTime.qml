@@ -29,6 +29,13 @@ Singleton {
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateWithYearFormat ?? "dd/MM/yyyy")
     property string longDate: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dddd, MMMM dd")
+    // Midnight of the current day. The string key only changes when the day does, so a
+    // binding on `today` re-runs once a day rather than on every clock tick.
+    readonly property string dayKey: Qt.formatDate(clock.date, "yyyy-MM-dd")
+    readonly property date today: {
+        const [year, month, day] = root.dayKey.split("-").map(Number);
+        return new Date(year, month - 1, day);
+    }
     // Boot time from /proc/uptime once; the minute-precision clock above then drives the
     // string, rather than re-reading the file every few seconds for a minute-wide value.
     property real bootTime: 0
