@@ -21,8 +21,8 @@ import shutil
 import sys
 import time
 
-from bridge import (HOME, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window, load_state, one_line,
-                    persona, save_state, window_label)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window,
+                    load_state, one_line, persona, save_state, window_label)
 
 POLICIES = {
     "manual": ("untrusted", {"type": "workspaceWrite", "networkAccess": True}),
@@ -40,16 +40,14 @@ DESKTOP_ENV = ("PATH", "HOME", "XDG_RUNTIME_DIR", "WAYLAND_DISPLAY", "DISPLAY", 
                "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP", "DBUS_SESSION_BUS_ADDRESS", "YDOTOOL_SOCKET")
 
 
-LIMITS_EVERY = 30  # seconds an answer stands before the button asks again
-
-
-def codex_limits(snapshot: dict, credits: dict | None = None) -> dict:
+def codex_limits(snapshot: dict, credits: dict | None = None, checked_at: int = 0) -> dict:
     """A RateLimitSnapshot (`account/rateLimits/read`) as the sidebar's limits.
     `primary`/`secondary` are positions, not lengths: the length is the window's
     own `windowDurationMins`, else what the plan has (T3 Code's reading: paid
     plans a 5-hour and a weekly window, Free and Go one monthly allowance)."""
     plan_type = snapshot.get("planType") or ""
-    out = {"plan": f"ChatGPT {plan_type.capitalize()}" if plan_type else "", "windows": [], "notes": [], "checked_at": int(time.time())}
+    out = {"plan": f"ChatGPT {plan_type.capitalize()}" if plan_type else "", "windows": [], "notes": [],
+           "checked_at": checked_at or int(time.time())}
     monthly = plan_type in ("free", "go")
     for wid, fallback in (("primary", 43200 if monthly else 300), ("secondary", 10080)):
         window = snapshot.get(wid) or {}
@@ -171,6 +169,8 @@ class CodexBackend:
         self._rate = None       # the plan's RateLimitSnapshot, merged across updates
         self._reset_credits = None
         self._rate_at = 0.0
+        self._rate_checked = 0  # when Codex last said, in epoch seconds -- not when we last looked
+        self._limits_ask = None
         # What config.toml picks when the sidebar pins nothing (config/read).
         self.cli_defaults = {}
 
@@ -333,6 +333,7 @@ class CodexBackend:
             else:
                 run.finish("interrupted" if status == "interrupted" else "complete")
             self.bridge.event("sessions.changed", {})
+            asyncio.create_task(self._refresh_limits())
         elif method == "thread/name/updated":
             self.bridge.event("session.title", {"title": params.get("threadName") or ""})
             self.bridge.event("sessions.changed", {})
@@ -342,7 +343,8 @@ class CodexBackend:
         elif method == "account/rateLimits/updated":
             self._rate = merge_limits(self._rate, params.get("rateLimits") or {})
             if self._rate:
-                self.bridge.event("usage.limits", codex_limits(self._rate, self._reset_credits))
+                self._rate_checked = int(time.time())
+                self.bridge.event("usage.limits", codex_limits(self._rate, self._reset_credits, self._rate_checked))
         elif method == "serverRequest/resolved":
             task = self._asking.pop(params.get("requestId"), None)
             if task:
@@ -585,19 +587,36 @@ class CodexBackend:
             self._compacting = None
         return "Folded this conversation."
 
-    async def limits(self, refresh: bool) -> dict:
-        if self._rate is None or (refresh and time.monotonic() - self._rate_at > LIMITS_EVERY):
-            try:
-                read = await self._call("account/rateLimits/read", None, timeout=30)
-            except BridgeError as e:
-                if self._rate is None:
-                    raise BridgeError(f"Codex did not report its limits: {e}")
-            else:
-                by_id = read.get("rateLimitsByLimitId") or {}
-                self._rate = by_id.get("codex") or read.get("rateLimits") or {}
-                self._reset_credits = read.get("rateLimitResetCredits")
-                self._rate_at = time.monotonic()
-        return codex_limits(self._rate or {}, self._reset_credits)
+    async def limits(self, refresh: bool, force: bool = False) -> dict:
+        """See bridge.py "Plan limits". `force` is the after-turn ask, never skipped."""
+        recent = time.monotonic() - self._rate_at < LIMITS_GAP
+        if self._rate is not None and not force and (not refresh or recent):
+            return codex_limits(self._rate, self._reset_credits, self._rate_checked)
+        if self._limits_ask is None or self._limits_ask.done():
+            self._limits_ask = asyncio.ensure_future(self._ask_limits())
+        return await asyncio.shield(self._limits_ask)
+
+    async def _ask_limits(self) -> dict:
+        try:
+            read = await self._call("account/rateLimits/read", None, timeout=30)
+        except BridgeError as e:
+            if self._rate is None:
+                raise BridgeError(f"Codex did not report its limits: {e}")
+            return codex_limits(self._rate, self._reset_credits, self._rate_checked)
+        by_id = read.get("rateLimitsByLimitId") or {}
+        self._rate = by_id.get("codex") or read.get("rateLimits") or {}
+        self._reset_credits = read.get("rateLimitResetCredits")
+        self._rate_at = time.monotonic()
+        self._rate_checked = int(time.time())
+        out = codex_limits(self._rate, self._reset_credits, self._rate_checked)
+        self.bridge.event("usage.limits", out)
+        return out
+
+    async def _refresh_limits(self) -> None:
+        try:
+            await self.limits(True, force=True)
+        except BridgeError:
+            pass
 
     # ── Settings ──
 

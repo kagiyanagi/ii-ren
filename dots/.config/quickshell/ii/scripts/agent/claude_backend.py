@@ -29,8 +29,8 @@ import sys
 import time
 import uuid
 
-from bridge import (HOME, BridgeError, MissingAgent, desktop_server, effort_label, epoch, first_string, limit_window, load_state,
-                    one_line, persona, save_state)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, epoch, first_string, limit_window,
+                    load_state, one_line, persona, save_state)
 
 # Read-only desktop tools need no approval in any mode; clicking and IPC calls do.
 DESKTOP_READ_ONLY = ("screenshot", "windows", "see", "ipc_show")
@@ -63,7 +63,6 @@ PLANS = {"pro": "Claude Pro", "max": "Claude Max", "team": "Claude Team", "enter
 LIMIT_KINDS = {"session": ("5-hour", 300), "weekly_all": ("Weekly", 10080)}
 # The streamed rate_limit_event's windows, by the id get_usage gives them.
 EVENT_WINDOWS = {"five_hour": "session", "seven_day": "weekly_all"}
-LIMITS_EVERY = 30  # seconds between asks after a turn; opening the button always asks
 
 
 def claude_limits(body: dict, current: str = "") -> dict:
@@ -352,6 +351,7 @@ class ClaudeBackend:
         self._message = None
         self._limits = None     # the last get_usage, as the sidebar's limits
         self._limits_at = 0.0
+        self._limits_ask = None # a get_usage in flight, shared by whoever asks meanwhile
         # What Claude Code's own settings pick when the sidebar pins nothing.
         self.cli_defaults = {}
 
@@ -638,11 +638,18 @@ class ClaudeBackend:
 
     # ── Plan limits ──
 
-    async def limits(self, refresh: bool) -> dict:
-        if self._limits is not None and not refresh:
+    async def limits(self, refresh: bool, force: bool = False) -> dict:
+        """See bridge.py "Plan limits". `force` is the after-turn ask, never skipped."""
+        recent = time.monotonic() - self._limits_at < LIMITS_GAP
+        if self._limits is not None and not force and (not refresh or recent):
             return self._limits
         if self.proc is None:
             return self._limits or {"plan": "", "windows": [], "notes": ["Claude Code reports its limits once a chat is open."], "checked_at": 0}
+        if self._limits_ask is None or self._limits_ask.done():
+            self._limits_ask = asyncio.ensure_future(self._ask_limits())
+        return await asyncio.shield(self._limits_ask)
+
+    async def _ask_limits(self) -> dict:
         try:
             body = await self._control({"subtype": "get_usage", "skip_behaviors": True})
         except BridgeError as e:
@@ -651,14 +658,12 @@ class ClaudeBackend:
             raise BridgeError(f"Claude Code did not report its limits: {e}")
         self._limits = claude_limits(body, self.info()["model"])
         self._limits_at = time.monotonic()
+        self.bridge.event("usage.limits", self._limits)
         return self._limits
 
     async def _refresh_limits(self) -> None:
-        """After a turn, at most every LIMITS_EVERY seconds: a turn is what spends them."""
-        if self._limits is not None and time.monotonic() - self._limits_at < LIMITS_EVERY:
-            return
         try:
-            self.bridge.event("usage.limits", await self.limits(True))
+            await self.limits(True, force=True)
         except BridgeError:
             pass
 

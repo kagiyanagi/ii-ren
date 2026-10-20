@@ -46,8 +46,8 @@ import time
 import urllib.request
 import zipfile
 
-from bridge import (HOME, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window, load_state, one_line,
-                    persona, save_state)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window,
+                    load_state, one_line, persona, save_state)
 
 NAME = "Antigravity"
 REGISTRY_URL = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json"
@@ -349,7 +349,6 @@ def _block_text(content) -> str:
 # T3 Code reads these from Google's API with the login's refresh token; the
 # sidebar never touches the login, so it asks the server, and reads the report.
 
-LIMITS_EVERY = 20  # seconds an answer stands; asking costs no tokens, but is a request
 _GROUP = re.compile(r"^- \*\*(.+?)\*\*\s*$")
 _GROUP_MODELS = re.compile(r"^\s+\*\(Models within this group: (.+)\)\*\s*$")
 _BUCKET = re.compile(r"^\s+- \*\*(.+?):\*\*\s*(.+?)\s*$")
@@ -477,6 +476,7 @@ class AntigravityBackend:
         self._probe_lock = asyncio.Lock()
         self._limits = None
         self._limits_at = 0.0
+        self._limits_ask = None
 
     # ── Lifecycle ──
 
@@ -1017,14 +1017,24 @@ class AntigravityBackend:
     def _busy(self) -> bool:
         return bool(self._prompting and not self._prompting.done())
 
-    async def limits(self, refresh: bool) -> dict:
-        fresh = self._limits is not None and time.monotonic() - self._limits_at < LIMITS_EVERY
-        if self._limits is not None and (not refresh or fresh):
+    async def limits(self, refresh: bool, force: bool = False) -> dict:
+        """See bridge.py "Plan limits". `force` is the after-turn ask, never skipped.
+
+        Asked only between replies: the server takes one prompt per chat at a time,
+        and /usage's report would interleave with the answer being written. A
+        second, hidden chat would free it, but each chat runs its own ~150 MB
+        harness process -- too much for a number that is asked again the moment
+        the reply ends (_prompt_loop)."""
+        recent = time.monotonic() - self._limits_at < LIMITS_GAP
+        if self._limits is not None and not force and (not refresh or recent):
             return self._limits
-        # Asked only between replies: one prompt at a time per session, and a
-        # second would interleave its report with the answer being written.
         if not self.session_id or self._busy():
             return self._limits or {"plan": self.tier, "windows": [], "notes": ["Antigravity reports its limits between replies."], "checked_at": 0}
+        if self._limits_ask is None or self._limits_ask.done():
+            self._limits_ask = asyncio.ensure_future(self._ask_limits())
+        return await asyncio.shield(self._limits_ask)
+
+    async def _ask_limits(self) -> dict:
         async with self._probe_lock:
             if self._busy():
                 return self._limits or {"plan": self.tier, "windows": [], "notes": [], "checked_at": 0}
@@ -1040,13 +1050,12 @@ class AntigravityBackend:
                 self._probe = None
         self._limits = antigravity_limits(report, self.info()["model"], self.tier)
         self._limits_at = time.monotonic()
+        self.bridge.event("usage.limits", self._limits)
         return self._limits
 
     async def _refresh_limits(self) -> None:
-        if self._limits is not None and time.monotonic() - self._limits_at < LIMITS_EVERY:
-            return
         try:
-            self.bridge.event("usage.limits", await self.limits(True))
+            await self.limits(True, force=True)
         except BridgeError:
             pass
 

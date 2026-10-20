@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -16,6 +17,11 @@ import QtQuick.Layouts
  * limits"), never read from a login. With none reported -- an API-key login has
  * no plan -- there is no pill. It replaced the context-window pill on purpose:
  * the plan is what runs out, and /compact still folds a long chat.
+ *
+ * Kept current three ways: replies push what they spent (bridge.py "Plan
+ * limits"), opening the card asks again, and while the sidebar is open it asks
+ * every minute -- a window also moves with time, and with use elsewhere on the
+ * same plan. The card says how old its numbers are.
  *
  * The card is a AgentPopover, drawn from the sidebar window's content item
  * because `inputWrapper` in Agent.qml clips.
@@ -70,6 +76,25 @@ Item {
         repeat: true
         running: root.visible && root.hasLimits
         onTriggered: root.now = Date.now()
+    }
+    Connections {
+        target: AgentService
+        function onUsageLimitsChanged() {
+            root.now = Date.now();
+        }
+    }
+
+    // While someone can see it: the sidebar open, with limits to show.
+    readonly property bool watching: root.visible && GlobalStates.policiesPanelOpen
+    onWatchingChanged: {
+        if (root.watching)
+            AgentService.refreshUsageLimits(true);
+    }
+    Timer {
+        interval: 60000
+        repeat: true
+        running: root.watching
+        onTriggered: AgentService.refreshUsageLimits(true)
     }
 
     function duration(ms: real): string {
@@ -274,6 +299,12 @@ Item {
                 color: Appearance.colors.colOnSurface
             }
 
+            MaterialLoadingIndicator { // An ask in flight: opening the card did something
+                visible: AgentService.limitsLoading
+                implicitSize: 16
+                loading: AgentService.limitsLoading
+            }
+
             StyledText {
                 visible: text.length > 0
                 text: AgentService.usageLimits?.plan ?? ""
@@ -318,6 +349,15 @@ Item {
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 color: Appearance.colors.colSubtext
             }
+        }
+
+        StyledText { // How old the numbers are, so a stale card says so
+            readonly property real checked: (AgentService.usageLimits?.checked_at ?? 0) * 1000
+            Layout.fillWidth: true
+            visible: checked > 0
+            font.pixelSize: Appearance.font.pixelSize.smallest
+            color: Appearance.colors.colSubtext
+            text: root.now - checked < 60000 ? Translation.tr("Updated just now") : Translation.tr("Updated %1 ago").arg(root.duration(root.now - checked))
         }
     }
 }

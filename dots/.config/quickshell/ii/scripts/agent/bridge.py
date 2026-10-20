@@ -260,6 +260,14 @@ def one_line(text: str, limit: int = 200) -> str:
 #   {"plan": "Claude Team", "windows": [window, ...], "notes": [str], "checked_at": epoch s}
 #   window: {"id", "group", "label", "used": 0-100, "resets_at": epoch s or 0,
 #            "minutes": window length or 0, "counts": whether it limits the model in use}
+#
+# When they are asked for: after every turn (a turn is what spends them, so that
+# ask is never skipped), and whenever the shell asks -- opening the button, and
+# its timer while the sidebar is open. An ask within LIMITS_GAP of the last answer
+# gets that answer, so a burst of clicks is one request; asks that overlap share
+# one. Every answer is also pushed as a `usage.limits` event.
+
+LIMITS_GAP = 5  # seconds
 
 
 def window_label(minutes: int) -> str:
@@ -413,7 +421,7 @@ class Bridge:
 
     async def rpc_usage_limits(self, params):
         """The plan's limits; `refresh` asks the agent again rather than answering
-        from what it last said (each backend still spaces its own asks out)."""
+        from what it last said (unless it said it within LIMITS_GAP)."""
         return await self.backend.limits(bool(params.get("refresh")))
 
     async def rpc_session_retry(self, params):

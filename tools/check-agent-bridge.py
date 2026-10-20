@@ -292,6 +292,9 @@ for line in sys.stdin:
     elif meth == "initialize":
         send({"id": rid, "result": {"userAgent": "fake"}})
     elif meth == "account/rateLimits/read":
+        import os
+        with open(os.path.join(os.environ["HOME"], "codex-reads.log"), "a") as log:
+            log.write("read\n")
         send({"id": rid, "result": {"rateLimits": {"limitId": "codex", "planType": "pro", "primary": {"usedPercent": 20, "windowDurationMins": 300, "resetsAt": 1893456000},
                                                    "secondary": {"usedPercent": 5, "windowDurationMins": 10080, "resetsAt": 1893800000}}}})
     elif meth == "account/read":
@@ -539,9 +542,27 @@ with tempfile.TemporaryDirectory() as tmp:
             moved = [f["params"]["payload"] for f in shell.seen[mark:] if f.get("method") == "event" and f["params"]["type"] == "usage.limits"]
             assert moved and moved[0]["windows"][0]["used"] == 42 and moved[0]["windows"][0]["resets_at"] == 1893456000, \
                 f"Claude: a streamed rate_limit_event did not move the 5-hour window: {moved}"
+            # ...and the ask after the turn is made even though one was made moments
+            # before: skipping it is how the button used to go stale.
+            def asked_after(f):
+                return f.get("method") == "event" and f["params"]["type"] == "usage.limits" and f["params"]["payload"]["windows"][0]["used"] == 40
+            if not any(asked_after(f) for f in shell.seen[mark:]):
+                shell.until(asked_after)
+            # A burst of clicks right after it is answered from it: one request, not three.
+            log = home / "claude-controls.jsonl"
+            asks = lambda: sum(1 for l in log.read_text().splitlines() if json.loads(l).get("subtype") == "get_usage")
+            before = asks()
+            burst = [shell.call("usage.limits", {"refresh": True})["result"] for _ in range(3)]
+            assert asks() == before and len({b["checked_at"] for b in burst}) == 1, \
+                f"Claude: clicks within LIMITS_GAP of an answer asked again ({asks() - before} more get_usage)"
         else:
-            assert pushed and pushed[-1]["windows"][0]["used"] == 21, f"Codex: a rateLimits update was not passed on: {pushed}"
+            assert any(p["windows"][0]["used"] == 21 for p in pushed), f"Codex: a rateLimits update was not passed on: {pushed}"
             assert limits["plan"] == "ChatGPT Pro" and [(w["label"], w["used"]) for w in limits["windows"]] == [("5-hour", 20), ("Weekly", 5)], limits
+            reads = (home / "codex-reads.log").read_text().count("read")
+            assert reads >= 1, "Codex: the turn's end did not ask for the limits again"
+            again = shell.call("usage.limits", {"refresh": True})["result"]
+            assert again["checked_at"] == limits["checked_at"], \
+                "Codex: an answer reused from moments ago claims to be newer than it is"
         assert caps.get("limits") is not False and ready["params"]["payload"]["capabilities"].get("limits"), f"{backend}: limits not offered"
         unknown = shell.call("no.such.method")
         assert unknown.get("error"), f"{backend}: an unknown request must be answered with an error"
@@ -579,6 +600,10 @@ with tempfile.TemporaryDirectory() as tmp:
         f"Antigravity: the turn's steps are wrong: {steps}"
     done = next(f for f in shell.seen if f.get("method") == "event" and f["params"]["type"] == "tool.complete")["params"]["payload"]
     assert done["result"] == {"output": "probe-ok\n", "exit_code": 0}, done
+    # The reply's end asks for the limits (its /usage goes out once it is over).
+    pushed_limits = lambda f: f.get("method") == "event" and f["params"]["type"] == "usage.limits" and f["params"]["payload"]["windows"]
+    if not any(pushed_limits(f) for f in shell.seen):
+        shell.until(pushed_limits)
     start = next(f for f in shell.seen if f.get("method") == "event" and f["params"]["type"] == "tool.start")["params"]["payload"]
     assert start["name"] == "run_command" and start["args"]["command"] == "echo probe-ok", start
     # Its own question: the card takes only its choices, and the pick goes back as that option.
@@ -694,6 +719,8 @@ assert "Context window" not in usage and "contextPercent" not in usage and "cont
 for name in ("claude_backend.py", "codex_backend.py", "antigravity_backend.py"):
     assert "session.usage" not in (AGENT / name).read_text(), f"{name}: still reports the context window nobody draws"
 assert 'case "usage.limits"' in svc and "root.refreshUsageLimits(false)" in svc, "AgentService: limits are never fetched or never updated"
+assert "running: root.watching" in usage and "GlobalStates.policiesPanelOpen" in usage and "Updated %1 ago" in usage, \
+    "AgentUsageMeter: it must ask again on its own while the sidebar is open, and say how old its numbers are"
 for gone in ("gateway.sh", "hermes", "Hermes", "subagent.list", "spawn_tree", "prompt.background", "yolo"):
     assert gone not in svc, f"AgentService: the Hermes-era `{gone}` is back"
 
