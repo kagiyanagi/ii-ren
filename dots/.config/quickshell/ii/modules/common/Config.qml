@@ -103,7 +103,36 @@ Singleton {
             property JsonObject agent: JsonObject {
                 // The left sidebar's agent: Claude Code, Codex or Antigravity,
                 // whichever is installed and signed in (services/AgentService.qml).
+                // Settings > Agent signs them in and out (scripts/agent/setup.py).
                 property bool enable: true
+                // The agent the sidebar starts on when the shell does: "claude",
+                // "codex" or "antigravity". Empty is the one used last.
+                property string defaultBackend: ""
+                // Per agent: offered in the sidebar's menu at all; the program to run
+                // (empty finds `claude` / `codex` on PATH, or for Antigravity the
+                // server installed from Settings); and the model every new chat
+                // starts on, by the id the picker uses (empty keeps the last one
+                // picked).
+                property JsonObject claude: JsonObject {
+                    property bool enable: true
+                    property string binary: ""
+                    property string model: ""
+                }
+                property JsonObject codex: JsonObject {
+                    property bool enable: true
+                    property string binary: ""
+                    property string model: ""
+                }
+                property JsonObject antigravity: JsonObject {
+                    property bool enable: true
+                    property string binary: ""
+                    property string model: ""
+                }
+                // Added to every agent's note on where it runs (scripts/agent/prompt.md),
+                // from the next chat on.
+                property string instructions: ""
+                // The screenshot, window, click and shell tools (scripts/agent/desktop_mcp.py).
+                property bool desktopTools: true
                 property bool showToolCalls: true
                 property bool showStatusLine: true
                 // Slash completions come from the agent, which knows its own
@@ -124,6 +153,9 @@ Singleton {
                 property string sttLanguage: "en"      // en | auto
                 property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, LaTeX, extension, sidebar, attachment, transcript."
                 property string sttSource: ""
+                // Read-aloud's edge-tts voice, e.g. "en-GB-SoniaNeural". Empty is
+                // $ILLOGICAL_IMPULSE_TTS_VOICE, else en-US-AriaNeural (scripts/agent/tts.py).
+                property string ttsVoice: ""
 
             }
 

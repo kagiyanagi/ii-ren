@@ -119,6 +119,13 @@ ApplicationWindow {
             component: "modules/settings/ServicesConfig.qml"
         },
         {
+            id: "agent",
+            name: Translation.tr("Agent"),
+            summary: Translation.tr("Claude Code, Codex, Antigravity"),
+            icon: "auto_awesome",
+            component: "modules/settings/AgentConfig.qml"
+        },
+        {
             id: "extensions",
             name: Translation.tr("Extensions"),
             summary: Translation.tr("Installed and available"),

@@ -583,11 +583,12 @@ Item {
                 z: 2
                 icon: "auto_awesome"
                 shape: MaterialShape.Shape.PixelCircle
-                title: Translation.tr("No agent installed")
+                title: AgentService.allDisabled ? Translation.tr("Every agent is turned off") : Translation.tr("No agent installed")
 
                 rotateIconWithShape: true
                 shown: AgentService.messageIDs.length === 0 && AgentService.missing
-                description: Translation.tr("Install Claude Code, Codex or Antigravity and sign in\nto it, then reopen this tab. It runs on your own plan.")
+                description: AgentService.allDisabled ? Translation.tr("Turn one back on in Settings > Agent.")
+                    : Translation.tr("Install Claude Code, Codex or Antigravity and sign in\nto it, in Settings > Agent. It runs on your own plan.")
                 descriptionHorizontalAlignment: Text.AlignHCenter
 
                 triggerAnimationOn: GlobalStates.policiesPanelOpen

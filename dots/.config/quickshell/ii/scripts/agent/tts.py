@@ -16,7 +16,8 @@ Protocol, JSON lines on stdin/stdout:
   <- {"id", "ok", "paths", "marks", "error"}
 
 Voice and rate: ILLOGICAL_IMPULSE_TTS_VOICE (default en-US-AriaNeural),
-ILLOGICAL_IMPULSE_TTS_RATE (e.g. "+10%").
+ILLOGICAL_IMPULSE_TTS_RATE (e.g. "+10%"). A request's own "voice" (Settings >
+Agent's pick) wins over the variable.
 """
 import asyncio
 import contextlib
@@ -54,7 +55,7 @@ def spoken(text: str) -> str:
     return " ".join(line if line[-1] in ".!?:;," else line + "." for line in lines)
 
 
-def synthesize(text: str, out_path: str) -> dict:
+def synthesize(text: str, out_path: str, voice: str = "") -> dict:
     import edge_tts
 
     said = spoken(text)
@@ -65,7 +66,7 @@ def synthesize(text: str, out_path: str) -> dict:
 
     async def stream() -> None:
         with open(out_path, "wb") as audio:
-            async for chunk in edge_tts.Communicate(said, voice=VOICE, rate=RATE, boundary="WordBoundary").stream():
+            async for chunk in edge_tts.Communicate(said, voice=voice or VOICE, rate=RATE, boundary="WordBoundary").stream():
                 if chunk["type"] == "audio":
                     audio.write(chunk["data"])
                 elif chunk["type"] == "WordBoundary":
@@ -98,7 +99,7 @@ def main() -> int:
         except ValueError:
             continue
         try:
-            reply = synthesize(str(req.get("text", "")), str(req.get("out", "")))
+            reply = synthesize(str(req.get("text", "")), str(req.get("out", "")), str(req.get("voice") or ""))
         except Exception as e:  # one bad request must not take the server down
             reply = {"ok": False, "paths": [], "marks": [], "error": f"{type(e).__name__}: {e}"}
         reply["id"] = req.get("id", "")

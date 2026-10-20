@@ -17,12 +17,11 @@ Approval modes:
 import asyncio
 import json
 import os
-import shutil
 import sys
 import time
 
-from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window,
-                    load_state, one_line, persona, save_state, window_label)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, agent_binary, desktop_server, desktop_tools, effort_label,
+                    first_string, limit_window, load_state, missing_text, one_line, persona, save_state, window_label)
 
 POLICIES = {
     "manual": ("untrusted", {"type": "workspaceWrite", "networkAccess": True}),
@@ -177,15 +176,15 @@ class CodexBackend:
     # ── Lifecycle ──
 
     async def start(self) -> dict:
-        binary = shutil.which("codex")
+        binary = agent_binary("codex")
         if not binary:
-            raise MissingAgent("Codex is not installed (no `codex` on PATH)")
+            raise MissingAgent(missing_text("Codex", "codex"))
+        args = [binary, "app-server", "-c", 'web_search="live"']
         tools = desktop_server()
-        args = [binary, "app-server",
-                "-c", f"mcp_servers.desktop.command={_toml(tools['command'])}",
-                "-c", f"mcp_servers.desktop.args={_toml(tools['args'])}",
-                "-c", f"mcp_servers.desktop.env={_toml({k: os.environ[k] for k in DESKTOP_ENV if os.environ.get(k)})}",
-                "-c", 'web_search="live"']
+        if tools:
+            args += ["-c", f"mcp_servers.desktop.command={_toml(tools['command'])}",
+                     "-c", f"mcp_servers.desktop.args={_toml(tools['args'])}",
+                     "-c", f"mcp_servers.desktop.env={_toml({k: os.environ[k] for k in DESKTOP_ENV if os.environ.get(k)})}"]
         self.proc = await asyncio.create_subprocess_exec(
             *args, cwd=HOME, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE, limit=32 * 1024 * 1024)
@@ -196,12 +195,12 @@ class CodexBackend:
         await self._notify("initialized")
         account = await self._call("account/read", {})
         if account.get("account") is None and account.get("requiresOpenaiAuth", True):
-            raise BridgeError("Codex is signed out. Run `codex login` in a terminal, then reopen this tab.")
+            raise BridgeError("Codex is signed out. Sign in from Settings > Agent, then reopen this tab.")
         await self._read_defaults()
         # No clarify: Codex's request_user_input only exists in its Plan mode, so in
         # the sidebar it asks in plain text and the reply box is the answer.
         return {"retry": True, "undo": True, "clarify": False, "slash": True, "images": True, "models": True,
-                "screen": True, "effort": True, "limits": True, "name": "Codex"}
+                "screen": desktop_tools(), "effort": True, "limits": True, "name": "Codex"}
 
     async def stop(self) -> None:
         proc, self.proc = self.proc, None
@@ -619,6 +618,11 @@ class CodexBackend:
             pass
 
     # ── Settings ──
+
+    def catalog(self) -> list[dict]:
+        """The picker's models by the id set_model takes, for Settings > Agent."""
+        return [{"id": "default", "label": self._default_label()}] + \
+            [{"id": m.get("model") or m.get("id"), "label": m.get("displayName") or m.get("model")} for m in self._models]
 
     async def models(self) -> dict:
         await self._load_models()

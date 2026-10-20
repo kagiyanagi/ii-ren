@@ -153,7 +153,7 @@ Config lives in `Config.qml` as nested `JsonObject` properties. Key top-level gr
 - `background` — wallpaper, widgets (clock/media/weather), parallax
 - `lock` — lock screen, blur, `useHyprlock`
 - `waffles` — Waffle-specific tweaks (bar, actionCenter toggles)
-- `agent` — the left sidebar's agent: Claude Code, Codex or Antigravity, run as the user's own signed-in program (`scripts/agent/bridge.py`), with desktop tools (`scripts/agent/desktop_mcp.py`); tool rows, notifications, optional dictation (whisper.cpp) and read-aloud (edge-tts)
+- `agent` — the left sidebar's agent: Claude Code, Codex or Antigravity, run as the user's own signed-in program (`scripts/agent/bridge.py`), with desktop tools (`scripts/agent/desktop_mcp.py`); per agent `claude`/`codex`/`antigravity` `{enable, binary, model}`, `defaultBackend`, `instructions`, `desktopTools`; tool rows, notifications, optional dictation (whisper.cpp) and read-aloud (edge-tts, `ttsVoice`)
 - `policies` — feature flags (weeb, wallpapers, translator, continuity, agent)
 
 Access via `Config.options.bar.vertical`, `Config.options.appearance.sharpMode`, etc.
@@ -189,6 +189,16 @@ arrives as `capabilities` with its `ready` event, and the page offers only that
 (`AgentService.can()`). The gate is `tools/check-agent-bridge.py` (fake agents, no
 tokens spent); `tools/probe-agent.py claude|codex|antigravity [scenario]` drives the
 real one and spends a little of the plan.
+
+Settings > Agent (`modules/settings/AgentConfig.qml`) installs, signs in and configures
+them from the settings app's own process, through `scripts/agent/setup.py`: each
+program's own sign-in (`claude auth login`, `codex login`, the ACP server's
+`authenticate`), with `$BROWSER` set to a helper that hands the link back, as T3 Code
+does, and Google's server downloaded from the ACP registry. A finished job tells the
+shell with `qs ipc call agent refresh <id>`; the sidebar re-reads its settings only
+after its first open, and restarts the bridge on them between replies. The models the
+page offers as defaults are the ones the bridge last listed (`catalog-<id>.json` in its
+state directory). The gate is `tools/check-agent-setup.py`.
 
 ## Extension System
 

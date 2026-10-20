@@ -705,7 +705,7 @@ assert "exitCode === 127 || exitCode === 78" in svc, "AgentService: a missing or
 clarify = (QS / "modules/ii/sidebarPolicies/agent/AgentClarifyCard.qml").read_text()
 assert "root.current?.allow_custom ?? true" in clarify and "visible: !root.multiSelect && root.typedAnswer" in clarify, \
     "AgentClarifyCard: a typed answer is offered to an agent that only takes its own choices"
-assert '"antigravity-server"' in svc and "b.firstUse && !serverHere" in svc, \
+assert 'echo "$id antigravity-server"' in svc and "b.firstUse && !serverHere" in svc, \
     "AgentService: Antigravity is not offered, or not told apart from an install still to download"
 assert "AgentService.setupText.length > 0" in page, "Agent.qml: a first-use download or sign-in wait shows nothing"
 usage = (QS / "modules/ii/sidebarPolicies/agent/AgentUsageMeter.qml").read_text()

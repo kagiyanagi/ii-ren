@@ -2,6 +2,7 @@ pragma Singleton
 import qs
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.common.utils
 import qs.services.agent
 import Quickshell
 import Quickshell.Io
@@ -57,20 +58,24 @@ Singleton {
     // ── Agent ────────────────────────────────────────────────────────────
     //
     // Which agent answers. Only those found here are offered, so the menu never
-    // lists an agent that cannot start; the probe settles a moment after startup.
+    // lists an agent that cannot start; the probe settles a moment after the first
+    // open. Settings > Agent turns agents off, points at another program, and
+    // signs them in (services/AgentSetup.qml, in the settings app's own process).
     // Antigravity is offered with the `agy` CLI installed even before Google's ACP
     // server is: the bridge downloads that on first use, and the row says so.
     readonly property var knownBackends: [
         { id: "claude", commands: ["claude"], label: "Claude Code", plan: Translation.tr("Uses your Claude plan") },
         { id: "codex", commands: ["codex"], label: "Codex", plan: Translation.tr("Uses your ChatGPT plan") },
-        { id: "antigravity", commands: ["agy", "agy_acp_server", "antigravity-server"], label: "Antigravity", plan: Translation.tr("Uses your Google AI plan"),
+        { id: "antigravity", commands: ["agy", "agy_acp_server", "@installed"], label: "Antigravity", plan: Translation.tr("Uses your Google AI plan"),
           firstUse: Translation.tr("Uses your Google AI plan. First use downloads Google's agent server (about 340 MB)") }
     ]
     property var backends: []
     property bool backendsProbed: false
     readonly property var backend: root.backends.find(b => b.id === (Persistent.states?.agent?.backend ?? "")) ?? root.backends[0] ?? null
     readonly property string agentName: root.backend?.label ?? Translation.tr("Agent")
-    property bool _switchingBackend: false
+    // Every agent turned off in Settings, as opposed to none installed.
+    readonly property bool allDisabled: root.knownBackends.every(b => !(Config.options?.agent?.[b.id]?.enable ?? true))
+    property bool _restarting: false
     property bool _startWhenProbed: false
 
     // What this agent can genuinely do, from its ready event.
@@ -97,6 +102,12 @@ Singleton {
         Persistent.states.agent.backend = id;
         if (root.busy)
             root.interrupt();
+        root._forgetAgent();
+        root._restart();
+    }
+
+    /** Everything that belonged to the agent that was answering. */
+    function _forgetAgent(): void {
         root.clearMessages();
         root.sessionTitle = "";
         root.recentSessions = [];
@@ -113,34 +124,155 @@ Singleton {
         root.lastError = "";
         root.consecutiveFailures = 0;
         restartTimer.stop();
+    }
+
+    /** A fresh bridge on the agent and settings now in force. */
+    function _restart(): void {
         // The old process has to be gone before the new one starts; onExited
-        // picks the switch up rather than counting it as a crash.
+        // picks the restart up rather than counting it as a crash.
         if (bridgeProc.running) {
-            root._switchingBackend = true;
+            root._restarting = true;
             bridgeProc.running = false;
         } else if (root.enabled) {
             root.ensureStarted();
         }
     }
 
-    Process {
+    // ── Settings > Agent ─────────────────────────────────────────────────
+
+    function _expandHome(path: string): string {
+        return path.replace(/^~(?=\/|$)/, FileUtils.trimFileProtocol(Directories.home));
+    }
+
+    // What the probe looks for: each agent Settings has not turned off, as the
+    // program Settings points at, else its usual names on PATH. "@installed" is a
+    // server the bridge or Settings downloaded.
+    readonly property var _probeTargets: {
+        const out = [];
+        for (const b of root.knownBackends) {
+            const settings = Config.options.agent[b.id];
+            if (!settings.enable)
+                continue;
+            const custom = root._expandHome(settings.binary.trim());
+            (custom.length > 0 ? [custom] : b.commands).forEach(c => out.push(`${b.id}=${c}`));
+        }
+        return out;
+    }
+
+    // What the bridge reads as it starts: bridge.agent_binary, desktop_tools and
+    // antigravity_backend.find_server. Null unsets, so an empty field means the
+    // usual program again.
+    readonly property var _bridgeEnv: {
+        const agent = Config.options.agent;
+        const path = id => root._expandHome(agent[id].binary.trim()) || null;
+        return {
+            "AGENT_CLAUDE_BIN": path("claude"),
+            "AGENT_CODEX_BIN": path("codex"),
+            "AGENT_ANTIGRAVITY_SERVER": path("antigravity"),
+            "AGENT_DESKTOP_TOOLS": agent.desktopTools ? "1" : "0"
+        };
+    }
+    readonly property string _bridgeEnvKey: JSON.stringify(root._bridgeEnv)
+    // What the running bridge was started on, to tell a change from a re-read.
+    property string _launchedId: ""
+    property string _launchedEnv: ""
+    // Settings' account changes for this agent: a restart even with nothing else new.
+    property string _restartFor: ""
+    property bool _restartWhenIdle: false
+    // The chat to reopen once the restarted bridge is ready.
+    property string _resumeAfterStart: ""
+
+    // Before the first open nothing has been looked for, and a settings change
+    // starts nothing either (tools/check-sidebar-boot.py). After it, look again.
+    readonly property string _launchSettings: JSON.stringify(root._probeTargets) + root._bridgeEnvKey
+    on_LaunchSettingsChanged: {
+        if (root.backendsProbed)
+            backendProbe.refresh();
+    }
+
+    /** Settings signed `id` in or out, installed or removed it (the `agent refresh` IPC). */
+    function refreshFromSettings(id: string): void {
+        if (!root.backendsProbed)
+            return;
+        root._restartFor = id;
+        backendProbe.refresh();
+    }
+
+    /** The probe has answered again: bring the bridge in line with it. */
+    function _applySettings(): void {
+        const forced = root._restartFor.length > 0 && root._restartFor === root._launchedId;
+        root._restartFor = "";
+        if (!bridgeProc.running) {
+            // Stopped for something a restart could not fix -- not installed,
+            // signed out -- and the new settings may be the fix.
+            if (root.enabled && !root.missing && !root.starting) {
+                root.consecutiveFailures = 0;
+                restartTimer.stop();
+                root.ensureStarted();
+            }
+            return;
+        }
+        if (!forced && root.backend?.id === root._launchedId && root._bridgeEnvKey === root._launchedEnv)
+            return;
+        root._restartForSettings();
+    }
+
+    function _restartForSettings(): void {
+        // Mid-reply, or waiting on the user: the new settings wait for it to end.
+        if (root.busy || root.pendingApproval || root.pendingClarify) {
+            root._restartWhenIdle = true;
+            return;
+        }
+        root._restartWhenIdle = false;
+        if (root.backend?.id === root._launchedId)
+            root._resumeAfterStart = root.storedSessionId;
+        else
+            root._forgetAgent();
+        root._restart();
+    }
+    onBusyChanged: {
+        if (!root.busy && root._restartWhenIdle)
+            Qt.callLater(root._restartForSettings);
+    }
+
+    RefreshProcess {
         id: backendProbe
-        running: false // ensureStarted() runs it, once
-        // The CLIs on PATH, and "antigravity-server" for a server the bridge installed.
-        command: ["sh", "-c", 'for c in "$@"; do command -v "$c" >/dev/null 2>&1 && echo "$c"; done; '
-            + 'for f in "${XDG_DATA_HOME:-$HOME/.local/share}"/quickshell/agent/antigravity-acp/*/.complete; do [ -f "$f" ] && echo antigravity-server && break; done',
-            "sh", "claude", "codex", "agy", "agy_acp_server"]
+        running: false // ensureStarted() runs it first; a settings change, again
+        // Each target is `id=program`: printed as `id program` when it runs.
+        command: ["sh", "-c", 'for a in "$@"; do id=${a%%=*}; c=${a#*=}; '
+            + 'if [ "$c" = @installed ]; then '
+            + 'for f in "${XDG_DATA_HOME:-$HOME/.local/share}"/quickshell/agent/antigravity-acp/*/.complete; do [ -f "$f" ] && echo "$id antigravity-server" && break; done; '
+            + 'elif command -v "$c" >/dev/null 2>&1; then echo "$id $c"; fi; done',
+            "sh", ...root._probeTargets]
         stdout: StdioCollector {
             onStreamFinished: {
-                const found = this.text.split("\n").map(line => line.trim());
-                const serverHere = found.includes("antigravity-server") || found.includes("agy_acp_server");
-                root.backends = root.knownBackends.filter(b => b.commands.some(c => found.includes(c)))
-                    .map(b => Object.assign({}, b, { plan: b.firstUse && !serverHere ? b.firstUse : b.plan }));
+                const found = {};
+                for (const line of this.text.split("\n").map(l => l.trim())) {
+                    const cut = line.indexOf(" ");
+                    if (cut <= 0)
+                        continue;
+                    const id = line.slice(0, cut);
+                    found[id] = (found[id] ?? []).concat([line.slice(cut + 1)]);
+                }
+                const firstProbe = !root.backendsProbed;
+                root.backends = root.knownBackends.filter(b => found[b.id]).map(b => {
+                    // A server on PATH, one downloaded here ("antigravity-server") or
+                    // one Settings points at: nothing left to download.
+                    const serverHere = found[b.id].some(what => what !== "agy");
+                    return Object.assign({}, b, { plan: b.firstUse && !serverHere ? b.firstUse : b.plan });
+                });
+                // The shell's start is the first probe: it starts on the default
+                // agent, if Settings names one; the menu still switches after.
+                const preferred = Config.options.agent.defaultBackend;
+                if (firstProbe && root.backends.some(b => b.id === preferred))
+                    Persistent.states.agent.backend = preferred;
                 root.backendsProbed = true;
                 root.missing = root.backends.length === 0;
                 if (root._startWhenProbed) {
                     root._startWhenProbed = false;
                     root.ensureStarted();
+                } else if (!firstProbe) {
+                    root._applySettings();
                 }
             }
         }
@@ -335,6 +467,8 @@ Singleton {
             return;
         root.starting = true;
         root.lastError = "";
+        root._launchedId = root.backend.id;
+        root._launchedEnv = root._bridgeEnvKey;
         bridgeProc.running = true;
     }
 
@@ -439,7 +573,9 @@ Singleton {
     // ── Session lifecycle ────────────────────────────────────────────────
 
     function createSession(): void {
-        root.call("session.create", {}, (result, error) => {
+        // Settings > Agent's default model and instructions, for this chat on.
+        const settings = { model: Config.options.agent[root._launchedId]?.model ?? "", instructions: Config.options.agent.instructions };
+        root.call("session.create", settings, (result, error) => {
             if (error) {
                 root.lastError = error.message ?? "session.create failed";
                 return;
@@ -494,7 +630,7 @@ Singleton {
         if (root.busy)
             root.interrupt();
         root.clearMessages();
-        root.call("session.resume", { session_id: storedId }, (result, error) => {
+        root.call("session.resume", { session_id: storedId, instructions: Config.options.agent.instructions }, (result, error) => {
             if (error) {
                 root.addMessage(Translation.tr("Could not resume: %1").arg(error.message ?? ""), root.interfaceRole);
                 return;
@@ -1274,8 +1410,14 @@ Singleton {
             root.starting = false;
             root.consecutiveFailures = 0;
             root._drainQueue();
-            if (root.sessionId.length === 0)
+            if (root._resumeAfterStart.length > 0) {
+                // Restarted on new settings: the same chat, not a fresh one.
+                const stored = root._resumeAfterStart;
+                root._resumeAfterStart = "";
+                root.resumeSession(stored);
+            } else if (root.sessionId.length === 0) {
                 root.createSession();
+            }
             break;
 
         case "message.start":
@@ -1606,7 +1748,7 @@ Singleton {
     function _ttsRequest(text: string, callback: var): void {
         const id = `tts-${root._ttsNextId++}`;
         const out = `${root.ttsDir}/${id}-${Date.now()}.mp3`;
-        const frame = JSON.stringify({ id: id, text: text, out: out }) + "\n";
+        const frame = JSON.stringify({ id: id, text: text, out: out, voice: Config.options.agent.ttsVoice }) + "\n";
         root._ttsPending[id] = callback;
         if (!root.ttsReady) {
             root._ttsQueuedRequests.push(frame);
@@ -2160,6 +2302,10 @@ Singleton {
         function backend(id: string): void {
             root.setBackend(id);
         }
+        /** Settings changed `id`'s sign-in or install: look again, and restart on it if it answers. */
+        function refresh(id: string): void {
+            root.refreshFromSettings(id);
+        }
     }
 
     // ── Process ──────────────────────────────────────────────────────────
@@ -2169,8 +2315,9 @@ Singleton {
         running: false
         stdinEnabled: true
         // Read at start, so a switch only lands on the next launch -- setBackend
-        // restarts the process for exactly that.
+        // and a settings change restart the process for exactly that.
         command: ["python3", root.bridgeScript, root.backend?.id ?? ""]
+        environment: root._bridgeEnv
 
         stdout: SplitParser {
             onRead: line => {
@@ -2216,8 +2363,8 @@ Singleton {
             root._pendingCalls = ({});
             root._queuedCalls = [];
 
-            if (root._switchingBackend) {
-                root._switchingBackend = false;
+            if (root._restarting) {
+                root._restarting = false;
                 if (root.enabled)
                     root.ensureStarted();
                 return;

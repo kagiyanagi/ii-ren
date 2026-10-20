@@ -641,15 +641,6 @@ Item {
                 }
             }
 
-            ConfigSwitch {
-                buttonIcon: "smart_toy"
-                text: Translation.tr("Notify when the agent replies or needs you and its tab isn't visible")
-                checked: Config.options.agent.notifyWhenAway
-                onCheckedChanged: {
-                    Config.options.agent.notifyWhenAway = checked;
-                }
-            }
-
             ConfigNavRow {
                 buttonIcon: "manage_history"
                 text: Translation.tr("Browse notification history")

@@ -13,7 +13,7 @@ Item {
     // tools/check-settings-search.py holds this to every page that declares
     // a search index.
     readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BatteryConfig", "SoundsConfig", "BarConfig", "BackgroundConfig",
-        "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "ExtensionsConfig", "HyprlandConfig",
+        "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "AgentConfig", "ExtensionsConfig", "HyprlandConfig",
         "LockConfig", "AdvancedConfig", "ProfilesConfig"]
 
     property string currentSearch: ""

@@ -32,6 +32,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import sys
 import traceback
 
@@ -209,19 +210,52 @@ def save_state(backend: str, state: dict) -> None:
     os.replace(path + ".tmp", path)
 
 
+# What the shell sends with each chat it opens (session.create, session.resume):
+# the user's own instructions from Settings > Agent. Read by persona() as the
+# backends start or resume a chat, so an edit applies from the next one.
+USER = {"instructions": ""}
+
+
 def persona() -> str:
     """The note that tells the agent where it lives. Short on purpose: the CLI
-    already brings its own full system prompt, and this rides on top of it."""
+    already brings its own full system prompt, and this rides on top of it. The
+    user's instructions follow it, as theirs."""
     try:
         with open(os.path.join(HERE, "prompt.md"), encoding="utf-8") as f:
-            return f.read().strip()
+            note = f.read().strip()
     except OSError:
-        return ""
+        note = ""
+    own = USER["instructions"].strip()
+    if own:
+        note = (note + "\n\n" if note else "") + "The user's own instructions for you:\n" + own
+    return note
 
 
-def desktop_server() -> dict:
-    """How either CLI starts the desktop tools (desktop_mcp.py), as an MCP stdio server."""
+def desktop_tools() -> bool:
+    """Off in Settings > Agent: no screenshots, no clicks, no driving the shell."""
+    return os.environ.get("AGENT_DESKTOP_TOOLS", "1") != "0"
+
+
+def desktop_server() -> dict | None:
+    """How either CLI starts the desktop tools (desktop_mcp.py), as an MCP stdio
+    server; None when they are turned off."""
+    if not desktop_tools():
+        return None
     return {"command": sys.executable or "python3", "args": [os.path.join(HERE, "desktop_mcp.py")]}
+
+
+def agent_binary(name: str) -> str:
+    """The CLI to run: the one Settings > Agent points at (AGENT_CLAUDE_BIN,
+    AGENT_CODEX_BIN), else `name` on PATH; "" when neither runs."""
+    custom = os.path.expanduser(os.environ.get(f"AGENT_{name.upper()}_BIN") or "")
+    if custom:
+        return custom if os.path.isfile(custom) and os.access(custom, os.X_OK) else ""
+    return shutil.which(name) or ""
+
+
+def missing_text(label: str, name: str) -> str:
+    custom = os.environ.get(f"AGENT_{name.upper()}_BIN") or ""
+    return f"{label} is not at {custom}" if custom else f"{label} is not installed (no `{name}` on PATH)"
 
 
 _FILE_REF = re.compile(r"@(file|folder):(\"[^\"\n]+\"|`[^`\n]+`|'[^'\n]+'|\S+)")
@@ -327,6 +361,7 @@ class Bridge:
         self.staged_images: list[str] = []
         # Unanswered batch clarifies: our request id -> {qid: answer}
         self._batches: dict[str, dict] = {}
+        self._catalog = None  # what catalog-<agent>.json last got
 
     # The backend's side --------------------------------------------------------
 
@@ -395,10 +430,28 @@ class Bridge:
 
     async def rpc_session_create(self, params):
         self.staged_images = []
-        return await self.backend.create_session()
+        USER["instructions"] = str(params.get("instructions") or "")
+        result = await self.backend.create_session()
+        # Settings > Agent's default model: every new chat starts on it, whatever
+        # the picker was last set to. Only one the agent offers now -- Claude
+        # Code's /model takes any name, so its set_model does not refuse one --
+        # and through the picker's own path.
+        model = str(params.get("model") or "")
+        if model and model != (self.backend.state.get("model") or "default"):
+            offered = [m["id"] for m in self.backend.catalog()]
+            try:
+                if model not in offered:
+                    raise BridgeError("not offered")
+                await self.backend.set_model(model)
+                result["info"] = self.backend.info()
+            except BridgeError:
+                self.event("notice", {"message": f"The default model set in Settings > Agent ({model}) is not offered "
+                                                 f"any more, so this chat is on {self.backend.info().get('model')}."})
+        return result
 
     async def rpc_session_resume(self, params):
         self.staged_images = []
+        USER["instructions"] = str(params.get("instructions") or "")
         return await self.backend.resume_session(str(params.get("session_id") or ""))
 
     async def rpc_session_list(self, params):
@@ -440,7 +493,33 @@ class Bridge:
         return {"status": await self.backend.submit(text, images) or "streaming"}
 
     async def rpc_model_options(self, params):
-        return await self.backend.models()
+        options = await self.backend.models()
+        self._save_catalog()
+        return options
+
+    def _save_catalog(self) -> None:
+        """The models the picker offers, by id, for Settings > Agent's default-model
+        choice: the settings app cannot ask an agent that is not running. The plan
+        rides along for Antigravity, whose status has no other way to name it."""
+        try:
+            data = {"models": self.backend.catalog(), "plan": self.backend.info().get("plan") or ""}
+        except Exception:  # a catalog is a nicety; the picker's answer is not held up for it
+            return
+        if data == self._catalog:
+            return
+        path = os.path.join(STATE_DIR, f"catalog-{self.name}.json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                kept = json.load(f)
+        except (OSError, ValueError):
+            kept = {}
+        if not data["plan"]:
+            data["plan"] = (kept or {}).get("plan") or ""
+        os.makedirs(STATE_DIR, exist_ok=True)
+        with open(path + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(path + ".tmp", path)
+        self._catalog = data
 
     async def rpc_model_set(self, params):
         await self.backend.set_model(str(params.get("model") or ""))

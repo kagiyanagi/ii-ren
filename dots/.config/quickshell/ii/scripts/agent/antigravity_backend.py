@@ -46,8 +46,8 @@ import time
 import urllib.request
 import zipfile
 
-from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, first_string, limit_window,
-                    load_state, one_line, persona, save_state)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, desktop_tools, effort_label, first_string,
+                    limit_window, load_state, one_line, persona, save_state)
 
 NAME = "Antigravity"
 REGISTRY_URL = "https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json"
@@ -495,7 +495,7 @@ class AntigravityBackend:
                                         "clientInfo": {"name": "ii-sidebar", "title": "ii sidebar", "version": "1"}}, timeout=120)
         asyncio.create_task(self._maybe_update())
         return {"retry": False, "undo": False, "clarify": True,
-                "slash": True, "images": True, "models": True, "screen": True, "effort": True, "limits": True, "name": NAME}
+                "slash": True, "images": True, "models": True, "screen": desktop_tools(), "effort": True, "limits": True, "name": NAME}
 
     async def _first_install(self) -> tuple[str, str]:
         loop = asyncio.get_running_loop()
@@ -807,7 +807,8 @@ class AntigravityBackend:
     def _session_params(self, **extra) -> dict:
         tools = desktop_server()
         env = [{"name": k, "value": os.environ[k]} for k in DESKTOP_ENV if os.environ.get(k)]
-        params = {"cwd": HOME, "mcpServers": [{"name": "desktop", "command": tools["command"], "args": tools["args"], "env": env}]}
+        servers = [{"name": "desktop", "command": tools["command"], "args": tools["args"], "env": env}] if tools else []
+        params = {"cwd": HOME, "mcpServers": servers}
         note = persona()
         if note:
             params["_meta"] = {"antigravity": {"systemPrompt": {"append": note}}}
@@ -1107,6 +1108,10 @@ class AntigravityBackend:
         return {"model": self._model_label(model) if model else NAME, "provider": "antigravity",
                 "approval_mode": self.state.get("mode") or "smart", "cwd": HOME,
                 "effort": self._option_value("thinking_level") if self._efforts() else "", "plan": self.tier}
+
+    def catalog(self) -> list[dict]:
+        """The picker's models by the id set_model takes, for Settings > Agent."""
+        return [{"id": str(c["value"]), "label": c.get("name") or str(c["value"])} for c in self._choices("model")]
 
     async def models(self) -> dict:
         current = self._model_label(self._option_value("model"))

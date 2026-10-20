@@ -29,8 +29,8 @@ import sys
 import time
 import uuid
 
-from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, desktop_server, effort_label, epoch, first_string, limit_window,
-                    load_state, one_line, persona, save_state)
+from bridge import (HOME, LIMITS_GAP, BridgeError, MissingAgent, agent_binary, desktop_server, desktop_tools, effort_label, epoch,
+                    first_string, limit_window, load_state, missing_text, one_line, persona, save_state)
 
 # Read-only desktop tools need no approval in any mode; clicking and IPC calls do.
 DESKTOP_READ_ONLY = ("screenshot", "windows", "see", "ipc_show")
@@ -358,18 +358,21 @@ class ClaudeBackend:
     # ── Lifecycle ──
 
     async def start(self) -> dict:
-        self.binary = shutil.which("claude") or ""
+        self.binary = agent_binary("claude")
         if not self.binary:
-            raise MissingAgent("Claude Code is not installed (no `claude` on PATH)")
-        status = await asyncio.to_thread(subprocess.run, [self.binary, "auth", "status"], capture_output=True, text=True, timeout=30)
+            raise MissingAgent(missing_text("Claude Code", "claude"))
+        # Asked as the chat will run, without the API key: with it, the answer is
+        # about the key, not the login the sidebar uses.
+        status = await asyncio.to_thread(subprocess.run, [self.binary, "auth", "status"], capture_output=True, text=True,
+                                         timeout=30, env=self._env())
         try:
             logged_in = bool(json.loads(status.stdout or "{}").get("loggedIn"))
         except ValueError:
             logged_in = status.returncode == 0
         if not logged_in:
-            raise BridgeError("Claude Code is signed out. Run `claude` in a terminal and log in, then reopen this tab.")
+            raise BridgeError("Claude Code is signed out. Sign in from Settings > Agent, then reopen this tab.")
         return {"retry": True, "undo": True, "clarify": True, "slash": True, "images": True, "models": True,
-                "screen": True, "effort": True, "limits": True, "name": "Claude Code"}
+                "screen": desktop_tools(), "effort": True, "limits": True, "name": "Claude Code"}
 
     async def stop(self) -> None:
         await self._close_proc()
@@ -389,13 +392,14 @@ class ClaudeBackend:
 
     async def _spawn(self, resume: str = "", at: str = "") -> None:
         await self._close_proc()
-        servers = {"desktop": dict(type="stdio", **desktop_server())}
         args = [self.binary, "--output-format", "stream-json", "--verbose", "--input-format", "stream-json",
                 "--include-partial-messages", "--permission-prompt-tool", "stdio",
                 "--permission-mode", self._mode(), "--allow-dangerously-skip-permissions",
-                "--setting-sources=user,project,local",
-                "--mcp-config", json.dumps({"mcpServers": servers}),
-                "--allowedTools", ",".join(f"mcp__desktop__{t}" for t in DESKTOP_READ_ONLY)]
+                "--setting-sources=user,project,local"]
+        tools = desktop_server()
+        if tools:
+            args += ["--mcp-config", json.dumps({"mcpServers": {"desktop": dict(type="stdio", **tools)}}),
+                     "--allowedTools", ",".join(f"mcp__desktop__{t}" for t in DESKTOP_READ_ONLY)]
         note = persona()
         if note:
             args += ["--append-system-prompt", note]
@@ -871,6 +875,10 @@ class ClaudeBackend:
         return "Folded this conversation."
 
     # ── Settings ──
+
+    def catalog(self) -> list[dict]:
+        """The picker's models by the id set_model takes, for Settings > Agent."""
+        return [{"id": e["value"], "label": self._label(e)} for e in self.init.get("models") or [] if e.get("value")]
 
     async def models(self) -> dict:
         entries = self.init.get("models") or []

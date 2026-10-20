@@ -21,7 +21,7 @@ RippleButton {
     readonly property bool failed: AgentService.missing || (!AgentService.ready && !AgentService.starting && AgentService.lastError.length > 0)
     readonly property string statusLine: {
         if (AgentService.missing)
-            return Translation.tr("No agent installed");
+            return AgentService.allDisabled ? Translation.tr("Every agent is turned off") : Translation.tr("No agent installed");
         if (AgentService.ready)
             return AgentService.planName.length > 0 ? Translation.tr("Connected · %1").arg(AgentService.planName) : Translation.tr("Connected");
         if (root.failed)
@@ -201,7 +201,48 @@ RippleButton {
             font.pixelSize: Appearance.font.pixelSize.smaller
             lineHeight: 1.3
             color: Appearance.colors.colSubtext
-            text: Translation.tr("Each runs as its own program, signed in on its own, and its chats stay with it. Install Claude Code, Codex or Antigravity to see it here.")
+            text: Translation.tr("Each runs as its own program, signed in on its own, and its chats stay with it.")
+        }
+
+        // Where the agents are installed, signed in and turned on or off: the
+        // settings app's Agent page, opened as the battery chip opens its page.
+        RippleButton {
+            id: settingsRow
+            Layout.fillWidth: true
+            implicitHeight: settingsContent.implicitHeight + 8 * 2
+            buttonRadius: Appearance.rounding.normal
+            colBackground: "transparent"
+            colBackgroundHover: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.92)
+            colRipple: ColorUtils.transparentize(Appearance.colors.colOnSurface, 0.9)
+            colStateLayer: Appearance.colors.colOnSurface
+
+            releaseAction: () => {
+                picker.close();
+                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=agent", "qs", "-p", Quickshell.shellPath("settings.qml")]);
+            }
+
+            contentItem: RowLayout {
+                id: settingsContent
+                spacing: 12
+
+                MaterialSymbol {
+                    Layout.leftMargin: 12
+                    Layout.alignment: Qt.AlignVCenter
+                    text: "settings"
+                    iconSize: Appearance.font.pixelSize.normal
+                    color: Appearance.colors.colOnSurface
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.rightMargin: 12
+                    elide: Text.ElideRight
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnSurface
+                    text: Translation.tr("Install, sign in or turn off agents")
+                }
+            }
         }
     }
 }
