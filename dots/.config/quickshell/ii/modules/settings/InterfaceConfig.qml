@@ -1056,7 +1056,7 @@ Item {
                 }
 
                 StyledToolTip {
-                    text: Translation.tr("Same trade for the left sidebar. Off: its pages are built on the first open and thrown away when it closes.\nConversations and chat state live in the services, so nothing is lost either way")
+                    text: Translation.tr("Same trade for the left sidebar, from its first open: until then nothing in it is built, and no agent started.\nOff: its pages are thrown away each time it closes. Conversations and chat state live in the services, so nothing is lost either way")
                 }
             }
 

@@ -126,8 +126,8 @@ Item {
 
     // The bridge starts the agent's CLI and its desktop tools, and tts.py a voice
     // client, so both start the first time this page is on screen - not when it is
-    // built: the sidebar is kept loaded, so built meant login, an agent resident for
-    // a chat not yet opened. Its window, not the sidebar flag, so a detached one counts.
+    // built: a page kept loaded, or built for a detached window still hidden, is not
+    // being looked at. Its window, not the sidebar flag, so a detached one counts.
     readonly property bool onScreen: root.QsWindow.window?.visible ?? false
     onOnScreenChanged: root.startBackends()
     Component.onCompleted: root.startBackends()

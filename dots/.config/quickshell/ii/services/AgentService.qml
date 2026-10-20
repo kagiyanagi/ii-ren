@@ -31,8 +31,9 @@ Singleton {
 
     /**
      * Instantiates the singleton at shell start so the global shortcuts and the IPC
-     * handler register without waiting for the page to be opened. The bridge
-     * process itself stays lazy -- see ensureStarted().
+     * handler register without waiting for the page to be opened. Nothing else runs
+     * then: the bridge, and even the look for which agents are installed, wait for
+     * ensureStarted().
      */
     function load(): void {}
 
@@ -84,6 +85,13 @@ Singleton {
     }
 
     function setBackend(id: string): void {
+        // Before the first start nothing has looked for the agents: keep the
+        // choice for when something does.
+        if (!root.backendsProbed) {
+            if (root.knownBackends.some(b => b.id === id))
+                Persistent.states.agent.backend = id;
+            return;
+        }
         if (id === root.backend?.id || !root.backends.some(b => b.id === id))
             return;
         Persistent.states.agent.backend = id;
@@ -117,7 +125,7 @@ Singleton {
 
     Process {
         id: backendProbe
-        running: true
+        running: false // ensureStarted() runs it, once
         // The CLIs on PATH, and "antigravity-server" for a server the bridge installed.
         command: ["sh", "-c", 'for c in "$@"; do command -v "$c" >/dev/null 2>&1 && echo "$c"; done; '
             + 'for f in "${XDG_DATA_HOME:-$HOME/.local/share}"/quickshell/agent/antigravity-acp/*/.complete; do [ -f "$f" ] && echo antigravity-server && break; done',
@@ -320,6 +328,7 @@ Singleton {
     function ensureStarted(): void {
         if (!root.backendsProbed) {
             root._startWhenProbed = true;
+            backendProbe.running = true;
             return;
         }
         if (root.missing || !root.backend || bridgeProc.running || root.starting)

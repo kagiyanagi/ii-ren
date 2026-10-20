@@ -64,8 +64,9 @@ Scope { // Scope
         else root.pin = !root.pin;
     }
 
-    // Building the pages costs RAM while shut and startup time while booting; keeping
-    // them costs nothing on open. Config picks which, same trade as the right sidebar.
+    // Nothing is built at shell start: the pages, and the agent the agent page
+    // starts, wait for the first open. From then on config picks: kept, they cost RAM
+    // while shut; dropped, they cost a rebuild on every open.
     property bool _isIncubating: false
     function ensureContent() {
         if (root.sidebarContent || root._isIncubating) return;
@@ -98,7 +99,7 @@ Scope { // Scope
     }
 
     Component.onCompleted: {
-        if (Config.options.sidebar.keepLeftSidebarLoaded || GlobalStates.policiesPanelOpen)
+        if (GlobalStates.policiesPanelOpen)
             root.ensureContent();
     }
 
@@ -113,8 +114,8 @@ Scope { // Scope
     Connections {
         target: Config.options.sidebar
         function onKeepLeftSidebarLoadedChanged() {
-            if (Config.options.sidebar.keepLeftSidebarLoaded) root.ensureContent();
-            else root.releaseContent();
+            // Turned on before the first open, there is nothing to keep yet.
+            if (!Config.options.sidebar.keepLeftSidebarLoaded) root.releaseContent();
         }
     }
 
