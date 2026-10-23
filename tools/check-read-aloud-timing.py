@@ -79,6 +79,8 @@ with tempfile.TemporaryDirectory() as tmp:
     reply = tts.synthesize_kokoro(SOURCE, f"{tmp}/clip.mp3", "af_heart", tmp)
 assert reply["ok"], reply
 assert reply["paths"][0].endswith(".wav"), reply["paths"]
+# The bar under the transcript lays the parts end to end by these.
+assert reply["duration"] == int(fake.timeline[-1].end * RATE) * 1000 // RATE, f"Kokoro's clip length: {reply['duration']}"
 assert fake.calls == [tts.spoken(SOURCE)], f"one synthesis for the passage: {fake.calls}"
 
 # Where each word's first phoneme -- or the stress mark opening it -- starts,

@@ -9,6 +9,12 @@ Rectangle {
 
     property bool loading: true
     property double pullProgress: 0
+    /**
+     * A MaterialShape.Shape to settle into while not loading, morphing there and
+     * back; -1, the default, stops on whichever shape it was at. A held player
+     * rests on a circle in its circle: a morph frozen part-way read as stuck.
+     */
+    property int restingShape: -1
 
     // Size, color
     property double implicitSize: 48
@@ -96,7 +102,7 @@ Rectangle {
     MaterialShape {
         id: shape
         anchors.centerIn: parent
-        shape: root.shapes[root.shapeIndex]
+        shape: !root.loading && root.restingShape >= 0 ? root.restingShape : root.shapes[root.shapeIndex]
         implicitSize: {
             const leapZoomDiff = root.leapZoomSize - root.baseShapeSize
             const progressFirstHalf = Math.min(root.leapZoomProgress, 0.5) * 2;

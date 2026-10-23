@@ -59,8 +59,8 @@ Item {
         || AgentService.speakingMessageId === AgentService.selectionSpeechId)
         ? AgentService.speakingPassage : ""
     // Only bound while this turn is the one being read: otherwise every message in
-    // the transcript re-checks itself ten times a second for a mark it cannot hold.
-    readonly property real speakingProgress: root.speakingPhrase.length > 0 ? AgentService.speakingProgress : -1
+    // the transcript re-checks itself on every word, and every step of a drag
+    // along the reading's bar, for a mark it cannot hold.
     readonly property int speakingOffset: root.speakingPhrase.length > 0 ? AgentService.speakingOffset : -1
 
     /** What a transcript search is looking for, passed down to every block. */
@@ -489,7 +489,6 @@ Item {
                             searchQuery: root.searchQuery
                             searchCurrent: root.searchCurrent
                             speakingPhrase: root.speakingPhrase
-                            speakingProgress: root.speakingProgress
                             speakingOffset: root.speakingOffset
                             forceDisableChunkSplitting: root.messageData?.content.includes("```") ?? true
                         }

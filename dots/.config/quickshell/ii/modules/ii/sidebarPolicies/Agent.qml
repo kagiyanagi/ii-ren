@@ -672,6 +672,9 @@ Item {
             // download, a sign-in it is waiting on.
             readonly property bool shown: (Config.options.agent?.showStatusLine ?? true)
                 && (AgentService.busy || AgentService.dictating || AgentService.speakingMessageId.length > 0 || AgentService.setupText.length > 0)
+            // A read-aloud owns the line, but for dictation, which says what it
+            // is doing in the caption.
+            readonly property bool reading: AgentService.speakingMessageId.length > 0 && !AgentService.dictating
             // A paused reading is the line's only business: nothing is working.
             readonly property bool readingPaused: AgentService.speakingPaused && !AgentService.busy
                 && !AgentService.dictating && AgentService.setupText.length === 0
@@ -723,17 +726,74 @@ Item {
                     // 20 is the inline icon size, so the shape lands at 14 next to the
                     // 12px caption beside it.
                     implicitSize: 20
-                    // Still while a paused reading is all that is going on: nothing is.
+                    // A circle in its circle while a paused reading is all that is
+                    // going on: nothing is.
                     loading: !activityLine.readingPaused
+                    restingShape: MaterialShape.Shape.Circle
                 }
 
                 StyledText {
+                    visible: !activityLine.reading
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
-                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : activityLine.readingPaused ? Translation.tr("Reading paused") : AgentService.speakingMessageId.length > 0 && !AgentService.busy ? Translation.tr("Reading aloud…") : AgentService.setupText.length > 0 ? AgentService.setupText : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
+                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : AgentService.setupText.length > 0 ? AgentService.setupText : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
+                }
+
+                // The reading's place in the whole reply, as Android's media seek
+                // bar: wavy while it is heard, flat while it is not. Drag it and the
+                // transcript marks the word it is at as it goes, while the voice
+                // holds; let go, or click, and the reading goes on from that word.
+                StyledSlider {
+                    id: readingBar
+                    visible: activityLine.reading
+                    // The row's full height to press in: the track is 4 px, the
+                    // buttons beside it 32 (DESIGN 3.4).
+                    Layout.fillHeight: true
+                    configuration: StyledSlider.Configuration.Wavy
+                    // Nothing to place it against until the first part is made.
+                    enabled: AgentService.readingDuration > 0
+                    waveAmplitudeMultiplier: AgentService.readingPlaying ? 0.5 : 0
+                    animateWave: AgentService.readingPlaying
+                    // The arrow keys move five seconds, as a video player's do.
+                    stepSize: AgentService.readingDuration > 0 ? Math.min(1, 5000 / AgentService.readingDuration) : 0
+                    usePercentTooltip: false
+                    tooltipContent: `${StringUtils.friendlyTimeForSeconds(readingBar.value * AgentService.readingDuration / 1000)} / ${StringUtils.friendlyTimeForSeconds(AgentService.readingDuration / 1000)}`
+
+                    // Bumped every frame the reading plays: the position comes off
+                    // the wall clock (MarkClock.now()), which no binding can see
+                    // change, and the player itself only reports ten times a second.
+                    property int frame: 0
+                    FrameAnimation {
+                        running: AgentService.readingPlaying && readingBar.visible && !readingBar.pressed
+                        onTriggered: readingBar.frame++
+                    }
+                    Binding {
+                        target: readingBar
+                        property: "value"
+                        when: !readingBar.pressed
+                        restoreMode: Binding.RestoreNone
+                        // `frame` is read so this runs again every frame the reading plays.
+                        value: readingBar.frame >= 0 && AgentService.readingDuration > 0
+                            ? Math.min(1, AgentService.readingPositionNow() / AgentService.readingDuration) : 0
+                    }
+
+                    onPressedChanged: {
+                        const ms = readingBar.value * AgentService.readingDuration;
+                        if (readingBar.pressed)
+                            AgentService.beginScrub(ms);
+                        else
+                            AgentService.endScrub(ms);
+                    }
+                    onMoved: {
+                        const ms = readingBar.value * AgentService.readingDuration;
+                        if (readingBar.pressed)
+                            AgentService.scrubTo(ms);
+                        else
+                            AgentService.seekReading(ms);
+                    }
                 }
 
                 InputIconButton { // Hold the reading, and go on from the same word

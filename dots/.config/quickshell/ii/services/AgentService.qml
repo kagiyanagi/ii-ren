@@ -10,6 +10,7 @@ import Quickshell.Hyprland
 import QtQuick
 import QtMultimedia
 import "speechMatch.js" as SpeechMatch
+import "readingTimeline.js" as Timeline
 
 /**
  * The left sidebar's agent: Claude Code, Codex or Antigravity, whichever the user has
@@ -1729,11 +1730,11 @@ Singleton {
 
     // ── Read-aloud ─────────────────────────────────────────────────
     //
-    // scripts/agent/tts.py only *synthesizes* -- online with edge-tts (exact word
-    // timings), or on this computer with Kokoro (estimated ones) -- and the shell
-    // plays the file itself. MediaPlayer.stop() drains the stream the same
-    // graceful way a clip ends on its own, and the volume is faded to zero first;
-    // killing a player mid-waveform into a Bluetooth A2DP sink is a loud buzz.
+    // scripts/agent/tts.py only *synthesizes* -- online with edge-tts, or on this
+    // computer with Kokoro, both timing every word -- and the shell plays the
+    // files itself. MediaPlayer.stop() drains the stream the same graceful way a
+    // clip ends on its own, and the volume is faded to zero first; killing a
+    // player mid-waveform into a Bluetooth A2DP sink is a loud buzz.
 
     readonly property string ttsScript: FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/agent/tts.sh"))
     readonly property string ttsDir: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/quickshell/agent/tts`
@@ -1744,7 +1745,7 @@ Singleton {
     property bool ttsReady: false
     property int _ttsNextId: 1
     property var _ttsPending: ({})       // id -> callback(reply)
-    property var _ttsQueuedRequests: []  // written once the server says ready
+    property var _ttsQueuedRequests: []  // {id, frame}, written once the server says ready
 
     /** Start the synth server early so the first read-aloud does not pay the model load. */
     function prewarmTts(): void {
@@ -1752,7 +1753,8 @@ Singleton {
             ttsProc.running = true;
     }
 
-    function _ttsRequest(text: string, callback: var): void {
+    /** Ask the server for `text` as a clip; `callback(reply)` when it is made. Returns its id. */
+    function _ttsRequest(text: string, callback: var): string {
         const id = `tts-${root._ttsNextId++}`;
         const out = `${root.ttsDir}/${id}-${Date.now()}.mp3`;
         const local = Config.options.agent.ttsEngine === "kokoro";
@@ -1767,11 +1769,31 @@ Singleton {
         }) + "\n";
         root._ttsPending[id] = callback;
         if (!root.ttsReady) {
-            root._ttsQueuedRequests.push(frame);
+            root._ttsQueuedRequests.push({ id: id, frame: frame });
             root.prewarmTts();
-            return;
+            return id;
         }
         ttsProc.write(frame);
+        return id;
+    }
+
+    /**
+     * Forget requests the server has not started on. Each is still answered,
+     * `dropped`, so whoever asked hears back either way; one already being made
+     * comes back made.
+     */
+    function _ttsDrop(ids: var): void {
+        const unsent = root._ttsQueuedRequests.filter(request => ids.includes(request.id));
+        root._ttsQueuedRequests = root._ttsQueuedRequests.filter(request => !ids.includes(request.id));
+        for (const request of unsent) {
+            const callback = root._ttsPending[request.id];
+            delete root._ttsPending[request.id];
+            if (callback)
+                callback({ id: request.id, ok: false, dropped: true, paths: [] });
+        }
+        const sent = ids.filter(id => !unsent.some(request => request.id === id));
+        if (sent.length > 0 && root.ttsReady)
+            ttsProc.write(JSON.stringify({ drop: sent }) + "\n");
     }
 
     Process {
@@ -1798,7 +1820,7 @@ Singleton {
                     root.ttsReady = true;
                     const queued = root._ttsQueuedRequests;
                     root._ttsQueuedRequests = [];
-                    queued.forEach(frame => ttsProc.write(frame));
+                    queued.forEach(request => ttsProc.write(request.frame));
                     return;
                 }
                 const callback = root._ttsPending[reply.id];
@@ -1818,39 +1840,35 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             root.ttsReady = false;
             root._ttsPending = ({});
-            // Nothing asked for will be answered now: the reading ends with its
-            // last clip rather than waiting on the rest.
-            root._speakOutstanding = 0;
-            root._speakParts = [];
+            root._ttsQueuedRequests = [];
             if (exitCode === 127)
                 root.ttsAvailable = false;
-            if (root.speakingMessageId.length > 0 && !readerLoader.item?.player.playing && !root.speakingPaused)
-                root.speakingMessageId = "";
-            root._endIfDone();
+            root._serverGone();
         }
     }
 
     // The player is built on first use: instantiating MediaPlayer links QtMultimedia's
     // backend and starts an audio thread (see SoundService), none of it needed until
-    // something is actually read out.
+    // something is actually read out. It holds one part's clip at a time; which
+    // part, and where in the reading that is, is the service's to say.
     Loader {
         id: readerLoader
         active: false
         sourceComponent: Item {
             id: reader
             readonly property alias player: readerPlayer
-            readonly property alias output: readerOutput
             readonly property alias markClock: readerMarks
-            // Clips still to play after the current one, as {path, chunk, share, span, marks}:
-            // long-form replies come back as several of them, and each one carries
-            // the text it says, and which slice of it, so the transcript can mark
-            // the word being spoken while it plays.
-            property var queue: []
-            // Everything played this turn, deleted once it is over.
-            property var produced: []
-            // Which reading these clips belong to, so a fade finishing after the
-            // next reading has begun tidies up without cancelling it.
-            property int epoch: 0
+            /** Which part's clip is in the player, or -1. */
+            property int loadedIndex: -1
+            // Where to put the clip once it has loaded, whether to play it then,
+            // and whether from silence: a clip entered mid-sentence fades in.
+            property real startAt: 0
+            property bool playOnLoad: false
+            property bool fadeIn: false
+            // The clip being loaded. A seek before the load is dropped, so it
+            // waits for LoadedMedia -- after LoadingMedia, because a source changed
+            // mid-play first reports the old clip loaded (both measured, Qt 6.12).
+            property bool loading: false
 
             MediaDevices {
                 id: readerDevices
@@ -1859,7 +1877,7 @@ Singleton {
             MarkClock {
                 id: readerMarks
                 player: readerPlayer
-                marks: root._speakingMarks
+                marks: reader.loadedIndex >= 0 ? (root._speakClips[reader.loadedIndex]?.marks ?? []) : []
             }
 
             MediaPlayer {
@@ -1871,151 +1889,107 @@ Singleton {
                 }
 
                 onMediaStatusChanged: {
-                    if (readerPlayer.mediaStatus !== MediaPlayer.EndOfMedia)
-                        return;
-                    // Ended inside the pause's fade: the next clip waits for resume.
-                    if (reader.queue.length > 0 && root.speakingPaused) {
-                        root._speakingChunk = "";
-                        root._speakingMarks = [];
-                        return;
+                    const status = readerPlayer.mediaStatus;
+                    if (status === MediaPlayer.LoadingMedia) {
+                        reader.loading = true;
+                    } else if (status === MediaPlayer.LoadedMedia && reader.loading) {
+                        reader.loading = false;
+                        readerPlayer.position = reader.startAt;
+                        readerMarks.jump(reader.startAt);
+                        if (!reader.playOnLoad) {
+                            readerPlayer.pause();
+                            return;
+                        }
+                        readerPlayer.play();
+                        if (reader.fadeIn)
+                            resumeFade.start();
+                    } else if (status === MediaPlayer.EndOfMedia) {
+                        root._partEnded(reader.loadedIndex);
                     }
-                    if (reader.queue.length > 0) {
-                        const next = reader.queue[0];
-                        reader.queue = reader.queue.slice(1);
-                        reader.playEntry(next);
-                        return;
-                    }
-                    // The next part is still being made: wait for it, marking
-                    // nothing meanwhile. Ending here was the local voice stopping
-                    // after its first sentence -- Kokoro makes a part in about the
-                    // time the one before takes to say, so it often arrives late,
-                    // and the reading it arrived for had already been called over.
-                    if (root._speakWaiting) {
-                        root._speakingChunk = "";
-                        root._speakingMarks = [];
-                        return;
-                    }
-                    reader.finish();
                 }
 
                 onErrorOccurred: (error, message) => {
                     console.log("[Agent/tts] playback error:", message);
-                    reader.finish();
+                    root._partEnded(reader.loadedIndex);
                 }
             }
 
-            /**
-             * Add clips to the reading. Starts playing if nothing is, appends if
-             * something is -- a reply is spoken as several chunks that arrive while
-             * the earlier ones are still playing, so this must never restart.
-             */
-            function enqueue(paths: var, chunk: string, marks: var): void {
-                if (paths.length === 0)
-                    return;
-                // A chunk long enough to come back as several clips is assumed to
-                // divide evenly between them, so the mark keeps moving through it.
-                const entries = paths.map((path, index) => ({
-                    path: path,
-                    chunk: chunk,
-                    share: index / paths.length,
-                    span: 1 / paths.length,
-                    // Word timings belong to a single clip; a chunk that came back
-                    // as several has none, and falls back to the estimate.
-                    marks: paths.length === 1 ? marks : []
-                }));
-                // A new reading arriving mid-fade takes over immediately. The fade
-                // was the old reading's exit; letting it land afterwards would empty
-                // the queue this is filling and delete the clips with it.
-                if (fadeOut.running) {
-                    fadeOut.stop();
-                    readerPlayer.stop();
-                    reader.finish();
-                }
-                reader.produced = [...reader.produced, ...paths];
-                const idle = reader.queue.length === 0 && readerPlayer.playbackState === MediaPlayer.StoppedState;
-                if (idle)
-                    reader.epoch = root._speakEpoch;
-                // Paused, a clip waits in the queue for resume() rather than playing.
-                if (!idle || root.speakingPaused) {
-                    reader.queue = [...reader.queue, ...entries];
-                    return;
-                }
-                reader.queue = entries.slice(1);
-                reader.playEntry(entries[0]);
-            }
-
-            /** Play one clip and say, for the highlight, what it is saying. */
-            function playEntry(entry: var): void {
-                root._speakingChunk = entry.chunk ?? "";
-                root._speakingShare = entry.share ?? 0;
-                root._speakingSpan = entry.span ?? 1;
-                root._speakingMarks = entry.marks ?? [];
-                readerPlayer.source = `file://${entry.path}`;
-                readerPlayer.play();
-            }
-
-            /**
-             * Fade to silence, then stop. Exposed as a function because `fadeOut` is
-             * an id inside this component: reachable from in here, not through the
-             * Loader's `item` from outside.
-             */
-            function fadeAndStop(): void {
-                if (fadeOut.running)
-                    return;
+            /** Put part `index`'s clip in the player at `startMs`, playing or held there. */
+            function load(index: int, path: string, startMs: real, play: bool): void {
+                fadeOut.stop();
                 pauseFade.stop();
                 resumeFade.stop();
-                fadeOut.start();
+                reader.loadedIndex = index;
+                reader.startAt = startMs;
+                reader.playOnLoad = play;
+                reader.fadeIn = startMs > 0;
+                reader.loading = false;
+                readerPlayer.stop();
+                readerPlayer.source = "";
+                readerOutput.volume = reader.fadeIn ? 0 : 1;
+                readerPlayer.source = `file://${path}`;
             }
 
-            /** Fade to silence and hold where it is. */
-            function pause(): void {
+            /** Move within the clip in the player -- back as well as on. */
+            function seekWithin(ms: real, play: bool): void {
+                if (reader.loading) {
+                    reader.startAt = ms;
+                    reader.playOnLoad = play;
+                    return;
+                }
+                readerPlayer.position = ms;
+                readerMarks.jump(ms);
+                if (play)
+                    reader.release();
+                else
+                    reader.hold();
+            }
+
+            /** Fade to silence, then hold where it is. */
+            function hold(): void {
                 resumeFade.stop();
-                if (readerPlayer.playbackState === MediaPlayer.PlayingState)
+                if (reader.loading)
+                    reader.playOnLoad = false;
+                else if (readerPlayer.playbackState === MediaPlayer.PlayingState)
                     pauseFade.start();
             }
 
-            /**
-             * Go on from where it was held: the clip it was in, or -- paused
-             * between clips, or before the first had come -- the next one, if it
-             * is here yet. One still being made plays as it arrives.
-             */
-            function resume(): void {
+            /** Go on from where it was held, fading back in. */
+            function release(): void {
                 pauseFade.stop();
-                if (readerPlayer.playbackState === MediaPlayer.PausedState) {
-                    readerPlayer.play();
-                } else if (readerPlayer.playbackState !== MediaPlayer.PlayingState && reader.queue.length > 0) {
-                    const next = reader.queue[0];
-                    reader.queue = reader.queue.slice(1);
+                if (reader.loading) {
+                    reader.playOnLoad = true;
+                    return;
+                }
+                if (readerPlayer.playbackState !== MediaPlayer.PlayingState) {
                     readerOutput.volume = 0;
-                    reader.playEntry(next);
+                    readerPlayer.play();
                 }
                 resumeFade.start();
             }
 
-            /** Playback is over -- naturally or stopped -- tidy up and let the UI know. */
-            function finish(): void {
+            /** Fade to silence, then let the clip go. */
+            function fadeAndStop(): void {
                 pauseFade.stop();
                 resumeFade.stop();
-                readerPlayer.source = "";
-                reader.queue = [];
-                root._speakingChunk = "";
-                root._speakingMarks = [];
-                readerOutput.volume = 1;
-                if (reader.produced.length > 0) {
-                    cleanup.command = ["rm", "-f", ...reader.produced];
-                    cleanup.running = true;
-                    reader.produced = [];
+                if (readerPlayer.playbackState !== MediaPlayer.PlayingState) {
+                    reader.unload();
+                    return;
                 }
-                // Only if this is still the current reading: a later one has already
-                // claimed the id, and clearing it would stop it before it is heard.
-                if (reader.epoch === root._speakEpoch) {
-                    root.speakingMessageId = "";
-                    root.speakingPaused = false;
-                }
+                if (!fadeOut.running)
+                    fadeOut.start();
             }
 
-            Process {
-                id: cleanup
+            /** Nothing in the player any more. */
+            function unload(): void {
+                fadeOut.stop();
+                pauseFade.stop();
+                resumeFade.stop();
+                reader.loadedIndex = -1;
+                reader.loading = false;
+                readerPlayer.stop();
+                readerPlayer.source = "";
+                readerOutput.volume = 1;
             }
 
             // Fade first, on an effects spec (opacity/volume must never overshoot),
@@ -2032,15 +2006,12 @@ Singleton {
                     easing.bezierCurve: Appearance.animationCurves.expressiveEffects
                 }
                 ScriptAction {
-                    script: {
-                        readerPlayer.stop();
-                        reader.finish();
-                    }
+                    script: reader.unload()
                 }
             }
 
             // A pause is the same exit as a stop -- silence first, never cut
-            // mid-waveform -- on the fast-exit spec; resuming is its enter, the
+            // mid-waveform -- on the fast-exit spec; going on is its enter, the
             // volume back up on the default effects spec.
             SequentialAnimation {
                 id: pauseFade
@@ -2176,155 +2147,288 @@ Singleton {
         return out;
     }
 
-    // What the clip now playing is saying, and which slice of that text it covers
-    // -- set by the player, read by `speakingPassage` and `speakingProgress`.
-    property string _speakingChunk: ""
-    property real _speakingShare: 0
-    property real _speakingSpan: 1
-    // [[start_ms, offset into the chunk], …] for the clip playing, when the
-    // provider reports word boundaries. Empty when it does not.
-    property var _speakingMarks: []
+    // ── The reading ──
+    //
+    // A reading is its parts (sentences, above), each made into a clip when it is
+    // asked for, a couple ahead of where the reading is. Every clip made is kept
+    // until the reading ends, so it can be moved back as well as on, and the bar
+    // under the transcript is the whole reply: parts not made yet are estimated
+    // from their length (readingTimeline.js), and the estimate gives way to the
+    // real length as their clips come.
 
-    /** The chunk being read right now: the passage the transcript marks in. */
-    readonly property string speakingPassage: root._speakingChunk
+    // Bumped by every reading, and when one ends, so replies meant for a reading
+    // that is over are thrown away rather than played over the top of the next.
+    property int _speakEpoch: 0
+    /** The reading's parts, in order: slices of the message. */
+    property var _speakParts: []
+    // Per part: {path, marks, duration} once made, "failed", or undefined.
+    property var _speakClips: []
+    // Part index -> request id, for the parts being made.
+    property var _speakAsked: ({})
+    // Ids already dropped, so a drop is not sent twice.
+    property var _speakDropped: ({})
+    /** The part the reading is at: playing, held in, or waiting for. */
+    property int _speakIndex: 0
+    // Where in that part the reading is while its clip is not playing: ms, and,
+    // for a part not made yet, the character whose word it starts on (else -1).
+    property real _speakStartMs: 0
+    property int _speakStartChar: -1
+    // How far ahead of the reading parts are made: the one it is at and the two
+    // after it, two in the making at a time. The server makes them one at a time,
+    // in order, so two keep it busy; past that it waits for the reading to catch
+    // up, as a video player's buffer does. Made as far as they would go, the
+    // local voice went on making a long reply after it was stopped, or while it
+    // sat paused -- by its measured rates, minutes of work for a few thousand
+    // characters.
+    readonly property int _speakAhead: 2
+
+    readonly property var _speakDurations: Timeline.durations(root._speakParts, root._speakClips)
+    /** The whole reading in ms, the parts not made yet estimated. 0 until one is made. */
+    readonly property real readingDuration: Timeline.total(root._speakDurations)
+    /** Whether the reading is coming out of the speakers right now. */
+    readonly property bool readingPlaying: (readerLoader.item?.player.playbackState ?? MediaPlayer.StoppedState) === MediaPlayer.PlayingState
+    /** While the bar is dragged, where it is in ms; -1 otherwise. */
+    property real readingScrub: -1
+    // Whether to play on when the drag lets go: it was playing, or about to.
+    property bool _scrubResume: false
 
     /**
-     * Where in the chunk the word now being spoken starts, or -1 when the voice
-     * came back without timings and `speakingProgress` has to stand in.
-     *
-     * Both voices time their words -- Edge per word off the synthesis stream,
-     * Kokoro per phoneme -- aligned to this text before it was ever played
-     * (scripts/agent/tts.py, tts_marks.py). MarkClock moves the mark when each
-     * word is due rather than at the player's next position report.
+     * Whether the reading is held where it was. Its parts still being made keep
+     * arriving, and wait until it goes on.
      */
-    readonly property int speakingOffset: root._speakingChunk.length === 0 ? -1 : (readerLoader.item?.markClock.offset ?? -1)
+    property bool speakingPaused: false
 
     /**
-     * How far into that chunk the voice is, 0..1, or -1 when nothing is read.
-     * The fallback for a provider that reports no word boundaries.
-     *
-     * The synth gives no word timings, so this is the clip's own playback
-     * position: speech runs at a near constant rate, so a character-proportional
-     * split of it lands on the right word. A duration is not known for the first
-     * moments of a clip, which reads as the start of the clip's own slice.
-     * ponytail: proportional estimate, swap in word timestamps if a provider offers them.
+     * Where the reading is, in ms from its start: to the frame while it plays,
+     * for the bar to be drawn from every frame (MarkClock.now()).
      */
-    readonly property real speakingProgress: {
-        if (root._speakingChunk.length === 0)
-            return -1;
-        const player = readerLoader.item?.player ?? null;
-        const duration = player?.duration ?? 0;
-        const played = duration > 0 ? Math.max(0, Math.min(0.999, (player?.position ?? 0) / duration)) : 0;
-        return root._speakingShare + root._speakingSpan * played;
+    function readingPositionNow(): real {
+        const start = Timeline.startOf(root._speakDurations, root._speakIndex);
+        const reader = readerLoader.item;
+        if (reader && reader.loadedIndex === root._speakIndex && !reader.loading)
+            return start + reader.markClock.now();
+        return start + root._speakStartMs;
     }
 
-    // Bumped by every new reading, so replies to a superseded one are discarded
-    // rather than played over the top of it.
-    property int _speakEpoch: 0
-    // The reading's parts, the next one to ask for, and how many are being made.
-    property var _speakParts: []
-    property int _speakNext: 0
-    property int _speakOutstanding: 0
-    /** Whether more of the reading is still to come from the synthesizer. */
-    readonly property bool _speakWaiting: root.speakingMessageId.length > 0
-        && (root._speakOutstanding > 0 || root._speakNext < root._speakParts.length)
-    // Parts asked for ahead of the one playing. The server makes them one at a
-    // time, in order, so two keep it busy. Asked for all at once, the local voice
-    // went on making a long reply after it had been stopped: by its measured
-    // rates, minutes of work for a few thousand characters.
-    readonly property int _speakAhead: 2
+    /** The part being read, or dragged to: the passage the transcript marks in. */
+    readonly property string speakingPassage: {
+        const parts = root._speakParts;
+        if (root.speakingMessageId.length === 0 || parts.length === 0)
+            return "";
+        const index = root.readingScrub >= 0 ? Timeline.locate(root._speakDurations, root.readingScrub).index : root._speakIndex;
+        return parts[index] ?? "";
+    }
+
+    /**
+     * Where in that passage the word being said starts, or the word the bar is
+     * dragged to. Off the clip's own word timings, on time while it plays
+     * (MarkClock); for a part not made yet, the same share of its characters as
+     * of its estimated length -- the word the reading will start on once it is.
+     */
+    readonly property int speakingOffset: {
+        if (root.speakingPassage.length === 0)
+            return -1;
+        const parts = root._speakParts;
+        const durs = root._speakDurations;
+        if (root.readingScrub >= 0) {
+            const at = Timeline.locate(durs, root.readingScrub);
+            return Timeline.charAt(parts[at.index], root._speakClips[at.index], at.offset, durs[at.index]);
+        }
+        const index = root._speakIndex;
+        const clip = root._speakClips[index];
+        const reader = readerLoader.item;
+        if (reader && reader.loadedIndex === index && !reader.loading) {
+            const offset = reader.markClock.offset;
+            return offset >= 0 ? offset : Timeline.charAt(parts[index], clip, reader.markClock.position, durs[index]);
+        }
+        if (root._speakStartChar >= 0)
+            return root._speakStartChar;
+        return Timeline.charAt(parts[index], clip, root._speakStartMs, durs[index]);
+    }
 
     /** Read `text` out loud through the shell's own player. */
     function speak(text: string): void {
         if ((text ?? "").trim().length === 0)
             return;
-        // A new reading replaces one in progress, silently: fade what is playing.
-        const reader = readerLoader.item;
-        if (reader?.player.playing)
-            reader.fadeAndStop();
-        const epoch = ++root._speakEpoch;
-        // A paused one is silent already, and ends here. Under the new epoch, so
-        // finish() leaves the id this reading was just given alone.
-        if (root.speakingPaused) {
-            root.speakingPaused = false;
-            if (reader && !reader.player.playing) {
-                reader.player.stop();
-                reader.finish();
-            }
-        }
+        // A new reading replaces one in progress, silently.
+        root._clearReading();
         root._speakParts = root._splitForSpeech(text, Config.options.agent.ttsEngine === "kokoro");
-        root._speakNext = 0;
-        root._speakOutstanding = 0;
-        root._askForParts(epoch);
+        root._askForParts(root._speakEpoch);
     }
 
     /**
-     * Ask for the reading's next parts, up to `_speakAhead` in the making. The
-     * server answers in order, so the clips queue up in order too, and the next
-     * part is already rendering while one plays.
+     * Ask for the parts the reading needs next: those not made from where it is
+     * to `_speakAhead` parts after. Ones queued for parts it has moved away from
+     * are dropped; the one being made finishes, and is kept.
      */
     function _askForParts(epoch: int): void {
-        while (epoch === root._speakEpoch && root.speakingMessageId.length > 0
-                && root._speakOutstanding < root._speakAhead && root._speakNext < root._speakParts.length) {
-            const index = root._speakNext++;
-            const chunk = root._speakParts[index];
-            root._speakOutstanding++;
-            root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index, chunk));
+        if (epoch !== root._speakEpoch || root.speakingMessageId.length === 0)
+            return;
+        const parts = root._speakParts;
+        const clips = root._speakClips;
+        const wanted = [];
+        const last = Math.min(parts.length - 1, root._speakIndex + root._speakAhead);
+        for (let k = root._speakIndex; k <= last && wanted.length < root._speakAhead; k++) {
+            if (clips[k] === undefined)
+                wanted.push(k);
         }
+        const asked = Object.assign({}, root._speakAsked);
+        const dropped = Object.assign({}, root._speakDropped);
+        const drop = [];
+        for (const k of Object.keys(asked)) {
+            if (!wanted.includes(Number(k)) && !dropped[asked[k]]) {
+                drop.push(asked[k]);
+                dropped[asked[k]] = true;
+            }
+        }
+        root._speakDropped = dropped;
+        for (const k of wanted) {
+            if (asked[k] === undefined)
+                asked[k] = root._ttsRequest(parts[k], reply => root._onSpoken(reply, epoch, k));
+        }
+        root._speakAsked = asked;
+        if (drop.length > 0)
+            root._ttsDrop(drop);
     }
 
-    function _onSpoken(reply: var, epoch: int, index: int, chunk: string): void {
-        const current = epoch === root._speakEpoch;
-        if (current)
-            root._speakOutstanding--;
-        const stale = !current || root.speakingMessageId.length === 0;
+    function _onSpoken(reply: var, epoch: int, index: int): void {
+        // A reading that is over: its clips have nowhere to go.
+        if (epoch !== root._speakEpoch) {
+            root._removeFiles(reply.paths ?? []);
+            return;
+        }
+        const asked = Object.assign({}, root._speakAsked);
+        delete asked[index];
+        root._speakAsked = asked;
+        if (reply.dropped ?? false)
+            return;
+        const clips = root._speakClips.slice();
         if (!(reply.ok ?? false) || (reply.paths ?? []).length === 0) {
-            // Only the opening chunk reports: a failure halfway through is a gap in
-            // the reading, not a reason to replace it with an error bubble.
-            if (!stale && index === 0) {
-                root.speakingMessageId = "";
+            clips[index] = "failed";
+            root._speakClips = clips;
+            // Only the opening part reports: a failure later on is a gap in the
+            // reading, not a reason to replace it with an error bubble.
+            if (index === 0 && root._speakIndex === 0) {
                 root.addMessage(reply.error?.length > 0 ? reply.error : Translation.tr("Could not synthesize speech"), root.interfaceRole);
-            } else if (!stale) {
+                root._endReading();
+            } else if (index === root._speakIndex) {
+                root._goTo(index + 1, 0, -1, root._playing());
+            } else {
                 root._askForParts(epoch);
-                root._endIfDone();
             }
             return;
         }
-        // Stopped or superseded while synthesis was still running: do not play now.
-        if (stale) {
-            cleanupOrphan.command = ["rm", "-f", ...reply.paths];
-            cleanupOrphan.running = true;
-            return;
-        }
-        root._askForParts(epoch);
-        readerLoader.active = true;
-        readerLoader.item.enqueue(reply.paths, chunk, reply.marks ?? []);
+        clips[index] = { path: reply.paths[0], marks: reply.marks ?? [], duration: reply.duration ?? 0 };
+        root._speakClips = clips;
+        // The part the reading was waiting on: it starts now, where it was meant to.
+        if (index === root._speakIndex && (readerLoader.item?.loadedIndex ?? -1) !== index)
+            root._goTo(index, root._speakStartMs, root._speakStartChar, root._playing());
+        else
+            root._askForParts(epoch);
     }
 
-    /** Over, if the player sat waiting for a part that will now never come. */
-    function _endIfDone(): void {
-        const reader = readerLoader.item;
-        if (root._speakWaiting || !reader || reader.queue.length > 0 || reader.player.playbackState !== MediaPlayer.StoppedState)
-            return;
-        reader.finish();
-    }
-
-    Process {
-        id: cleanupOrphan
+    // Whether the reading should be coming out now: not held, not being dragged.
+    function _playing(): bool {
+        return !root.speakingPaused && root.readingScrub < 0;
     }
 
     /**
-     * Whether the reading is held where it was. Its parts still being made keep
-     * arriving, and wait in the player's queue until it goes on.
+     * Put the reading at part `index`, `startMs` into it -- or, for a part not
+     * made yet, at the word holding character `startChar` -- playing or held.
+     * A part that could not be made is passed over.
      */
-    property bool speakingPaused: false
+    function _goTo(index: int, startMs: real, startChar: int, play: bool): void {
+        const parts = root._speakParts;
+        while (index < parts.length && root._speakClips[index] === "failed") {
+            index++;
+            startMs = 0;
+            startChar = -1;
+        }
+        if (index >= parts.length) {
+            root._endReading();
+            return;
+        }
+        root._speakIndex = index;
+        root._speakStartMs = startMs;
+        root._speakStartChar = startChar;
+        const clip = root._speakClips[index];
+        if (clip !== undefined) {
+            const ms = startChar >= 0 ? Timeline.startForChar(clip, startChar) : startMs;
+            root._speakStartMs = ms;
+            root._speakStartChar = -1;
+            readerLoader.active = true;
+            const reader = readerLoader.item;
+            if (reader.loadedIndex === index && reader.player.playbackState !== MediaPlayer.StoppedState)
+                reader.seekWithin(ms, play);
+            else
+                reader.load(index, clip.path, ms, play);
+        } else if (readerLoader.item && readerLoader.item.loadedIndex >= 0) {
+            // Waiting on a part still being made: whatever is in the player is
+            // not where the reading is.
+            readerLoader.item.fadeAndStop();
+        }
+        root._askForParts(root._speakEpoch);
+    }
+
+    /** A clip played to its end: on to the next part, or the reading is done. */
+    function _partEnded(index: int): void {
+        if (index < 0 || index !== root._speakIndex)
+            return;
+        if (index + 1 >= root._speakParts.length) {
+            root._endReading();
+            return;
+        }
+        root._goTo(index + 1, 0, -1, root._playing());
+    }
+
+    /** Move the reading to `ms` from its start: the start of the word there. */
+    function _seek(ms: real, play: bool): void {
+        const durs = root._speakDurations;
+        if (root._speakParts.length === 0 || Timeline.total(durs) <= 0)
+            return;
+        const at = Timeline.locate(durs, ms);
+        const clip = root._speakClips[at.index];
+        if (clip !== undefined && clip !== "failed")
+            root._goTo(at.index, Timeline.wordStart(clip, at.offset), -1, play);
+        else
+            root._goTo(at.index, at.offset, Timeline.charAt(root._speakParts[at.index], null, at.offset, durs[at.index]), play);
+    }
+
+    /** The bar was pressed: the audio holds while it is dragged. */
+    function beginScrub(ms: real): void {
+        if (root.speakingMessageId.length === 0 || root.readingScrub >= 0)
+            return;
+        root._scrubResume = !root.speakingPaused;
+        root.readingScrub = Math.max(0, Math.min(ms, root.readingDuration));
+        readerLoader.item?.hold();
+    }
+
+    /** The bar is being dragged: the transcript marks the word it is at. */
+    function scrubTo(ms: real): void {
+        if (root.readingScrub >= 0)
+            root.readingScrub = Math.max(0, Math.min(ms, root.readingDuration));
+    }
+
+    /** The bar was let go: the reading goes on from the word it was left at. */
+    function endScrub(ms: real): void {
+        if (root.readingScrub < 0)
+            return;
+        root.readingScrub = -1;
+        root._seek(ms, root._scrubResume);
+    }
+
+    /** Move the reading without a drag -- the keyboard's arrows on the bar. */
+    function seekReading(ms: real): void {
+        if (root.speakingMessageId.length > 0)
+            root._seek(ms, root._playing());
+    }
 
     /** Hold a read-aloud at the word it is on: fade to zero, then pause. */
     function pauseSpeaking(): void {
         if (root.speakingMessageId.length === 0 || root.speakingPaused)
             return;
         root.speakingPaused = true;
-        readerLoader.item?.pause();
+        readerLoader.item?.hold();
     }
 
     /** Go on from where it was held, fading back in. */
@@ -2332,20 +2436,86 @@ Singleton {
         if (!root.speakingPaused)
             return;
         root.speakingPaused = false;
-        readerLoader.item?.resume();
+        const reader = readerLoader.item;
+        if (reader && reader.loadedIndex === root._speakIndex)
+            reader.release();
+        else if (root._speakClips[root._speakIndex] !== undefined)
+            root._goTo(root._speakIndex, root._speakStartMs, root._speakStartChar, true);
+        // Otherwise the part is still being made, and plays when it comes.
     }
 
     /** Silence a read-aloud: fade to zero, then a graceful stop. Nothing is killed. */
     function stopSpeaking(): void {
+        root._endReading();
+    }
+
+    /** The reading is over: its clips go, and the UI is told. */
+    function _endReading(): void {
+        root._clearReading();
         root.speakingMessageId = "";
+    }
+
+    // Everything of the reading but which message it was, for a new one to start
+    // on: what is playing fades out, what is being made is dropped.
+    function _clearReading(): void {
+        root._speakEpoch++;
+        const asked = Object.values(root._speakAsked);
+        const paths = root._speakClips.filter(clip => clip && clip.path).map(clip => clip.path);
+        if (asked.length > 0)
+            root._ttsDrop(asked);
+        // A clip still fading out keeps playing from its open file.
+        root._removeFiles(paths);
+        root._speakParts = [];
+        root._speakClips = [];
+        root._speakAsked = ({});
+        root._speakDropped = ({});
+        root._speakIndex = 0;
+        root._speakStartMs = 0;
+        root._speakStartChar = -1;
+        root.readingScrub = -1;
         root.speakingPaused = false;
-        const reader = readerLoader.item;
-        if (!reader)
+        readerLoader.item?.fadeAndStop();
+    }
+
+    // The server died: nothing asked of it will come. The reading plays what was
+    // made and ends there, rather than waiting on the rest.
+    function _serverGone(): void {
+        if (root._speakParts.length === 0)
             return;
-        if (reader.player.playing)
-            reader.fadeAndStop();
-        else
-            reader.finish();
+        const clips = root._speakClips.slice();
+        for (let k = 0; k < root._speakParts.length; k++) {
+            if (clips[k] === undefined)
+                clips[k] = "failed";
+        }
+        root._speakClips = clips;
+        root._speakAsked = ({});
+        const reader = readerLoader.item;
+        if (!reader || reader.loadedIndex !== root._speakIndex)
+            root._goTo(root._speakIndex, 0, -1, root._playing());
+    }
+
+    // Clip files to delete. A removal asked for while one runs waits its turn:
+    // `running = true` on a running Process does nothing, and the files stayed.
+    property var _filesToRemove: []
+
+    function _removeFiles(paths: var): void {
+        if (paths.length === 0)
+            return;
+        root._filesToRemove = [...root._filesToRemove, ...paths];
+        if (!cleanupOrphan.running)
+            cleanupOrphan.next();
+    }
+
+    Process {
+        id: cleanupOrphan
+        function next(): void {
+            if (root._filesToRemove.length === 0)
+                return;
+            cleanupOrphan.command = ["rm", "-f", ...root._filesToRemove];
+            root._filesToRemove = [];
+            cleanupOrphan.running = true;
+        }
+        onExited: cleanupOrphan.next()
     }
 
     // ── Finished-turn notification ─────────────────────────────────

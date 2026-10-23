@@ -28,20 +28,30 @@ Protocol, JSON lines on stdin/stdout:
   -> {"id", "text", "out", "engine", "voice", "modelDir"}
                                         synthesize `text` into `out` (kokoro
                                         writes a .wav beside it instead)
+  -> {"drop": [id, ...]}                forget requests not yet started: the
+                                        reading moved somewhere they are not
   <- {"event": "ready"}                 once, when requests can be sent
   <- {"event": "status", "text"}        something worth telling the user, such
                                         as the one-time model download
-  <- {"id", "ok", "paths", "marks", "error"}
+  <- {"id", "ok", "paths", "marks", "duration", "error"}
+                                        `duration` in ms, as the player will
+                                        play it; a dropped request is answered
+                                        {"id", "ok": false, "dropped": true}
+
+Requests are made one at a time, in order. They are read on a thread of their
+own, so a drop reaches the queue while a request is still being made.
 
 Voice and rate: ILLOGICAL_IMPULSE_TTS_VOICE (default en-US-AriaNeural, or
 af_heart for kokoro), ILLOGICAL_IMPULSE_TTS_RATE (e.g. "+10%"). A request's own
 "voice" (Settings > Agent's pick) wins over the variable.
 """
 import asyncio
+import collections
 import contextlib
 import json
 import os
 import sys
+import threading
 
 import tts_marks
 import tts_text
@@ -80,9 +90,44 @@ _KOKORO_LEAD_S = 3 * 600 / 24000
 _MP3_PRIMING_MS = 1105 * 1000 // 24000
 
 
+_emitting = threading.Lock()
+
+
 def _emit(obj: dict) -> None:
-    sys.stdout.write(json.dumps(obj) + "\n")
-    sys.stdout.flush()
+    with _emitting:  # a drop is answered from the reading thread
+        sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
+
+
+# MPEG audio frame header fields: bitrate (kbps) by version and index, sample
+# rate by version, for Layer III (ISO 11172-3, 13818-3).
+_MP3_KBPS = {1: (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320),
+             2: (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160)}
+_MP3_RATES = {1: (44100, 48000, 32000), 2: (22050, 24000, 16000), 2.5: (11025, 12000, 8000)}
+
+
+def _mp3_duration_ms(path: str) -> int:
+    """How long the player plays an MP3: every frame it decodes, the priming
+    included, as a count of samples -- not an estimate off the bitrate."""
+    with open(path, "rb") as f:
+        data = f.read()
+    samples, rate, at = 0, 0, 0
+    while at + 4 <= len(data):
+        b1, b2 = data[at + 1], data[at + 2]
+        if data[at] != 0xFF or b1 & 0xE0 != 0xE0 or (b1 >> 1) & 3 != 1:  # sync, Layer III
+            at += 1
+            continue
+        version = {3: 1, 2: 2, 0: 2.5}.get((b1 >> 3) & 3)
+        index = b2 >> 4  # 0 is free format, 15 forbidden: neither is a frame here
+        kbps = _MP3_KBPS[1 if version == 1 else 2][index] if version and index < 15 else 0
+        if not kbps or (b2 >> 2) & 3 == 3:
+            at += 1
+            continue
+        rate = _MP3_RATES[version][(b2 >> 2) & 3]
+        per_frame = 1152 if version == 1 else 576
+        at += per_frame // 8 * kbps * 1000 // rate + ((b2 >> 1) & 1)
+        samples += per_frame
+    return samples * 1000 // rate if rate else 0
 
 
 def spoken(text: str) -> str:
@@ -191,7 +236,8 @@ def synthesize_kokoro(text: str, out_path: str, voice: str, model_dir: str) -> d
         clip.setsampwidth(2)
         clip.setframerate(rate)
         clip.writeframes(pcm.tobytes())
-    return {"ok": True, "paths": [wav_path], "error": "", "marks": tts_marks.marks(said, at, boundaries)}
+    return {"ok": True, "paths": [wav_path], "error": "", "marks": tts_marks.marks(said, at, boundaries),
+            "duration": len(pcm) * 1000 // rate}
 
 
 def synthesize(text: str, out_path: str, voice: str = "") -> dict:
@@ -219,7 +265,22 @@ def synthesize(text: str, out_path: str, voice: str = "") -> dict:
         return {"ok": False, "paths": [], "marks": [], "error": f"Read-aloud failed: {e}"}
     if not (os.path.isfile(out_path) and os.path.getsize(out_path) > 0):
         return {"ok": False, "paths": [], "marks": [], "error": "Read-aloud produced no audio"}
-    return {"ok": True, "paths": [out_path], "error": "", "marks": tts_marks.marks(said, at, boundaries)}
+    return {"ok": True, "paths": [out_path], "error": "", "marks": tts_marks.marks(said, at, boundaries),
+            "duration": _mp3_duration_ms(out_path)}
+
+
+def _serve(req: dict) -> dict:
+    try:
+        text, out, voice = str(req.get("text", "")), str(req.get("out", "")), str(req.get("voice") or "")
+        if req.get("engine") == "kokoro":
+            model_dir = str(req.get("modelDir") or os.path.expanduser("~/.local/share/vynx-conduit/models"))
+            reply = synthesize_kokoro(text, out, voice, model_dir)
+        else:
+            reply = synthesize(text, out, voice)
+    except Exception as e:  # one bad request must not take the server down
+        reply = {"ok": False, "paths": [], "marks": [], "error": f"{type(e).__name__}: {e}"}
+    reply["id"] = req.get("id", "")
+    return reply
 
 
 def main() -> int:
@@ -228,27 +289,37 @@ def main() -> int:
     except ImportError:
         print("[tts-missing] edge-tts is not installed in the shell's venv", file=sys.stderr, flush=True)
         return 127
+    queue, ready, done = collections.deque(), threading.Condition(), threading.Event()
+
+    def read() -> None:
+        for line in sys.stdin:
+            try:
+                req = json.loads(line)
+            except ValueError:
+                continue
+            with ready:
+                if "drop" in req:
+                    dropped = set(req["drop"])
+                    for gone in [r for r in queue if r.get("id") in dropped]:
+                        queue.remove(gone)
+                        _emit({"id": gone.get("id", ""), "ok": False, "dropped": True, "paths": [], "marks": [], "error": ""})
+                else:
+                    queue.append(req)
+                ready.notify()
+        done.set()
+        with ready:
+            ready.notify()
+
+    threading.Thread(target=read, daemon=True).start()
     _emit({"event": "ready"})
-    for line in sys.stdin:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            req = json.loads(line)
-        except ValueError:
-            continue
-        try:
-            text, out, voice = str(req.get("text", "")), str(req.get("out", "")), str(req.get("voice") or "")
-            if req.get("engine") == "kokoro":
-                model_dir = str(req.get("modelDir") or os.path.expanduser("~/.local/share/vynx-conduit/models"))
-                reply = synthesize_kokoro(text, out, voice, model_dir)
-            else:
-                reply = synthesize(text, out, voice)
-        except Exception as e:  # one bad request must not take the server down
-            reply = {"ok": False, "paths": [], "marks": [], "error": f"{type(e).__name__}: {e}"}
-        reply["id"] = req.get("id", "")
-        _emit(reply)
-    return 0
+    while True:
+        with ready:
+            while not queue and not done.is_set():
+                ready.wait()
+            if not queue:
+                return 0
+            req = queue.popleft()
+        _emit(_serve(req))
 
 
 if __name__ == "__main__":

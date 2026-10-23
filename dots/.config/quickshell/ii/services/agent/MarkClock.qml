@@ -26,6 +26,8 @@ QtObject {
     property real position: 0
     // Date.now() at the clip's position 0, or -1 until a report has said.
     property real origin: -1
+    // The player's own last report, which only ever moves back on a seek.
+    property real reported: 0
     // How often MediaPlayer reports its position, measured (Qt 6, FFmpeg backend).
     readonly property int reportInterval: 100
 
@@ -38,6 +40,28 @@ QtObject {
         for (let i = 0; i < marks.length && marks[i][0] <= root.position; i++)
             offset = marks[i][1];
         return offset;
+    }
+
+    /**
+     * The clip's position now, to the frame, for something drawn every frame:
+     * the wall clock since the clip's start while it plays, `position` when it
+     * does not or no report has said yet where the start was.
+     */
+    function now(): real {
+        if (root.origin < 0 || root.player?.playbackState !== MediaPlayer.PlayingState)
+            return root.position;
+        return Math.max(root.position, Math.min(Date.now() - root.origin, root.player.duration || Infinity));
+    }
+
+    /**
+     * The player was moved to `position` -- a seek, which may go back, where the
+     * position otherwise only moves on. Timed afresh from the next report.
+     */
+    function jump(position: real): void {
+        root.position = position;
+        root.reported = position;
+        root.origin = -1;
+        root.schedule();
     }
 
     function schedule(): void {
@@ -65,10 +89,17 @@ QtObject {
         target: root.player
 
         // Never backwards within a clip: a report read just before the timer
-        // fired would step the mark back a word and on again.
+        // fired would step the mark back a word and on again. Unless the player
+        // itself went back -- a report behind its own last one is a seek.
         function onPositionChanged(): void {
             const position = root.player.position;
-            root.position = Math.max(root.position, position);
+            if (position < root.reported) {
+                root.position = position;
+                root.origin = -1;
+            } else {
+                root.position = Math.max(root.position, position);
+            }
+            root.reported = position;
             if (position > 0 && root.player.playbackState === MediaPlayer.PlayingState) {
                 // A report more than one report interval later than the clock
                 // expects is not delivery delay but a stall: start over from it.
@@ -85,6 +116,7 @@ QtObject {
         // A new clip starts from its own beginning.
         function onSourceChanged(): void {
             root.position = 0;
+            root.reported = 0;
             root.origin = -1;
             root.schedule();
         }
