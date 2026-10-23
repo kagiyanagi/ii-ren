@@ -41,6 +41,7 @@ import os
 import platform
 import re
 import shutil
+import sqlite3
 import sys
 import time
 import urllib.request
@@ -469,8 +470,10 @@ class AntigravityBackend:
         self._queue = []        # messages typed while a reply runs
         self._stderr = []
         self.config = []        # the session's configOptions
+        self._config_of = ""    # the session `config` was read off
         self.commands = []      # available_commands_update
-        self.defaults = {}      # what answers with nothing pinned: {model, effort}
+        self.defaults = self.state.get("defaults") or {}  # what answers with nothing pinned: {model, effort}
+        self._defaults_read = False  # off this server's first new chat yet
         self.tier = ""
         self._probe = None      # while /usage is asked: its reply, kept out of the chat
         self._probe_lock = asyncio.Lock()
@@ -817,14 +820,19 @@ class AntigravityBackend:
 
     def _adopt(self, result: dict) -> None:
         self.config = result.get("configOptions") or self.config
+        self._config_of = self.session_id
         tier = (((result.get("_meta") or {}).get("antigravity") or {}).get("tier") or {}).get("name")
         self.tier = tier or self.tier
 
     async def _apply_pins(self, fresh: bool) -> None:
         """The sidebar's model, level and mode onto a session that opened without
         them. A fresh session shows what answers with nothing pinned."""
-        if fresh and not self.defaults:
+        if fresh and not self._defaults_read:
+            # Kept for a start that reopens the empty chat (_create_session), which is pinned.
+            self._defaults_read = True
             self.defaults = {"model": self._option_value("model"), "effort": self._option_value("thinking_level")}
+            self.state["defaults"] = self.defaults
+            save_state("antigravity", self.state)
         want = self.state.get("model") or self.defaults.get("model") or ""
         if want and want != self._option_value("model") and want in self._values("model"):
             await self._set_option("model", want)
@@ -844,16 +852,51 @@ class AntigravityBackend:
         return await asyncio.shield(self._creating)
 
     async def _create_session(self) -> dict:
+        # The server stores a chat the moment session/new answers and can neither
+        # close nor delete one, while the sidebar opens a chat before anything is
+        # typed: at every start, every "new chat", every delete of the open one.
+        # So the chat nobody has written in yet is handed out again, across
+        # restarts too, instead of each of those leaving an empty one behind.
+        await self._sign_in()
+        blank = self.state.get("blank") or ""
+        if blank and self._steps(blank) == 0:
+            try:
+                if self._config_of != blank:  # another chat's options since, or a chat of an earlier start
+                    await self._load(blank)
+                self.session_id = blank
+                await self._apply_pins(fresh=False)
+                return {"session_id": blank, "stored_session_id": blank, "info": self.info()}
+            except BridgeError as e:
+                print(f"[antigravity] could not reopen the empty chat, starting another: {e}", file=sys.stderr, flush=True)
+                self._remove_files(blank)
         result = await self._with_sign_in("session/new", self._session_params(), timeout=180)
         self.session_id = result.get("sessionId") or ""
         self._adopt(result)
+        self._set_blank(self.session_id)
         await self._apply_pins(fresh=True)
         return {"session_id": self.session_id, "stored_session_id": self.session_id, "info": self.info()}
 
-    async def resume_session(self, sid: str) -> dict:
-        if not UUID.fullmatch(sid or ""):
-            raise BridgeError("Not a conversation id")
-        await self.close_session()
+    def _set_blank(self, sid: str) -> None:
+        if (self.state.get("blank") or "") != sid:
+            self.state["blank"] = sid
+            save_state("antigravity", self.state)
+
+    def _steps(self, sid: str) -> int:
+        """The steps the server has stored for a chat: 0 is one nobody wrote in,
+        -1 one that cannot be read (never taken for empty)."""
+        path = os.path.join(conversations_dir(), f"{sid}.db")
+        if not os.path.isfile(path):
+            return -1
+        try:
+            db = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=1)
+            try:
+                return db.execute("SELECT count(*) FROM steps").fetchone()[0]
+            finally:
+                db.close()
+        except sqlite3.Error:
+            return -1
+
+    async def _load(self, sid: str) -> Replay:
         replay = Replay()
         self._replay = (sid, replay)
         try:
@@ -862,6 +905,13 @@ class AntigravityBackend:
             self._replay = None
         self.session_id = sid
         self._adopt(result)
+        return replay
+
+    async def resume_session(self, sid: str) -> dict:
+        if not UUID.fullmatch(sid or ""):
+            raise BridgeError("Not a conversation id")
+        await self.close_session()
+        replay = await self._load(sid)
         await self._apply_pins(fresh=False)
         rows, omitted = replay.result()
         return {"session_id": sid, "stored_session_id": sid, "info": self.info(), "messages": rows, "messages_omitted": omitted}
@@ -880,8 +930,8 @@ class AntigravityBackend:
         rows = []
         for session in listed.get("sessions") or []:
             sid = session.get("sessionId") or ""
-            if not UUID.fullmatch(sid):
-                continue
+            if not UUID.fullmatch(sid) or self._steps(sid) == 0:
+                continue  # not a conversation, or one nobody wrote in
             try:
                 updated = os.path.getmtime(os.path.join(conversations_dir(), f"{sid}.db"))
             except OSError:
@@ -900,18 +950,23 @@ class AntigravityBackend:
             raise BridgeError("Not a conversation id")
         if sid == self.session_id:
             await self.close_session()
-        base = os.path.join(conversations_dir(), sid)
-        if not os.path.exists(f"{base}.db"):
+        if not os.path.exists(os.path.join(conversations_dir(), f"{sid}.db")):
             raise BridgeError("That conversation is already gone")
+        self._remove_files(sid)
+        if self._titles().pop(sid, None) is not None:
+            save_state("antigravity", self.state)
+
+    def _remove_files(self, sid: str) -> None:
         # The server has no delete; these are its files for the chat and nothing else.
+        base = os.path.join(conversations_dir(), sid)
         for suffix in (".db", ".db-wal", ".db-shm", ".db-journal", ".meta"):
             try:
                 os.unlink(base + suffix)
             except FileNotFoundError:
                 pass
         shutil.rmtree(os.path.join(gemini_home(), "antigravity-acp", "brain", sid), ignore_errors=True)
-        if self._titles().pop(sid, None) is not None:
-            save_state("antigravity", self.state)
+        if self.state.get("blank") == sid:
+            self._set_blank("")
 
     # ── Turns ──
 
@@ -937,6 +992,8 @@ class AntigravityBackend:
         blocks = self._prompt_blocks(text, images)
         if not blocks:
             raise BridgeError("Nothing to send")
+        if self.session_id == self.state.get("blank"):
+            self._set_blank("")  # written in: a chat of its own now, never handed out again
         titles = self._titles()
         if text.strip() and self.session_id not in titles:
             titles[self.session_id] = {"title": one_line(text, 80), "started": int(time.time())}

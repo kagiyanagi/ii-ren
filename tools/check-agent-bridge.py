@@ -22,6 +22,8 @@ like the agent's fault, so this pins down:
     names the rows know, its questions take only its own choices, the thinking
     level and mode reach the session, history replays into rows, a chat is
     deleted with exactly its own files, and a message typed mid-reply waits.
+    A chat nobody wrote in is handed out again, across restarts, instead of each
+    start and "new chat" leaving an empty one in the history.
   * Plan limits, the usage button's numbers: each agent's own report (Claude
     Code's get_usage and its streamed rate_limit_event, Codex's rateLimits read
     and partial updates, Antigravity's /usage, whose reply must never reach the
@@ -324,13 +326,29 @@ for line in sys.stdin:
 '''
 
 FAKE_ANTIGRAVITY = r'''
-import json, os, sys, threading, time
+import json, os, sqlite3, sys, threading, time, uuid
 assert os.environ.get("BROWSER") == "true", "the server could open a browser by itself"
 assert "GEMINI_API_KEY" not in os.environ, "an ambient API key reached the server"
 log = open(os.path.join(os.environ["HOME"], "acp.jsonl"), "a")
 def send(o): sys.stdout.write(json.dumps(o) + "\n"); sys.stdout.flush()
 def update(sid, u): send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": sid, "update": u}})
 SID = "11111111-2222-4333-8444-555555555555"
+# Like Google's server, a chat is stored the moment session/new answers: a
+# database whose steps table stays empty until something is written in it.
+CONVO = os.path.join(os.environ["HOME"], ".gemini/antigravity-acp/conversations")
+def stored(sid):
+    return os.path.join(CONVO, sid + ".db")
+def store(sid, step=False):
+    os.makedirs(CONVO, exist_ok=True)
+    try:
+        db = sqlite3.connect(stored(sid))
+        db.execute("CREATE TABLE IF NOT EXISTS steps (idx integer PRIMARY KEY)")
+        if step:
+            db.execute("INSERT INTO steps VALUES ((SELECT count(*) FROM steps))")
+        db.commit()
+        db.close()
+    except sqlite3.Error:
+        pass  # a file the check wrote over
 config = {"model": "flash", "thinking_level": "high", "mode": "default"}
 def options():
     return [{"id": "model", "type": "select", "currentValue": config["model"], "options": [{"value": "flash", "name": "Flash"}, {"value": "pro", "name": "Pro"}]},
@@ -368,16 +386,23 @@ for line in sys.stdin:
         assert desktop["args"][0].endswith("desktop_mcp.py") and isinstance(desktop["env"], list), desktop
         assert p["_meta"]["antigravity"]["systemPrompt"]["append"], "the sidebar's note did not reach the session"
         if meth == "session/load":
-            update(p["sessionId"], {"sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "old question"}})
-            update(p["sessionId"], {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "old answer"}})
+            if not os.path.exists(stored(p["sessionId"])):
+                send({"jsonrpc": "2.0", "id": rid, "error": {"code": -32002, "message": "Session not found"}})
+                continue
+            if p["sessionId"] == SID:
+                update(p["sessionId"], {"sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "old question"}})
+                update(p["sessionId"], {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "old answer"}})
             send({"jsonrpc": "2.0", "id": rid, "result": {"configOptions": options()}})
         else:
-            send({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": SID, "configOptions": options()}})
+            sid = SID if not os.path.exists(stored(SID)) else str(uuid.uuid4())
+            store(sid)
+            send({"jsonrpc": "2.0", "id": rid, "result": {"sessionId": sid, "configOptions": options()}})
     elif meth == "session/set_config_option":
         config[p["configId"]] = p["value"]
         send({"jsonrpc": "2.0", "id": rid, "result": {"configOptions": options()}})
     elif meth == "session/list":
-        send({"jsonrpc": "2.0", "id": rid, "result": {"sessions": [{"sessionId": SID, "cwd": p.get("cwd"), "title": "Session 11111111"}]}})
+        names = sorted(n[:-3] for n in os.listdir(CONVO) if n.endswith(".db")) if os.path.isdir(CONVO) else []
+        send({"jsonrpc": "2.0", "id": rid, "result": {"sessions": [{"sessionId": n, "cwd": p.get("cwd"), "title": "Session " + n[:8]} for n in names]}})
     elif meth == "session/cancel":
         for prompt_id in list(prompting):
             update(SID, {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "The request was cancelled by the client."}})
@@ -406,8 +431,10 @@ for line in sys.stdin:
             prompting[rid] = rid
             update(SID, {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "1 2 3"}})
         else:
-            update(SID, {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "echo: " + text}})
+            update(p["sessionId"], {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "echo: " + text}})
             finish(rid)
+        if text != "/usage":  # its /usage writes no step: the blank chats on disk have none
+            store(p["sessionId"], step=True)
     elif rid is not None:
         send({"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": "unknown"}})
 '''
@@ -649,7 +676,7 @@ with tempfile.TemporaryDirectory() as tmp:
                    for f in shell.seen[mark:]), "Antigravity: asking for the limits showed up in the chat"
     # History: listed with the first thing asked, replayed into rows, deleted with its own files.
     convo = home / ".gemini/antigravity-acp/conversations"
-    convo.mkdir(parents=True)
+    convo.mkdir(parents=True, exist_ok=True)
     for suffix in (".db", ".meta"):
         (convo / f"{sid}{suffix}").write_text("x")
     (convo / "keep.db").write_text("x")
@@ -662,6 +689,43 @@ with tempfile.TemporaryDirectory() as tmp:
     shell.call("session.delete", {"session_id": sid})
     assert sorted(p.name for p in convo.iterdir()) == ["keep.db"], "Antigravity: delete removed the wrong files"
     assert shell.call("session.delete", {"session_id": "../../etc"}).get("error"), "Antigravity: a delete took a path"
+    # The server stores a chat on session/new and has no close or delete, while the
+    # sidebar opens one before anything is typed: at every start, every "new chat",
+    # every delete of the open one. Each used to stay as a "Session 1a2b3c4d" row.
+    news = lambda: len(sent("session/new"))
+    loads = lambda: [q["sessionId"] for q in sent("session/load")]
+    made = news()
+    blank = shell.call("session.create")["result"]["session_id"]
+    assert news() == made + 1 and (convo / f"{blank}.db").exists(), "Antigravity: the fake did not store the new chat"
+    shell.call("session.close", {"session_id": blank})
+    assert shell.call("session.create")["result"]["session_id"] == blank and news() == made + 1, \
+        "Antigravity: a new chat on an empty one opened another empty one"
+    shell.call("prompt.submit", {"session_id": blank, "text": "hello"})
+    shell.until(turn_end)
+    written = blank
+    blank = shell.call("session.create")["result"]["session_id"]
+    assert blank != written and news() == made + 2, "Antigravity: a chat written in was handed out again as a new one"
+    listed = [r["id"] for r in shell.call("session.list", {"limit": 10})["result"]["sessions"]]
+    assert listed == [written], f"Antigravity: an empty chat is listed as history: {listed}"
+    # Off to an old chat and back: the empty one again, reopened for its own options.
+    shell.call("session.resume", {"session_id": written})
+    assert shell.call("session.create")["result"]["session_id"] == blank and news() == made + 2 and loads()[-1] == blank, \
+        "Antigravity: a new chat after opening an old one did not reopen the empty chat"
+    shell.close()
+    assert shell.proc.returncode == 0, "Antigravity: the bridge did not exit cleanly"
+    # The next start (the shell reloading, new settings) takes it up again too.
+    shell = Shell("antigravity", fakes, str(home), {"AGENT_ANTIGRAVITY_SERVER": str(server)})
+    shell.until(lambda f: f.get("method") == "event" and f["params"]["type"] == "ready")
+    assert shell.call("session.create")["result"]["session_id"] == blank and news() == made + 2 and loads()[-1] == blank, \
+        "Antigravity: a restart left the empty chat behind and opened another"
+    # One that is gone by then (deleted by hand) is replaced, not an error.
+    shell.close()
+    for f in convo.glob(f"{blank}*"):
+        f.unlink()
+    shell = Shell("antigravity", fakes, str(home), {"AGENT_ANTIGRAVITY_SERVER": str(server)})
+    shell.until(lambda f: f.get("method") == "event" and f["params"]["type"] == "ready")
+    fresh = shell.call("session.create").get("result") or {}
+    assert fresh.get("session_id") not in (None, "", blank) and news() == made + 3, f"Antigravity: a lost empty chat was not replaced: {fresh}"
     shell.close()
     assert shell.proc.returncode == 0, "Antigravity: the bridge did not exit cleanly"
 
