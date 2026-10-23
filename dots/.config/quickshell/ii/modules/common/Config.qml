@@ -147,7 +147,9 @@ Singleton {
                 // Dictation, from the mic button and Super+Shift+B, records with
                 // pw-record and transcribes with whisper.cpp on this machine -- see
                 // services/agent/SpeechToText.qml. Without whisper.cpp the mic is
-                // hidden.
+                // hidden. "groq" sends the recording to Groq's hosted Whisper instead,
+                // with the user's own key from the keyring (scripts/agent/stt_groq.py).
+                property string sttEngine: "local"     // local | groq
                 property string sttQuality: "balanced" // fast | balanced | accurate | best
                 property string sttModel: ""           // explicit path wins over the preset
                 property string sttLanguage: "en"      // en | auto

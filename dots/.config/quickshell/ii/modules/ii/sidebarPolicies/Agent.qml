@@ -956,7 +956,8 @@ Item {
 
                     // Offered whenever whisper.cpp is installed: the recorder fetches
                     // its model on first use and reports its own failure. Without the
-                    // binary there is nothing it could do, so it is not offered.
+                    // binary there is nothing it could do, so it is not offered --
+                    // unless dictation is online, which needs no binary.
                     visible: AgentService.dictationInstalled
                     toggled: AgentService.dictating
 

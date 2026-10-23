@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import qs.services
 import qs.services.agent
 import qs.modules.common
@@ -27,7 +28,10 @@ ContentPage {
 
     // Checked again on every visit: a sign-in in a terminal, or a CLI updated,
     // changes the answer from outside.
-    Component.onCompleted: AgentSetup.refresh()
+    Component.onCompleted: {
+        AgentSetup.refresh();
+        if (page.sttOnline) groqKeyProbe.running = true;
+    }
 
     // Signing out and removing the server ask first, in a WindowDialog as the
     // Profiles page's does. Copied on open, so the exit plays over the same text.
@@ -594,18 +598,144 @@ ContentPage {
 
     // ── Voice ──────────────────────────────────────────────────────────
 
+    readonly property bool sttOnline: Config.options.agent.sttEngine === "groq"
+
+    /*
+     * Online dictation's Groq key: a keyring entry of its own, which
+     * scripts/agent/stt_groq.py reads at every use (its docstring says why not
+     * KeyringStorage's shared JSON). The page only ever learns whether one is
+     * saved; the key itself is written to secret-tool's input and never read back.
+     */
+    readonly property var groqKeyAttrs: ["application", "ii-ren", "secret", "groq-api-key"]
+    property bool groqKeySaved: false
+    property string groqKeyError: ""
+
+    // Looked up only once online is picked (and on open, above): on a locked
+    // keyring a lookup asks to unlock.
+    onSttOnlineChanged: if (page.sttOnline) groqKeyProbe.running = true
+
+    function saveGroqKey(key: string): void {
+        const trimmed = key.trim();
+        if (trimmed.length === 0 || groqKeyStore.running) return;
+        page.groqKeyError = "";
+        groqKeyStore.pending = trimmed;
+        groqKeyStore.running = true;
+    }
+
+    Process {
+        id: groqKeyProbe
+        command: ["secret-tool", "lookup", ...page.groqKeyAttrs]
+        onExited: exitCode => page.groqKeySaved = exitCode === 0
+    }
+    Process {
+        id: groqKeyStore
+        property string pending: ""
+        command: ["secret-tool", "store", "--label=ii-ren Groq API key", ...page.groqKeyAttrs]
+        stdinEnabled: true
+        onRunningChanged: {
+            if (!running) return;
+            groqKeyStore.write(groqKeyStore.pending);
+            groqKeyStore.pending = "";
+            groqKeyStore.stdinEnabled = false; // EOF: secret-tool stores what it read
+        }
+        onExited: exitCode => {
+            groqKeyStore.stdinEnabled = true;
+            if (exitCode === 0) {
+                page.groqKeySaved = true;
+                groqKeyField.text = "";
+            } else {
+                page.groqKeyError = Translation.tr("Couldn't save the key to the keyring. Is a keyring (gnome-keyring or KWallet) running?");
+            }
+        }
+    }
+    Process {
+        id: groqKeyClear
+        command: ["secret-tool", "clear", ...page.groqKeyAttrs]
+        onExited: groqKeyProbe.running = true
+    }
+
     ContentSection {
         icon: "graphic_eq"
         title: Translation.tr("Voice")
 
+        ConfigSelectionRow {
+            buttonIcon: "cloud"
+            text: Translation.tr("Dictation runs")
+            summary: Translation.tr("Private on this computer, or quicker and sharper online. Hover one to compare")
+            currentValue: Config.options.agent.sttEngine
+            onSelected: newValue => Config.options.agent.sttEngine = newValue
+            options: [
+                {
+                    displayName: Translation.tr("On this computer"),
+                    value: "local",
+                    tooltip: Translation.tr("+ Your voice never leaves this computer\n+ Free and offline, no account\n– Slower, most of all the bigger models without a GPU\n– Needs whisper.cpp and a one-time model download")
+                },
+                {
+                    displayName: Translation.tr("Online · Groq"),
+                    value: "groq",
+                    tooltip: Translation.tr("+ About a second per clip, on any computer\n+ As accurate as Best, in any language\n– Your recordings are sent to Groq\n– Needs internet and a free Groq key, with hourly limits")
+                }
+            ]
+        }
+
+        ConfigLabeledRow {
+            visible: page.sttOnline
+            buttonIcon: "key"
+            text: Translation.tr("Groq API key")
+            summary: page.groqKeySaved ? Translation.tr("Saved in your keyring. Paste a new one to replace it")
+                : Translation.tr("Free from console.groq.com. Kept in your keyring, not in the config file")
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                MaterialTextField {
+                    id: groqKeyField
+                    Layout.fillWidth: true
+                    echoMode: TextInput.Password
+                    placeholderText: page.groqKeySaved ? Translation.tr("Paste a new key") : Translation.tr("Paste your key")
+                    onAccepted: page.saveGroqKey(groqKeyField.text)
+                }
+                RippleButtonWithIcon {
+                    visible: groqKeyField.text.trim().length > 0
+                    materialIcon: "check"
+                    mainText: Translation.tr("Save")
+                    onClicked: page.saveGroqKey(groqKeyField.text)
+                }
+                RippleButtonWithIcon {
+                    visible: groqKeyField.text.trim().length === 0 && !page.groqKeySaved
+                    materialIcon: "open_in_new"
+                    mainText: Translation.tr("Get a key")
+                    onClicked: Qt.openUrlExternally("https://console.groq.com/keys")
+                }
+                RippleButtonWithIcon {
+                    visible: groqKeyField.text.trim().length === 0 && page.groqKeySaved
+                    materialIcon: "delete"
+                    mainText: Translation.tr("Remove")
+                    colText: Appearance.colors.colError
+                    onClicked: groqKeyClear.running = true
+                }
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: text.length > 0
+                wrapMode: Text.Wrap
+                text: page.groqKeyError
+                font.pixelSize: Appearance.font.pixelSize.smaller
+                color: Appearance.colors.colError
+            }
+        }
+
         NoticeBox {
             Layout.fillWidth: true
-            visible: !AgentSetup.whisperInstalled
+            visible: !page.sttOnline && !AgentSetup.whisperInstalled
             materialIcon: "mic_off"
             text: Translation.tr("Dictation needs whisper.cpp: sudo pacman -S whisper-cpp")
         }
 
         ConfigSelectionRow {
+            visible: !page.sttOnline
             enabled: AgentSetup.whisperInstalled
             buttonIcon: "mic"
             text: Translation.tr("Dictation model")
@@ -621,10 +751,11 @@ ContentPage {
         }
 
         ConfigSelectionRow {
-            enabled: AgentSetup.whisperInstalled
+            enabled: page.sttOnline || AgentSetup.whisperInstalled
             buttonIcon: "translate"
             text: Translation.tr("Dictation language")
-            summary: Translation.tr("Languages other than English need the Best model")
+            summary: page.sttOnline ? Translation.tr("Online hears any language")
+                : Translation.tr("Languages other than English need the Best model")
             currentValue: Config.options.agent.sttLanguage
             onSelected: newValue => Config.options.agent.sttLanguage = newValue
             options: [
@@ -634,7 +765,7 @@ ContentPage {
         }
 
         ConfigLabeledRow {
-            enabled: AgentSetup.whisperInstalled
+            enabled: page.sttOnline || AgentSetup.whisperInstalled
             buttonIcon: "spellcheck"
             text: Translation.tr("Words it should know")
             summary: Translation.tr("Names and terms to spell the way you do")
@@ -660,9 +791,7 @@ ContentPage {
                 { displayName: "Aria · US", value: "en-US-AriaNeural" },
                 { displayName: "Guy · US", value: "en-US-GuyNeural" },
                 { displayName: "Sonia · UK", value: "en-GB-SoniaNeural" },
-                { displayName: "Ryan · UK", value: "en-GB-RyanNeural" },
-                { displayName: "Neerja · India", value: "en-IN-NeerjaNeural" },
-                { displayName: "Prabhat · India", value: "en-IN-PrabhatNeural" }
+                { displayName: "Ryan · UK", value: "en-GB-RyanNeural" }
             ]
         }
     }

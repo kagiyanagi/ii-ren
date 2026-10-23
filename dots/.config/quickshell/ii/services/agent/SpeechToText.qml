@@ -5,18 +5,28 @@ import Quickshell.Io
 import QtQuick
 
 /**
- * Speech-to-text for dictation, entirely on this machine: pw-record captures 16
- * kHz mono s16 WAV (what whisper.cpp wants, so no resampling step is needed) and
- * the local whisper.cpp binary reads it. Nothing is uploaded.
+ * Speech-to-text for dictation: pw-record captures 16 kHz mono s16 WAV (what
+ * whisper.cpp wants, so no resampling step is needed) and, by default, the local
+ * whisper.cpp binary reads it. Nothing is uploaded.
  *
- * Optional: without a whisper.cpp binary `available` stays false and the sidebar
- * hides the mic rather than offering a button that can only fail.
+ * `engine: "groq"` is the opt-in exception: the same recording goes to Groq's
+ * hosted Whisper (scripts/agent/stt_groq.py) with the user's own key, and no local
+ * binary or model is needed. Recording, cancelling and deleting the audio are
+ * the same on both paths; only the transcription step differs.
+ *
+ * Optional: locally, without a whisper.cpp binary `available` stays false and the
+ * sidebar hides the mic rather than offering a button that can only fail.
  *
  * The whisper binary name is detected rather than assumed: whisper.cpp renamed
  * `main` to `whisper-cli` in 1.7, and distributions also ship it as `whisper-cpp`.
  */
 QtObject {
     id: root
+
+    // "local" (whisper.cpp) or "groq" (online).
+    property string engine: "local"
+    readonly property bool online: root.engine === "groq"
+    readonly property string groqScript: CF.FileUtils.trimFileProtocol(Quickshell.shellPath("scripts/agent/stt_groq.py"))
 
     property string modelPath: ""
     // Fetched on demand when modelPath is missing, so picking a higher accuracy level
@@ -48,7 +58,8 @@ QtObject {
 
     property string binary: ""
     property bool modelReady: false
-    readonly property bool available: root.binary.length > 0 && root.modelReady
+    // Online, whether a key is saved is only known at the first use, which says so.
+    readonly property bool available: root.online || (root.binary.length > 0 && root.modelReady)
 
     property bool recording: false
     property bool transcribing: false
@@ -66,11 +77,11 @@ QtObject {
 
     function startRecording() {
         if (root.recording || root.transcribing) return;
-        if (root.downloading) {
+        if (!root.online && root.downloading) {
             root.failed("Still downloading the voice model — try again in a moment.");
             return;
         }
-        if (root.binary.length > 0 && !root.modelReady && root.modelUrl.length > 0) {
+        if (!root.online && root.binary.length > 0 && !root.modelReady && root.modelUrl.length > 0) {
             root.downloadModel();
             return;
         }
@@ -134,6 +145,22 @@ QtObject {
         }
         const tail = errors.trim().split("\n").slice(-3).join("\n");
         return tail.length > 0 ? `${fallback}\n\n\`\`\`\n${tail}\n\`\`\`` : fallback;
+    }
+
+    /** What went wrong online, from stt_groq.py's exit code. */
+    function explainOnlineFailure(exitCode) {
+        switch (exitCode) {
+        case 4:
+            return "Online dictation needs a Groq API key. Add one in Settings > Agent > Voice — it's free at console.groq.com/keys.";
+        case 5:
+            return "Your keyring is locked, so the Groq key can't be read. Unlock it and try again.";
+        case 6:
+            return "Groq refused the API key. Paste a new one in Settings > Agent > Voice.";
+        case 7:
+            return "Groq's free limit is used up for now. Try again in a minute, or switch dictation to this computer.";
+        }
+        const reason = (transcriberErrors.text ?? "").trim().split("\n").slice(-1)[0] ?? "";
+        return reason.length > 0 ? `Online dictation failed: ${reason}` : `Online dictation failed (exit ${exitCode}).`;
     }
 
     /** Strips whisper's own markers, and anything that is plainly not speech. */
@@ -248,10 +275,16 @@ QtObject {
             // -nt drops timestamps, -np drops progress chatter, so stdout is just text.
             // Whisper continues the prompt's style, so a prompt ending mid-sentence
             // returns a lowercase, unpunctuated transcript.
-            let bias = "";
             const hint = root.prompt.trim();
-            if (hint.length > 0) {
-                const terminated = /[.!?]$/.test(hint) ? hint : `${hint}.`;
+            const terminated = hint.length === 0 || /[.!?]$/.test(hint) ? hint : `${hint}.`;
+            if (root.online) {
+                // Groq's Whisper takes the same prompt, so the vocabulary carries over.
+                transcriber.command = ["python3", root.groqScript, audio, root.language, terminated];
+                transcriber.running = true;
+                return;
+            }
+            let bias = "";
+            if (terminated.length > 0) {
                 bias = ` --prompt '${CF.StringUtils.shellSingleQuoteEscape(terminated)}' --carry-initial-prompt`;
             }
             /*
@@ -298,13 +331,14 @@ QtObject {
                 return;
             }
             if (exitCode !== 0) {
-                root.failed(root.explainFailure(`Transcription failed (exit ${exitCode}).`));
+                root.failed(root.online ? root.explainOnlineFailure(exitCode) : root.explainFailure(`Transcription failed (exit ${exitCode}).`));
                 return;
             }
 
             const text = root.cleanTranscript(transcriptCollector.text ?? "");
             if (text.length === 0) {
-                root.failed(root.explainFailure("Didn't catch anything — try again a bit closer to the mic."));
+                const quiet = "Didn't catch anything — try again a bit closer to the mic.";
+                root.failed(root.online ? quiet : root.explainFailure(quiet));
                 return;
             }
             root.transcribed(text);

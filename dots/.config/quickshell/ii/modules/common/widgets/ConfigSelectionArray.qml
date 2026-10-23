@@ -76,6 +76,16 @@ Flow {
             onClicked: {
                 root.selected(modelData.value ?? modelData);
             }
+
+            // An option may carry a "tooltip". Loaded only for those, so the
+            // many chip rows that have none build no popup per chip.
+            Loader {
+                active: (paletteButton.modelData.tooltip ?? "").length > 0
+                sourceComponent: StyledToolTip {
+                    parent: paletteButton
+                    text: paletteButton.modelData.tooltip
+                }
+            }
         }
     }
 }

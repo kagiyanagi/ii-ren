@@ -329,11 +329,13 @@ Singleton {
     // ── Voice ──────────────────────────────────────────────────────
     //
     // Both ends are the shell's own: dictation records with pw-record and
-    // transcribes with whisper.cpp, read-aloud synthesizes with edge-tts. Neither is
-    // required -- each control shows only when its engine is there.
+    // transcribes with whisper.cpp (or, opted into, Groq's hosted Whisper),
+    // read-aloud synthesizes with edge-tts. Neither is required -- each control
+    // shows only when its engine is there.
     readonly property bool dictationAvailable: root.speech.available || root.speech.downloading
-    // whisper.cpp is on this machine at all; the mic is offered only then.
-    readonly property bool dictationInstalled: root.speech.binary.length > 0
+    // whisper.cpp is on this machine at all, or dictation is online; the mic is
+    // offered only then.
+    readonly property bool dictationInstalled: root.speech.online || root.speech.binary.length > 0
     readonly property string voiceState: root.speech.recording ? "listening" : root.speech.transcribing ? "transcribing" : "idle"
     readonly property bool dictating: root.voiceState !== "idle"
 
@@ -1268,7 +1270,8 @@ Singleton {
 
     /*
      * Dictation runs on the shell's own recorder (pw-record) and transcribes with
-     * whisper.cpp; nothing is sent anywhere. A recorder subprocess this service
+     * whisper.cpp; nothing is sent anywhere unless the user chose online
+     * dictation (Groq). A recorder subprocess this service
      * owns is also what makes stop genuinely close the device -- a held mic drags a
      * Bluetooth headset from A2DP down to HSP.
      */
@@ -1650,7 +1653,8 @@ Singleton {
     // ── Dictation ──────────────────────────────────────────────────
     //
     // The mic button and Super+Shift+B record with pw-record and transcribe with
-    // whisper.cpp; the settings below choose its model.
+    // whisper.cpp, or online with Groq; the settings below choose which, and the
+    // local model.
 
     readonly property var sttPresets: ({
         "fast":     { "file": "ggml-tiny.en.bin" },              //  78MB, ~2s per 11s of audio
@@ -1703,6 +1707,7 @@ Singleton {
     }
 
     property SpeechToText speech: SpeechToText {
+        engine: Config.options.agent.sttEngine
         modelPath: root.sttModel
         modelUrl: root.sttModelUrl
         language: Config.options.agent.sttLanguage
