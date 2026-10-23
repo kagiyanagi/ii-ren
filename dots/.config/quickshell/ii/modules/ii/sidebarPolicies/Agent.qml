@@ -672,6 +672,9 @@ Item {
             // download, a sign-in it is waiting on.
             readonly property bool shown: (Config.options.agent?.showStatusLine ?? true)
                 && (AgentService.busy || AgentService.dictating || AgentService.speakingMessageId.length > 0 || AgentService.setupText.length > 0)
+            // A paused reading is the line's only business: nothing is working.
+            readonly property bool readingPaused: AgentService.speakingPaused && !AgentService.busy
+                && !AgentService.dictating && AgentService.setupText.length === 0
 
             // This fires on every turn, which makes it the most frequent
             // transition on the page -- the one thing that must not snap. Same
@@ -720,7 +723,8 @@ Item {
                     // 20 is the inline icon size, so the shape lands at 14 next to the
                     // 12px caption beside it.
                     implicitSize: 20
-                    loading: true
+                    // Still while a paused reading is all that is going on: nothing is.
+                    loading: !activityLine.readingPaused
                 }
 
                 StyledText {
@@ -729,7 +733,14 @@ Item {
                     elide: Text.ElideRight
                     font.pixelSize: Appearance.font.pixelSize.smaller
                     color: Appearance.colors.colSubtext
-                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : AgentService.speakingMessageId.length > 0 && !AgentService.busy ? Translation.tr("Reading aloud…") : AgentService.setupText.length > 0 ? AgentService.setupText : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
+                    text: AgentService.voiceState === "listening" ? Translation.tr("Listening…") : AgentService.voiceState === "transcribing" ? Translation.tr("Transcribing…") : activityLine.readingPaused ? Translation.tr("Reading paused") : AgentService.speakingMessageId.length > 0 && !AgentService.busy ? Translation.tr("Reading aloud…") : AgentService.setupText.length > 0 ? AgentService.setupText : AgentService.statusText.length > 0 ? AgentService.statusText : Translation.tr("Working…")
+                }
+
+                InputIconButton { // Hold the reading, and go on from the same word
+                    visible: AgentService.speakingMessageId.length > 0
+                    symbol: AgentService.speakingPaused ? "play_arrow" : "pause"
+                    tooltip: AgentService.speakingPaused ? Translation.tr("Resume reading") : Translation.tr("Pause reading")
+                    releaseAction: () => AgentService.speakingPaused ? AgentService.resumeSpeaking() : AgentService.pauseSpeaking()
                 }
 
                 InputIconButton { // Silence playback without hunting for the message

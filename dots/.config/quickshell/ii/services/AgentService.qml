@@ -1824,7 +1824,7 @@ Singleton {
             root._speakParts = [];
             if (exitCode === 127)
                 root.ttsAvailable = false;
-            if (root.speakingMessageId.length > 0 && !readerLoader.item?.player.playing)
+            if (root.speakingMessageId.length > 0 && !readerLoader.item?.player.playing && !root.speakingPaused)
                 root.speakingMessageId = "";
             root._endIfDone();
         }
@@ -1873,6 +1873,12 @@ Singleton {
                 onMediaStatusChanged: {
                     if (readerPlayer.mediaStatus !== MediaPlayer.EndOfMedia)
                         return;
+                    // Ended inside the pause's fade: the next clip waits for resume.
+                    if (reader.queue.length > 0 && root.speakingPaused) {
+                        root._speakingChunk = "";
+                        root._speakingMarks = [];
+                        return;
+                    }
                     if (reader.queue.length > 0) {
                         const next = reader.queue[0];
                         reader.queue = reader.queue.slice(1);
@@ -1926,11 +1932,14 @@ Singleton {
                     reader.finish();
                 }
                 reader.produced = [...reader.produced, ...paths];
-                if (readerPlayer.playbackState === MediaPlayer.PlayingState || reader.queue.length > 0) {
+                const idle = reader.queue.length === 0 && readerPlayer.playbackState === MediaPlayer.StoppedState;
+                if (idle)
+                    reader.epoch = root._speakEpoch;
+                // Paused, a clip waits in the queue for resume() rather than playing.
+                if (!idle || root.speakingPaused) {
                     reader.queue = [...reader.queue, ...entries];
                     return;
                 }
-                reader.epoch = root._speakEpoch;
                 reader.queue = entries.slice(1);
                 reader.playEntry(entries[0]);
             }
@@ -1953,11 +1962,40 @@ Singleton {
             function fadeAndStop(): void {
                 if (fadeOut.running)
                     return;
+                pauseFade.stop();
+                resumeFade.stop();
                 fadeOut.start();
+            }
+
+            /** Fade to silence and hold where it is. */
+            function pause(): void {
+                resumeFade.stop();
+                if (readerPlayer.playbackState === MediaPlayer.PlayingState)
+                    pauseFade.start();
+            }
+
+            /**
+             * Go on from where it was held: the clip it was in, or -- paused
+             * between clips, or before the first had come -- the next one, if it
+             * is here yet. One still being made plays as it arrives.
+             */
+            function resume(): void {
+                pauseFade.stop();
+                if (readerPlayer.playbackState === MediaPlayer.PausedState) {
+                    readerPlayer.play();
+                } else if (readerPlayer.playbackState !== MediaPlayer.PlayingState && reader.queue.length > 0) {
+                    const next = reader.queue[0];
+                    reader.queue = reader.queue.slice(1);
+                    readerOutput.volume = 0;
+                    reader.playEntry(next);
+                }
+                resumeFade.start();
             }
 
             /** Playback is over -- naturally or stopped -- tidy up and let the UI know. */
             function finish(): void {
+                pauseFade.stop();
+                resumeFade.stop();
                 readerPlayer.source = "";
                 reader.queue = [];
                 root._speakingChunk = "";
@@ -1970,8 +2008,10 @@ Singleton {
                 }
                 // Only if this is still the current reading: a later one has already
                 // claimed the id, and clearing it would stop it before it is heard.
-                if (reader.epoch === root._speakEpoch)
+                if (reader.epoch === root._speakEpoch) {
                     root.speakingMessageId = "";
+                    root.speakingPaused = false;
+                }
             }
 
             Process {
@@ -1997,6 +2037,33 @@ Singleton {
                         reader.finish();
                     }
                 }
+            }
+
+            // A pause is the same exit as a stop -- silence first, never cut
+            // mid-waveform -- on the fast-exit spec; resuming is its enter, the
+            // volume back up on the default effects spec.
+            SequentialAnimation {
+                id: pauseFade
+                NumberAnimation {
+                    target: readerOutput
+                    property: "volume"
+                    to: 0
+                    duration: Appearance.animation.elementMoveExit.duration
+                    easing.type: Easing.BezierSpline
+                    easing.bezierCurve: Appearance.animation.elementMoveExit.bezierCurve
+                }
+                ScriptAction {
+                    script: readerPlayer.pause()
+                }
+            }
+            NumberAnimation {
+                id: resumeFade
+                target: readerOutput
+                property: "volume"
+                to: 1
+                duration: Appearance.animation.elementMoveFast.duration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
             }
         }
     }
@@ -2172,9 +2239,19 @@ Singleton {
         if ((text ?? "").trim().length === 0)
             return;
         // A new reading replaces one in progress, silently: fade what is playing.
-        if (readerLoader.item?.player.playing)
-            readerLoader.item.fadeAndStop();
+        const reader = readerLoader.item;
+        if (reader?.player.playing)
+            reader.fadeAndStop();
         const epoch = ++root._speakEpoch;
+        // A paused one is silent already, and ends here. Under the new epoch, so
+        // finish() leaves the id this reading was just given alone.
+        if (root.speakingPaused) {
+            root.speakingPaused = false;
+            if (reader && !reader.player.playing) {
+                reader.player.stop();
+                reader.finish();
+            }
+        }
         root._speakParts = root._splitForSpeech(text, Config.options.agent.ttsEngine === "kokoro");
         root._speakNext = 0;
         root._speakOutstanding = 0;
@@ -2227,7 +2304,7 @@ Singleton {
     /** Over, if the player sat waiting for a part that will now never come. */
     function _endIfDone(): void {
         const reader = readerLoader.item;
-        if (root._speakWaiting || !reader || reader.queue.length > 0 || reader.player.playbackState === MediaPlayer.PlayingState)
+        if (root._speakWaiting || !reader || reader.queue.length > 0 || reader.player.playbackState !== MediaPlayer.StoppedState)
             return;
         reader.finish();
     }
@@ -2236,9 +2313,32 @@ Singleton {
         id: cleanupOrphan
     }
 
+    /**
+     * Whether the reading is held where it was. Its parts still being made keep
+     * arriving, and wait in the player's queue until it goes on.
+     */
+    property bool speakingPaused: false
+
+    /** Hold a read-aloud at the word it is on: fade to zero, then pause. */
+    function pauseSpeaking(): void {
+        if (root.speakingMessageId.length === 0 || root.speakingPaused)
+            return;
+        root.speakingPaused = true;
+        readerLoader.item?.pause();
+    }
+
+    /** Go on from where it was held, fading back in. */
+    function resumeSpeaking(): void {
+        if (!root.speakingPaused)
+            return;
+        root.speakingPaused = false;
+        readerLoader.item?.resume();
+    }
+
     /** Silence a read-aloud: fade to zero, then a graceful stop. Nothing is killed. */
     function stopSpeaking(): void {
         root.speakingMessageId = "";
+        root.speakingPaused = false;
         const reader = readerLoader.item;
         if (!reader)
             return;
