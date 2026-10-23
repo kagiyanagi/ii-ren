@@ -128,7 +128,7 @@ Item {
     onPhraseChanged: root.update()
     onQueryChanged: root.update()
     // Word timings supersede the estimate: with them the mark moves per word, not
-    // per position report, which is twenty times a second in every message shown.
+    // per position report, which is ten times a second in every message shown.
     onProgressChanged: if (root.wordOffset < 0) root.update()
     onWordOffsetChanged: root.update()
     Component.onCompleted: root.update()

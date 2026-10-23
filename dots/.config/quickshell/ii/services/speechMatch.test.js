@@ -82,14 +82,66 @@ assert.notStrictEqual(findWordAt(views[1], across, 0.999), null);
 // The read-aloud chunks are slices of the message, newlines kept, so a marker
 // stays at the start of its line. Lifted from AgentService.qml.
 const svc = require("fs").readFileSync(__dirname + "/AgentService.qml", "utf8");
-const splitSrc = svc.slice(svc.indexOf("function _splitForSpeech(text: string): var {"));
-const split = new Function("root", "return " + splitSrc.slice(0, splitSrc.indexOf("\n    }\n") + 6)
-    .replace("function _splitForSpeech(text: string): var", "function (text)"))({ _minFirstChunk: 60, _minChunk: 140, _maxChunks: 8 });
+const lift = (name, params) => {
+    const src = svc.slice(svc.indexOf(`function ${name}(`));
+    const body = src.slice(0, src.indexOf("\n    }\n") + 6);
+    return "(function (" + params + ")" + body.slice(body.indexOf("{"), body.lastIndexOf("}") + 1) + ")";
+};
+const root = { _minFirstChunk: 60, _minChunk: 140, _maxChunks: 8, _minLocalChunk: 40, _maxLocalChunk: 120 };
+const SpeechMatch = require("./speechMatch.js");
+root._splitForSpeech = new Function("root", "SpeechMatch", "return " + lift("_splitForSpeech", "text, local"))(root, SpeechMatch);
+root._cutClauses = new Function("root", "return " + lift("_cutClauses", "text, spans, inUnit"))(root);
+const split = (text, local) => root._splitForSpeech(text, local ?? false);
+const sameText = (chunks, text) => chunks.join(" ").replace(/\s+/g, " ") === text.trim().replace(/\s+/g, " ");
 const reply = "Here is the plan:\n- read the files first.\n- then write the patch.\n\n" + "Then it is tested again. ".repeat(60);
 const chunks = split(reply);
 assert.ok(chunks.length > 1 && chunks.length <= 8, "chunks");
 assert.ok(chunks.every(chunk => reply.includes(chunk)), "a chunk is not a slice of the message");
 assert.ok(chunks[0].includes("\n- then"), "a list marker lost its line start");
-assert.strictEqual(chunks.join(" ").replace(/\s+/g, " "), reply.trim().replace(/\s+/g, " "), "text lost between chunks");
+assert.ok(sameText(chunks, reply), "text lost between chunks");
+
+// Never through a code block or a formula: a fence cut in two left the next
+// chunk opening on its closing ``` and reading the prose after it as code.
+const fenced = "Run the build first and wait for it to finish completely. Then:\n```sh\nmake all. make install. make check.\n```\nThat is all of it. Then $a. b = c. d$ holds, and `x. y` too. Done here.";
+for (const local of [false, true]) {
+    const parts = split(fenced, local);
+    assert.ok(sameText(parts, fenced), `text lost between chunks (local: ${local})`);
+    for (const part of parts) {
+        assert.strictEqual((part.match(/```/g) ?? []).length % 2, 0, `a chunk cuts a fence: ${JSON.stringify(part)}`);
+        assert.strictEqual((part.match(/\$/g) ?? []).length % 2, 0, `a chunk cuts a formula: ${JSON.stringify(part)}`);
+        assert.strictEqual((part.match(/`/g) ?? []).length % 2, 0, `a chunk cuts inline code: ${JSON.stringify(part)}`);
+    }
+}
+
+// The local voice: a sentence a part, a long one cut at a clause, every cut at a
+// pause. Its parts are asked for a few at a time, so it has no cap on them.
+const long = "Sure! I found the problem in the reader of the sidebar. When the next part of a reply is not ready by the time the current one finishes playing, the player decides the reading is over, clears the speaking state, and throws away every part that arrives afterwards. " + "It is fixed now. ".repeat(40);
+const local = split(long, true);
+assert.ok(sameText(local, long), "local: text lost between chunks");
+assert.ok(local.length > 8, `local: capped at ${local.length} parts`);
+assert.ok(local[0].startsWith("Sure! I found") && local[0].endsWith("sidebar."), `local: the opening part is the first sentences: ${local[0]}`);
+for (const part of local)
+    assert.ok(/[.!?,;:]$/.test(part.trim()), `local: cut away from a pause: ${JSON.stringify(part)}`);
+assert.ok(local.every(part => part.length <= 120), `local: a part past 120 characters: ${local.map(p => p.length)}`);
+assert.ok(local.slice(1).every(part => part.length >= 30 || /^It is fixed/.test(part)), "local: a clause cut off too short");
+
+// The formula pattern the transcript renders with, as read-aloud uses it.
+const formulas = s => (s.match(SpeechMatch.formulaPattern()) ?? []).filter(SpeechMatch.isFormula);
+assert.deepStrictEqual(formulas("so $x^2$ and $$y$$ and \\(z\\) and \\[w\\]"), ["$x^2$", "$$y$$", "\\(z\\)", "\\[w\\]"]);
+assert.deepStrictEqual(formulas("it costs $5 and $10, or \\$3 and \\$4"), [], "prose dollars are not a formula");
+assert.deepStrictEqual(formulas("set `$HOME` and `$PATH`"), [], "inline code is not a formula");
+assert.deepStrictEqual(formulas("costs $10, see `$HOME`"), [], "a dollar before inline code opened a formula");
+
+// A formula and an image are one object on screen; every word said for one
+// marks it. Hand-written from TextEdit.getText of the rendered markdown.
+const mathSource = "The energy is $E = mc^2$, so ![x](a.png) and **more** &amp; <b>bold</b> here.";
+const mathShown = "The energy is  ￼, so ￼ and more & bold here.";
+const at = (offset) => { const w = findWordAtOffset(mathShown, mathSource, offset); return w && mathShown.slice(w.start, w.end); };
+assert.strictEqual(at(mathSource.indexOf("$E")), "￼,");
+assert.strictEqual(at(mathSource.indexOf("more")), "more");
+assert.strictEqual(at(mathSource.indexOf("&amp;")), "&");
+assert.strictEqual(at(mathSource.indexOf("bold")), "bold");
+assert.strictEqual(at(mathSource.indexOf("here")), "here.");
+assert.deepStrictEqual(findPhrase(mathShown, mathSource), { start: 0, end: mathShown.length });
 
 console.log("ok");

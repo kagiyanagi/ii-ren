@@ -794,12 +794,12 @@ ContentPage {
                     displayName: Translation.tr("On this computer"),
                     value: "kokoro",
                     enabled: AgentSetup.kokoroInstalled,
-                    tooltip: Translation.tr("+ Nothing read aloud leaves this computer\n+ Free and offline, no account\n– A one-time 205 MB download, and about 400 MB of memory once used\n– The word being read is estimated, so the highlight can drift")
+                    tooltip: Translation.tr("+ Nothing read aloud leaves this computer\n+ Free and offline, no account\n– A one-time 205 MB download, and about 450 MB of memory once used\n– Slower to start, more so on battery")
                 },
                 {
                     displayName: Translation.tr("Online · Microsoft"),
                     value: "edge",
-                    tooltip: Translation.tr("+ Marks each word exactly as it is spoken\n+ Nothing to download, light on any computer\n– The text of each reply is sent to Microsoft\n– Needs internet")
+                    tooltip: Translation.tr("+ Starts quickly, on any computer\n+ Nothing to download, little memory\n– The text of each reply is sent to Microsoft\n– Needs internet")
                 }
             ]
         }

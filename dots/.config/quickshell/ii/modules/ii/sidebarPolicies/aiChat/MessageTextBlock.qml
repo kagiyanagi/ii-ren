@@ -168,9 +168,14 @@ ColumnLayout {
     }
 
     // $...$, $$...$$, \[...\] and \(...\); the whole match, delimiters and all, is
-    // what gets rendered and what its image replaces
+    // what gets rendered and what its image replaces. Inline code and an escaped
+    // dollar are matched first and passed over, so nothing in them opens one, and
+    // a lone $ only pairs around non-spaces and not before a digit (pandoc's rule):
+    // "$5 and $10" was rendered as the formula "5 and". Read-aloud reads the same
+    // formulas, so this is services/speechMatch.js formulaPattern() and
+    // scripts/agent/tts_text.py FORMULAS too; check-read-aloud-text.py holds them equal.
     function latexPattern(): var {
-        return /(\$\$([\s\S]+?)\$\$)|(\$([^\$]+?)\$)|(\\\[((?:.|\n)+?)\\\])|(\\\(([\s\S]+?)\\\))/g;
+        return /(`+)(?!`)[\s\S]*?[^`]\1(?!`)|\\\$|\$\$[\s\S]+?\$\$|\$(?=[^\s$`])[^$`]*?[^\s$`]\$(?!\d)|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g;
     }
 
     /**
@@ -229,6 +234,8 @@ ColumnLayout {
         const regex = root.latexPattern();
         let match;
         while ((match = regex.exec(segmentContent)) !== null) {
+            if (!/^(?:\$|\\[[(])/.test(match[0]))
+                continue;
             const [renderHash] = LatexRenderer.requestRender(match[0].trim());
             root.latexHashes[renderHash] = true;
         }
@@ -241,6 +248,8 @@ ColumnLayout {
      */
     function applyLatex(): void {
         root.renderedSegmentContent = (segmentContent || "").toString().replace(root.latexPattern(), whole => {
+            if (!/^(?:\$|\\[[(])/.test(whole))
+                return whole; // code, or an escaped dollar
             const hash = LatexRenderer.hashOf(whole.trim());
             const [width, height] = LatexRenderer.renderedSizes[hash] ?? [];
             // Not rendered yet, or failed: the source stays, not a broken image

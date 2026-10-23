@@ -6,7 +6,8 @@
 // passage is located by matching both sides with the syntax the renderer drops
 // taken out, then reading the surviving positions back off a map.
 
-const DROPPED = "*_`~#[]()\\|";
+// U+200A is the hair space MessageTextBlock puts before a formula's image.
+const DROPPED = "*_`~#[]()\\| ";
 
 // Block syntax the view renders as layout rather than text: a list bullet or
 // number, a task box, a quote bar. Only ever at the start of a line.
@@ -14,7 +15,61 @@ const BLOCK_MARKER = /^[ \t]*(?:>[ \t]?)*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ xX
 // A rule or a table's delimiter row, which leave no text at all.
 const RULE_LINE = /^[ \t|:]*(?:[-*_][ \t|:]*){3,}(?=\n|$)/;
 // Qt's markdown import separates table cells with these two noncharacters.
-const SPACES = " \t\n\r\u00a0\u2028\u2029\ufdd0\ufdd1";
+const SPACES = " \t\n\r   ﷐﷑";
+// What an image -- a formula's included -- is in the view's text.
+const OBJECT = "￼";
+
+/**
+ * What the transcript renders as a formula: $...$, $$...$$, \[...\] and \(...\),
+ * whole, delimiters and all. Inline code and an escaped dollar are matched too,
+ * first, so that nothing inside them opens a formula; isFormula() tells them
+ * apart. A lone `$` opens only before a non-space and closes only after one, not
+ * before a digit -- pandoc's rule -- so "$5 and $10" stays prose; and it holds
+ * no backtick, as code outranks it: "$10, `$HOME`" was one formula.
+ *
+ * MessageTextBlock renders with it, read-aloud reads the same formulas
+ * (scripts/agent/tts_text.py FORMULAS), and tools/check-read-aloud-text.py holds
+ * the three copies equal.
+ */
+function formulaPattern() {
+    return /(`+)(?!`)[\s\S]*?[^`]\1(?!`)|\\\$|\$\$[\s\S]+?\$\$|\$(?=[^\s$`])[^$`]*?[^\s$`]\$(?!\d)|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)/g;
+}
+
+function isFormula(match) {
+    return /^(?:\$|\\[[(])/.test(match);
+}
+
+// Source syntax that is one thing on screen, or nothing: an image (an object),
+// an HTML tag (nothing, or a line break), an autolink's brackets, an entity.
+const UNITS = new RegExp(formulaPattern().source
+    + /|!\[[^\]\n]*\]\([^)\n]*\)|<\/?[A-Za-z][\w-]*(?:\s[^<>]*)?\/?>|<(?:(?:https?|ftp):\/\/|mailto:)[^\s<>]*>|&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);/.source, "g");
+const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " " };
+
+/** Where each unit of `s` starts: index -> [end, what it is on screen]. */
+function units(s) {
+    const at = new Map();
+    const pattern = new RegExp(UNITS.source, "g");
+    for (let m; (m = pattern.exec(s)) !== null;) {
+        const whole = m[0];
+        const end = m.index + whole.length;
+        if (whole.startsWith("`") || whole === "\\$")
+            continue; // code and an escaped dollar are shown as written
+        if (isFormula(whole) || whole.startsWith("!["))
+            at.set(m.index, [end, OBJECT]);
+        else if (whole.startsWith("&")) {
+            const name = whole.slice(1, -1);
+            const code = name[0] === "#" ? parseInt(name[1] === "x" || name[1] === "X" ? name.slice(2) : name.slice(1), name[1] === "x" || name[1] === "X" ? 16 : 10) : NaN;
+            const char = ENTITIES[name] ?? (isNaN(code) ? null : String.fromCodePoint(code));
+            if (char !== null)
+                at.set(m.index, [end, char]);
+        } else if (/^<(?:https?|ftp|mailto)/.test(whole)) {
+            at.set(m.index, [m.index + 1, ""]);
+            at.set(end - 1, [end, ""]);
+        } else
+            at.set(m.index, [end, /^<br\b/i.test(whole) ? " " : ""]);
+    }
+    return at;
+}
 
 /**
  * Strip markdown syntax and collapse whitespace, keeping `map[i]` -- where the
@@ -23,40 +78,47 @@ const SPACES = " \t\n\r\u00a0\u2028\u2029\ufdd0\ufdd1";
 function normalize(s) {
     const chars = [];
     const map = [];
+    const unitAt = units(s);
     let prevSpace = true;
+    const emit = (c, at) => {
+        if (SPACES.indexOf(c) !== -1) {
+            if (!prevSpace) {
+                chars.push(" ");
+                map.push(at);
+                prevSpace = true;
+            }
+            return;
+        }
+        if (DROPPED.indexOf(c) !== -1)
+            return;
+        chars.push(c.toLowerCase());
+        map.push(at);
+        prevSpace = false;
+    };
     for (let i = 0; i < s.length; i++) {
         if (i === 0 || s[i - 1] === "\n") {
             const rest = s.slice(i);
             const skip = (RULE_LINE.exec(rest) ?? BLOCK_MARKER.exec(rest))[0].length;
             if (skip > 0) {
                 i += skip - 1;
-                if (!prevSpace) {
-                    chars.push(" ");
-                    map.push(i);
-                    prevSpace = true;
-                }
+                emit(" ", i);
                 continue;
             }
         }
-        const c = s[i];
-        if (SPACES.indexOf(c) !== -1) {
-            if (!prevSpace) {
-                chars.push(" ");
-                map.push(i);
-                prevSpace = true;
-            }
+        const unit = unitAt.get(i);
+        if (unit) {
+            for (const c of unit[1])
+                emit(c, i);
+            i = unit[0] - 1;
             continue;
         }
+        const c = s[i];
         if (c === "]" && s[i + 1] === "(") { // a link's target: the view shows the label only
             const close = s.indexOf(")", i + 2);
             i = close === -1 ? s.length : close;
             continue;
         }
-        if (DROPPED.indexOf(c) !== -1)
-            continue;
-        chars.push(c.toLowerCase());
-        map.push(i);
-        prevSpace = false;
+        emit(c, i);
     }
     if (prevSpace && chars.length > 0) { // a trailing space belongs to no word
         chars.pop();
@@ -184,6 +246,8 @@ function findWordAt(rendered, phrase, progress) {
 
 if (typeof module !== "undefined")
     module.exports = {
+        formulaPattern: formulaPattern,
+        isFormula: isFormula,
         normalize: normalize,
         findPhrase: findPhrase,
         findWordAt: findWordAt,

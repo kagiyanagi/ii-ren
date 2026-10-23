@@ -9,6 +9,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import QtQuick
 import QtMultimedia
+import "speechMatch.js" as SpeechMatch
 
 /**
  * The left sidebar's agent: Claude Code, Codex or Antigravity, whichever the user has
@@ -1817,10 +1818,15 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             root.ttsReady = false;
             root._ttsPending = ({});
+            // Nothing asked for will be answered now: the reading ends with its
+            // last clip rather than waiting on the rest.
+            root._speakOutstanding = 0;
+            root._speakParts = [];
             if (exitCode === 127)
                 root.ttsAvailable = false;
             if (root.speakingMessageId.length > 0 && !readerLoader.item?.player.playing)
                 root.speakingMessageId = "";
+            root._endIfDone();
         }
     }
 
@@ -1834,6 +1840,7 @@ Singleton {
             id: reader
             readonly property alias player: readerPlayer
             readonly property alias output: readerOutput
+            readonly property alias markClock: readerMarks
             // Clips still to play after the current one, as {path, chunk, share, span, marks}:
             // long-form replies come back as several of them, and each one carries
             // the text it says, and which slice of it, so the transcript can mark
@@ -1847,6 +1854,12 @@ Singleton {
 
             MediaDevices {
                 id: readerDevices
+            }
+
+            MarkClock {
+                id: readerMarks
+                player: readerPlayer
+                marks: root._speakingMarks
             }
 
             MediaPlayer {
@@ -1864,6 +1877,16 @@ Singleton {
                         const next = reader.queue[0];
                         reader.queue = reader.queue.slice(1);
                         reader.playEntry(next);
+                        return;
+                    }
+                    // The next part is still being made: wait for it, marking
+                    // nothing meanwhile. Ending here was the local voice stopping
+                    // after its first sentence -- Kokoro makes a part in about the
+                    // time the one before takes to say, so it often arrives late,
+                    // and the reading it arrived for had already been called over.
+                    if (root._speakWaiting) {
+                        root._speakingChunk = "";
+                        root._speakingMarks = [];
                         return;
                     }
                     reader.finish();
@@ -1990,17 +2013,38 @@ Singleton {
      * Only real sentence ends are cut, and short ones are merged up to `minChunk`:
      * a pause the listener does not expect is worse than waiting a moment longer,
      * and every boundary here is one a person reading aloud would also pause at.
+     * Never inside a code block, inline code or a formula: each is read as one
+     * thing (scripts/agent/tts_text.py), and a cut through a fence left the next
+     * chunk opening on its closing ``` and reading the prose after it as code.
+     *
+     * The local voice is cut finer. Kokoro makes a part in about the time the one
+     * before it takes to say (measured: 1.1x real time on battery, 1.6x on AC,
+     * plus 0.2 s a part), so a part much longer than the last is silence while it
+     * renders: at those rates a 60-character first part and a 150-character second
+     * leave 4 s between them on battery. Each of its parts is a sentence, and a
+     * long one is cut at a comma as well -- a pause there is one a reader makes too.
      */
     // The opening chunk is allowed to be short so speaking starts sooner; the rest
     // are kept long, since by then the player is busy and only the total matters.
     readonly property int _minFirstChunk: 60
     readonly property int _minChunk: 140
     readonly property int _maxChunks: 8
+    readonly property int _minLocalChunk: 40
+    readonly property int _maxLocalChunk: 120
 
-    function _splitForSpeech(text: string): var {
+    function _splitForSpeech(text: string, local: bool): var {
         const trimmed = (text ?? "").trim();
-        if (trimmed.length <= root._minFirstChunk)
+        const firstFloor = local ? root._minLocalChunk : root._minFirstChunk;
+        if (trimmed.length <= firstFloor)
             return [trimmed];
+        const units = [];
+        const whole = /```[\s\S]*?(?:```|$)|<think>[\s\S]*?(?:<\/think>|$)/g;
+        for (let m; (m = whole.exec(trimmed)) !== null;)
+            units.push([m.index, whole.lastIndex]);
+        const inline = SpeechMatch.formulaPattern();
+        for (let m; (m = inline.exec(trimmed)) !== null;)
+            units.push([m.index, inline.lastIndex]);
+        const inUnit = at => units.some(([from, to]) => from < at && at < to);
         // Split *after* the punctuation, keeping it with the sentence it ends.
         // Chunks are slices of the text, whitespace and all: joined back with
         // spaces, a list item's `- ` stopped being at the start of a line, the
@@ -2011,7 +2055,7 @@ Singleton {
         let start = 0;
         let match;
         const add = end => {
-            const floor = spans.length === 1 ? root._minFirstChunk : root._minChunk;
+            const floor = local ? root._minLocalChunk : spans.length === 1 ? root._minFirstChunk : root._minChunk;
             const last = spans[spans.length - 1];
             if (last && last.end - last.start < floor)
                 last.end = end;
@@ -2019,15 +2063,50 @@ Singleton {
                 spans.push({ start: start, end: end });
         };
         while ((match = ends.exec(trimmed)) !== null) {
+            if (inUnit(match.index + 1))
+                continue;
             add(match.index + 1);
             start = ends.lastIndex;
         }
         add(trimmed.length);
+        if (local)
+            return root._cutClauses(trimmed, spans, inUnit).map(span => trimmed.slice(span.start, span.end));
         // Past the cap the tail is spoken as one piece: more requests would not
         // start the audio any sooner, and each one costs a round trip.
         if (spans.length > root._maxChunks)
             spans.splice(root._maxChunks - 1, spans.length, { start: spans[root._maxChunks - 1].start, end: trimmed.length });
         return spans.map(span => trimmed.slice(span.start, span.end));
+    }
+
+    /**
+     * Each span longer than `_maxLocalChunk` cut at commas, colons and semicolons:
+     * at the last one that keeps the piece within it, else the first one past it,
+     * never leaving a piece under 30 characters -- a clause that short said alone
+     * loses the run of the sentence it belongs to.
+     */
+    function _cutClauses(text: string, spans: var, inUnit: var): var {
+        const out = [];
+        for (const span of spans) {
+            let from = span.start;
+            while (span.end - from > root._maxLocalChunk) {
+                const pauses = [];
+                const clause = /[,;:]\s+/g;
+                clause.lastIndex = from;
+                for (let m; (m = clause.exec(text)) !== null && m.index < span.end;) {
+                    const cut = m.index + 1;
+                    if (cut - from >= 30 && span.end - clause.lastIndex >= 30 && !inUnit(cut))
+                        pauses.push([cut, clause.lastIndex]);
+                }
+                if (pauses.length === 0)
+                    break;
+                const within = pauses.filter(([cut]) => cut - from <= root._maxLocalChunk);
+                const [cut, next] = within.length > 0 ? within[within.length - 1] : pauses[0];
+                out.push({ start: from, end: cut });
+                from = next;
+            }
+            out.push({ start: from, end: span.end });
+        }
+        return out;
     }
 
     // What the clip now playing is saying, and which slice of that text it covers
@@ -2046,20 +2125,12 @@ Singleton {
      * Where in the chunk the word now being spoken starts, or -1 when the voice
      * came back without timings and `speakingProgress` has to stand in.
      *
-     * Exact: edge reports a boundary per word off the synthesis stream, aligned
-     * to this text before it was ever played (scripts/agent/tts_marks.py). The
-     * only slack left is how often the player reports its position.
+     * Both voices time their words -- Edge per word off the synthesis stream,
+     * Kokoro per phoneme -- aligned to this text before it was ever played
+     * (scripts/agent/tts.py, tts_marks.py). MarkClock moves the mark when each
+     * word is due rather than at the player's next position report.
      */
-    readonly property int speakingOffset: {
-        const marks = root._speakingMarks;
-        if (marks.length === 0 || root._speakingChunk.length === 0)
-            return -1;
-        const position = readerLoader.item?.player.position ?? 0;
-        let offset = marks[0][1];
-        for (let i = 0; i < marks.length && marks[i][0] <= position; i++)
-            offset = marks[i][1];
-        return offset;
-    }
+    readonly property int speakingOffset: root._speakingChunk.length === 0 ? -1 : (readerLoader.item?.markClock.offset ?? -1)
 
     /**
      * How far into that chunk the voice is, 0..1, or -1 when nothing is read.
@@ -2083,6 +2154,18 @@ Singleton {
     // Bumped by every new reading, so replies to a superseded one are discarded
     // rather than played over the top of it.
     property int _speakEpoch: 0
+    // The reading's parts, the next one to ask for, and how many are being made.
+    property var _speakParts: []
+    property int _speakNext: 0
+    property int _speakOutstanding: 0
+    /** Whether more of the reading is still to come from the synthesizer. */
+    readonly property bool _speakWaiting: root.speakingMessageId.length > 0
+        && (root._speakOutstanding > 0 || root._speakNext < root._speakParts.length)
+    // Parts asked for ahead of the one playing. The server makes them one at a
+    // time, in order, so two keep it busy. Asked for all at once, the local voice
+    // went on making a long reply after it had been stopped: by its measured
+    // rates, minutes of work for a few thousand characters.
+    readonly property int _speakAhead: 2
 
     /** Read `text` out loud through the shell's own player. */
     function speak(text: string): void {
@@ -2092,20 +2175,41 @@ Singleton {
         if (readerLoader.item?.player.playing)
             readerLoader.item.fadeAndStop();
         const epoch = ++root._speakEpoch;
-        const chunks = root._splitForSpeech(text);
-        // Requested up front: the server answers them in order, so the clips queue
-        // up in order too, and chunk two is already rendering while chunk one plays.
-        chunks.forEach((chunk, index) => root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index, chunk)));
+        root._speakParts = root._splitForSpeech(text, Config.options.agent.ttsEngine === "kokoro");
+        root._speakNext = 0;
+        root._speakOutstanding = 0;
+        root._askForParts(epoch);
+    }
+
+    /**
+     * Ask for the reading's next parts, up to `_speakAhead` in the making. The
+     * server answers in order, so the clips queue up in order too, and the next
+     * part is already rendering while one plays.
+     */
+    function _askForParts(epoch: int): void {
+        while (epoch === root._speakEpoch && root.speakingMessageId.length > 0
+                && root._speakOutstanding < root._speakAhead && root._speakNext < root._speakParts.length) {
+            const index = root._speakNext++;
+            const chunk = root._speakParts[index];
+            root._speakOutstanding++;
+            root._ttsRequest(chunk, reply => root._onSpoken(reply, epoch, index, chunk));
+        }
     }
 
     function _onSpoken(reply: var, epoch: int, index: int, chunk: string): void {
-        const stale = epoch !== root._speakEpoch || root.speakingMessageId.length === 0;
+        const current = epoch === root._speakEpoch;
+        if (current)
+            root._speakOutstanding--;
+        const stale = !current || root.speakingMessageId.length === 0;
         if (!(reply.ok ?? false) || (reply.paths ?? []).length === 0) {
             // Only the opening chunk reports: a failure halfway through is a gap in
             // the reading, not a reason to replace it with an error bubble.
             if (!stale && index === 0) {
                 root.speakingMessageId = "";
                 root.addMessage(reply.error?.length > 0 ? reply.error : Translation.tr("Could not synthesize speech"), root.interfaceRole);
+            } else if (!stale) {
+                root._askForParts(epoch);
+                root._endIfDone();
             }
             return;
         }
@@ -2115,8 +2219,17 @@ Singleton {
             cleanupOrphan.running = true;
             return;
         }
+        root._askForParts(epoch);
         readerLoader.active = true;
         readerLoader.item.enqueue(reply.paths, chunk, reply.marks ?? []);
+    }
+
+    /** Over, if the player sat waiting for a part that will now never come. */
+    function _endIfDone(): void {
+        const reader = readerLoader.item;
+        if (root._speakWaiting || !reader || reader.queue.length > 0 || reader.player.playbackState === MediaPlayer.PlayingState)
+            return;
+        reader.finish();
     }
 
     Process {
