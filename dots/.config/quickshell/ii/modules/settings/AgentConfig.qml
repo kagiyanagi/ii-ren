@@ -661,7 +661,7 @@ ContentPage {
         ConfigSelectionRow {
             buttonIcon: "cloud"
             text: Translation.tr("Dictation runs")
-            summary: Translation.tr("Private on this computer, or quicker and sharper online. Hover one to compare")
+            summary: Translation.tr("On this computer stays private; online sends your recordings to Groq. Hover one to compare")
             currentValue: Config.options.agent.sttEngine
             onSelected: newValue => Config.options.agent.sttEngine = newValue
             options: [
@@ -783,11 +783,47 @@ ContentPage {
         }
 
         ConfigSelectionRow {
+            buttonIcon: "cloud"
+            text: Translation.tr("Read-aloud runs")
+            summary: AgentSetup.kokoroInstalled ? Translation.tr("On this computer stays private; online sends each reply to Microsoft. Hover one to compare")
+                : Translation.tr("On this computer needs the shell's Python packages updated first: iiren update")
+            currentValue: Config.options.agent.ttsEngine
+            onSelected: newValue => Config.options.agent.ttsEngine = newValue
+            options: [
+                {
+                    displayName: Translation.tr("On this computer"),
+                    value: "kokoro",
+                    enabled: AgentSetup.kokoroInstalled,
+                    tooltip: Translation.tr("+ Nothing read aloud leaves this computer\n+ Free and offline, no account\n– A one-time 205 MB download, and about 400 MB of memory once used\n– The word being read is estimated, so the highlight can drift")
+                },
+                {
+                    displayName: Translation.tr("Online · Microsoft"),
+                    value: "edge",
+                    tooltip: Translation.tr("+ Marks each word exactly as it is spoken\n+ Nothing to download, light on any computer\n– The text of each reply is sent to Microsoft\n– Needs internet")
+                }
+            ]
+        }
+
+        // Each engine keeps its own pick, so switching back finds the voice it had.
+        ConfigSelectionRow {
+            id: ttsVoiceRow
+            readonly property bool local: Config.options.agent.ttsEngine === "kokoro"
             buttonIcon: "record_voice_over"
             text: Translation.tr("Read-aloud voice")
-            currentValue: Config.options.agent.ttsVoice || "en-US-AriaNeural"
-            onSelected: newValue => Config.options.agent.ttsVoice = newValue
-            options: [
+            currentValue: ttsVoiceRow.local ? (Config.options.agent.ttsLocalVoice || "af_heart") : (Config.options.agent.ttsVoice || "en-US-AriaNeural")
+            onSelected: newValue => {
+                if (ttsVoiceRow.local)
+                    Config.options.agent.ttsLocalVoice = newValue;
+                else
+                    Config.options.agent.ttsVoice = newValue;
+            }
+            options: ttsVoiceRow.local ? [
+                { displayName: "Heart · US", value: "af_heart" },
+                { displayName: "Bella · US", value: "af_bella" },
+                { displayName: "Michael · US", value: "am_michael" },
+                { displayName: "Emma · UK", value: "bf_emma" },
+                { displayName: "George · UK", value: "bm_george" }
+            ] : [
                 { displayName: "Aria · US", value: "en-US-AriaNeural" },
                 { displayName: "Guy · US", value: "en-US-GuyNeural" },
                 { displayName: "Sonia · UK", value: "en-GB-SoniaNeural" },

@@ -84,6 +84,8 @@ Flow {
                 sourceComponent: StyledToolTip {
                     parent: paletteButton
                     text: paletteButton.modelData.tooltip
+                    // Keyboard focus shows it too, as M3 asks of a tooltip.
+                    alternativeVisibleCondition: paletteButton.visualFocus
                 }
             }
         }

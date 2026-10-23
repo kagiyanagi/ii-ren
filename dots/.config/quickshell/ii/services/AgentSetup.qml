@@ -38,10 +38,20 @@ Singleton {
         }
     }
 
+    // Local read-aloud's kokoro-onnx, in the shell's venv found as scripts/agent/tts.sh
+    // finds it. A venv from before it was added has edge-tts only, until `iiren update`.
+    property bool kokoroInstalled: false
+    property Process kokoroProbe: Process {
+        command: ["bash", "-c", 'venv="$(eval echo "${ILLOGICAL_IMPULSE_VIRTUAL_ENV:-$HOME/.local/state/quickshell/.venv}")"; '
+            + 'exec "$venv/bin/python" -c "import importlib.util, sys; sys.exit(importlib.util.find_spec(\'kokoro_onnx\') is None)"']
+        onExited: exitCode => root.kokoroInstalled = exitCode === 0
+    }
+
     /** Ask every agent again, as the page opens. */
     function refresh(): void {
         root.agents.forEach(agent => agent.refresh());
         root.antigravity.checkLatest();
         root.whisperProbe.running = true;
+        root.kokoroProbe.running = true;
     }
 }

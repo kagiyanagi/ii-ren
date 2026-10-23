@@ -19,3 +19,4 @@ opencv-contrib-python-headless
 requests
 onnxruntime
 edge-tts
+kokoro-onnx

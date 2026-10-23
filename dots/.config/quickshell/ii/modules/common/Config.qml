@@ -155,9 +155,13 @@ Singleton {
                 property string sttLanguage: "en"      // en | auto
                 property string sttPrompt: "Terms: QML, Quickshell, Hyprland, ii-ren, LaTeX, extension, sidebar, attachment, transcript."
                 property string sttSource: ""
-                // Read-aloud's edge-tts voice, e.g. "en-GB-SoniaNeural". Empty is
-                // $ILLOGICAL_IMPULSE_TTS_VOICE, else en-US-AriaNeural (scripts/agent/tts.py).
+                // Read-aloud: "edge" is Microsoft's online voices, "kokoro" Kokoro-82M
+                // on this computer (scripts/agent/tts.py). Each keeps its own voice.
+                property string ttsEngine: "edge"      // edge | kokoro
+                // Edge's voice, e.g. "en-GB-SoniaNeural". Empty is
+                // $ILLOGICAL_IMPULSE_TTS_VOICE, else en-US-AriaNeural.
                 property string ttsVoice: ""
+                property string ttsLocalVoice: ""      // Kokoro's, e.g. "bf_emma"; empty is af_heart
 
             }
 

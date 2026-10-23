@@ -1728,8 +1728,9 @@ Singleton {
 
     // ── Read-aloud ─────────────────────────────────────────────────
     //
-    // scripts/agent/tts.py only *synthesizes* (edge-tts, with word timings) and the
-    // shell plays the file itself. MediaPlayer.stop() drains the stream the same
+    // scripts/agent/tts.py only *synthesizes* -- online with edge-tts (exact word
+    // timings), or on this computer with Kokoro (estimated ones) -- and the shell
+    // plays the file itself. MediaPlayer.stop() drains the stream the same
     // graceful way a clip ends on its own, and the volume is faded to zero first;
     // killing a player mid-waveform into a Bluetooth A2DP sink is a loud buzz.
 
@@ -1753,7 +1754,16 @@ Singleton {
     function _ttsRequest(text: string, callback: var): void {
         const id = `tts-${root._ttsNextId++}`;
         const out = `${root.ttsDir}/${id}-${Date.now()}.mp3`;
-        const frame = JSON.stringify({ id: id, text: text, out: out, voice: Config.options.agent.ttsVoice }) + "\n";
+        const local = Config.options.agent.ttsEngine === "kokoro";
+        const frame = JSON.stringify({
+            id: id,
+            text: text,
+            out: out,
+            engine: local ? "kokoro" : "edge",
+            voice: local ? Config.options.agent.ttsLocalVoice : Config.options.agent.ttsVoice,
+            // Beside dictation's whisper models; Kokoro's are fetched here on first use.
+            modelDir: root.sttModelDir
+        }) + "\n";
         root._ttsPending[id] = callback;
         if (!root.ttsReady) {
             root._ttsQueuedRequests.push(frame);
@@ -1777,6 +1787,10 @@ Singleton {
                 try {
                     reply = JSON.parse(line);
                 } catch (e) {
+                    return;
+                }
+                if (reply.event === "status") {
+                    root.addMessage(reply.text ?? "", root.interfaceRole);
                     return;
                 }
                 if (reply.event === "ready") {
