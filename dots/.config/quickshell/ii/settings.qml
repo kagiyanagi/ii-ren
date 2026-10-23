@@ -46,7 +46,7 @@ ApplicationWindow {
     // result stays marked so another can be tried without typing again.
     readonly property string searchQuery: searchInput.text.trim()
     readonly property bool searching: searchQuery.length > 0
-    readonly property var searchResults: searching && SearchRegistry.ready ? SearchRegistry.query(searchQuery, 50) : []
+    readonly property var searchResults: searching && SearchRegistry.ready ? SearchRegistry.query(searchQuery) : []
     property int searchCursor: 0
     property string openedResult: ""
     // A result on another page waits here until that page has loaded.
@@ -400,6 +400,7 @@ ApplicationWindow {
     color: Appearance.m3colors.m3background
 
     ColumnLayout {
+        id: windowContent
         anchors {
             fill: parent
             margins: contentPadding
@@ -545,8 +546,10 @@ ApplicationWindow {
                         } else if (event.key === Qt.Key_Up) {
                             root.moveSearchCursor(-1);
                             event.accepted = true;
-                        } else if (event.key === Qt.Key_Escape && searchInput.text.length > 0) {
-                            searchInput.clear();
+                        } else if (event.key === Qt.Key_Escape) {
+                            // Escape lets go of the field and keeps what was
+                            // typed (3.7); the clear button is what clears.
+                            windowContent.forceActiveFocus();
                             event.accepted = true;
                         }
                     }
@@ -561,7 +564,24 @@ ApplicationWindow {
                 // the pair, not one each.
                 Item {
                     id: listArea
-                    readonly property Flickable list: root.searching ? resultsList : tabFlick
+                    // Which list should show, and which does: the one leaving
+                    // fades out on fast effects before the next fades in (M3's
+                    // clean fade), rather than the two crossing. Typing before
+                    // the index is read keeps the pages up, not an empty pane.
+                    readonly property string wanted: !root.searching || !SearchRegistry.ready ? "pages"
+                        : root.searchResults.length > 0 ? "results" : "empty"
+                    property string showing: "pages"
+                    onWantedChanged: {
+                        listArea.showing = "";
+                        paneSwap.restart();
+                    }
+                    Timer {
+                        id: paneSwap
+                        interval: Appearance.animation.elementMoveExit.duration
+                        onTriggered: listArea.showing = listArea.wanted
+                    }
+
+                    readonly property Flickable list: listArea.showing === "pages" ? tabFlick : resultsList
                     readonly property real scrolled: list.contentY - list.originY
                     readonly property real fadeLength: 24
                     readonly property real topFade: Math.max(0, Math.min(scrolled, fadeLength))
@@ -585,7 +605,7 @@ ApplicationWindow {
 
                     Fade {
                         anchors.fill: parent
-                        shown: !root.searching
+                        shown: listArea.showing === "pages"
 
                         StyledFlickable {
                             id: tabFlick
@@ -639,7 +659,7 @@ ApplicationWindow {
                     // next keystroke stays put rather than being rebuilt (4.2).
                     Fade {
                         anchors.fill: parent
-                        shown: root.searching && root.searchResults.length > 0
+                        shown: listArea.showing === "results"
 
                         StyledListView {
                             id: resultsList
@@ -675,7 +695,7 @@ ApplicationWindow {
                     }
 
                     PagePlaceholder {
-                        shown: root.searching && SearchRegistry.ready && root.searchResults.length === 0
+                        shown: listArea.showing === "empty"
                         icon: "search_off"
                         title: Translation.tr("No results")
                         description: Translation.tr("Nothing in settings matches “%1”").arg(root.searchQuery)
