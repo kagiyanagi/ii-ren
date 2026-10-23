@@ -10,7 +10,6 @@ import qs.modules.ii.settings
 ContentPage {
     id: page
     readonly property int index: 11
-    property bool register: parent.register ?? false
     forceWidth: true
 
     property string searchText: ""

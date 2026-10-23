@@ -15,7 +15,9 @@ RippleButton {
     id: root
     property string buttonIcon
     property string summary
-    property string searchString: text
+    // More words search finds this row by, comma-separated: what is on the
+    // page it opens. Read from the file by settingsSearch.js, not here.
+    property string keywords
     property color highlightColor: Appearance.colors.colSecondaryContainer
 
     Layout.fillWidth: true
@@ -27,10 +29,12 @@ RippleButton {
     colBackground: ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
 
     SearchHandler {
-        searchString: root.searchString
+        searchString: root.text
+        flash: highlightOverlay
     }
 
     HighlightOverlay {
+        id: highlightOverlay
         x: -root.backgroundBleedLeft
         width: root.width + root.backgroundBleedLeft + root.backgroundBleedRight
         height: root.height

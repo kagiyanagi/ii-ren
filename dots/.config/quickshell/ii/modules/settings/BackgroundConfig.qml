@@ -10,7 +10,6 @@ import qs.modules.ii.settings
 ContentPage {
     id: page
     readonly property int index: 6
-    property bool register: parent.register ?? false
     forceWidth: true
 
     // A video wallpaper is swapped by mpvpaper, which knows nothing about the

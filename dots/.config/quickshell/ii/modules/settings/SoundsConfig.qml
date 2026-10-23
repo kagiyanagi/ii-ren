@@ -17,7 +17,6 @@ import qs.modules.common.utils
 ContentPage {
     id: page
     readonly property int index: 4
-    property bool register: parent.register ?? false
     forceWidth: true
 
     readonly property var opts: Config.options.sounds

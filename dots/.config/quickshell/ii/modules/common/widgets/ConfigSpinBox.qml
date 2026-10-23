@@ -52,6 +52,7 @@ Item {
 
     SearchHandler {
         searchString: root.text
+        flash: highlightOverlay
     }
 
     RowLayout {

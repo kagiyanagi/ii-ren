@@ -9,6 +9,8 @@ Rectangle {
     opacity: 0
     z: -1
 
+    readonly property alias running: blinkAnimation.running
+
     function startAnimation() {
         blinkAnimation.start()
     }

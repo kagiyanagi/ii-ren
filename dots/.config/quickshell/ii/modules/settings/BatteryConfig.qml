@@ -19,7 +19,6 @@ import "batteryHistory.js" as History
 ContentPage {
     id: page
     readonly property int index: 3
-    property bool register: parent.register ?? false
     forceWidth: true
 
     // UPower names the object after the kernel's, anything outside [A-Za-z0-9_] as _.

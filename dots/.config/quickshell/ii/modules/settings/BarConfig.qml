@@ -11,7 +11,6 @@ ContentPage {
     id: page
     forceWidth: true
     readonly property int index: 5
-    property bool register: parent.register ?? false
 
     property var componentMap: ({
         "clock": clockSection,

@@ -54,6 +54,22 @@ Item {
         contentColor: Appearance.colors.colOnLayer1
     }
 
+    HighlightOverlay {
+        id: highlightOverlay
+        x: -root.backgroundBleedLeft
+        width: root.width + root.backgroundBleedLeft + root.backgroundBleedRight
+        height: root.height
+        topLeftRadius: root.topLeftRadius
+        topRightRadius: root.topRightRadius
+        bottomLeftRadius: root.bottomLeftRadius
+        bottomRightRadius: root.bottomRightRadius
+    }
+
+    SearchHandler {
+        searchString: root.text
+        flash: highlightOverlay
+    }
+
     // On ConfigSwitch's 8 inset, so the icon lines up with the rows around it.
     RowLayout {
         anchors.fill: parent

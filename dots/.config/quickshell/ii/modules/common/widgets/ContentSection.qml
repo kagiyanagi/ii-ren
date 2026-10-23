@@ -11,6 +11,7 @@ ColumnLayout {
     property string tooltip: ""
     property bool collapsible: false
     property bool expanded: false
+    // More words search finds this section by; read from the file, not here.
     property list<string> stringMap: []
     default property alias contentData: sectionContent.contentData
 
@@ -20,25 +21,12 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 10
 
-    Component.onCompleted: {
-        // `page` is the enclosing ContentPage's id, resolved out of the caller's
-        // file scope. 146 of the 177 callers are sub-components that never had
-        // one, and a bare reference throws a ReferenceError there rather than
-        // skipping registration.
-        const ownerPage = (typeof page !== 'undefined') ? page : null
-        if (!ownerPage || ownerPage.register == false) return
-        // Quick is page 0, so a falsy test left it out of search entirely.
-        if (typeof ownerPage.index !== 'number') return
-        SearchRegistry.registerSection({
-            pageIndex: ownerPage.index,
-            title: root.title,
-            searchStrings: root.stringMap.slice(),
-            yPos: root.y
-        })
-    }
+    // What SearchHandler looks for on the way up from a row.
+    readonly property string searchScope: "section"
 
     SearchHandler {
         searchString: root.title
+        flash: highlightOverlay
     }
 
     // The header is its own Item, not a bare RowLayout: a MouseArea anchored

@@ -22,8 +22,12 @@ ColumnLayout {
     Layout.alignment: Qt.AlignTop
     spacing: 4
 
+    // What SearchHandler looks for on the way up from a row.
+    readonly property string searchScope: "subsection"
+
     SearchHandler {
         searchString: root.title
+        flash: highlightOverlay
     }
 
     // The header is its own Item, not a bare RowLayout: a MouseArea anchored

@@ -5,370 +5,129 @@ import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "settingsSearch.js" as Search
 
-Item {
+/**
+ * Settings search. settings.qml hands its page list to index(); every page, and
+ * every sub-page a page opens, is read as text and parsed (settingsSearch.js),
+ * so a setting is searchable before its page has ever been opened and nothing
+ * registers at runtime. query() ranks.
+ *
+ * Opening a result sets `target`; the SearchHandler of the row it names claims
+ * it once that row exists (now, or when its page or sub-page has loaded),
+ * brings the row into view and flashes it.
+ */
+Singleton {
     id: root
 
-    property list<var> sections: []
-    // tools/check-settings-search.py holds this to every page that declares
-    // a search index.
-    readonly property var indexedPages: ["QuickConfig", "GeneralConfig", "BatteryConfig", "SoundsConfig", "BarConfig", "BackgroundConfig",
-        "WidgetsConfig", "InterfaceConfig", "ServicesConfig", "AgentConfig", "ExtensionsConfig", "HyprlandConfig",
-        "LockConfig", "AdvancedConfig", "ProfilesConfig"]
+    // settings.qml's pages: [{ id, name, icon, component }]. Reassigned when
+    // the language changes, which only rebuilds; the files are read once.
+    property var pages: []
+    property var entries: []
+    property var searchIndex: null
+    readonly property bool ready: searchIndex !== null
 
-    property string currentSearch: ""
-    onCurrentSearchChanged: {
-        console.log("Current found search result string:", currentSearch)
+    // { label, section, subsection }, as displayed; empty strings for a section
+    // or subsection the index could not name. Null when nothing is being opened.
+    property var target: null
+
+    // Sub-pages a page opens from a list kept somewhere else: the widget
+    // gallery's cards name theirs in the widgets registry.
+    readonly property var subPageSources: ({
+        "widgets": "modules/ii/background/widgets/WidgetsRegistry.qml"
+    })
+
+    function index(pageList) {
+        root.pages = pageList;
+        if (reader.busy || root.entries.length > 0)
+            return;
+        reader.start(pageList.map((page, i) => ({
+            page: i,
+            path: page.component,
+            subPage: ""
+        })));
     }
 
-    function startIndexing() {
-        sections = []
-        // Every page, read as text. This is the only path into search: pages
-        // register their sections at runtime only when `register` is true, and
-        // nothing in the settings app sets it, so the six pages that used to be
-        // missing from this list were not searchable at all.
-        pageFile.start(root.indexedPages.map(name => FileUtils.trimFileProtocol(Quickshell.shellPath(`modules/settings/${name}.qml`))))
+    function query(text, limit) {
+        if (!root.searchIndex)
+            return [];
+        return Search.search(root.searchIndex, text, limit);
     }
 
-    Component.onCompleted: startIndexing()
+    function rebuild() {
+        if (root.entries.length === 0)
+            return;
+        root.searchIndex = Search.buildIndex(root.entries, root.pages, s => Translation.tr(s));
+    }
+
+    onPagesChanged: rebuild()
 
     Connections {
         target: Translation
-        function onLanguageCodeChanged() {
-            startIndexing()
+        function onTranslationsChanged() {
+            root.rebuild();
+        }
+        function onGeneratedTranslationsChanged() {
+            root.rebuild();
         }
     }
 
+    // One file at a time; a page's sub-pages join the queue when it is read.
     FileView {
-        id: pageFile
+        id: reader
         blockLoading: true
+        printErrors: false
 
-        property var files: []
-        property int currentIndex: 0
+        property var queue: []
+        property var queued: ({})
+        property var current: null
+        property var found: []
+        property bool busy: false
 
-        function start(filesArray) {
-            files = filesArray
-            currentIndex = 0
-            loadNext()
+        function enqueue(file) {
+            if (reader.queued[file.path])
+                return;
+            reader.queued[file.path] = true;
+            reader.queue.push(file);
         }
 
-        function loadNext() {
-            if (currentIndex >= files.length)
-                return
+        function start(files) {
+            reader.busy = true;
+            for (const file of files)
+                reader.enqueue(file);
+            reader.next();
+        }
 
-            path = files[currentIndex]
+        function next() {
+            if (reader.queue.length === 0) {
+                reader.busy = false;
+                root.entries = reader.found;
+                root.rebuild();
+                return;
+            }
+            reader.current = reader.queue.shift();
+            reader.path = FileUtils.trimFileProtocol(Quickshell.shellPath(reader.current.path));
         }
 
         onLoaded: {
-            root.indexQmlFile(text())
-
-            currentIndex++
-
-            Qt.callLater(() => loadNext())
+            const file = reader.current;
+            const text = reader.text();
+            // A source only names sub-pages; it is not drawn in settings.
+            if (!file.source) {
+                const found = Search.indexFile(text, file.subPage);
+                for (const entry of found)
+                    entry.page = file.page;
+                reader.found = reader.found.concat(found);
+            }
+            if (!file.subPage) {
+                for (const sub of Search.subPagesOf(text))
+                    reader.enqueue({ page: file.page, path: `modules/settings/${sub}`, subPage: sub });
+                const source = root.subPageSources[root.pages[file.page].id];
+                if (source && !file.source)
+                    reader.enqueue({ page: file.page, path: source, subPage: "", source: true });
+            }
+            Qt.callLater(reader.next);
         }
+        onLoadFailed: Qt.callLater(reader.next)
     }
-
-
-    // Fetches the needed string like text, title from the qml file
-
-    function indexQmlFile(qmlText) {
-        if (!qmlText)
-            return
-
-        let sections = extractBlocks(qmlText, "ContentSection")
-
-        for (let sectionBlock of sections) {
-
-            let title = extractProperty(sectionBlock, "title")
-
-            let searchStrings = []
-            if (title)
-                searchStrings.push(title)
-
-            // subsections
-            let subsections = extractBlocks(sectionBlock, "ContentSubsection")
-            for (let subBlock of subsections) {
-                let subTitle = extractProperty(subBlock, "title")
-                if (subTitle)
-                    searchStrings.push(subTitle)
-            }
-
-            // switches
-            let switches = extractBlocks(sectionBlock, "ConfigSwitch")
-            for (let swBlock of switches) {
-                let text = extractProperty(swBlock, "text")
-                if (text)
-                    searchStrings.push(text)
-            }
-
-            // spinbox
-            let spins = extractBlocks(sectionBlock, "ConfigSpinBox")
-            for (let spBlock of spins) {
-                let text = extractProperty(spBlock, "text")
-                if (text)
-                    searchStrings.push(text)
-            }
-
-            //console.log("[SearchRegistry] Indexed:", title, searchStrings)
-
-            let pageIndex = extractPageIndex(qmlText)
-
-            registerSection({
-                pageIndex: pageIndex,
-                title: title || "Unknown",
-                searchStrings: searchStrings
-            })
-        }
-
-        console.log("[SearchRegistry] Indexed", sections.length, "sections", "| Language:", Translation.languageCode)
-    }
-
-    // Helper function for indexQmlFile(), extracts blocks from the qml file
-
-    function extractBlocks(text, type) {
-        let results = []
-        let i = 0
-
-        while (i < text.length) {
-            let index = text.indexOf(type, i)
-            if (index === -1)
-                break
-
-            let braceStart = text.indexOf("{", index)
-            if (braceStart === -1)
-                break
-
-            let depth = 1
-            let j = braceStart + 1
-            let inString = false
-            let stringChar = ""
-
-            while (j < text.length && depth > 0) {
-                let ch = text[j]
-
-                // Comments are not code: an apostrophe in one ("the carousel's")
-                // opened a "string" that swallowed every section after it, so
-                // Quick indexed one section of three.
-                if (!inString && ch === "/" && text[j + 1] === "/") {
-                    const eol = text.indexOf("\n", j)
-                    j = eol === -1 ? text.length : eol
-                    continue
-                }
-                if (!inString && ch === "/" && text[j + 1] === "*") {
-                    const end = text.indexOf("*/", j + 2)
-                    j = end === -1 ? text.length : end + 2
-                    continue
-                }
-
-                if (!inString && (ch === '"' || ch === "'" || ch === "`")) {
-                    inString = true
-                    stringChar = ch
-                } else if (inString && ch === stringChar) {
-                    inString = false
-                } else if (!inString) {
-                    if (ch === "{") depth++
-                    else if (ch === "}") depth--
-                }
-
-                j++
-            }
-
-            let block = text.substring(braceStart + 1, j - 1)
-            results.push(block)
-
-            i = j
-        }
-
-        return results
-    }
-
-    // Helper function for indexQmlFile(), extracts properties from the qml file
-
-    function extractProperty(block, prop) {
-        let m
-
-        // Translation.tr("") or Translation.tr('')
-        m = block.match(new RegExp(prop + "\\s*:\\s*Translation\\.tr\\(\\s*[\"']([^\"']+)[\"']\\s*\\)"))
-        if (m) return m[1]
-
-        // ""
-        m = block.match(new RegExp(prop + "\\s*:\\s*\"([^\"]+)\""))
-        if (m) return m[1]
-
-        // ''
-        m = block.match(new RegExp(prop + "\\s*:\\s*'([^']+)'"))
-        if (m) return m[1]
-
-        return ""
-    }
-
-    // Helper function for indexQmlFile(), extracts the page index
-    
-    function extractPageIndex(qmlText) {
-        let m = qmlText.match(/readonly\s+property\s+int\s+index\s*:\s*(\d+)/)
-        return m ? parseInt(m[1]) : -1
-    }
-
-    function tokenize(text) {
-        if (!text || typeof text !== "string")
-            return []
-
-        return text
-            .toLowerCase()
-            .replace(/[^a-z0-9\sğüşöçıİ_\-\.]/g, " ")
-            .split(/[\s_\-\.]+/)
-            .filter(function(t) { return t.length > 1 })
-    }
-
-    function fuzzyMatch(word, query) {
-        let wi = 0
-        let qi = 0
-        let score = 0
-
-        word = word.toLowerCase()
-        query = query.toLowerCase()
-
-        while (wi < word.length && qi < query.length) {
-            if (word[wi] === query[qi]) {
-                score += 10
-                qi++
-            }
-            wi++
-        }
-
-        if (qi === query.length)
-            return score
-
-        return 0
-    }
-
-    function registerSection(data) {
-        // The six statically indexed pages register again from ContentSection
-        // once they load, which listed every one of their results twice.
-        if (sections.some(s => s.pageIndex === data.pageIndex && (s.titleKey === data.title || s.title === data.title)))
-            return
-        data.titleKey = data.title
-        const titleKey = data.title
-        const searchStringsKeys = [...data.searchStrings]
-
-        // Apply translations
-        data.title = Translation.tr(titleKey)
-        data.searchStrings = searchStringsKeys.map(s => Translation.tr(s))
-
-        let combined = (titleKey + " " + searchStringsKeys.join(" ") + " " + data.title + " " + data.searchStrings.join(" ")).toLowerCase()
-        
-        data._tokens = tokenize(combined)
-        data._searchText = combined
-        
-        sections.push(data)
-        
-        // console.log("[SearchRegistry] Registered section:", data.title, "with strings:", data.searchStrings)
-    }
-
-    function getBestResult(text) {
-        let results = getSearchResult(text)
-        if (results.length === 0)
-            return null
-
-        results.sort((a, b) => b.score - a.score)
-        return results[0]
-    }
-
-    function getResultsRanked(text) {
-        let results = getSearchResult(text)
-        results.sort((a, b) => b.score - a.score)
-        return results
-    }
-
-    function getSearchResult(query) {
-        if (!query || query.trim() === "") return []
-
-        query = query.toLowerCase().trim()
-        let queryTokens = tokenize(query)
-        let results = []
-
-        for (let section of sections) {
-            let totalScore = 0
-            let bestMatch = "" 
-            let bestMatchScore = 0
-            let bestMatchSource = "" 
-            
-            // direct match in title
-            if (section.title.toLowerCase().includes(query)) {
-                totalScore += 1000
-                if (bestMatchScore < 1000) {
-                    bestMatch = section.title
-                    bestMatchSource = section.title
-                    bestMatchScore = 1000
-                }
-            }
-            
-            // direct match in searchStrings
-            for (let searchStr of section.searchStrings) {
-                let lowerStr = searchStr.toLowerCase()
-                if (lowerStr.includes(query)) {
-                    let score = lowerStr === query ? 800 : 500
-                    totalScore += score
-                    if (score > bestMatchScore) {
-                        bestMatch = searchStr
-                        bestMatchSource = searchStr
-                        bestMatchScore = score
-                    }
-                }
-            }
-            
-            for (let searchStr of section.searchStrings) {
-                let searchStrLower = searchStr.toLowerCase()
-                let searchTokens = tokenize(searchStrLower)
-                let matchedTokenCount = 0
-                let tokenScore = 0
-                
-                for (let qToken of queryTokens) {
-                    for (let sToken of searchTokens) {
-                        let score = 0
-                        if (sToken.startsWith(qToken)) {
-                            score = 200
-                            matchedTokenCount++
-                        } else if (sToken.includes(qToken)) {
-                            score = 100
-                            matchedTokenCount++
-                        } else {
-                            let fuzzyScore = fuzzyMatch(sToken, qToken)
-                            if (fuzzyScore > 0) {
-                                score = fuzzyScore
-                                matchedTokenCount++
-                            }
-                        }
-                        
-                        if (score > 0) {
-                            tokenScore += score
-                        }
-                    }
-                }
-                
-                if (tokenScore > 0) {
-                    totalScore += tokenScore
-                    if (tokenScore > bestMatchScore && matchedTokenCount > 0) {
-                        bestMatch = searchStr
-                        bestMatchSource = searchStr
-                        bestMatchScore = tokenScore
-                    }
-                }
-            }
-            
-            if (totalScore > 0) {
-                results.push({
-                    pageIndex: section.pageIndex,
-                    title: section.title,
-                    keyword: section._searchText,
-                    matchedString: bestMatch || section.title,
-                    yPos: section.yPos,
-                    score: totalScore
-                })
-            }
-        }
-        
-        return results
-    }
-
 }

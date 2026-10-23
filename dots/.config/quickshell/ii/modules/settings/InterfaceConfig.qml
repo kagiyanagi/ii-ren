@@ -14,7 +14,6 @@ Item {
 
     property alias contentY: page.contentY
     property alias activeSubPage: subPageOverlay.activeSubPage
-    property bool register: parent.register ?? false
 
     // Lets the settings search (and II_SETTINGS_HIGHLIGHT) land straight on a
     // sub-page instead of only on a section of this one.
@@ -39,7 +38,6 @@ Item {
         id: page
 
         readonly property int index: 8
-        property bool register: interfaceConfigRoot.register
 
         anchors.fill: parent
         forceWidth: true
@@ -644,7 +642,7 @@ Item {
             ConfigNavRow {
                 buttonIcon: "manage_history"
                 text: Translation.tr("Browse notification history")
-                searchString: Translation.tr("Notification history")
+                keywords: Translation.tr("Notification history")
                 summary: Config.options.notifications.history.enable ? Translation.tr("Recording") : Translation.tr("Off — nothing new is saved")
                 onClicked: interfaceConfigRoot.activeSubPage = Qt.resolvedUrl("widgets/NotificationHistoryConfig.qml")
             }

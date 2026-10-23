@@ -9,7 +9,6 @@ import qs.modules.common.functions
 ContentPage {
     id: page
     readonly property int index: 1
-    property bool register: parent.register ?? false
     forceWidth: true
 
     property bool allowHeavyLoad: false

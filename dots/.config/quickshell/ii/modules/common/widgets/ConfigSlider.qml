@@ -36,6 +36,7 @@ ColumnLayout {
     SearchHandler {
         visible: false // Root is a layout; don't take up a cell
         searchString: root.text
+        flash: highlightOverlay
     }
 
     RowLayout {

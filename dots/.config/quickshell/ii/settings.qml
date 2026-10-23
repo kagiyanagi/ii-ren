@@ -39,12 +39,18 @@ ApplicationWindow {
         const idx = root.pageIndexById(Quickshell.env("II_SETTINGS_PAGE"));
         return idx !== -1 ? idx : root.pageIndexById("quick");
     }
-    property real scrollPos: 0
-    property string lastSearch: ""
-    property int lastSearchIndex: -1
-    property int resultsCount: 0
     property string pendingSectionHighlight: Quickshell.env("II_SETTINGS_HIGHLIGHT") || ""
 
+    // Search. Results show in place of the page list while there is a query;
+    // the cursor is where Enter goes, moved with the arrow keys, and the opened
+    // result stays marked so another can be tried without typing again.
+    readonly property string searchQuery: searchInput.text.trim()
+    readonly property bool searching: searchQuery.length > 0
+    readonly property var searchResults: searching && SearchRegistry.ready ? SearchRegistry.query(searchQuery, 50) : []
+    property int searchCursor: 0
+    property string openedResult: ""
+    // A result on another page waits here until that page has loaded.
+    property var pendingSearch: null
 
     property var pages: [
         {
@@ -170,23 +176,81 @@ ApplicationWindow {
         return -1;
     }
 
-    component NavTab: RippleButton {
+    function openPage(index) {
+        root.pendingSearch = null;
+        SearchRegistry.target = null;
+        root.currentPage = index;
+    }
+
+    function moveSearchCursor(delta) {
+        if (root.searchResults.length === 0) return;
+        root.searchCursor = Math.max(0, Math.min(root.searchCursor + delta, root.searchResults.length - 1));
+        resultsList.positionViewAtIndex(root.searchCursor, ListView.Contain);
+    }
+
+    // Opens the page the result is on, then its sub-page, and leaves the row to
+    // its SearchHandler, which scrolls to it and flashes it.
+    function openSearchResult(index) {
+        const result = root.searchResults[index];
+        if (!result) return;
+        const entry = result.entry;
+        root.searchCursor = index;
+        root.openedResult = result.key;
+        SearchRegistry.target = null;
+        root.pendingSearch = {
+            subPage: entry.subPage,
+            target: {
+                label: result.label,
+                section: entry.section ? Translation.tr(entry.section) : "",
+                subsection: entry.subsection ? Translation.tr(entry.subsection) : ""
+            }
+        };
+        if (root.currentPage !== entry.page)
+            root.currentPage = entry.page; // the page switch delivers it once loaded
+        else
+            root.deliverSearch();
+    }
+
+    function deliverSearch() {
+        const pending = root.pendingSearch;
+        if (!pending) return;
+        root.pendingSearch = null;
+        const page = pageLoader.item;
+        // Only the pages that host sub-pages have this; a result on the main
+        // page closes one that is open.
+        if (page && page.activeSubPage !== undefined)
+            page.activeSubPage = pending.subPage ? Qt.resolvedUrl(`modules/settings/${pending.subPage}`) : "";
+        SearchRegistry.target = pending.target;
+    }
+
+    onPagesChanged: SearchRegistry.pages = root.pages
+
+    // One row of the list pane: a page, or a search result. A page row is given
+    // its `pageIndex`; a result sets symbol, title and subtitle itself.
+    component PaneRow: RippleButton {
         id: tab
-        required property int pageIndex
-        readonly property var modelData: root.pages[pageIndex]
+        property int pageIndex: -1
+        readonly property var page: pageIndex >= 0 ? root.pages[pageIndex] : null
+        property string symbol: page?.icon ?? ""
+        property real symbolRotation: page?.iconRotation ?? 0
+        property string title: isAccount ? SystemInfo.username : (page?.name ?? "")
+        property string subtitle: !isAccount ? (page?.summary ?? "") : Translation.tr("%1 profile").arg(activeProfileFile.text().trim() || Translation.tr("Default"))
+        // The keyboard's place in the search results, drawn as focus (3.1):
+        // the text field keeps the real focus so typing carries on.
+        property bool cursor: false
         // Profiles is who you are here, so it is the account row above
         // search, the way Windows 11 Settings opens: your avatar, your
         // name, the profile your changes go into. Its 40px avatar is
         // centred on the 24px icons' column, so every row's text starts
         // at the same x.
-        readonly property bool isAccount: modelData.id === "profiles"
+        readonly property bool isAccount: page?.id === "profiles"
         Layout.fillWidth: true
         implicitHeight: tabContent.implicitHeight + 12 * 2
         leftPadding: isAccount ? 8 : 16
         rightPadding: 16
         buttonRadius: Appearance.rounding.large
-        toggled: root.currentPage === pageIndex
-        onClicked: root.currentPage = pageIndex
+        toggled: pageIndex >= 0 && root.currentPage === pageIndex
+        onClicked: if (pageIndex >= 0) root.openPage(pageIndex)
 
         colBackground: CF.ColorUtils.transparentize(Appearance.colors.colLayer0Hover, 1)
         colBackgroundHover: Appearance.colors.colLayer0Hover
@@ -196,6 +260,13 @@ ApplicationWindow {
         colRippleToggled: Appearance.colors.colSecondaryActive
         colStateLayer: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
         readonly property color colContent: toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnLayer0
+
+        StateOverlay {
+            anchors.fill: parent
+            radius: tab.buttonRadius
+            focused: tab.cursor
+            contentColor: tab.colStateLayer
+        }
 
         contentItem: RowLayout {
             id: tabContent
@@ -237,8 +308,8 @@ ApplicationWindow {
 
             MaterialSymbol {
                 visible: !tab.isAccount
-                text: tab.modelData.icon
-                rotation: tab.modelData.iconRotation || 0
+                text: tab.symbol
+                rotation: tab.symbolRotation
                 iconSize: 24
                 fill: tab.toggled ? 1 : 0
                 color: tab.colContent
@@ -255,7 +326,7 @@ ApplicationWindow {
                 StyledText {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: tab.isAccount ? SystemInfo.username : tab.modelData.name
+                    text: tab.title
                     font.family: Appearance.font.family.title
                     font.pixelSize: Appearance.font.pixelSize.normal
                     font.variableAxes: Appearance.font.variableAxes.title
@@ -268,13 +339,34 @@ ApplicationWindow {
                 StyledText {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
-                    text: !tab.isAccount ? tab.modelData.summary : Translation.tr("%1 profile").arg(activeProfileFile.text().trim() || Translation.tr("Default"))
+                    text: tab.subtitle
                     font.pixelSize: Appearance.font.pixelSize.smallie
                     color: tab.toggled ? Appearance.colors.colOnSecondary : Appearance.colors.colOnSurfaceVariant
                     Behavior on color {
                         animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
                     }
                 }
+            }
+        }
+    }
+
+    // Shows and hides what it holds on the effects specs, in on default and out
+    // on fast (DESIGN 2.5). The spec is set inside the opacity binding, as in
+    // PagePlaceholder, so the exit never runs on the enter's curve (2.9).
+    component Fade: Item {
+        id: fade
+        property bool shown: true
+        property AnimSpec spec: Appearance.animation.elementMoveFast
+        opacity: {
+            fade.spec = fade.shown ? Appearance.animation.elementMoveFast : Appearance.animation.elementMoveExit;
+            return fade.shown ? 1 : 0;
+        }
+        visible: opacity > 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: fade.spec.duration
+                easing.type: fade.spec.type
+                easing.bezierCurve: fade.spec.bezierCurve
             }
         }
     }
@@ -295,6 +387,7 @@ ApplicationWindow {
     title: "illogical-impulse Settings"
     
     Component.onCompleted: {
+        SearchRegistry.index(root.pages)
         MaterialThemeLoader.reapplyTheme()
         Config.readWriteDelay = 0 // Settings app always only sets one var at a time so delay isn't needed
         ExtensionManager.watchFileChanges = false // Settings app doesn't need file watching to prevent loops
@@ -389,185 +482,204 @@ ApplicationWindow {
                 Layout.margins: 4
                 spacing: 8
 
-                NavTab {
+                PaneRow {
                     pageIndex: root.pageIndexById("profiles")
                 }
 
-                RowLayout {
+                // AOSP's search bar shape, a pill with the icon inside it.
+                ToolbarTextField {
+                    id: searchInput
                     Layout.fillWidth: true
-                    Layout.fillHeight: false
-                    spacing: 4
+                    Layout.fillHeight: false // a toolbar field fills its bar; this one is a row
+                    implicitHeight: 40
+                    leftPadding: 44
+                    rightPadding: clearSearch.shown ? 40 : 12
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    placeholderText: Translation.tr("Search all settings..")
 
-                    // AOSP's search bar shape, a pill with the icon inside it.
-                    ToolbarTextField {
-                        id: searchInput
-                        Layout.fillWidth: true
-                        implicitHeight: 40
-                        leftPadding: 44
-                        rightPadding: resultText.visible ? resultText.implicitWidth + 24 : 12
-                        font.pixelSize: Appearance.font.pixelSize.small
-                        placeholderText: Translation.tr("Search all settings..")
-                        transform: Translate { id: searchShake }
+                    MaterialSymbol {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "search"
+                        iconSize: 20
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
 
-                        SequentialAnimation {
-                            id: noMoreResultsAnim
-                            NumberAnimation { target: searchShake; property: "x"; to: -30; duration: 50 }
-                            NumberAnimation { target: searchShake; property: "x"; to: 30; duration: 50 }
-                            NumberAnimation { target: searchShake; property: "x"; to: -15; duration: 40 }
-                            NumberAnimation { target: searchShake; property: "x"; to: 15; duration: 40 }
-                            NumberAnimation { target: searchShake; property: "x"; to: 0; duration: 30 }
-                        }
+                    Fade {
+                        id: clearSearch
+                        shown: searchInput.text.length > 0
+                        anchors.right: parent.right
+                        anchors.rightMargin: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        implicitWidth: 32
+                        implicitHeight: 32
 
-                        MaterialSymbol {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "search"
-                            iconSize: 20
-                            color: Appearance.colors.colOnSurfaceVariant
-                        }
-
-                        StyledText {
-                            id: resultText
-                            anchors.right: parent.right
-                            anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: root.lastSearchIndex !== -1 && root.resultsCount > 0
-                            text: (root.lastSearchIndex % root.resultsCount + 1) + "/" + root.resultsCount
-                            font.family: Appearance.font.family.numbers
-                            color: Appearance.colors.colOnSurfaceVariant
-                        }
-
-                        Component.onCompleted: {
-                            searchInput.forceActiveFocus()
-                        }
-
-                        onTextChanged: {
-                            root.lastSearchIndex = -1
-                            root.resultsCount = 0
-                        }
-
-                        // We may use this in the future, this only searches the best result
-                        /* onAccepted: {
-                            if (!searchInput.text || searchInput.text.trim() === "") return
-                            
-                            let normalizedText = searchInput.text.toLowerCase()
-                            let bestResult = SearchRegistry.getBestResult(normalizedText)
-
-                            if (!bestResult) {
-                                noMoreResultsAnim.restart()
-                                return
+                        IconToolbarButton {
+                            anchors.fill: parent
+                            text: "close"
+                            onClicked: {
+                                searchInput.clear();
+                                searchInput.forceActiveFocus();
                             }
-
-                            root.currentPage = bestResult.pageIndex
-                            root.scrollPos = bestResult.yPos
-                            SearchRegistry.currentSearch = bestResult.matchedString
-                        } */
-
-                        onAccepted: {
-                            const result = SearchRegistry.getResultsRanked(searchInput.text)
-
-                            if (result == null) {
-                                noMoreResultsAnim.restart();
-                                return
+                            StyledToolTip {
+                                text: Translation.tr("Clear")
                             }
+                        }
+                    }
 
-                            let length = SearchRegistry.getResultsRanked(searchInput.text).length
+                    Component.onCompleted: {
+                        searchInput.forceActiveFocus()
+                    }
 
-                            if (length == 0) {
-                                noMoreResultsAnim.restart();
-                                return
+                    onTextChanged: {
+                        root.searchCursor = 0
+                        root.openedResult = ""
+                        resultsList.positionViewAtBeginning()
+                    }
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Down) {
+                            root.moveSearchCursor(1);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Up) {
+                            root.moveSearchCursor(-1);
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Escape && searchInput.text.length > 0) {
+                            searchInput.clear();
+                            event.accepted = true;
+                        }
+                    }
+
+                    onAccepted: root.openSearchResult(root.searchCursor)
+                }
+
+                // Under the search field: the pages, or what search found. Both
+                // outgrow the window's starting height, so they scroll under the
+                // field instead of clipping off the bottom, and each edge fades in
+                // step with how far the list showing runs past it -- one mask for
+                // the pair, not one each.
+                Item {
+                    id: listArea
+                    readonly property Flickable list: root.searching ? resultsList : tabFlick
+                    readonly property real scrolled: list.contentY - list.originY
+                    readonly property real fadeLength: 24
+                    readonly property real topFade: Math.max(0, Math.min(scrolled, fadeLength))
+                    readonly property real bottomFade: Math.max(0, Math.min(list.contentHeight - list.height - scrolled, fadeLength))
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    layer.enabled: list.contentHeight > list.height
+                    layer.effect: OpacityMask {
+                        maskSource: Rectangle {
+                            width: listArea.width
+                            height: listArea.height
+                            gradient: Gradient {
+                                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 1 - listArea.topFade / listArea.fadeLength) }
+                                GradientStop { position: listArea.fadeLength / listArea.height; color: "black" }
+                                GradientStop { position: 1 - listArea.fadeLength / listArea.height; color: "black" }
+                                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 1 - listArea.bottomFade / listArea.fadeLength) }
                             }
-                            
-                            if (root.lastSearch != searchInput.text) {
-                                root.lastSearchIndex = 0
-                                root.lastSearch = searchInput.text
-                                
-                            } else {
-                                root.lastSearchIndex++
-                                if (SearchRegistry.getResultsRanked(searchInput.text).length === 1) {
-                                    noMoreResultsAnim.restart()
+                        }
+                    }
+
+                    Fade {
+                        anchors.fill: parent
+                        shown: !root.searching
+
+                        StyledFlickable {
+                            id: tabFlick
+                            anchors.fill: parent
+                            clip: true
+                            contentWidth: width
+                            contentHeight: tabColumn.implicitHeight
+
+                            // Ctrl+Tab, search and II_SETTINGS_PAGE can open a page whose
+                            // row is scrolled away; bring it in so the list always shows
+                            // where you are. contentHeight settling is the first moment
+                            // the rows have their final y, which is what the launch case needs;
+                            // height settles after it, and a reveal against the half-laid-out
+                            // height leaves the list scrolled a row down, so redo it then.
+                            function revealCurrentTab() {
+                                const tab = tabRepeater.itemAt(root.currentPage - 1);
+                                if (!tab) return;
+                                tabFlick.contentY = Math.max(Math.min(tabFlick.contentY, tab.y), tab.y + tab.height - tabFlick.height);
+                            }
+                            onContentHeightChanged: revealCurrentTab()
+                            onHeightChanged: revealCurrentTab()
+
+                            Connections {
+                                target: root
+                                function onCurrentPageChanged() {
+                                    tabFlick.revealCurrentTab();
                                 }
                             }
 
-                            let normalizedText = searchInput.text.toLowerCase()
-                            let results = SearchRegistry.getResultsRanked(normalizedText)
-                            if (results.length > 0) {
-                                let index = root.lastSearchIndex % results.length
-                                let result = results[index]
-                                
-                                root.resultsCount = results.length
-                                root.currentPage = result.pageIndex
-                                //root.scrollPos = result.yPos
-                                SearchRegistry.currentSearch = result.matchedString
-                            }
-                        }
-                    }
-                }
+                            ColumnLayout {
+                                id: tabColumn
+                                width: parent.width
+                                spacing: 4
 
-                // The pages outgrow the window's starting height, so they scroll
-                // under the search row instead of clipping off the bottom. Each
-                // edge fades in step with how far content runs past it.
-                StyledFlickable {
-                    id: tabFlick
-                    readonly property real fadeLength: 24
-                    readonly property real topFade: Math.max(0, Math.min(contentY, fadeLength))
-                    readonly property real bottomFade: Math.max(0, Math.min(contentHeight - height - contentY, fadeLength))
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    contentWidth: width
-                    contentHeight: tabColumn.implicitHeight
+                                Repeater {
+                                    id: tabRepeater
+                                    model: root.pages.length - 1 // Every page after Profiles, which sits above search
 
-                    layer.enabled: contentHeight > height
-                    layer.effect: OpacityMask {
-                        maskSource: Rectangle {
-                            width: tabFlick.width
-                            height: tabFlick.height
-                            gradient: Gradient {
-                                GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 1 - tabFlick.topFade / tabFlick.fadeLength) }
-                                GradientStop { position: tabFlick.fadeLength / tabFlick.height; color: "black" }
-                                GradientStop { position: 1 - tabFlick.fadeLength / tabFlick.height; color: "black" }
-                                GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 1 - tabFlick.bottomFade / tabFlick.fadeLength) }
+                                    PaneRow {
+                                        required property int index
+                                        pageIndex: index + 1
+                                    }
+                                }
                             }
                         }
                     }
 
-                    // Ctrl+Tab, search and II_SETTINGS_PAGE can open a page whose
-                    // row is scrolled away; bring it in so the list always shows
-                    // where you are. contentHeight settling is the first moment
-                    // the rows have their final y, which is what the launch case needs;
-                    // height settles after it, and a reveal against the half-laid-out
-                    // height leaves the list scrolled a row down, so redo it then.
-                    function revealCurrentTab() {
-                        const tab = tabRepeater.itemAt(root.currentPage - 1);
-                        if (!tab) return;
-                        tabFlick.contentY = Math.max(Math.min(tabFlick.contentY, tab.y), tab.y + tab.height - tabFlick.height);
-                    }
-                    onContentHeightChanged: revealCurrentTab()
-                    onHeightChanged: revealCurrentTab()
+                    // Each result names the setting, then where it lives, with its
+                    // page's icon: the same row as a page, so the pane reads as one
+                    // list whichever it shows. Keyed, so a row that survives the
+                    // next keystroke stays put rather than being rebuilt (4.2).
+                    Fade {
+                        anchors.fill: parent
+                        shown: root.searching && root.searchResults.length > 0
 
-                    Connections {
-                        target: root
-                        function onCurrentPageChanged() {
-                            tabFlick.revealCurrentTab();
-                        }
-                    }
-
-                    ColumnLayout {
-                        id: tabColumn
-                        width: parent.width
-                        spacing: 4
-
-                        Repeater {
-                            id: tabRepeater
-                            model: root.pages.length - 1 // Every page after Profiles, which sits above search
-
-                            NavTab {
+                        StyledListView {
+                            id: resultsList
+                            anchors.fill: parent
+                            clip: true
+                            // The list is the query's answer, so it changes with
+                            // every keystroke and answers at once, as Android's
+                            // does: no row slides in, out or along.
+                            add: null
+                            addDisplaced: null
+                            displaced: null
+                            move: null
+                            moveDisplaced: null
+                            remove: null
+                            removeDisplaced: null
+                            model: ScriptModel {
+                                values: root.searchResults
+                                objectProp: "key"
+                            }
+                            delegate: PaneRow {
+                                required property var modelData
                                 required property int index
-                                pageIndex: index + 1
+                                width: resultsList.width
+                                symbol: root.pages[modelData.entry.page]?.icon ?? ""
+                                symbolRotation: root.pages[modelData.entry.page]?.iconRotation ?? 0
+                                title: modelData.label
+                                subtitle: modelData.where
+                                toggled: modelData.key === root.openedResult
+                                cursor: index === root.searchCursor && searchInput.activeFocus
+                                onClicked: root.openSearchResult(index)
                             }
                         }
+                    }
+
+                    PagePlaceholder {
+                        shown: root.searching && SearchRegistry.ready && root.searchResults.length === 0
+                        icon: "search_off"
+                        title: Translation.tr("No results")
+                        description: Translation.tr("Nothing in settings matches “%1”").arg(root.searchQuery)
+                        descriptionHorizontalAlignment: Text.AlignHCenter
                     }
                 }
             }
@@ -592,19 +704,6 @@ ApplicationWindow {
                         function onCurrentPageChanged() {
                             switchAnim.complete();
                             switchAnim.start();
-                        }
-                        function onScrollPosChanged() {
-                            if (root.scrollPos == -1) return
-                            scrollTimer.start()
-                        }
-                    }
-
-                    Timer {
-                        id: scrollTimer
-                        interval: 250
-                        onTriggered: {
-                            pageLoader.item.contentY = root.scrollPos
-                            root.scrollPos = -1
                         }
                     }
 
@@ -631,6 +730,11 @@ ApplicationWindow {
                                 property: "anchors.topMargin"
                                 value: 20
                             }
+                        }
+                        // The page exists from here: hand it the search result
+                        // that switched to it.
+                        ScriptAction {
+                            script: root.deliverSearch()
                         }
                         ParallelAnimation {
                             NumberAnimation {

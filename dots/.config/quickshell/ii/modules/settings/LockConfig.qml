@@ -11,7 +11,6 @@ Item {
 
     property alias contentY: page.contentY
     property alias activeSubPage: subPageOverlay.activeSubPage
-    property bool register: parent.register ?? false
 
     // Lets the settings search (and II_SETTINGS_HIGHLIGHT) land straight on a
     // sub-page instead of only on a section of this one.
@@ -35,7 +34,6 @@ Item {
     ContentPage {
         id: page
         readonly property int index: 13
-        property bool register: lockConfigRoot.register
         anchors.fill: parent
         forceWidth: true
 

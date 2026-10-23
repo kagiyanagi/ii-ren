@@ -40,6 +40,7 @@ RippleButton {
 
     SearchHandler {
         searchString: root.text
+        flash: highlightOverlay
     }
 
     // The search flash has to cover the card, not the button: ContentGroup

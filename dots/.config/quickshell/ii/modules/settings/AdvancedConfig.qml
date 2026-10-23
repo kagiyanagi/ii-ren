@@ -11,7 +11,6 @@ Item {
 
     property alias contentY: page.contentY
     property alias activeSubPage: subPageOverlay.activeSubPage
-    property bool register: parent.register ?? false
 
     Connections {
         target: root
@@ -66,7 +65,6 @@ Item {
     ContentPage {
         id: page
         readonly property int index: 14
-        property bool register: advancedConfigRoot.register
         anchors.fill: parent
         forceWidth: true
 
@@ -162,7 +160,7 @@ Item {
             ConfigNavRow {
                 buttonIcon: "category"
                 text: Translation.tr("Icon pack")
-                searchString: Translation.tr("Icon Themes, Dynamic Icon Pack, Dolphin folders, App icons")
+                keywords: Translation.tr("Icon Themes, Dynamic Icon Pack, Dolphin folders, App icons")
                 summary: {
                     if (!IconThemes.enableThemed)
                         return Translation.tr("Off");
@@ -175,7 +173,7 @@ Item {
             ConfigNavRow {
                 buttonIcon: "arrow_selector_tool"
                 text: Translation.tr("Cursor")
-                searchString: Translation.tr("Cursor Theme, Cursor Size, Mouse, Pointer, Custom Cursor, Shake to find")
+                keywords: Translation.tr("Cursor Theme, Cursor Size, Mouse, Pointer, Custom Cursor, Shake to find")
                 summary: {
                     const theme = CursorTheme.configuredTheme.length > 0 ? CursorTheme.configuredTheme : Translation.tr("Default");
                     return `${theme} · ${CursorTheme.configuredSize}px`;

@@ -9,7 +9,6 @@ import qs.modules.common.widgets
 ContentPage {
     id: page
     readonly property int index: 12
-    property bool register: parent.register ?? false
     forceWidth: true
 
     // Every control on this page reads the value Hyprland is actually running
