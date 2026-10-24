@@ -35,13 +35,33 @@ Singleton {
 	// on YouTube a 336x188 thumbnail that any large cover blows up into mush. A YouTube video
 	// gets its own 1280x720 frame instead, 16:9 with no letterboxing; CoverArt falls back to the
 	// 320x180 one, which always exists, on uploads below 720p. YouTube Music keeps the art it
-	// sets, a real square album cover.
+	// sets, a real square album cover. A page url the track has outlived names the wrong video,
+	// so the browser's own art stays until the url catches up: see pageUrlTracks.
 	function artUrlFor(player: MprisPlayer): string {
 		const url = player?.trackArtUrl ?? "";
 		const pageUrl = player?.metadata?.["xesam:url"] ?? "";
 		const videoId = pageUrl.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/);
 		if (!videoId || (url && pageUrl.includes("music.youtube.com"))) return url;
+		const seen = root.pageUrlTracks[player.dbusName];
+		if (url && seen?.url === pageUrl && seen.track !== root.trackKeyOf(player)) return url;
 		return `https://i.ytimg.com/vi/${videoId[1]}/hq720.jpg`;
+	}
+
+	// The plasma integration sends the page url only when playback starts. A song that changes
+	// inside the page (YouTube's autoplay, a playlist, its next button) arrives as new metadata
+	// with the previous video's url still on it, until something plays again. So a url is
+	// trusted only for the track it arrived with: dbusName -> { url, track }.
+	property var pageUrlTracks: ({})
+
+	function trackKeyOf(player: MprisPlayer): string {
+		const metadata = player?.metadata ?? {};
+		return JSON.stringify([metadata["xesam:title"] ?? "", metadata["xesam:artist"] ?? ""]);
+	}
+
+	function notePageUrl(player: MprisPlayer, always: bool): void {
+		const url = player.metadata?.["xesam:url"] ?? "";
+		if (!always && root.pageUrlTracks[player.dbusName]?.url === url) return;
+		root.pageUrlTracks = Object.assign({}, root.pageUrlTracks, { [player.dbusName]: { url, track: root.trackKeyOf(player) } });
 	}
 
 	onAllPlayersChanged: {
@@ -98,6 +118,7 @@ Singleton {
 			target: modelData;
 
 			Component.onCompleted: {
+				root.notePageUrl(modelData, true);
 				if (!root.isRealPlayer(modelData)) return;
 				if (root.trackedPlayer == null || modelData.isPlaying) {
 					root.trackedPlayer = modelData;
@@ -121,6 +142,10 @@ Singleton {
 
 			function onPlaybackStateChanged() {
 				if (root.isRealPlayer(modelData) && root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
+			}
+
+			function onMetadataChanged() {
+				root.notePageUrl(modelData, false);
 			}
 		}
 	}

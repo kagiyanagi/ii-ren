@@ -1,6 +1,7 @@
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.modules.ii.overlay
 import qs.services
 import QtQuick
 import Quickshell
@@ -58,7 +59,12 @@ Scope {
         color: "transparent"
 
         WlrLayershell.namespace: "quickshell:notificationPopup"
-        WlrLayershell.layer: WlrLayer.Overlay
+        // The widget overlay (Super+G) is on this layer too, and within a layer the
+        // surface mapped last draws on top: a card that arrives while the overlay is
+        // up would sit above its dim and blur, and the overlay's input mask would
+        // leave it unclickable, so it would look live and not be. Drop to Top for as
+        // long as the overlay is mapped -- its exit included -- so the dim covers it.
+        WlrLayershell.layer: OverlayContext.rendered ? WlrLayer.Top : WlrLayer.Overlay
         // A notification never takes the keyboard off what the user is doing.
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         // Reserve nothing, but do respect what the bar and a pinned dock
