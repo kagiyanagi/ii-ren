@@ -87,7 +87,7 @@ const lift = (name, params) => {
     const body = src.slice(0, src.indexOf("\n    }\n") + 6);
     return "(function (" + params + ")" + body.slice(body.indexOf("{"), body.lastIndexOf("}") + 1) + ")";
 };
-const root = { _minFirstChunk: 60, _minChunk: 140, _maxChunks: 8, _minLocalChunk: 40, _maxLocalChunk: 120 };
+const root = { _minFirstChunk: 60, _minChunk: 140, _minLocalChunk: 40, _maxLocalChunk: 120 };
 const SpeechMatch = require("./speechMatch.js");
 root._splitForSpeech = new Function("root", "SpeechMatch", "return " + lift("_splitForSpeech", "text, local"))(root, SpeechMatch);
 root._cutClauses = new Function("root", "return " + lift("_cutClauses", "text, spans, inUnit"))(root);
@@ -95,10 +95,28 @@ const split = (text, local) => root._splitForSpeech(text, local ?? false);
 const sameText = (chunks, text) => chunks.join(" ").replace(/\s+/g, " ") === text.trim().replace(/\s+/g, " ");
 const reply = "Here is the plan:\n- read the files first.\n- then write the patch.\n\n" + "Then it is tested again. ".repeat(60);
 const chunks = split(reply);
-assert.ok(chunks.length > 1 && chunks.length <= 8, "chunks");
 assert.ok(chunks.every(chunk => reply.includes(chunk)), "a chunk is not a slice of the message");
 assert.ok(chunks[0].includes("\n- then"), "a list marker lost its line start");
 assert.ok(sameText(chunks, reply), "text lost between chunks");
+// No cap on how many: the reading asks for them as it reaches them. Capped at
+// eight, the rest of a long reply was one part, and the voice fell silent after
+// the seventh while all of it was made.
+assert.ok(chunks.length > 8, `capped at ${chunks.length} parts`);
+assert.ok(chunks.every(chunk => chunk.length < 200), `a part far past the floor: ${chunks.map(c => c.length)}`);
+
+// A list's items seldom end in a full stop: a line where a new block starts is a
+// pause too, and a long list is many parts, each from an item's marker.
+const list = "These are the changes made to the reader today\n"
+    + Array.from({ length: 30 }, (_, i) => `- change number ${i} to the reader, with no stop`).join("\n")
+    + "\n\n## Next\n\nNothing else";
+const listed = split(list);
+assert.ok(sameText(listed, list), "a list: text lost between chunks");
+assert.ok(listed.length > 5 && listed.every(part => part.length < 200), `a list in ${listed.length} parts: ${listed.map(p => p.length)}`);
+assert.ok(listed.slice(1).every(part => /^(?:- |## )/.test(part)), `a list part not at a block's start: ${JSON.stringify(listed)}`);
+// A line wrapped inside a sentence is no pause.
+const softWrapped = "This first sentence is long enough on its own to pass the floor that a part has to reach before it is cut. "
+    + "The second one runs on well past the floor of a part, a long run of words with no stop in it anywhere, on and on for longer than any part is let be, until the line is wrapped\nhalfway through, and ends here. A third.";
+assert.ok(split(softWrapped).every(part => /(?:[.!?]|^)\s*$/.test(part)), `cut at a wrapped line: ${JSON.stringify(split(softWrapped))}`);
 
 // Never through a code block or a formula: a fence cut in two left the next
 // chunk opening on its closing ``` and reading the prose after it as code.

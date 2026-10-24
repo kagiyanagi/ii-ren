@@ -132,8 +132,9 @@ function normalize(s) {
 const ANCHOR = 24;
 
 /**
- * How `phrase` lies over the normalized haystack, or null: haystack index =
- * phrase index + `shift`, trusted over haystack positions [from, to).
+ * How a phrase, normalized to `needle`, lies over the normalized haystack, or
+ * null: haystack index = phrase index + `shift`, trusted over haystack
+ * positions [from, to).
  *
  * A reply is several views -- a code block splits the text around it -- while
  * the passage being spoken is cut at sentence ends, so it often starts in one
@@ -144,8 +145,7 @@ const ANCHOR = 24;
  * null, so the word being spoken is marked in the one view that has it and
  * never pinned to the end of the one it has left.
  */
-function locate(hay, phrase) {
-    const needle = normalize(phrase || "").text;
+function locate(hay, needle) {
     const text = hay.text;
     const len = needle.length;
     if (len === 0 || text.length === 0)
@@ -183,11 +183,60 @@ function locate(hay, phrase) {
     return null;
 }
 
+/**
+ * Where `phrase` lies in a haystack already normalized, kept for the words of it
+ * to be looked up one after another; or null when this haystack holds none of it.
+ *
+ * Normalizing is the cost here, in proportion to the whole view's text: measured
+ * in the shell, 23 ms for an 11,000-character reply. The haystack only changes
+ * with the text and the phrase once a sentence, so a caller marking the word
+ * being spoken keeps both and pays only for the lookup on each word.
+ */
+function place(hay, phrase) {
+    const spoken = normalize(phrase || "");
+    const hit = locate(hay, spoken.text);
+    return hit ? { hay: hay, hit: hit, spoken: spoken } : null;
+}
+
+/** The whole of a placed phrase, as positions into the rendered text. */
+function placedPhrase(placed) {
+    const hay = placed.hay;
+    return { start: hay.map[placed.hit.from], end: hay.map[placed.hit.to - 1] + 1 };
+}
+
+/**
+ * The word at `offset` characters into a placed phrase, as positions into the
+ * rendered text, or null. The offset is what a provider's word timings point
+ * at, so this is the exact mark; `placedWordAt` is the estimate for one that
+ * gives none.
+ */
+function placedWordAtOffset(placed, offset) {
+    // The offset counts characters of the phrase as written; the haystack has
+    // dropped the markdown out of it, so it is counted again on the phrase's own
+    // normalized form.
+    const spoken = placed.spoken;
+    let ahead = 0;
+    while (ahead < spoken.map.length && spoken.map[ahead] < offset)
+        ahead++;
+    return wordAt(placed.hay, placed.hit, Math.min(ahead, spoken.text.length - 1));
+}
+
+/**
+ * The one word of a placed phrase being spoken when `progress` (0..1) of it has
+ * been said, as positions into the rendered text, or null.
+ *
+ * Shared out by characters rather than by words: "synchronized" takes four times
+ * as long to say as "and", and a word-count split would run ahead of the voice
+ * through a long one and wait for it through short ones.
+ */
+function placedWordAt(placed, progress) {
+    return wordAt(placed.hay, placed.hit, Math.floor(Math.max(0, Math.min(0.999, progress)) * placed.spoken.text.length));
+}
+
 /** Where `phrase` sits in `rendered`, as positions into `rendered`, or null. */
 function findPhrase(rendered, phrase) {
-    const hay = normalize(rendered || "");
-    const hit = locate(hay, phrase);
-    return hit ? { start: hay.map[hit.from], end: hay.map[hit.to - 1] + 1 } : null;
+    const placed = place(normalize(rendered || ""), phrase);
+    return placed ? placedPhrase(placed) : null;
 }
 
 /** The word of `hay` at phrase position `at`, if this haystack holds that part. */
@@ -207,41 +256,16 @@ function wordAround(hay, at) {
     return to > from ? { start: hay.map[from], end: hay.map[to - 1] + 1 } : null;
 }
 
-/**
- * The word at `offset` characters into `phrase`, as positions into `rendered`,
- * or null. The offset is what a provider's word timings point at, so this is the
- * exact mark; `findWordAt` below is the estimate for a provider that gives none.
- */
+/** placedWordAtOffset() in one call, for a caller with one word to find. */
 function findWordAtOffset(rendered, phrase, offset) {
-    const hay = normalize(rendered || "");
-    const hit = locate(hay, phrase);
-    if (!hit)
-        return null;
-    // The offset counts characters of the phrase as written; the haystack has
-    // dropped the markdown out of it, so it is counted again on the phrase's own
-    // normalized form.
-    const spoken = normalize(phrase || "");
-    let ahead = 0;
-    while (ahead < spoken.map.length && spoken.map[ahead] < offset)
-        ahead++;
-    return wordAt(hay, hit, Math.min(ahead, spoken.text.length - 1));
+    const placed = place(normalize(rendered || ""), phrase);
+    return placed ? placedWordAtOffset(placed, offset) : null;
 }
 
-/**
- * The one word of `phrase` being spoken when `progress` (0..1) of it has been
- * said, as positions into `rendered`, or null.
- *
- * Shared out by characters rather than by words: "synchronized" takes four times
- * as long to say as "and", and a word-count split would run ahead of the voice
- * through a long one and wait for it through short ones.
- */
+/** placedWordAt() in one call, for a caller with one word to find. */
 function findWordAt(rendered, phrase, progress) {
-    const hay = normalize(rendered || "");
-    const hit = locate(hay, phrase);
-    if (!hit)
-        return null;
-    const len = normalize(phrase || "").text.length;
-    return wordAt(hay, hit, Math.floor(Math.max(0, Math.min(0.999, progress)) * len));
+    const placed = place(normalize(rendered || ""), phrase);
+    return placed ? placedWordAt(placed, progress) : null;
 }
 
 if (typeof module !== "undefined")
@@ -251,5 +275,9 @@ if (typeof module !== "undefined")
         normalize: normalize,
         findPhrase: findPhrase,
         findWordAt: findWordAt,
-        findWordAtOffset: findWordAtOffset
+        findWordAtOffset: findWordAtOffset,
+        place: place,
+        placedPhrase: placedPhrase,
+        placedWordAt: placedWordAt,
+        placedWordAtOffset: placedWordAtOffset
     };

@@ -114,10 +114,13 @@ for source, shown, expected, pairs in CASES:
         queries.append({"source": source, "shown": shown, "offset": marks[index][1], "word": word, "marked": marked})
 
 found = json.loads(subprocess.run(["node", "-e", f"""
-const {{ findWordAtOffset }} = require({json.dumps(str(SHELL / "services/speechMatch.js"))});
+const {{ normalize, place, placedWordAtOffset }} = require({json.dumps(str(SHELL / "services/speechMatch.js"))});
 const queries = {json.dumps(queries)};
 console.log(JSON.stringify(queries.map(q => {{
-    const hit = findWordAtOffset(q.shown, q.source, q.offset);
+    // As SpeechHighlight does: the view's text normalized, the passage placed in
+    // it, then the word looked up.
+    const placed = place(normalize(q.shown), q.source);
+    const hit = placed && placedWordAtOffset(placed, q.offset);
     return hit ? q.shown.slice(hit.start, hit.end) : null;
 }})));
 """], capture_output=True, text=True, check=True).stdout)

@@ -89,6 +89,14 @@ _KOKORO_LEAD_S = 3 * 600 / 24000
 # after their offset, at the 10 ms resolution of the onset detector.
 _MP3_PRIMING_MS = 1105 * 1000 // 24000
 
+# edge-tts waits 10 s to connect and 60 s for each message by default. A
+# sentence's messages come close together, so a 60 s wait is a stalled
+# connection: the reading fell silent on it for up to a minute, then lost the
+# sentence. Given up on sooner, and tried once more on a fresh connection.
+_EDGE_CONNECT_S = 5
+_EDGE_RECEIVE_S = 10
+_EDGE_ATTEMPTS = 2
+
 
 _emitting = threading.Lock()
 
@@ -250,19 +258,26 @@ def synthesize(text: str, out_path: str, voice: str = "") -> dict:
     boundaries = []
 
     async def stream() -> None:
+        boundaries.clear()  # an attempt that stalled leaves none behind
         with open(out_path, "wb") as audio:
-            async for chunk in edge_tts.Communicate(said, voice=voice or VOICE, rate=RATE, boundary="WordBoundary").stream():
+            communicate = edge_tts.Communicate(said, voice=voice or VOICE, rate=RATE, boundary="WordBoundary",
+                                               connect_timeout=_EDGE_CONNECT_S, receive_timeout=_EDGE_RECEIVE_S)
+            async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
                     audio.write(chunk["data"])
                 elif chunk["type"] == "WordBoundary":
                     boundaries.append((chunk["offset"] // 10_000 + _MP3_PRIMING_MS, chunk["text"]))  # 100ns ticks
 
-    try:
-        asyncio.run(stream())
-    except Exception as e:
+    for _attempt in range(_EDGE_ATTEMPTS):
+        try:
+            asyncio.run(stream())
+            break
+        except Exception as e:
+            failure = e
+    else:
         with contextlib.suppress(OSError):
             os.unlink(out_path)
-        return {"ok": False, "paths": [], "marks": [], "error": f"Read-aloud failed: {e}"}
+        return {"ok": False, "paths": [], "marks": [], "error": f"Read-aloud failed: {failure}"}
     if not (os.path.isfile(out_path) and os.path.getsize(out_path) > 0):
         return {"ok": False, "paths": [], "marks": [], "error": "Read-aloud produced no audio"}
     return {"ok": True, "paths": [out_path], "error": "", "marks": tts_marks.marks(said, at, boundaries),

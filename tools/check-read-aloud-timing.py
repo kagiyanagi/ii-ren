@@ -126,4 +126,30 @@ assert tts._MP3_PRIMING_MS == 46, tts._MP3_PRIMING_MS
 assert [ms for ms, _ in reply["marks"]] == [offset // 10_000 + 46 for offset, _ in boundaries], reply["marks"]
 landed(reply["marks"])
 
-print("ok: read-aloud marks each word when it is said, on both voices")
+# A stalled connection is given up on well before edge-tts's own minute and tried
+# again afresh; the marks are the second attempt's alone.
+attempts = []
+
+
+class StallingCommunicate(FakeCommunicate):
+    def __init__(self, text, **options):
+        super().__init__(text)
+        attempts.append(options)
+
+    async def stream(self):
+        if len(attempts) == 1:
+            yield {"type": "audio", "data": b"\xff\xf3" * 8}
+            yield {"type": "WordBoundary", "offset": 90_000_000, "duration": 2_000_000, "text": said.split()[0]}
+            raise TimeoutError("no message in 10 s")
+        async for chunk in super().stream():
+            yield chunk
+
+
+sys.modules["edge_tts"] = types.SimpleNamespace(Communicate=StallingCommunicate)
+with tempfile.TemporaryDirectory() as tmp:
+    retried = tts.synthesize(SOURCE, f"{tmp}/clip.mp3", "en-US-AriaNeural")
+assert retried["ok"] and retried["marks"] == reply["marks"], f"a stalled attempt's marks were kept: {retried['marks']}"
+assert len(attempts) == 2 and all(0 < a.get("receive_timeout", 60) < 60 for a in attempts), \
+    f"a stalled connection was waited on as long as edge-tts's default minute, or not tried again: {attempts}"
+
+print("ok: read-aloud marks each word when it is said, on both voices, and a stalled request is tried again")

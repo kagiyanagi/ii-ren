@@ -364,6 +364,13 @@ results.dragWaiting = reading(text, () => {
     later(1000, () => root.beginScrub(wordAt(parts[1], "This")));
     later(5500, () => root.endScrub(wordAt(parts[1], "long")));
 });
+// Moved to a part not made yet and straight back, inside the fade out that
+// move began: the clip on its way out is the one wanted again.
+results.awayAndBack = reading(text, () => {
+    click(6000, parts[4], "last");
+    click(6060, parts[1], "while");
+    look(6500);
+});
 results.dragPaused = reading(text, () => {
     later(6000, () => root.pauseSpeaking());
     click(6500, parts[1], "good");
@@ -494,6 +501,15 @@ drag_waiting = R["dragWaiting"]
 after = heard_from(drag_waiting, 1000)
 assert after and after[0]["at"] == 5500 and after[0]["from"] == start_of("long", 1), \
     "a part made while the bar was dragged played before it was let go"
+
+away_and_back = R["awayAndBack"]
+s0 = away_and_back["samples"][0]
+after = heard_from(away_and_back, 6060)
+assert s0["passage"] == parts[1] and s0["playing"] and after and after[0]["at"] == 6060 \
+    and after[0]["from"] == start_of("while", 1), \
+    f"moved to a part not made and straight back, the fade out still let the clip go: {s0}, then heard {after[:1]}"
+assert whole_parts(away_and_back)[-3:] == [2, 3, 4] and away_and_back["ended"] is not None, \
+    f"moved away and back, the reading did not play on to its end: heard {whole_parts(away_and_back)}"
 
 drag_paused = R["dragPaused"]
 s0 = drag_paused["samples"][0]

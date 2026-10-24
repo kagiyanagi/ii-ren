@@ -1932,6 +1932,10 @@ Singleton {
 
             /** Move within the clip in the player -- back as well as on. */
             function seekWithin(ms: real, play: bool): void {
+                // A clip fading out to be let go -- the reading moved to a part not
+                // made yet -- is wanted again: left running, the fade let it go
+                // under the move back, and the reading sat silent until moved again.
+                fadeOut.stop();
                 if (reader.loading) {
                     reader.startAt = ms;
                     reader.playOnLoad = play;
@@ -2051,6 +2055,10 @@ Singleton {
      * Only real sentence ends are cut, and short ones are merged up to `minChunk`:
      * a pause the listener does not expect is worse than waiting a moment longer,
      * and every boundary here is one a person reading aloud would also pause at.
+     * A line that ends where a new block starts -- a list item, a heading, a
+     * paragraph -- is one too: a list's items seldom end in a full stop, and a
+     * long one with none was a single part, the voice silent while all of it was
+     * made.
      * Never inside a code block, inline code or a formula: each is read as one
      * thing (scripts/agent/tts_text.py), and a cut through a fence left the next
      * chunk opening on its closing ``` and reading the prose after it as code.
@@ -2066,7 +2074,6 @@ Singleton {
     // are kept long, since by then the player is busy and only the total matters.
     readonly property int _minFirstChunk: 60
     readonly property int _minChunk: 140
-    readonly property int _maxChunks: 8
     readonly property int _minLocalChunk: 40
     readonly property int _maxLocalChunk: 120
 
@@ -2089,7 +2096,7 @@ Singleton {
         // transcript could no longer tell it from a word, and the spoken-word
         // mark drifted a marker further ahead after every item.
         const spans = [];
-        const ends = /[.!?]\s+/g;
+        const ends = /[.!?]\s+|\n(?=[ \t]*(?:\n|[-*+][ \t]|\d{1,9}[.)][ \t]|[#>|]))\s*/g;
         let start = 0;
         let match;
         const add = end => {
@@ -2107,12 +2114,12 @@ Singleton {
             start = ends.lastIndex;
         }
         add(trimmed.length);
+        // No cap on how many: they are asked for as the reading reaches them, a
+        // couple ahead (_askForParts). Capped at eight, the rest of a long reply
+        // was one part, and the reading fell silent after the seventh while all
+        // of it was made.
         if (local)
             return root._cutClauses(trimmed, spans, inUnit).map(span => trimmed.slice(span.start, span.end));
-        // Past the cap the tail is spoken as one piece: more requests would not
-        // start the audio any sooner, and each one costs a round trip.
-        if (spans.length > root._maxChunks)
-            spans.splice(root._maxChunks - 1, spans.length, { start: spans[root._maxChunks - 1].start, end: trimmed.length });
         return spans.map(span => trimmed.slice(span.start, span.end));
     }
 

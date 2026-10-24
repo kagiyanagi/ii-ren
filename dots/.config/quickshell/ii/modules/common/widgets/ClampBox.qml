@@ -52,10 +52,17 @@ Item {
             visible: root.clamped && !root.expanded
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: moreButton.implicitHeight
+            // To a pixel past the cut, for the clip to trim along with the content.
+            // On a cut at half a pixel the clip kept the row the cut runs through,
+            // and a fade ending at the cut left that row's centre out: a line of
+            // the content, unfaded, under it (tools/check-clamp-fade.py).
+            y: parent.height - moreButton.implicitHeight
+            height: moreButton.implicitHeight + 1
             gradient: Gradient {
                 GradientStop { position: 0; color: ColorUtils.transparentize(root.colBase, 1) }
+                // Solid for its last third, so a line the clip cuts through is
+                // covered rather than shown sliced in half.
+                GradientStop { position: 0.65; color: root.colBase }
                 GradientStop { position: 1; color: root.colBase }
             }
         }

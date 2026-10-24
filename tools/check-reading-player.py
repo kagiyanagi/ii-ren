@@ -15,7 +15,8 @@ drives it through a real MediaPlayer over two generated tones, and asserts:
 - a seek back within the clip playing is taken, mark and all;
 - held, it falls silent and stays put; released, it plays on from there;
 - a clip switched to mid-play, held at 2000 ms, is at 2000 ms;
-- a clip played out says so, once, with its part.
+- a clip played out says so, once, with its part;
+- a clip fading out to be let go, sought back into, plays on at full volume.
 
 Needs a Wayland session and quickshell (`qs -p`), nothing audible. The probe
 file is written into the shell dir (the `qs.` imports only resolve there) and
@@ -85,7 +86,7 @@ ShellRoot {
     function note(label) {
         const r = host.item;
         shell.log.push({ label: label, index: r.loadedIndex, state: r.player.playbackState, position: r.player.position,
-            clock: r.markClock.position, offset: r.markClock.offset, loading: r.loading });
+            clock: r.markClock.position, offset: r.markClock.offset, loading: r.loading, volume: r.player.audioOutput.volume });
     }
     property var steps: [
         [0, () => host.item.load(0, "file://TONE_A".slice(7), 1200, true)],
@@ -102,7 +103,11 @@ ShellRoot {
         [2200, () => host.item.release()],
         [2500, () => shell.note("released at 2000")],
         [3500, () => shell.note("played out")],
-        [3550, () => { console.log("PROBE " + JSON.stringify({ log: shell.log, ended: shell.ended.length, endedIndex: shell.ended.map(e => e[1]) })); Qt.quit(); }]
+        [3550, () => host.item.load(0, "TONE_A", 0, true)],
+        [4000, () => host.item.fadeAndStop()],
+        [4060, () => host.item.seekWithin(300, true)],
+        [4700, () => shell.note("faded out, sought back")],
+        [4750, () => { console.log("PROBE " + JSON.stringify({ log: shell.log, ended: shell.ended.length, endedIndex: shell.ended.map(e => e[1]) })); Qt.quit(); }]
     ]
     property real t0: 0
     Timer {
@@ -161,6 +166,10 @@ went_on = log["released at 2000"]
 assert went_on["state"] == PLAYING and went_on["position"] > 2000, f"released at 2000 ms, it is at {went_on}"
 
 assert data["endedIndex"] == [1], f"a clip played out was reported {data['endedIndex']}, not once for its part"
+
+back_in = log["faded out, sought back"]
+assert (back_in["index"], back_in["state"]) == (0, PLAYING) and back_in["position"] > 300 and back_in["volume"] == 1, \
+    f"a clip fading out, sought back into, did not play on at full volume: {back_in}"
 
 print(f"ok: the reader loads mid-clip, seeks back, holds, switches and ends in a real MediaPlayer "
       f"(loaded at 1200 ms, it was at {loaded['position']} ms 450 ms later)")

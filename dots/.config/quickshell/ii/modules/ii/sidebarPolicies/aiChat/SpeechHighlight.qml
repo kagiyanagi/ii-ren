@@ -57,6 +57,17 @@ Item {
 
     property var rects: []
 
+    // The view's text with the markdown taken out, and where the phrase lies in
+    // it, kept from one word to the next. Built afresh on every word, they cost
+    // time in proportion to the whole reply in every view of it -- 23 ms a word
+    // for an 11,000-character reply, 55 for 28,000, measured -- and the
+    // transcript stuttered under a scroll while a reply was read out. Only the
+    // word moves, so only the word is looked up.
+    property var _hay: null
+    property var _placed: null
+    // The phrase `_placed` was found for; null when it is not worked out yet.
+    property var _placedFor: null
+
     anchors.fill: parent
     // Over the text, not behind it: a selection being read out has the view's own
     // selection colour painted across the same words, and anything behind that is
@@ -66,7 +77,7 @@ Item {
     function update(): void {
         const view = root.target;
         if (!view || view.length === 0) {
-            root.rects = [];
+            root.clear();
             return;
         }
         if (root.query.length > 0) {
@@ -74,14 +85,37 @@ Item {
             return;
         }
         if (root.phrase.trim().length === 0) {
-            root.rects = [];
+            // Nothing being read: let the text's copy go.
+            root._hay = null;
+            root._placed = null;
+            root._placedFor = null;
+            root.clear();
             return;
         }
-        const text = view.getText(0, view.length);
-        const found = root.wordOffset >= 0 ? SpeechMatch.findWordAtOffset(text, root.phrase, root.wordOffset)
-            : root.progress >= 0 ? SpeechMatch.findWordAt(text, root.phrase, root.progress)
-            : SpeechMatch.findPhrase(text, root.phrase);
-        root.rects = found ? root.lineRects(found.start, found.end) : [];
+        if (root._hay === null) {
+            root._hay = SpeechMatch.normalize(view.getText(0, view.length));
+            root._placedFor = null;
+        }
+        if (root._placedFor !== root.phrase) {
+            root._placed = SpeechMatch.place(root._hay, root.phrase);
+            root._placedFor = root.phrase;
+        }
+        const placed = root._placed;
+        const found = !placed ? null
+            : root.wordOffset >= 0 ? SpeechMatch.placedWordAtOffset(placed, root.wordOffset)
+            : root.progress >= 0 ? SpeechMatch.placedWordAt(placed, root.progress)
+            : SpeechMatch.placedPhrase(placed);
+        if (found)
+            root.rects = root.lineRects(found.start, found.end);
+        else
+            root.clear();
+    }
+
+    // Unmarked, without rebuilding an empty Repeater: every view of a reply but
+    // the one holding the word comes through here on every word.
+    function clear(): void {
+        if (root.rects.length > 0)
+            root.rects = [];
     }
 
     /** Every occurrence of `query` in `text`, as line rectangles. */
@@ -138,6 +172,7 @@ Item {
         // Text arrives token by token while a reply streams, and a resize rewraps
         // every line under the mark.
         function onTextChanged(): void {
+            root._hay = null;
             root.update();
         }
         function onWidthChanged(): void {
