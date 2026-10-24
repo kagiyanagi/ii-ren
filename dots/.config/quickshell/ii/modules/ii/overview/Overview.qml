@@ -120,7 +120,27 @@ Scope {
                     right: true
                 }
 
+                // What a top bar reserves, the same sum as its `exclusiveZone`. Auto
+                // exclusion starts this window below it, so the dim stopped at the bar's
+                // lower edge and a strip of the screen above stayed lit -- most visible
+                // over a fullscreen window, where the bar is not drawn there. The window
+                // takes that strip back with a negative top margin and the content steps
+                // down by the same amount, so nothing moves. Zero for the other bar
+                // layouts, whose zone is dynamic (auto-hide) or on another edge.
+                readonly property real barInset: {
+                    const bar = Config.options.bar;
+                    if (bar.vertical || bar.bottom || bar.autoHide.enable) return 0;
+                    return Appearance.sizes.baseBarHeight + (bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0);
+                }
+
+                // The bar stays clickable through the dim, as it was when the window
+                // began below it.
+                mask: Region {
+                    item: inputArea
+                }
+
                 margins {
+                    top: -root.barInset
                     bottom: (!Config.options.bar.bottom && (Config.options?.dock?.position ?? "bottom") === "bottom")
                         ? -Math.round((Config.options?.dock?.height ?? 60) * 2.5)
                         : 0
@@ -190,6 +210,14 @@ Scope {
                     // SearchWidget lets Escape through to this one.
                     Keys.onEscapePressed: GlobalStates.overviewOpen = false
 
+                    Item { // The part of the window that takes input: all of it but the bar's strip
+                        id: inputArea
+                        anchors {
+                            fill: parent
+                            topMargin: root.barInset
+                        }
+                    }
+
                     Rectangle { // Pushes everything behind the launcher back
                         anchors.fill: parent
                         // The scrolling overview paints its own backdrop; this
@@ -218,7 +246,7 @@ Scope {
                         anchors {
                             horizontalCenter: parent.horizontalCenter
                             top: parent.top
-                            topMargin: Appearance.sizes.elevationMargin
+                            topMargin: Appearance.sizes.elevationMargin + root.barInset
                         }
                         SearchWidget {
                             id: searchWidget
@@ -248,6 +276,7 @@ Scope {
                         id: scrollingOverviewLoader
                         scale: root.effectiveScale
                         anchors.fill: parent
+                        anchors.topMargin: root.barInset
                         active: (Config?.options.overview.enable ?? true) && root.isScrollingLayout
                         sourceComponent: ScrollingOverviewWidget {
                             anchors.fill: parent
