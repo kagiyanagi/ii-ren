@@ -31,15 +31,17 @@ Singleton {
 	property var activeTrack;
 	readonly property string artUrl: artUrlFor(activePlayer);
 
-	// Browsers often expose no artwork at all: the plasma integration only forwards what the
-	// page's MediaSession sets, and falls back to the bare page title when it sets nothing.
-	// Derive the YouTube thumbnail from the track URL in that case.
+	// Browsers pass on only what the page's MediaSession sets: nothing at all on some sites, and
+	// on YouTube a 336x188 thumbnail that any large cover blows up into mush. A YouTube video
+	// gets its own 1280x720 frame instead, 16:9 with no letterboxing; CoverArt falls back to the
+	// 320x180 one, which always exists, on uploads below 720p. YouTube Music keeps the art it
+	// sets, a real square album cover.
 	function artUrlFor(player: MprisPlayer): string {
-		const url = player?.trackArtUrl;
-		if (url && url !== "") return url;
-		const videoId = (player?.metadata?.["xesam:url"] ?? "").match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/);
-		// mqdefault is 16:9 with no letterboxing and always exists, unlike maxresdefault.
-		return videoId ? `https://i.ytimg.com/vi/${videoId[1]}/mqdefault.jpg` : "";
+		const url = player?.trackArtUrl ?? "";
+		const pageUrl = player?.metadata?.["xesam:url"] ?? "";
+		const videoId = pageUrl.match(/(?:[?&]v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/);
+		if (!videoId || (url && pageUrl.includes("music.youtube.com"))) return url;
+		return `https://i.ytimg.com/vi/${videoId[1]}/hq720.jpg`;
 	}
 
 	onAllPlayersChanged: {

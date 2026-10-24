@@ -40,11 +40,19 @@ Singleton {
         root.next();
     }
 
+    // Urls to try, in order. YouTube's 1280x720 frame, which MprisController asks for, is
+    // missing on uploads below 720p; the 320x180 one always exists.
+    function candidates(url): var {
+        const frame = url.match(/^(https:\/\/i\.ytimg\.com\/vi\/[\w-]{11})\/hq720\.jpg$/);
+        return frame ? [url, `${frame[1]}/mqdefault.jpg`] : [url];
+    }
+
     function next() {
         if (fetcher.running) return;
         const url = root.wanted.find(url => !(url in root.files));
         if (!url) return;
         fetcher.url = url;
+        fetcher.urls = root.candidates(url);
         fetcher.path = `${Directories.coverArt}/${Qt.md5(url)}`;
         fetcher.running = true;
     }
@@ -52,10 +60,11 @@ Singleton {
     Process {
         id: fetcher
         property string url
+        property var urls: []
         property string path
         // Arguments, never interpolated: art urls come from web pages through MPRIS.
-        command: ["sh", "-c", '[ -s "$1" ] || { mkdir -p "${1%/*}" && curl -4 -fsSL --proto =http,https --max-time 20 -o "$1.tmp" --url "$2" && mv -f "$1.tmp" "$1"; }',
-            "sh", path, url]
+        command: ["sh", "-c", '[ -s "$1" ] && exit; mkdir -p "${1%/*}" || exit; out=$1; shift; for url; do curl -4 -fsSL --proto =http,https --max-time 20 -o "$out.tmp" --url "$url" && exec mv -f "$out.tmp" "$out"; done; exit 1',
+            "sh", path].concat(urls)
         onExited: exitCode => {
             root.files = Object.assign({}, root.files, { [fetcher.url]: exitCode === 0 ? `file://${fetcher.path}` : "" });
             root.next();

@@ -77,13 +77,28 @@ Item {
 
     // QML applies the initial state without running its transition, and `shown`
     // is already true when the window is constructed. Completing in the hidden
-    // state and flipping this on the next tick is what makes the enter
-    // animation actually play instead of snapping in.
+    // state and flipping this later is what makes the enter animation actually
+    // play instead of snapping in. Later is when FirstFrameGate says so: this
+    // window's first frame took 55-110ms (measured 2026-10-24, with or without
+    // album art or the blur), and an open started at construction jumped it.
     property bool entered: false
+
+    FirstFrameGate {
+        id: firstFrames
+        item: root
+        onReady: root.entered = true
+    }
 
     Component.onCompleted: {
         LyricsService.initiliazeLyrics();
-        root.entered = true;
+        firstFrames.hold();
+    }
+
+    // Closed while still held: there is no exit to run, so it is over now.
+    onShownChanged: {
+        if (root.shown || root.entered) return;
+        firstFrames.cancel();
+        root.closed();
     }
 
     // ── Keyboard ─────────────────────────────────────────────────────────────
@@ -120,7 +135,8 @@ Item {
             name: "hidden"
             when: !(root.shown && root.entered)
             PropertyChanges {
-                contentRoot.opacity: 0
+                // Faint enough to never show, not so faint Qt skips drawing it.
+                contentRoot.opacity: root.entered ? 0 : firstFrames.warmOpacity
                 contentRoot.contentScale: 0.94
             }
         }

@@ -14,8 +14,10 @@ nothing shows, then lets the open start. What this guards:
   the rendering signals arrive on the render thread, where no JS may run;
 - the "steady" interval stays under two 60Hz frames, so a blocked frame (50ms+)
   can never pass for a drawn one;
-- `ArrowPopupMotion.open()` and a new `StyledPopup` both start through the gate,
-  not by starting their open animation directly.
+- `ArrowPopupMotion.open()`, a new `StyledPopup` and the fullscreen media player
+  all start through the gate, not by starting their open animation directly. The
+  media player's window is built fresh on every open and its first frame cost
+  55-110ms (measured 2026-10-24), the same jump at full-screen size.
 
 Run: python3 tools/check-first-frame-gate.py
 """
@@ -26,6 +28,7 @@ SHELL = pathlib.Path(__file__).parent.parent / "dots/.config/quickshell/ii"
 GATE = (SHELL / "modules/common/widgets/FirstFrameGate.qml").read_text()
 MOTION = (SHELL / "modules/common/widgets/ArrowPopupMotion.qml").read_text()
 POPUP = (SHELL / "modules/ii/bar/StyledPopup.qml").read_text()
+IMMERSIVE = (SHELL / "modules/ii/immersiveMedia/ImmersiveMediaContent.qml").read_text()
 
 QT_CULL = 0.001  # QSGOpacityNode::isSubtreeBlocked
 RENDER_THREAD = ("onFrameSwapped", "onBeforeRendering", "onAfterRendering",
@@ -64,5 +67,13 @@ created = body(POPUP, "        Component.onCompleted:")
 assert "firstFrames.hold()" in created and "warmOpacity" in created, "a new StyledPopup must warm and hold"
 assert "openAnim.start()" not in created, "a new StyledPopup must not start its open itself"
 assert "firstFrames.cancel()" in POPUP, "a StyledPopup close must cancel a held open"
+
+created = body(IMMERSIVE, "    Component.onCompleted:")
+assert "firstFrames.hold()" in created, "the media player must hold its open until the window draws"
+assert "root.entered = true" not in created, "the media player must not start its open itself"
+assert "onReady: root.entered = true" in IMMERSIVE, "the gate's ready must start the media player's open"
+hidden = body(IMMERSIVE, '            name: "hidden"')
+assert "firstFrames.warmOpacity" in hidden, "a held media player must sit at warmOpacity, or Qt draws nothing to warm"
+assert "firstFrames.cancel()" in body(IMMERSIVE, "    onShownChanged:"), "a media player closed while held must cancel the hold"
 
 print("check-first-frame-gate: ok")
