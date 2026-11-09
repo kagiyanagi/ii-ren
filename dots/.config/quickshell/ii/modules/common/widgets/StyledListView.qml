@@ -205,7 +205,14 @@ ListView {
     // the scale is spatial and is meant to overshoot, the fade is effects and
     // clips if it does -- on one shared spatial spec the row finished fading at
     // ~60% of the duration and then sat there (2.1, 10.6).
+    //
+    // Every transition is switched off with `enabled`, not just emptied. An
+    // empty one is still a transition to ListView: under a burst of inserts,
+    // removes and moves in one turn (a Wi-Fi scan, a Bluetooth discovery) it
+    // lost track of removed rows, which stayed drawn over the live ones with
+    // their object destroyed -- "Unknown / Connecting…" in the Wi-Fi dialog.
     add: Transition {
+        enabled: root.animateAppearance
         animations: !root.animateAppearance ? [] : [
             Appearance?.animation.elementMoveFast.numberAnimation.createObject(this, {
                 property: "opacity",
@@ -222,6 +229,7 @@ ListView {
     }
 
     addDisplaced: Transition {
+        enabled: root.animateAppearance
         animations: animateAppearance ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
                 property: "y",
@@ -234,6 +242,7 @@ ListView {
     }
     
     displaced: Transition {
+        enabled: root.animateMovement
         animations: root.animateMovement ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
                 property: "y",
@@ -246,6 +255,7 @@ ListView {
     }
 
     move: Transition {
+        enabled: root.animateMovement
         animations: root.animateMovement ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
                 property: "y",
@@ -257,6 +267,7 @@ ListView {
         ] : []
     }
     moveDisplaced: Transition {
+        enabled: root.animateMovement
         animations: root.animateMovement ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
                 property: "y",
@@ -271,6 +282,7 @@ ListView {
     // Leaving is the exit spec, not the enter one: faster, and monotone, so the
     // fade does not dip past 0 and blank the row before the slide lands (2.5).
     remove: Transition {
+        enabled: root.animateAppearance
         animations: animateAppearance ? [
             Appearance?.animation.elementMoveExit.numberAnimation.createObject(this, {
                 property: "x",
@@ -284,7 +296,8 @@ ListView {
     }
 
     // This is movement when something is removed, not removing animation!
-    removeDisplaced: Transition { 
+    removeDisplaced: Transition {
+        enabled: root.animateAppearance
         animations: animateAppearance ? [
             Appearance?.animation.elementMove.numberAnimation.createObject(this, {
                 property: "y",
