@@ -249,7 +249,7 @@ Singleton {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
         if (index !== -1) {
-            root.list.splice(index, 1);
+            root._release(root.list.splice(index, 1));
             notifFileView.setText(stringifyList(root.list));
             triggerListChange()
         }
@@ -260,6 +260,7 @@ Singleton {
     }
 
     function discardAllNotifications() {
+        root._release(root.list);
         root.list = []
         triggerListChange()
         notifFileView.setText(stringifyList(root.list));
@@ -305,6 +306,31 @@ Singleton {
             console.log("Notification not found in server: " + id)
         }
         root.discardNotification(id);
+    }
+
+    // A discarded Notif is created with `root` as its parent, so taking it off
+    // the list alone never frees it. It is not destroyed on the spot either: the
+    // row it was drawn in is still sliding out, bound to it, and destroying it
+    // under that row blanks the text and logs a null read per binding. It waits
+    // out the slowest motion spec instead, which every exit is shorter than.
+    // Two generations, so one discarded just before a tick still gets a full
+    // interval: each tick destroys what was already waiting and moves the rest up.
+    property var _discarded: []
+    property var _expiring: []
+    function _release(notifs) {
+        root._discarded.push(...notifs);
+        reaper.start();
+    }
+    Timer {
+        id: reaper
+        interval: Appearance.animationCurves.expressiveSlowSpatialDuration
+        repeat: true
+        onTriggered: {
+            root._expiring.forEach((notif) => notif.destroy());
+            root._expiring = root._discarded;
+            root._discarded = [];
+            if (root._expiring.length === 0) stop();
+        }
     }
 
     function triggerListChange() {

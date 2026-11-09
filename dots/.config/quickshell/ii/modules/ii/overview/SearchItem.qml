@@ -199,6 +199,7 @@ RippleButton {
                 text: root.itemType
             }
             RowLayout {
+                id: nameRow
                 Loader { // Checkmark for copied clipboard entry
                     visible: itemName == Quickshell.clipboardText && root.cliphistRawString
                     active: itemName == Quickshell.clipboardText && root.cliphistRawString
@@ -220,7 +221,10 @@ RippleButton {
                     model: root.query == root.itemName ? [] : root.urls
                     Favicon {
                         required property var modelData
-                        size: parent.height
+                        // The row by id, not `parent`: an icon is unparented on
+                        // its way out, and `parent.height` then read null for
+                        // every link icon removed.
+                        size: nameRow.height
                         url: modelData
                     }
                 }
