@@ -258,6 +258,9 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.lyricsService.enableGenius = checked;
             }
+            StyledToolTip {
+                text: Translation.tr("Needs a Genius API key: type /genius followed by the key in the launcher.")
+            }
         }
         ConfigSwitch {
             enabled: Config.options.lyricsService.enable

@@ -78,7 +78,7 @@ Singleton {
     property string userAvatarPathRicersAndWeirdSystems2: FileUtils.trimFileProtocol(`${Directories.home}/.face.icon`)
     property string privacyStateScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/privacy/privacystate.py`)
     property string locationServiceScript: FileUtils.trimFileProtocol(`${Directories.scriptPath}/privacy/locationservice.sh`)
-    property string geniusLyricsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/lyrics/genius-lyrics.js`)
+    property string geniusLyricsScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/lyrics/genius_lyrics.py`)
     property string localSendDownloadPath: FileUtils.trimFileProtocol(`${Directories.home}/Downloads/localsend`)
     property string applyCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/apply-cursor-theme.sh`)
     property string listCursorScriptPath: FileUtils.trimFileProtocol(`${Directories.scriptPath}/cursor/list-cursor-themes.py`)

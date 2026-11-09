@@ -211,8 +211,10 @@ Singleton {
                         });
                     }
                 }
-                root.unread++;
             }
+            // Unread unless the list it lands in is open. Do Not Disturb holds the
+            // popup back, not the count: the bell shows it once DND is off.
+            if (!(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
             root.notify(newNotifObject);
             if (Config.options.notifications.history.enable) root.recordHistory(newNotifObject);
             // console.log(notifToString(newNotifObject));

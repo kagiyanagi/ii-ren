@@ -130,23 +130,20 @@ Singleton {
 				}
 			}
 
+			// The player going away may still be listed, and may still say it is playing.
 			Component.onDestruction: {
-				if (root.trackedPlayer == null || !root.trackedPlayer.isPlaying) {
-					for (const player of Mpris.players.values) {
-						if (player.playbackState.isPlaying) {
-							root.trackedPlayer = player;
-							break;
-						}
-					}
-
-					if (trackedPlayer == null && Mpris.players.values.length != 0) {
-						trackedPlayer = Mpris.players.values[0];
-					}
-				}
+				const closing = root.trackedPlayer === modelData;
+				if (!closing && root.trackedPlayer?.isPlaying) return;
+				const playing = root.players.find(player => player !== modelData && player.isPlaying);
+				if (playing) root.trackedPlayer = playing;
+				// Nothing playing: activePlayer falls back to the first real player.
+				else if (closing) root.trackedPlayer = null;
 			}
 
+			// Only starting to play takes the controls. Another player pausing or stopping
+			// must not, or the play key resumes that one instead of pausing this one.
 			function onPlaybackStateChanged() {
-				if (root.isRealPlayer(modelData) && root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
+				if (modelData.isPlaying && root.isRealPlayer(modelData) && root.trackedPlayer !== modelData) root.trackedPlayer = modelData;
 			}
 
 			function onMetadataChanged() {

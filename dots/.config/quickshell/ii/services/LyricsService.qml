@@ -24,7 +24,6 @@ Singleton {
     
     property bool isInitialized: false
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
-    readonly property string currentTrackId: root.activePlayer?.trackTitle ?? ""
 
     readonly property bool effectiveLrclibEnabled: lyricsEnabled && lrclibEnabled && isInitialized && (root.activePlayer?.trackTitle?.length > 0) && (root.activePlayer?.trackArtist?.length > 0)
     readonly property bool effectiveGeniusEnabled: lyricsEnabled && geniusEnabled && isInitialized
@@ -35,24 +34,13 @@ Singleton {
     readonly property string statusText: lrclib.displayText
     readonly property bool hasSyncedLines: syncedLines.length > 0
 
-    readonly property bool geniusHasLyrics: lyricsEnabled && geniusEnabled && genius.hasString
-    readonly property string plainLyrics: genius.lyricsString
+    readonly property bool geniusHasLyrics: effectiveGeniusEnabled && genius.lyrics !== ""
+    readonly property string plainLyrics: geniusHasLyrics ? genius.lyrics : ""
 
     // Function to initialize the lyrics service, to prevent unnecessary API calls when no lyrics UI is being use
     // Its being called in LyricsStatic and LyricsScroller files
     function initiliazeLyrics() {
         root.isInitialized = true
-    }
-
-    function filterLyricLines(lyrics) { // for clearing the metadata in genius lyrics
-        return lyrics
-            .split("\n")
-            .filter(line => {
-                const trimmed = line.trim()
-                return !(trimmed.startsWith("[") && trimmed.endsWith("]"))
-            })
-            .slice(1)
-            .join("\n")
     }
 
     // https://quickshell.org/docs/master/types/Quickshell.Services.Mpris/MprisPlayer/#position
@@ -61,18 +49,6 @@ Singleton {
         interval: 250
         repeat: true
         onTriggered: root.activePlayer.positionChanged()
-    }
-
-    Component.onCompleted: geniusFirstFetchDelay.restart()
-    Timer {
-        id: geniusFirstFetchDelay
-        running: false
-        interval: 1000
-        onTriggered: {
-            if (root.activePlayer && effectiveGeniusEnabled) {
-                genius.fetchLyrics(root.activePlayer.trackArtist, root.activePlayer.trackTitle)
-            }
-        }
     }
 
     LrclibLyrics {
@@ -84,32 +60,11 @@ Singleton {
         position: root.activePlayer?.position ?? 0
     }
 
+    // Fetches once per track, and only for one that names an artist: see GeniusLyrics
     GeniusLyrics {
         id: genius
-        readonly property string trackTitle: root.activePlayer?.trackTitle ?? ""
-        onTrackTitleChanged: {
-            if (root.activePlayer) {
-                if (!effectiveGeniusEnabled) return;
-                genius.hasString = false
-                genius.fetchLyrics(root.activePlayer.trackArtist, root.activePlayer.trackTitle)
-            }
-        }
-        property string lyricsString: ""
-        property bool hasString: false
-        onLyricsUpdated: (lyrics) => {
-            if (!effectiveGeniusEnabled) return
-            genius.hasString = true
-            genius.lyricsString = filterLyricLines(lyrics)
-        }
-    }
-    
-    onCurrentTrackIdChanged: {
-
-        if (!effectiveGeniusEnabled) return;
-        if (currentTrackId !== "" && root.activePlayer?.trackArtist) {
-            genius.fetchLyrics(root.activePlayer.trackArtist, root.activePlayer.trackTitle)
-        } else {
-            genius.lyricsString = ""
-        }
+        enabled: root.effectiveGeniusEnabled
+        artist: root.activePlayer?.trackArtist ?? ""
+        title: root.activePlayer?.trackTitle ?? ""
     }
 }
