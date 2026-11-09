@@ -29,6 +29,9 @@ Singleton {
         }
         root.pending[key] = true
         comp.statusChanged.connect(() => {
+            // Unloaded while it was still loading: building it now would leave a live
+            // service, IpcHandler and shortcuts included, that nothing tracks or frees.
+            if (!root.pending[key]) return
             if (comp.status === Component.Ready) {
                 delete root.pending[key]
                 root._instantiate(comp, key)

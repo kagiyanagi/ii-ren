@@ -13,10 +13,6 @@ import Quickshell.Hyprland
 Scope {
     id: root
 
-    property Component regionComponent: Component {
-        Region {}
-    }
-    
     Loader {
         id: overlayLoader
         // Mapping, never intent. `active` must not read `GlobalStates.overlayOpen`, not
@@ -43,9 +39,19 @@ Scope {
             // screen to show for it (`tools/check-mask-regions.py`).
             mask: Region {
                 item: GlobalStates.overlayOpen ? overlayContent : null
-                regions: OverlayContext.clickableWidgets.map((widget) => regionComponent.createObject(this, {
-                    item: widget
-                }));
+                regions: clickableRegions.instances
+            }
+
+            // One Region per clickable widget, made and freed with it. Built with
+            // createObject inside the binding above, every pin, unpin or clickthrough
+            // toggle made a fresh set and left the last one parented to the mask.
+            Variants {
+                id: clickableRegions
+                model: OverlayContext.clickableWidgets
+                delegate: Region {
+                    required property Item modelData
+                    item: modelData
+                }
             }
 
             anchors {

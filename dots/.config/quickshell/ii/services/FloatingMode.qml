@@ -348,7 +348,11 @@ Singleton {
         id: probe
         stdout: StdioCollector {
             onStreamFinished: {
-                const known = Object.assign({}, root.ownControlsByPid);
+                // Only pids that still have a window keep their answer: the map grew by
+                // one per app ever opened, and a pid the kernel hands out again would
+                // have inherited a dead app's.
+                const live = new Set([...HyprlandData.windowList, ...root.state.windows].map(w => String(w.pid)));
+                const known = Object.fromEntries(Object.entries(root.ownControlsByPid).filter(([pid]) => live.has(pid)));
                 for (const line of text.split("\n")) {
                     const f = line.split(" ");
                     if (f.length === 2)

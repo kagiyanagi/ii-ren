@@ -16,6 +16,8 @@ Loader {
 
     Behavior on opacity {
         id: opacityBehavior
-        animation: Looks.transition.opacity.createObject(null)
+        // Parented to the Behavior so it goes with it; with no parent it was owned by
+        // nothing that frees it, the Behavior's reference not being one the GC sees.
+        animation: Looks.transition.opacity.createObject(this)
     }
 }

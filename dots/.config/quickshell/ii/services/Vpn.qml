@@ -117,6 +117,16 @@ Singleton {
                     }
                 }
             }
+            // A binary that is not there never starts, and Quickshell then reports no
+            // `exited` at all: without this the runner, and its pending spinner, stayed.
+            property bool started: false
+            onStarted: proc.started = true
+            onRunningChanged: {
+                if (proc.running || proc.started)
+                    return;
+                root.finish(proc.tunnelId, "failed");
+                proc.destroy();
+            }
             onExited: (exitCode, exitStatus) => {
                 const error = exitCode === 0 ? null : (V.failure(proc.errText) ?? "failed");
                 if (error === "permission") {

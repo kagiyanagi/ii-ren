@@ -399,9 +399,23 @@ Item {
         return root._cache[key] || null;
     }
 
+    // Every song played used to stay in memory and in the file for good, which is
+    // also rewritten whole on each new one. Oldest-fetched goes first: keys keep
+    // insertion order, and a re-fetch moves its song to the back.
+    readonly property int cacheLimit: 200
+
+    function trimCache(cache) {
+        const keys = Object.keys(cache);
+        for (let i = 0; i < keys.length - root.cacheLimit; i++)
+            delete cache[keys[i]];
+        return cache;
+    }
+
     function setCache(track, artist, duration, data) {
         const key = `${track}||${artist}||${duration}`;
+        delete root._cache[key];
         root._cache[key] = data;
+        root.trimCache(root._cache);
         saveCache();
     }
 
@@ -419,7 +433,7 @@ Item {
             if (isInitialLoad) {
                 try {
                     const loaded = JSON.parse(lyricFileView.text() || "{}");
-                    root._cache = loaded;
+                    root._cache = root.trimCache(loaded);
                     // console.log("[Cache] Loaded, total songs:", Object.keys(loaded).length);
                 } catch (e) {
                     root._cache = {};

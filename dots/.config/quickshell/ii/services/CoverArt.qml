@@ -18,6 +18,7 @@ Singleton {
 
     // remote url -> file:// url on disk, or "" if the fetch failed
     property var files: ({})
+    readonly property int keep: 50
 
     // "" until remote art is on disk; local art passes through, bare paths as file urls.
     function source(url): string {
@@ -66,7 +67,15 @@ Singleton {
         command: ["sh", "-c", '[ -s "$1" ] && exit; mkdir -p "${1%/*}" || exit; out=$1; shift; for url; do curl -4 -fsSL --proto =http,https --max-time 20 -o "$out.tmp" --url "$url" && exec mv -f "$out.tmp" "$out"; done; exit 1',
             "sh", path].concat(urls)
         onExited: exitCode => {
-            root.files = Object.assign({}, root.files, { [fetcher.url]: exitCode === 0 ? `file://${fetcher.path}` : "" });
+            const files = Object.assign({}, root.files, { [fetcher.url]: exitCode === 0 ? `file://${fetcher.path}` : "" });
+            // One entry per track ever played otherwise. The oldest go first, never a
+            // wanted one; the rest stay so art fading out still has its file.
+            const keys = Object.keys(files);
+            for (let i = 0; i < keys.length - root.keep; i++) {
+                if (!root.wanted.includes(keys[i]))
+                    delete files[keys[i]];
+            }
+            root.files = files;
             root.next();
         }
     }

@@ -44,6 +44,8 @@ Scope {
                 GlobalFocusGrab.removeDismissable(panelWindow);
             }
         }
+        // Unloaded while open (detached, family switched) never turns visible off.
+        Component.onDestruction: GlobalFocusGrab.removeDismissable(panelWindow)
 
         Connections {
             target: GlobalFocusGrab

@@ -19,9 +19,18 @@ Singleton {
     signal brightnessChanged()
 
     property var ddcMonitors: []
-    readonly property list<BrightnessMonitor> monitors: Quickshell.screens.map(screen => monitorComp.createObject(root, {
-        screen
-    }))
+    // One per screen, made and freed with it. A `screens.map(createObject)` binding
+    // built a whole new set on every hotplug and left the old ones, processes and
+    // all, parented to root.
+    readonly property list<BrightnessMonitor> monitors: monitorVariants.instances
+    Variants {
+        id: monitorVariants
+        model: Quickshell.screens
+        delegate: BrightnessMonitor {
+            required property ShellScreen modelData
+            screen: modelData
+        }
+    }
 
     // The monitor a brightness gesture means when it comes from something that
     // is not tied to one screen - a keybind, or a slider in a panel that the
@@ -182,12 +191,6 @@ Singleton {
         function setBrightnessMultiplier(value: real): void {
             monitor.brightnessMultiplier = value;
         }
-    }
-
-    Component {
-        id: monitorComp
-
-        BrightnessMonitor {}
     }
 
     // Anti-flashbang

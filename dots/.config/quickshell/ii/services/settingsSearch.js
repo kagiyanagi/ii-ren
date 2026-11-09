@@ -807,6 +807,10 @@ function search(index, query, limit) {
     // How well each indexed word matches each query word, computed once. A
     // word that some setting really contains is taken as typed: guessing at
     // typos for it too put "Shape" under "shake".
+    // One vocabulary-sized array per word ever typed, every prefix included, for as
+    // long as the settings window is open: started over once it holds a few hundred.
+    if (Object.keys(index.cache).length > 256)
+        index.cache = {};
     const quality = terms.map(t => {
         if (index.cache[t.word])
             return index.cache[t.word];

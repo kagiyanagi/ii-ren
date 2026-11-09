@@ -539,6 +539,7 @@ Singleton {
         root._releaseRun();
         root.pendingApproval = null;
         root.pendingClarify = null;
+        LatexRenderer.forget(); // the transcript was the only thing drawing its formulas
         root.transcriptCleared();
     }
 
@@ -2601,7 +2602,14 @@ Singleton {
                     }
                 }
             }
-            onExited: {
+            onExited: notice.release()
+            // With no notify-send it never starts, and Quickshell reports no `exited`
+            // then: the notice would stay, listed and alive, for the session.
+            property bool started: false
+            onStarted: notice.started = true
+            onRunningChanged: if (!notice.running && !notice.started) notice.release()
+
+            function release(): void {
                 root._waitingNotices = root._waitingNotices.filter(other => other !== notice);
                 notice.destroy();
             }

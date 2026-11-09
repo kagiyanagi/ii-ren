@@ -68,6 +68,11 @@ Singleton {
 		// Assigning activePlayer would kill its binding, leaving it stuck on a dead player.
 		const nextPlayer = allPlayers.find(player => player.desktopEntry === root.priorityPlayer);
 		if (nextPlayer) root.trackedPlayer = nextPlayer;
+		// A browser's bus is named per instance, so each one that ever played left its
+		// entry behind; only buses still on the bus keep theirs.
+		const live = allPlayers.map(player => player.dbusName);
+		if (Object.keys(root.pageUrlTracks).some(name => !live.includes(name)))
+			root.pageUrlTracks = Object.fromEntries(Object.entries(root.pageUrlTracks).filter(([name]) => live.includes(name)));
 	}
 
 	property bool hasActivePlasmaIntegration: false

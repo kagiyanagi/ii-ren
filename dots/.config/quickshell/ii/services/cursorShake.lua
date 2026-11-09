@@ -62,24 +62,30 @@ function M.pace(state, x, y)
     return (state.still >= M.cfg.samples and state.left <= 0) and M.cfg.idle_tick or M.cfg.tick
 end
 
+-- Hyprland frees a repeating timer only with its Lua state (a config reload); disabling
+-- one keeps it, and the closure it calls, for the rest of the session. So one timer is
+-- made per state and kept: stop parks it, install points it at a fresh sampler and arms it.
 function M.stop()
     if ii_cs_timer then ii_cs_timer:set_enabled(false) end
-    ii_cs_timer = nil
 end
 
 function M.install()
     M.stop()
-    local shake, state, tick = M.detector(M.cfg), { left = 0 }, M.cfg.tick
-    ii_cs_timer = hl.timer(function()
+    local shake, state = M.detector(M.cfg), { left = 0 }
+    ii_cs_tick = function()
         local p = hl.get_cursor_pos()
         local out = M.step(state, shake(p.x, p.y), p.x, p.y)
         if out then hl.dispatch(hl.dsp.event(M.cfg.event .. ">>" .. out)) end
+        -- Before each call Hyprland re-arms a repeating timer at the timeout it was made
+        -- with, so the idle pace has to be asked for again on every tick, not once.
         local want = M.pace(state, p.x, p.y)
-        if want ~= tick then
-            tick = want
-            ii_cs_timer:set_timeout(tick)
-        end
-    end, { timeout = tick, type = "repeat" })
+        if want ~= M.cfg.tick then ii_cs_timer:set_timeout(want) end
+    end
+    if ii_cs_timer then
+        ii_cs_timer:set_timeout(M.cfg.tick) -- arms it again too
+    else
+        ii_cs_timer = hl.timer(function() ii_cs_tick() end, { timeout = M.cfg.tick, type = "repeat" })
+    end
 end
 
 return M

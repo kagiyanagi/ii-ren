@@ -102,9 +102,29 @@ RowLayout {
         spacing: 4
         currentIndex: root.currentIndex
 
-        // We can't use a ScriptModel here because it would mess up sections
-        model: {
-            const allResults = LauncherSearch.results;
+        // We can't use a ScriptModel here because it would mess up sections.
+        // Rebuilt when the results change rather than in a `model:` binding: a row is
+        // a LauncherSearchResult, and a binding has nowhere to free the last set, so
+        // every keystroke left its rows parented to this view for as long as it lived.
+        property var rows: []
+        model: rows
+        Connections {
+            target: LauncherSearch
+            function onResultsChanged() {
+                resultListView.rebuild();
+            }
+        }
+        Component.onCompleted: rebuild()
+
+        function rebuild() {
+            const stale = resultListView.rows;
+            resultListView.rows = resultListView.categorized(LauncherSearch.results);
+            // Deferred, and the view has already let go of their delegates.
+            for (const row of stale)
+                row.destroy();
+        }
+
+        function categorized(allResults) {
             // Find categories
             var categories = new Set();
             for (let i = 0; i < allResults.length; i++) {
@@ -139,7 +159,7 @@ RowLayout {
                     break;
                 }
             }
-            
+
             return categorizedResults;
         }
         onModelChanged: {
@@ -216,8 +236,10 @@ RowLayout {
                     const appId = isAppEntry ? resultPreview.entry.id : "";
                     const pinned = isAppEntry ? (Config.options.dock.pinnedApps.includes(appId)) : false;
                     const startPinned = isAppEntry ? (Config.options.launcher.pinnedApps.includes(appId)) : false;
+                    // Plain objects, as the entry's own actions below already are: made
+                    // with createObject here, a set was left behind per previewed entry.
                     var result = [
-                        searchResultComp.createObject(actionsColumn, {
+                        ({
                             name: resultPreview.entry.verb,
                             iconName: isAppEntry ? "open_in_new" : "keyboard_return",
                             iconType: LauncherSearchResult.IconType.Material,
@@ -226,7 +248,7 @@ RowLayout {
                             }
                         }),
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(actionsColumn, {
+                            ({
                                 name: startPinned ? Translation.tr("Unpin from Start") : Translation.tr("Pin to Start"),
                                 iconName: startPinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,
@@ -236,7 +258,7 @@ RowLayout {
                             })
                         ] : []),
                         ...(isAppEntry ? [
-                            searchResultComp.createObject(actionsColumn, {
+                            ({
                                 name: pinned ? Translation.tr("Unpin from taskbar") : Translation.tr("Pin to taskbar"),
                                 iconName: pinned ? "keep_off" : "keep",
                                 iconType: LauncherSearchResult.IconType.Material,

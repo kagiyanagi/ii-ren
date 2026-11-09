@@ -36,6 +36,8 @@ CHUNK = 256 * 1024
 # Long enough for a human to walk back to the machine, short enough that a
 # forgotten prompt does not pin the sender open forever.
 PROMPT_TIMEOUT = 120
+# A transfer that has sent nothing for this long was abandoned by its sender.
+SESSION_TTL = 3600
 
 INFO = {
     "alias": socket.gethostname(),
@@ -215,20 +217,34 @@ class Handler(BaseHTTPRequestHandler):
         if not ask():
             emit(event="cancelled")
             return self.reply(403)
+        # A sender that went away mid-transfer never sends /cancel, and its session
+        # would stay for as long as the receiver runs.
+        now = time.monotonic()
+        for old, session in list(sessions.items()):
+            if now - session["seen"] > SESSION_TTL:
+                sessions.pop(old, None)
         sid = uuid.uuid4().hex
         tokens = {fid: uuid.uuid4().hex for fid in files}
         sessions[sid] = {
             "files": files,
             "byToken": {t: fid for fid, t in tokens.items()},
             "sender": sender,
+            "seen": now,
         }
         self.reply(200, {"sessionId": sid, "files": tokens})
+
+    def done(self, q, session):
+        """A file is in: its token is spent, and a session with none left is over."""
+        session["byToken"].pop(q.get("token", ""), None)
+        if not session["byToken"]:
+            sessions.pop(q.get("sessionId", ""), None)
 
     def on_upload(self, q):
         session = sessions.get(q.get("sessionId", ""))
         fid = q.get("fileId", "")
         if not session or session["byToken"].get(q.get("token", "")) != fid:
             return self.reply(403)
+        session["seen"] = time.monotonic()
         meta = session["files"].get(fid) or {}
         if meta.get("fileType") == "text":
             emit(
@@ -236,6 +252,7 @@ class Handler(BaseHTTPRequestHandler):
                 sender=session["sender"],
                 text=self.body().decode("utf-8", "replace"),
             )
+            self.done(q, session)
             return self.reply(200)
         dest = safe_dest(meta.get("fileName"))
         size = 0
@@ -260,6 +277,7 @@ class Handler(BaseHTTPRequestHandler):
             path=dest,
             size=size,
         )
+        self.done(q, session)
         self.reply(200)
 
 

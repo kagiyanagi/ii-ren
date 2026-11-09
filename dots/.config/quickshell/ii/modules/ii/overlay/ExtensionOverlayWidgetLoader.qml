@@ -40,6 +40,9 @@ Item {
                 configEntry: cfg,
                 modelData: entry
             })
+            // Held before anything else: parented to the Repeater's item, not to this
+            // loader, it is freed only by cleanupWidget().
+            root._widget = widget
 
             if (widget && extId) {
                 if ("extensionId" in widget) {
@@ -52,8 +55,6 @@ Item {
                         enumerable: true
                     })
                 }
-
-                root._widget = widget
 
                 let saveCfg = () => {
                     ExtensionManager.saveExtensionOverlayConfig(extId, wid, {

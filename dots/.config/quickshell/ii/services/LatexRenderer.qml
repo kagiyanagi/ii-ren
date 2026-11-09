@@ -53,6 +53,19 @@ Singleton {
     // on every chunk: 90k hashes for one 234-formula answer
     property var hashes: ({})
 
+    /**
+     * Drops what is known about every render, for when the transcript showing them
+     * is cleared. Kept, these grew by a few entries per formula ever shown, for the
+     * life of the shell. A block already drawn keeps its text; one that asks again
+     * is rendered again (the file is still there, under the same hash).
+     */
+    function forget() {
+        root.hashes = ({});
+        root.processedExpressions = ({});
+        root.renderedImagePaths = ({});
+        root.renderedSizes = ({});
+    }
+
     function hashOf(expression) {
         return root.hashes[expression] ?? (root.hashes[expression] = Qt.md5(expression))
     }

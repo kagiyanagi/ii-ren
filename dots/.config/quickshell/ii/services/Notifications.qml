@@ -202,7 +202,10 @@ Singleton {
                 if (!cooledDown) {
                     newNotifObject.popup = true;
                     if (notification.expireTimeout != 0) {
-                        newNotifObject.timer = notifTimerComponent.createObject(root, {
+                        // Owned by its notification, not by root: a timer stopped by
+                        // hovering the popup never fires to destroy itself, and one
+                        // parented to root then outlived the notification for good.
+                        newNotifObject.timer = notifTimerComponent.createObject(newNotifObject, {
                             "notificationId": newNotifObject.notificationId,
                             "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
                         });
@@ -356,6 +359,7 @@ Singleton {
             } catch (e) {
                 console.warn("[Notifications] History file is not valid JSON, starting empty:", e);
             }
+            root._release(root.list); // A reload replaces the list; what it held is ours to free.
             root.list = saved.map((notif) => {
                 return notifComponent.createObject(root, {
                     "notificationId": notif.notificationId,

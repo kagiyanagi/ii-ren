@@ -285,6 +285,9 @@ Variants {
         }
 
         property var _extensionBgWidgetEntries: []
+        // Bumped per refresh, so a component that finishes loading after a newer
+        // refresh does not add a widget that refresh no longer tracks.
+        property int _extensionBgGeneration: 0
         property var _pendingWidgetSaves: ({})
 
         Timer {
@@ -310,6 +313,7 @@ Variants {
                 }
             }
             _extensionBgWidgetEntries = []
+            const generation = ++_extensionBgGeneration
 
             let list = ExtensionManager.getContributionPoint("backgroundWidgets")
 
@@ -362,10 +366,12 @@ Variants {
                                 enumerable: true
                             })
                         }
-                        let entries = _extensionBgWidgetEntries.slice()
-                        entries.push({ widget: widget, cfg: cfg })
-                        _extensionBgWidgetEntries = entries
                     }
+                    // Tracked whether or not the widget came up: the config object is
+                    // made either way, and only the next refresh frees what is listed.
+                    let entries = _extensionBgWidgetEntries.slice()
+                    entries.push({ widget: widget, cfg: cfg })
+                    _extensionBgWidgetEntries = entries
                 }
 
                 if (comp.status === Component.Ready) {
@@ -374,6 +380,7 @@ Variants {
                     console.warn("Background: failed to load extension widget component for", extId, wid, ":", comp.errorString())
                 } else {
                     comp.statusChanged.connect(() => {
+                        if (generation !== bgRoot._extensionBgGeneration) return
                         if (comp.status === Component.Ready) {
                             createWidget(comp, entry, fullPath, extId, wid, x, y, strat)
                         } else if (comp.status === Component.Error) {

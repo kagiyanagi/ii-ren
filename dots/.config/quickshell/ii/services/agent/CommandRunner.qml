@@ -103,7 +103,24 @@ QtObject {
         // started from its callback -- running straight after the call would race
         // the file into existence.
         const path = root._stagePath(lang);
-        root._stage(code, path, () => root.run(`${argv.join(" ")} '${path}'`, root.workingDirectory));
+        root._stage(code, path, () => {
+            root.run(`${argv.join(" ")} '${path}'`, root.workingDirectory);
+            if (root.command.includes(path))
+                root._runFile = path;
+            else // Another command was still going, so this one never ran.
+                Quickshell.execDetached(["rm", "-f", path]);
+        });
+    }
+
+    // The staged file of the run on screen. It goes when the next run starts or the
+    // console is cleared: every Run left one in /tmp, which is memory, until reboot.
+    // Files opened in an editor are the editor's and stay.
+    property string _runFile: ""
+
+    function _dropRunFile(): void {
+        if (root._runFile.length > 0)
+            Quickshell.execDetached(["rm", "-f", root._runFile]);
+        root._runFile = "";
     }
 
     /** Write `code` to a file and open it in whatever handles that file type. */
@@ -126,8 +143,10 @@ QtObject {
     function run(command: string, cwd: string): void {
         if (root.running || (command ?? "").trim().length === 0)
             return;
+        root._dropRunFile();
         root.command = command;
         root.output = "";
+        root._tail = "";
         root.exitCode = 0;
         root.interrupted = false;
         root.finished = false;
@@ -158,8 +177,10 @@ QtObject {
     }
 
     function clear(): void {
+        root._dropRunFile();
         root.finished = false;
         root.output = "";
+        root._tail = "";
         root.command = "";
     }
 
@@ -214,8 +235,13 @@ QtObject {
     // prints for minutes ever feels heavy, render incrementally from a cursor.
     readonly property int outputLimit: 20000
 
+    // The newest output only, never the whole run. A StdioCollector keeps every byte
+    // until the command exits, so a long chatty one (a watch, a build, a ping) grew
+    // the shell for as long as it ran, and each pump decoded all of it again.
+    property var _tail: ""
+
     function _drain(): void {
-        root.output = root._render(outputCollector.text.slice(-root.outputLimit));
+        root.output = root._render(root._tail.slice(-root.outputLimit));
     }
 
     // Every stage gets its own file. Two blocks staged in the same breath would
@@ -267,11 +293,17 @@ QtObject {
         // wrote from meeting fish syntax rules.
         environment: ({ "SHELL": "/bin/bash" })
 
-        // The pty is the command's stdout AND its stderr, so one collector gets
-        // both, interleaved in the order they were actually written.
-        stdout: StdioCollector {
-            id: outputCollector
-            waitForEnd: false
+        // The pty is the command's stdout AND its stderr, so one reader gets both,
+        // interleaved in the order they were actually written. No split marker: a
+        // chunk arrives as it is read, so a prompt with no newline still shows.
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                root._tail += data;
+                // Trimmed in steps rather than per chunk, so the copy is amortised.
+                if (root._tail.length > 2 * root.outputLimit)
+                    root._tail = root._tail.slice(-root.outputLimit);
+            }
         }
 
         onExited: exitCode => {

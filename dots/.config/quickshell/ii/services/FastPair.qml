@@ -163,9 +163,11 @@ Singleton {
     function dismiss(suppressMs) {
         const keys = suppressMs > 0 ? root.identityKeys(root.candidate) : [];
         if (keys.length > 0) {
-            let next = Object.assign({}, root.suppressedUntil);
+            // Expired ones go as a new one comes in, or every device ever dismissed stays.
+            const now = Date.now();
+            let next = Object.fromEntries(Object.entries(root.suppressedUntil).filter(([, until]) => until > now));
             for (const key of keys)
-                next[key] = Date.now() + suppressMs;
+                next[key] = now + suppressMs;
             root.suppressedUntil = next;
         }
         root.popupShown = false;

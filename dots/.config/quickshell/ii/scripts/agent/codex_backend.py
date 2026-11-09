@@ -326,6 +326,8 @@ class CodexBackend:
             turn = params.get("turn") or {}
             self.turn_id = ""
             self._deltas.clear()
+            # An interrupted or failed turn never completes the items it started.
+            self._items.clear()
             status = turn.get("status")
             if status == "failed":
                 run.finish(error=((turn.get("error") or {}).get("message")) or "Codex could not finish that")

@@ -299,6 +299,7 @@ var getPrepared = (target) => {
     var targetPrepared = preparedCache.get(target)
     if(targetPrepared !== undefined) return targetPrepared
     targetPrepared = prepare(target)
+    if(preparedCache.size >= CACHE_LIMIT) preparedCache.clear()
     preparedCache.set(target, targetPrepared)
     return targetPrepared
 }
@@ -307,6 +308,7 @@ var getPreparedSearch = (search) => {
     var searchPrepared = preparedSearchCache.get(search)
     if(searchPrepared !== undefined) return searchPrepared
     searchPrepared = prepareSearch(search)
+    if(preparedSearchCache.size >= CACHE_LIMIT) preparedSearchCache.clear()
     preparedSearchCache.set(search, searchPrepared)
     return searchPrepared
 }
@@ -648,6 +650,10 @@ var prepareNextBeginningIndexes = (target) => {
 
 var preparedCache       = new Map()
 var preparedSearchCache = new Map()
+// ii-ren: upstream keeps every string it ever saw until cleanup(), which nothing here
+// calls, and this library lives as long as the shell. Every query typed into the
+// launcher, clipboard and emoji search (each prefix of it) stayed for good.
+var CACHE_LIMIT = 500
 
 // the theory behind these being globals is to reduce garbage collection by not making new arrays
 var matchesSimple = []; var matchesStrict = []

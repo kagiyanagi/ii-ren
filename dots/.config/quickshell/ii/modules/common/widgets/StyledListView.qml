@@ -281,12 +281,16 @@ ListView {
 
     // Leaving is the exit spec, not the enter one: faster, and monotone, so the
     // fade does not dip past 0 and blank the row before the slide lands (2.5).
+    //
+    // The slide's end is bound on the animation, never read by this list: read
+    // here, every change of the view's width re-ran it and made two more
+    // animations, while the ones before stayed parented to the transition.
     remove: Transition {
         enabled: root.animateAppearance
         animations: animateAppearance ? [
             Appearance?.animation.elementMoveExit.numberAnimation.createObject(this, {
                 property: "x",
-                to: root.width + root.removeOvershoot,
+                to: Qt.binding(() => root.width + root.removeOvershoot),
             }),
             Appearance?.animation.elementMoveExit.numberAnimation.createObject(this, {
                 property: "opacity",

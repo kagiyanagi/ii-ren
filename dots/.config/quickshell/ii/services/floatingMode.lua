@@ -630,7 +630,7 @@ function M.install(cfg)
     -- walk per tick and no IPC.
     -- "B border rounding power;M monitor x0 y0 x1 y1;W address x y w h z fs floating max monitor pid class"
     local last = ""
-    fm.timer = hl.timer(function()
+    ii_fm_tick = function()
         local out = { string.format("B %d %d %s", hl.get_config("general.border_size"), hl.get_config("decoration.rounding"),
             hl.get_config("decoration.rounding_power")) }
         for _, m in ipairs(hl.get_monitors()) do
@@ -651,14 +651,22 @@ function M.install(cfg)
             last = s
             hl.dispatch(hl.dsp.event(M.cfg.event .. ">>" .. s))
         end
-    end, { timeout = M.cfg.tick, type = "repeat" })
+    end
+    -- Hyprland frees a repeating timer only with its Lua state (a config reload); a
+    -- disabled one keeps itself and the closure it calls for the rest of the session.
+    -- So the mode makes one per state and every later toggle re-arms it.
+    if ii_fm_timer then
+        ii_fm_timer:set_timeout(M.cfg.tick) -- arms it again too
+    else
+        ii_fm_timer = hl.timer(function() ii_fm_tick() end, { timeout = M.cfg.tick, type = "repeat" })
+    end
 
     function fm.stop()
         for _, key in ipairs(M.DRAG_KEYS) do
             hl.unbind(key)
             hl.bind(key, hl.dsp.window.drag(), { mouse = true, description = "Window: Move" })
         end
-        fm.timer:set_enabled(false)
+        ii_fm_timer:set_enabled(false)
         ii_fm_rule:set_enabled(false)
         for _, s in ipairs(fm.subs) do s:remove() end
         ii_fm = nil
