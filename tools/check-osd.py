@@ -27,6 +27,16 @@ NaN every time the backlight changed. QML reads an unknown property on a singlet
 checked against the service, and the indicator's `value:` is run under node for a normal
 LED and for one whose `max_brightness` has not loaded yet (`maxValue` 0 -- 0/0 is NaN).
 
+**The volume pill turned red at 100% with earbang protection off.** `VolumeIndicator`
+set `maxLimit` from `protection.maxAllowed` (99 by default) whether or not protection
+was on, so the error colour -- "over the limit" -- showed at a volume nothing limits.
+The limit is `maxAllowed` only while protection is on, and inclusive, since
+`Audio.setVolume` clamps *to* it; with protection off it is 100%, past which the volume
+keys overamplify (`-l 1.5`). PipeWire hands the volume back as a cube root of float32
+channel volumes, so 100% reads 1.0000001 and 99% 0.98999995: the pill goes red when the
+number it shows is past the limit, not on that noise. The binding is run under node,
+through the base's own `value > maxLimit`, for each side of each limit.
+
 Run: python3 tools/check-osd.py
 """
 import json
@@ -179,9 +189,51 @@ for (cur, max_), out in zip(leds, shown):
         "font has, so it renders as the word",
     )
 
+# ------------------------------------------------------ the volume pill's warning
+BASE = code((OSD_DIR / "OsdMaterialValueIndicator.qml").read_text())
+VOL_OSD = (OSD_DIR / "indicators/VolumeIndicator.qml").read_text()
+# The cases below model the base's comparison; a pill that warns some other way
+# needs them rewritten, not silently passing.
+check(
+    "property real maxLimit:" in BASE
+    and len(re.findall(r"\bmaxLimit\b", BASE)) == 1 + BASE.count("root.value > root.maxLimit"),
+    "OsdMaterialValueIndicator reads maxLimit other than as `root.value > root.maxLimit` "
+    "-- the volume warning cases in this check no longer model it",
+)
+limit_expr = one(VOL_OSD, r"^\s*maxLimit: (.+)$", "VolumeIndicator's maxLimit")
+# (protection on, maxAllowed %, volume as PipeWire reports it, warns)
+cases = [
+    (False, 99, 1.0, False),         # the bug: red at 100% with nothing limiting
+    (False, 99, 1.0000001, False),   # 100% as the cube root of a float32
+    (False, 99, 0.99, False),
+    (False, 99, 1.02, True),         # overamplified
+    (False, 99, 1.5, True),
+    (True, 99, 0.98, False),         # below the limit
+    (True, 99, 0.99, False),         # at it: Audio clamps to it, so it is allowed
+    (True, 99, 0.98999995, False),   # at it, float noise either side
+    (True, 99, 0.99000007, False),
+    (True, 99, 1.0, True),           # above it
+    (True, 120, 1.0, False),
+    (True, 120, 1.2000001, False),
+    (True, 120, 1.22, True),
+]
+warns = json.loads(subprocess.run(["node", "-e", f"""
+console.log(JSON.stringify({json.dumps(cases)}.map(([enable, maxAllowed, volume]) => {{
+    const Config = {{ options: {{ audio: {{ protection: {{ enable, maxAllowed, maxAllowedIncrease: 10 }} }} }} }};
+    return volume > ({limit_expr});
+}})));
+"""], capture_output=True, text=True, check=True).stdout)
+for (enable, max_allowed, volume, want), got in zip(cases, warns):
+    protection = f"on at {max_allowed}%" if enable else "off"
+    check(
+        got == want,
+        f"the volume pill {'warns' if got else 'does not warn'} at {volume!r} with "
+        f"protection {protection}; it should {'' if want else 'not '}turn red",
+    )
+
 if failures:
     print(f"check-osd.py: {len(failures)} failure(s)\n")
     for f in failures:
         print(f"  FAIL  {f}")
     sys.exit(1)
-print("ok: the OSD pill still leaves, only the Material style exists, and the keyboard pill reads a real 0-1 level")
+print("ok: the OSD pill still leaves, only the Material style exists, the keyboard pill reads a real 0-1 level, and the volume pill warns only past its limit")

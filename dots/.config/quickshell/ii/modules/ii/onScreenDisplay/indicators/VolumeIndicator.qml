@@ -17,5 +17,8 @@ OsdMaterialValueIndicator {
         return "volume_up";
     }
     shape: MaterialShape.Shape.Cookie7Sided
-    maxLimit: (Config.options.audio && Config.options.audio.protection) ? Config.options.audio.protection.maxAllowed / 100 : 1.0
+    // Red past the protection limit (inclusive, as Audio clamps to it), or past 100%
+    // with protection off. The half percent turns it red exactly when the number shown
+    // does: PipeWire's cubic volume reads 1.0000001 at 100%.
+    maxLimit: ((Config.options.audio?.protection?.enable ? Config.options.audio.protection.maxAllowed : 100) + 0.5) / 100
 }
