@@ -7,6 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
@@ -23,6 +24,9 @@ Scope {
     }
 
     property string currentIndicator: "volume"
+    // The player whose volume the playerVolume pill shows. Held rather than read from
+    // activePlayer, which can move to another player while the pill is up.
+    property MprisPlayer volumePlayer: null
     property var indicators: [
         {
             id: "volume",
@@ -34,7 +38,7 @@ Scope {
         },
         {
             id: "playerVolume",
-            sourceUrl: "indicators/VolumeIndicator.qml"
+            sourceUrl: "indicators/PlayerVolumeIndicator.qml"
         },
         {
             id: "gamma",
@@ -130,9 +134,11 @@ Scope {
     }
 
     Connections {
+        id: playerVolumeConnections
         target: MprisController.activePlayer ?? null
         function onVolumeChanged() {
             if (MprisController.canChangeVolume) {
+                root.volumePlayer = playerVolumeConnections.target;
                 root.currentIndicator = "playerVolume";
                 root.triggerOsd();
             }
@@ -269,6 +275,10 @@ Scope {
                     Loader {
                         id: osdIndicatorLoader
                         source: root.indicators.find(i => i.id === root.currentIndicator)?.sourceUrl
+                        onLoaded: {
+                            if (root.currentIndicator === "playerVolume")
+                                osdIndicatorLoader.item.player = Qt.binding(() => root.volumePlayer);
+                        }
                     }
 
                     Item {

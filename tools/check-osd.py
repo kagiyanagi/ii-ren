@@ -45,6 +45,14 @@ root object. The gate is per monitor, like the dock's and the Waffle OSD's: a fu
 window on the screen the OSD opens on hides it, one on the other monitor does not. Its
 function is run under node against workspaces on two monitors.
 
+**A player's volume showed the system volume.** The `playerVolume` entry loaded
+`VolumeIndicator`, which binds `Audio.sink`, so changing Spotify's own volume popped a
+pill with the sink's number in it -- and the sink's protection red. The player pill
+reads the player's MPRIS volume and never warns: the limit is the sink's, and a player
+at 100% (or mpv at 130%) is not over anything. It shows the player whose volume changed,
+held by the OSD, not whatever `activePlayer` is by the time it draws. Its bindings run
+under node against a sink, an active player and the changed player that all differ.
+
 Run: python3 tools/check-osd.py
 """
 import json
@@ -239,6 +247,91 @@ for (enable, max_allowed, volume, want), got in zip(cases, warns):
         f"protection {protection}; it should {'' if want else 'not '}turn red",
     )
 
+# ------------------------------------------------------- the player volume pill
+# The OSD holds the player that sent volumeChanged and hands that to the pill.
+handler = re.search(
+    r"Connections \{\s*(?:id: (\w+)\s*)?target: MprisController\.activePlayer.*?\n"
+    r"(.*?function onVolumeChanged\(\).*?)\n    \}\n",
+    OSD, re.S,
+)
+assert handler, "OnScreenDisplay's player volume Connections no longer matches -- this check is stale"
+held = re.search(
+    rf"root\.(\w+) = (?:{handler.group(1) or 'Connections'}\.target|MprisController\.activePlayer);",
+    handler.group(2),
+)
+check(
+    held,
+    "OnScreenDisplay's player volumeChanged handler no longer records which player changed; "
+    "the pill then follows activePlayer, which can move while it is up",
+)
+if held:
+    check(
+        re.search(rf"\.player = Qt\.binding\(\(\) => root\.{held.group(1)}\)", OSD),
+        f"OnScreenDisplay records the changed player in {held.group(1)} but no longer hands "
+        "it to the playerVolume pill",
+    )
+
+indicator_src = {
+    m.group(1): m.group(2)
+    for m in re.finditer(r'id: "(\w+)",\s*sourceUrl: "([^"]+)"', OSD)
+}
+player_url = indicator_src.get("playerVolume")
+assert player_url, "OnScreenDisplay's playerVolume entry no longer matches -- this check is stale"
+own_pill = player_url != indicator_src.get("volume")
+check(
+    own_pill,
+    "the playerVolume pill loads the system volume pill again, so a player's volume "
+    "change shows the sink's volume",
+)
+if own_pill:
+    PLAYER_OSD = code((OSD_DIR / player_url).read_text())
+    for banned, why in (
+        ("Audio.", "the sink is the system volume, not the player's"),
+        ("protection", "the protection limit is the sink's; a player at 100% is not past it"),
+        ("MprisController.", "the active player may not be the one whose volume changed"),
+    ):
+        check(banned not in PLAYER_OSD, f"{player_url} reads `{banned}` -- {why}")
+
+    base_limit = one(BASE, r"property real maxLimit: (.+)$", "OsdMaterialValueIndicator's maxLimit")
+    player_value = one(PLAYER_OSD, r"^\s*value: (.+)$", f"{player_url}'s value")
+    player_icon = one(PLAYER_OSD, r"^\s*icon: (.+)$", f"{player_url}'s icon")
+    player_limit = re.search(r"^\s*maxLimit: (.+)$", PLAYER_OSD, re.M)
+    player_limit = player_limit.group(1).strip() if player_limit else base_limit
+    # MPRIS volume is linear 0-1, and some players allow more (mpv to 1.3); None = gone.
+    player_volumes = [0, 0.3, 0.5, 0.99, 1.0, 1.0000001, 1.3, None]
+    pills = json.loads(subprocess.run(["node", "-e", f"""
+console.log(JSON.stringify({json.dumps(player_volumes)}.map(v => {{
+    const Audio = {{ sink: {{ audio: {{ volume: 0.25, muted: true }} }} }};
+    const MprisController = {{ activePlayer: {{ volume: 0.6 }}, canChangeVolume: true }};
+    const Config = {{ options: {{ audio: {{ protection: {{ enable: true, maxAllowed: 99 }} }} }} }};
+    const root = {{ player: v === null ? null : {{ volume: v }} }};
+    root.value = {player_value};
+    const icon = {player_icon};
+    return {{ value: root.value, icon, warns: root.value > ({player_limit}) }};
+}})));
+"""], capture_output=True, text=True, check=True).stdout)
+    for volume, out in zip(player_volumes, pills):
+        want = volume if volume is not None else 0
+        check(
+            isinstance(out.get("value"), (int, float)) and abs(out["value"] - want) < 1e-9,
+            f"the player pill shows {out.get('value')!r} for a player at {volume!r}; it should "
+            f"show the player's own {want!r}, not the sink's 0.25 or the active player's 0.6",
+        )
+        check(
+            not out.get("warns"),
+            f"the player pill turns red at {volume!r} -- the protection limit is the sink's",
+        )
+        check(
+            out.get("icon") in symbols,
+            f"the player pill's icon {out.get('icon')!r} is not a Material Symbol every "
+            "installed font has, so it renders as the word",
+        )
+    check(
+        pills[0].get("icon") != pills[1].get("icon"),
+        "the player pill shows the same icon at 0 as above it; MPRIS has no mute, so 0 is "
+        "the player's muted state and should look it",
+    )
+
 # ------------------------------------------- every singleton the OSD reads, for real
 def blank(src):
     """`src` with comments and string literals blanked, newlines kept: what is left
@@ -346,4 +439,4 @@ if failures:
     for f in failures:
         print(f"  FAIL  {f}")
     sys.exit(1)
-print("ok: the OSD pill still leaves, only the Material style exists, the keyboard pill reads a real 0-1 level, the volume pill warns only past its limit, and every singleton the OSDs read is real -- hide-when-fullscreen included, per monitor")
+print("ok: the OSD pill still leaves, only the Material style exists, the keyboard pill reads a real 0-1 level, the volume pill warns only past its limit, the player pill shows the player's own volume, and every singleton the OSDs read is real -- hide-when-fullscreen included, per monitor")
