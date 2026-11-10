@@ -40,6 +40,8 @@ Singleton {
     property list<var> droppedFiles: []
     property list<var> discoveredDevices: []
     property bool sending: false
+    readonly property bool scanning: scanProc.running
+    property bool _scanRequested: false
 
     signal transferRequested(var transfer)
     signal transferStarted(var transfer)
@@ -47,6 +49,22 @@ Singleton {
     signal transferCancelled(var transfer)
     signal sendCompleted()
     signal sendFailed(string message)
+
+    function openFilePicker(): void {
+        pickerProc.running = true
+    }
+
+    function startScanning(): void {
+        root._scanRequested = true
+        if (root.available && !root.scanning) scanProc.running = true
+    }
+
+    function stopScanning(): void {
+        root._scanRequested = false
+        scanProc.running = false
+    }
+
+    onAvailableChanged: if (root.available && root._scanRequested) root.startScanning()
 
     function addDroppedFile(fileUrl: string): void {
         const cleanPath = fileUrl.toString().replace(/^file:\/\//, "")
@@ -89,6 +107,33 @@ Singleton {
         running: true
         command: ["python3", root.helperPath, "check"]
         onExited: (exitCode, exitStatus) => root.available = (exitCode === 0)
+    }
+
+    Process {
+        id: pickerProc
+        command: ["sh", "-c",
+            "if command -v kdialog >/dev/null; then kdialog --getopenfilename ~ --multiple --separate-output; "
+            + "else zenity --file-selection --multiple --separator='\\n'; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                this.text.split("\n").filter(p => p !== "").forEach(p => root.addDroppedFile(p))
+            }
+        }
+    }
+
+    Process {
+        id: scanProc
+        command: ["python3", root.helperPath, "scan"]
+        stdout: SplitParser {
+            onRead: line => {
+                try {
+                    root.handleLocalSendEvent(JSON.parse(line))
+                } catch (e) {
+                    console.warn("[LocalSend] Failed to parse discovery event:", line, e)
+                }
+            }
+        }
+        onExited: root._scanRequested = false
     }
 
     // Notification process for incoming transfers

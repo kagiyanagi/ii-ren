@@ -7,6 +7,7 @@ LocalSend.qml only had to change the commands it spawns, not its shape.
 
     receive --output DIR    serve, stream events, prompt for each transfer
     send IP[:PORT] FILE...  push files to a peer
+    scan                    discover nearby peers for three seconds
     check                   exit 0 if this helper can run at all
 
 The whole protocol is a multicast announce plus five HTTP endpoints; see
@@ -299,7 +300,7 @@ def seen(peer, ip):
     )
 
 
-def discovery():
+def discovery(timeout=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -313,28 +314,40 @@ def discovery():
         struct.pack("4sl", socket.inet_aton(MULTICAST), socket.INADDR_ANY),
     )
 
-    def announce():
-        msg = json.dumps({**INFO, "announce": True}).encode()
-        while True:
-            try:
-                sock.sendto(msg, (MULTICAST, PORT))
-            except OSError as exc:
-                emit(error=f"announce failed: {exc}")
-            time.sleep(10)
-
-    threading.Thread(target=announce, daemon=True).start()
+    sock.settimeout(0.5)
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    next_announce = 0
+    msg = json.dumps({**INFO, "announce": True}).encode()
     reply = json.dumps({**INFO, "announce": False}).encode()
-    while True:
-        try:
-            data, addr = sock.recvfrom(65535)
-            peer = json.loads(data)
-        except (OSError, ValueError):
-            continue
-        if peer.get("fingerprint") == INFO["fingerprint"]:
-            continue
-        seen(peer, addr[0])
-        if peer.get("announce"):
-            sock.sendto(reply, addr)
+    try:
+        while deadline is None or time.monotonic() < deadline:
+            if time.monotonic() >= next_announce:
+                try:
+                    sock.sendto(msg, (MULTICAST, PORT))
+                except OSError as exc:
+                    emit(error=f"announce failed: {exc}")
+                next_announce = time.monotonic() + 10
+            try:
+                data, addr = sock.recvfrom(65535)
+                peer = json.loads(data)
+            except (OSError, ValueError):
+                continue
+            if not isinstance(peer, dict) or peer.get("fingerprint") == INFO["fingerprint"]:
+                continue
+            seen(peer, addr[0])
+            if peer.get("announce"):
+                sock.sendto(reply, addr)
+    finally:
+        sock.close()
+
+
+def scan(args):
+    try:
+        discovery(timeout=3)
+    except OSError as exc:
+        emit(error=f"discovery failed: {exc}")
+        return 1
+    return 0
 
 
 def receive(args):
@@ -434,6 +447,8 @@ def main():
     s.add_argument("target")
     s.add_argument("files", nargs="+")
     s.set_defaults(func=send)
+    d = sub.add_parser("scan")
+    d.set_defaults(func=scan)
     c = sub.add_parser("check")
     c.set_defaults(func=lambda a: 0)
     args = parser.parse_args()
