@@ -128,10 +128,13 @@ Item { // Window
     }
     
 
-    ScreencopyView {
+    // Not a bare ScreencopyView: one re-tile fails its capture for good, and
+    // this delegate lives for the whole session.
+    ToplevelScreencopyView {
         id: windowPreview
         anchors.fill: parent
-        captureSource: root.toplevel
+        toplevel: root.toplevel
+        retry: GlobalStates.overviewOpen
         live: true
         z: 1
 

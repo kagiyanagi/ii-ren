@@ -207,9 +207,10 @@ PopupWindow {
                         implicitWidth: screencopyView.implicitWidth
                         implicitHeight: screencopyView.implicitHeight
 
-                        ScreencopyView {
+                        ToplevelScreencopyView {
                             id: screencopyView
-                            captureSource: previewPopup.visible ? windowButton.modelData : null
+                            toplevel: previewPopup.visible ? windowButton.modelData : null
+                            retry: previewPopup.visible
                             live: true
                             paintCursor: true
                             constraintSize: Qt.size(
