@@ -64,9 +64,16 @@ Singleton {
 		root.pageUrlTracks = Object.assign({}, root.pageUrlTracks, { [player.dbusName]: { url, track: root.trackKeyOf(player) } });
 	}
 
+	// An unset priority names no player. Compared as is, the default "" matched every player
+	// without a DesktopEntry (Chromium has none), which took the controls on every change.
+	function isPriorityPlayer(player: MprisPlayer): bool {
+		if (!root.priorityPlayer) return false;
+		return player?.desktopEntry === root.priorityPlayer;
+	}
+
 	onAllPlayersChanged: {
 		// Assigning activePlayer would kill its binding, leaving it stuck on a dead player.
-		const nextPlayer = allPlayers.find(player => player.desktopEntry === root.priorityPlayer);
+		const nextPlayer = allPlayers.find(player => root.isPriorityPlayer(player));
 		if (nextPlayer) root.trackedPlayer = nextPlayer;
 		// A browser's bus is named per instance, so each one that ever played left its
 		// entry behind; only buses still on the bus keep theirs.
