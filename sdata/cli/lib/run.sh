@@ -9,6 +9,5 @@ hyprctl reload
 
 sleep 1.0
 
-# Do not pass an Electron host's Node mode to apps launched by the shell.
-nohup env -u ELECTRON_RUN_AS_NODE qs -c ii > /dev/null 2>&1 &
+bash "${BASH_SOURCE[0]%/*}/start-shell.sh" || return $?
 echo -e "${GREEN}✓ Quickshell started${NC}"
