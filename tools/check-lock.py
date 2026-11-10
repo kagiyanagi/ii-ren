@@ -47,6 +47,15 @@ not even in this repo's QML.
   fingerprint conversation never waits on the field, or a print could not
   unlock the screen it was meant to.
 
+- **Looking away does not turn the fingerprint reader off.** Ten seconds after
+  the last key the typed password is cleared through `reset()`, which used to
+  abort the fingerprint conversation as well. Quickshell's `PamContext.abort()`
+  emits no `completed` -- the only thing the re-arm hangs off -- so one keypress
+  and ten idle seconds left the reader off until the next lock. The reader
+  belongs to the lock edges instead: armed by `resetFingerprint` on lock, stopped
+  by `onScreenLockedChanged` on unlock. The round trip runs under node against a
+  fake `PamContext` that aborts the way Quickshell's does.
+
 - **The Caps Lock state is tracked, not polled at the worst moment.** Hyprland
   reports the lock keys in `hyprctl devices` and emits no socket2 event when they
   change -- verified by watching the socket across a toggle -- so the key event is
@@ -249,6 +258,59 @@ assert "currentText" not in finger and "tryUnlock(" not in finger, (
     "gate above stops a print from unlocking")
 
 # ---------------------------------------------------------------------------
+# The idle clear leaves the fingerprint reader listening.
+
+
+def lift(pattern, what):
+    m = re.search(pattern, context, re.S)
+    assert m, f"{what} not found in LockContext.qml"
+    return m.group(0)
+
+
+fns = "".join(lift(r"\n    function %s\(.*?\n    }\n" % name, name) for name in (
+    "resetTargetAction", "clearText", "reset", "stopFingerPam", "tryFingerUnlock", "resetFingerprint"))
+fns += lift(r"\n        function onScreenLockedChanged\(\).*?\n        }\n", "the screenLocked Connections")
+idle = context.split("id: passwordClearTimer")[1].split("\n    }")[0]
+assert "onTriggered:" in idle, "passwordClearTimer has no onTriggered"
+js = (
+    "const LockContext = { ActionEnum: { Unlock: 0, Poweroff: 1, Reboot: 2 } };\n"
+    "const GlobalStates = { screenLocked: false };\n"
+    "const Config = { options: { lock: { security: { fingerprint: { enable: true } } } } };\n"
+    "const Fingerprint = { refresh() {} };\n"
+    # Quickshell's PamContext::abort(): the conversation is dropped, completed is not emitted.
+    "const fingerPam = { active: false, start() { this.active = true; }, abort() { this.active = false; } };\n"
+    "const fingerprintRearmTimer = { running: false, interval: 0, restart() { this.running = true; },"
+    " start() { this.running = true; }, stop() { this.running = false; } };\n"
+    "const root = { currentText: '', unlockInProgress: false, targetAction: 0, fingerprintsConfigured: true,"
+    " fingerprintExhausted: false, fingerprintAttempts: 0, fingerprintErrors: 0, fingerprintFailed: false,"
+    " fingerprintRearmDelay: 400 };\n"
+    + fns +
+    "Object.assign(root, { resetTargetAction, clearText, reset, stopFingerPam, tryFingerUnlock, resetFingerprint });\n"
+    "const idle = () => {" + idle.split("onTriggered:")[1] + "};\n"
+    # A pending re-arm counts as listening: it is how the reader returns after a failed match.
+    "const settle = () => { if (fingerprintRearmTimer.running) { fingerprintRearmTimer.running = false; root.tryFingerUnlock(); } };\n"
+    "GlobalStates.screenLocked = true; root.reset(); root.resetFingerprint(); settle();\n"
+    "const armed = fingerPam.active;\n"
+    "root.currentText = 'hunter2'; root.targetAction = LockContext.ActionEnum.Poweroff;\n"
+    "idle(); settle();\n"
+    "const afterIdle = { listening: fingerPam.active, text: root.currentText, target: root.targetAction };\n"
+    # unlockExitTimer: release the session, then reset; a failed match's re-arm may still be pending.
+    "GlobalStates.screenLocked = false; onScreenLockedChanged(); root.reset();\n"
+    "fingerprintRearmTimer.running = true; settle();\n"
+    "console.log(JSON.stringify([armed, afterIdle, fingerPam.active]));")
+armed, after_idle, after_unlock = json.loads(
+    subprocess.run(["node", "-e", js], capture_output=True, text=True, check=True).stdout)
+assert armed, "locking (reset, then resetFingerprint, as LockScreen does) must arm the reader"
+assert after_idle["text"] == "" and after_idle["target"] == 0, \
+    f"the idle clear must still clear the typed password and the power-off target ({after_idle})"
+assert after_idle["listening"], (
+    "the ten-second idle clear stopped the fingerprint reader: PamContext.abort() "
+    "emits no completed, so nothing arms it again until the next lock")
+assert not after_unlock, (
+    "unlocking must stop the reader, and a re-arm still pending from a failed "
+    "match must not start it again behind an unlocked screen")
+
+# ---------------------------------------------------------------------------
 # Caps Lock is asked for at the only moment it can have changed.
 
 xkb = src(SHELL / "services/HyprlandXkb.qml")
@@ -352,5 +414,6 @@ assert launches([255], locked=False) == 1, \
 print("ok: session takeback wired on both sides, flag written on both edges, "
       "no reloads under the lock, relaunched when it dies locked, "
       "unlock holds the lock for its exit, PAM's lockout reaches the screen "
-      "unfiltered, an empty password never starts PAM, Caps Lock is asked for "
+      "unfiltered, an empty password never starts PAM, the idle clear leaves "
+      "the fingerprint reader listening, Caps Lock is asked for "
       "on the key, parked workspaces map back")

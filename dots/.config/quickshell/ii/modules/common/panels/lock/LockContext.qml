@@ -64,11 +64,13 @@ Scope {
         passwordClearTimer.restart();
     }
 
+    // Typed state only, never the reader. The idle timer calls this, and
+    // PamContext.abort() emits no completed, so nothing would arm it again
+    // until the next lock. Unlocking stops it (onScreenLockedChanged below).
     function reset() {
         root.resetTargetAction();
         root.clearText();
         root.unlockInProgress = false;
-        stopFingerPam();
     }
 
     Timer {
