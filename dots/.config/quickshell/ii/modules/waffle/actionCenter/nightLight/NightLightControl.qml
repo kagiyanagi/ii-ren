@@ -37,8 +37,8 @@ Item {
                     name: Translation.tr("Automatic")
                     description: Translation.tr("Automatically turns on at night")
                     iconName: "clock"
-                    checked: Config.options.nightLight.auto
-                    onCheckedChanged: Config.options.nightLight.auto = checked
+                    checked: Config.options.light.night.automatic
+                    onClicked: Config.options.light.night.automatic = !Config.options.light.night.automatic
                 }
 
                 ToggleItem {
@@ -46,8 +46,8 @@ Item {
                     name: Translation.tr("Night Light")
                     description: Translation.tr("Hyprsunset warm screen filter")
                     iconName: "weather-sunny"
-                    checked: Hyprsunset.active
-                    onCheckedChanged: Hyprsunset.active = checked
+                    checked: Hyprsunset.temperatureActive
+                    onClicked: Hyprsunset.toggleTemperature()
                 }
 
                 ToggleItem {
@@ -56,7 +56,7 @@ Item {
                     description: Translation.tr("Hyprland monochrome screen filter")
                     iconName: "book-open"
                     checked: HyprlandReadingMode.active
-                    onCheckedChanged: HyprlandReadingMode.active = checked
+                    onClicked: HyprlandReadingMode.toggleManual(!HyprlandReadingMode.active)
                 }
 
                 ToggleItem {
@@ -64,8 +64,8 @@ Item {
                     name: Translation.tr("Anti-flashbang")
                     description: Translation.tr("Hyprland shader to invert white screens")
                     iconName: "lightbulb-filament"
-                    checked: HyprlandAntiFlashbangShader.active
-                    onCheckedChanged: HyprlandAntiFlashbangShader.active = checked
+                    checked: HyprlandAntiFlashbangShader.enabled
+                    onClicked: HyprlandAntiFlashbangShader.toggle()
                 }
 
                 Item {

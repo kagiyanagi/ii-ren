@@ -18,6 +18,7 @@ RowLayout {
     property alias description: descriptionText.text
     property alias iconName: iconWidget.icon
     property alias checked: switchWidget.checked
+    signal clicked()
 
     spacing: 10
 
@@ -62,7 +63,7 @@ RowLayout {
         cursorShape: Qt.PointingHandCursor
         onPressed: switchWidget.down = true
         onReleased: switchWidget.down = false
-        onClicked: switchWidget.checked = !switchWidget.checked
+        onClicked: root.clicked()
 
         Row {
             id: switchRow
@@ -77,6 +78,8 @@ RowLayout {
             WSwitch {
                 id: switchWidget
                 anchors.verticalCenter: parent.verticalCenter
+                checkable: false
+                onClicked: root.clicked()
             }
         }
     }
