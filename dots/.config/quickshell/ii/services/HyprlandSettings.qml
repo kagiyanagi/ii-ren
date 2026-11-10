@@ -2,27 +2,23 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import qs.modules.common
+import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs
+import "hyprlandOverrides.js" as Overrides
 
 Singleton {
     id: root
 
     signal reloaded()
 
-    // Trust boundary: these values reach `bash -c`. Do not loosen this character class.
+    // Trust boundary: hyprset.lua writes these into main.lua as Lua source, unescaped.
+    // Do not loosen this character class.
     function _hasUnsafeChars(...values) {
         return values.some(v => /['"\\`$|&;]/.test(String(v)))
-    }
-
-    // NOTE: bash -c "cmd1 && cmd2 && ..." prevents a race between separate hyprset calls
-    function _execChained(parts) {
-        if (parts.length > 0) {
-            Quickshell.execDetached(["bash", "-c", parts.join(" && ")])
-            root._queueReload()
-        }
     }
 
     // hyprset only rewrites shellOverrides/main.lua; Hyprland keeps running the
@@ -69,19 +65,7 @@ Singleton {
     }
 
     function setKeys(entries) {
-        var parts = []
-        var keys = Object.keys(entries)
-        for (var i = 0; i < keys.length; i++) {
-            var key = keys[i]
-            var value = entries[key]
-            if (root._hasUnsafeChars(value, key)) {
-                console.error("[HyprlandSettings] Unsafe characters rejected:", key, value)
-                continue
-            }
-            if (!key.includes(":")) continue
-            parts.push(Directories.cliPath + " hyprset key " + key + " " + String(value))
-        }
-        root._execChained(parts)
+        root.updateKeys(entries, [])
     }
 
     function reset(key) {
@@ -94,16 +78,68 @@ Singleton {
     }
 
     function resetKeys(keys) {
-        var parts = []
+        root.updateKeys({}, keys)
+    }
+
+    // One `bash -c` chain for the lot: each hyprset rewrites main.lua whole, so two
+    // running at once can lose one's write. Keys and values go in as arguments, never
+    // into the script, and a value with spaces ("5 10 5 10") stays one value.
+    function updateKeys(entries, resetKeys) {
+        var steps = []
+        var args = []
+        function arg(v) {
+            args.push(String(v))
+            return '"${' + args.length + '}"'
+        }
+        var keys = Object.keys(entries)
         for (var i = 0; i < keys.length; i++) {
             var key = keys[i]
-            if (root._hasUnsafeChars(key)) {
-                console.error("[HyprlandSettings] Unsafe characters rejected:", key)
+            var value = entries[key]
+            if (root._hasUnsafeChars(value, key)) {
+                console.error("[HyprlandSettings] Unsafe characters rejected:", key, value)
                 continue
             }
-            parts.push(Directories.cliPath + " hyprset reset " + key)
+            if (!key.includes(":")) continue
+            steps.push('"$0" hyprset key ' + arg(key) + " " + arg(value))
         }
-        root._execChained(parts)
+        for (var j = 0; j < resetKeys.length; j++) {
+            if (root._hasUnsafeChars(resetKeys[j])) {
+                console.error("[HyprlandSettings] Unsafe characters rejected:", resetKeys[j])
+                continue
+            }
+            steps.push('"$0" hyprset reset ' + arg(resetKeys[j]))
+        }
+        if (steps.length === 0) return
+        Quickshell.execDetached(["bash", "-c", steps.join(" && "), Directories.cliPath].concat(args))
+        root._queueReload()
+    }
+
+    // What main.lua overrides, key -> value as written ("18", "false", "dwindle"):
+    // the user's own choices, which hyprctl getoption cannot tell from the defaults.
+    property var overrides: ({})
+    property bool overridesLoaded: false
+
+    FileView {
+        id: overridesFile
+        // HOME, not XDG_CONFIG_HOME: the path hyprset.lua writes.
+        path: `${FileUtils.trimFileProtocol(Directories.home)}/.config/hypr/hyprland/shellOverrides/main.lua`
+        watchChanges: true
+        onFileChanged: overridesReload.restart()
+        onLoaded: {
+            root.overrides = Overrides.parse(overridesFile.text())
+            root.overridesLoaded = true
+        }
+        onLoadFailed: error => {
+            root.overrides = ({})
+            root.overridesLoaded = true
+        }
+    }
+
+    // A chain rewrites the file once per key.
+    Timer {
+        id: overridesReload
+        interval: 100
+        onTriggered: overridesFile.reload()
     }
 
     Connections {

@@ -100,6 +100,10 @@ Singleton {
                 // Classes whose windows get a floating-mode bar, so an app's bar is on its
                 // first frame from its second launch on, reboots included.
                 property list<string> floatingBarClasses: []
+                property bool gameMode: false
+                // main.lua's override for each key game mode sets, from before it was
+                // turned on ([{ key, had, value }]), so turning it off puts those back.
+                property list<var> gameModeSaved: []
             }
 
             property JsonObject lock: JsonObject {
