@@ -75,18 +75,21 @@ AbstractBackgroundWidget {
         const paths = [];
         for (let i = 0; i < urls.length; i++) {
             let path = String(urls[i]);
-            if (path.startsWith("file://")) path = path.substring(7);
-            paths.push(decodeURIComponent(path));
+            if (path.startsWith("file://")) path = decodeURIComponent(path.substring(7));
+            if (path.startsWith("/")) paths.push(path);
         }
-        if (paths.length === 0) return;
+        if (paths.length === 0) return false;
 
         if (LocalSend.available) {
-            LocalSend.sendFiles(paths);
+            paths.forEach(path => LocalSend.addDroppedFile(path));
+            return true;
         } else if (KdeConnectService.available && KdeConnectService.activeDevice) {
             for (let j = 0; j < paths.length; j++) {
                 KdeConnectService.shareFile(KdeConnectService.activeDeviceId, paths[j]);
             }
+            return true;
         }
+        return false;
     }
 
     Process {
@@ -127,7 +130,7 @@ AbstractBackgroundWidget {
 
             onDropped: drop => {
                 if (drop.hasUrls) {
-                    root.handleDroppedFiles(drop.urls);
+                    if (root.handleDroppedFiles(drop.urls)) drop.accept(Qt.CopyAction);
                 }
             }
         }
