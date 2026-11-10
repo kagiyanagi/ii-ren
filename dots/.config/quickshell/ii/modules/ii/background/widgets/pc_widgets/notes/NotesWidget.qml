@@ -20,7 +20,6 @@ AbstractBackgroundWidget {
     property string mode: "list" // "list" | "edit"
     property var pendingNoteId: null
     property string editingText: ""
-    onModeChanged: GlobalStates.desktopWidgetKeyboardFocus = (mode === "edit")
 
     function toggleFlip() { flipAnim.start() }
 

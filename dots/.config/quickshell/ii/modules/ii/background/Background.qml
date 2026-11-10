@@ -41,6 +41,11 @@ Variants {
     PanelWindow {
         id: bgRoot
 
+        // Text editors in desktop widgets need compositor focus as well as
+        // item focus. OnDemand lets a click focus this screen without grabbing
+        // the keyboard from applications when a widget is loaded.
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+
         required property var modelData
 
         // Hide when fullscreen
