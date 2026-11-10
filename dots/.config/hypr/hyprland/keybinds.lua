@@ -311,18 +311,24 @@ hl.bind("SUPER + code:82", function() zoomfunction(-0.3) end, { repeating = true
 hl.bind("SUPER + code:86", function() zoomfunction(0.3) end, { repeating = true })
 
 --##! Media
-local mediaNextCommand =
-"playerctl next || playerctl position `bc <<< \"100 * $(playerctl metadata mpris:length) / 1000000 / 100\"`"
+-- Through the shell, so the keys act on the player its bar and media popup show (the shell's
+-- next also runs a track that cannot skip to its end). playerctl follows playerctld's pick
+-- instead, so it is only the fallback for when the shell is not running.
+local mediaIpc = qsIpcCall .. " mpris "
+local mediaNextCommand = mediaIpc .. "next || playerctl next || " ..
+    "playerctl position `bc <<< \"100 * $(playerctl metadata mpris:length) / 1000000 / 100\"`"
+local mediaPreviousCommand = mediaIpc .. "previous || playerctl previous"
+local mediaPlayPauseCommand = mediaIpc .. "playPause || playerctl play-pause"
 hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd(mediaNextCommand), { locked = true, description = "Misc: Next track" })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd(mediaNextCommand), { locked = true })
-hl.bind("XF86AudioPrev", hl.dsp.exec_cmd("playerctl previous"), { locked = true })
-hl.bind("SUPER + SHIFT + ALT + mouse:275", hl.dsp.exec_cmd("playerctl previous"))
+hl.bind("XF86AudioPrev", hl.dsp.exec_cmd(mediaPreviousCommand), { locked = true })
+hl.bind("SUPER + SHIFT + ALT + mouse:275", hl.dsp.exec_cmd(mediaPreviousCommand))
 hl.bind("SUPER + SHIFT + ALT + mouse:276", hl.dsp.exec_cmd(mediaNextCommand))
-hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd("playerctl previous"), { locked = true, description = "Misc: Previous track" })
-hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("playerctl play-pause"),
+hl.bind("SUPER + SHIFT + B", hl.dsp.exec_cmd(mediaPreviousCommand), { locked = true, description = "Misc: Previous track" })
+hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd(mediaPlayPauseCommand),
     { locked = true, description = "Misc: Play/pause media" })
-hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+hl.bind("XF86AudioPlay", hl.dsp.exec_cmd(mediaPlayPauseCommand), { locked = true })
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd(mediaPlayPauseCommand), { locked = true })
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_SINK@ toggle"), { locked = true })
 hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_SINK@ toggle"),
     { locked = true, description = "Misc: Toggle mute" })

@@ -28,6 +28,10 @@ Singleton {
 
 	property bool __reverse: false;
 
+	// Instantiates the singleton so the media keys' IpcHandler is registered in a family that
+	// shows no media until something opens (waffle's action center).
+	function load(): void {}
+
 	property var activeTrack;
 	readonly property string artUrl: artUrlFor(activePlayer);
 
@@ -263,6 +267,13 @@ Singleton {
 
 		function playPause(): void { root.togglePlaying(); }
 		function previous(): void { root.previous(); }
-		function next(): void { root.next(); }
+		// The media keys' next. A player that cannot skip (a lone browser video) is sent to the
+		// end of its track, so its own autoplay moves on. Whole seconds, as playerctl's fallback
+		// in keybinds.lua does: a seek past the length is ignored.
+		function next(): void {
+			const player = root.activePlayer;
+			if (root.canGoNext) root.next();
+			else if (player?.canSeek && player.lengthSupported && player.length > 0) player.position = Math.floor(player.length);
+		}
 	}
 }

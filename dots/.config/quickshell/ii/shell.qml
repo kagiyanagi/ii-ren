@@ -61,6 +61,9 @@ ShellRoot {
     // declare IpcHandlers on the same targets. A binding on panelFamily and a
     // handler on its change signal run in no defined order.
     property string activeFamily: ""
+    // The media keys call MprisController's IpcHandler, in either family. Not before Config is
+    // ready (activeFamily waits for it): the priority player is picked as the players arrive.
+    onActiveFamilyChanged: if (activeFamily) MprisController.load()
 
     Timer {
         id: familySwitchTimer
