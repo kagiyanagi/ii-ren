@@ -89,6 +89,12 @@ Scope {
     }
 
     function tryUnlock(alsoInhibitIdle = false) {
+        // pam_faillock counts an empty password like any wrong one, and three
+        // is a ten-minute lockout: Enter pressed to wake the screen used to
+        // spend them. The one gate for every surface; fingerprint never comes
+        // through here, fingerPam is its own conversation.
+        if (root.unlockInProgress || root.currentText.length === 0)
+            return;
         // Deliberately not cleared in reset(): the ten-second idle timer calls
         // that, and a user who looks away from "the account is locked" should
         // not come back to a blank screen and no reason. It goes when the next

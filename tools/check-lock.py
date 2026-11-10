@@ -39,6 +39,14 @@ not even in this repo's QML.
   wrong password sends no message at all, which is why the whole conversation can
   be surfaced without it becoming noise.
 
+- **An empty password never reaches PAM.** pam_faillock counts an empty answer
+  like a wrong one, three is a ten-minute lockout here, and Enter is the key
+  people press to wake a dark screen -- a few of those used to be the lockout.
+  `tryUnlock` is the only way into the password conversation for both families,
+  so the refusal lives there and is run under node rather than read. The
+  fingerprint conversation never waits on the field, or a print could not
+  unlock the screen it was meant to.
+
 - **The Caps Lock state is tracked, not polled at the worst moment.** Hyprland
   reports the lock keys in `hyprctl devices` and emits no socket2 event when they
   change -- verified by watching the socket across a toggle -- so the key event is
@@ -71,6 +79,7 @@ not even in this repo's QML.
 
 Run: python3 tools/check-lock.py
 """
+import json
 import os
 import pathlib
 import re
@@ -204,6 +213,42 @@ assert "elementMoveEnter" in status and "elementMoveExit" in status, \
     "enter and exit are different specs (2.5)"
 
 # ---------------------------------------------------------------------------
+# An empty password never starts PAM: faillock would count it.
+
+pam_users = [p.relative_to(SHELL) for p in SHELL.rglob("*.qml") if "PamContext" in src(p)]
+assert pam_users == [pathlib.Path("modules/common/panels/lock/LockContext.qml")], (
+    f"PamContext outside LockContext ({pam_users}) is a second way into PAM that "
+    "the empty-password gate in tryUnlock does not cover")
+assert len(re.findall(r"\bpam\.start\(\)", context)) == 1, \
+    "the password conversation is started from tryUnlock and nowhere else"
+
+try_unlock = re.search(r"\n    function tryUnlock\(.*?\n    }\n", context, re.S)
+assert try_unlock and "pam.start()" in try_unlock.group(0), "tryUnlock not found in LockContext.qml"
+js = ("function make(root, pam) {" + try_unlock.group(0) + "return tryUnlock; }\n"
+      "const run = (text, busy) => {\n"
+      "    const root = { currentText: text, unlockInProgress: busy, authMessage: 'locked', alsoInhibitIdle: false };\n"
+      "    let started = 0;\n"
+      "    make(root, { start: () => started++ })(true);\n"
+      "    return { started, busy: root.unlockInProgress, message: root.authMessage, inhibit: root.alsoInhibitIdle };\n"
+      "};\n"
+      "console.log(JSON.stringify([run('', false), run('hunter2', false), run('hunter2', true), run(' ', false)]));")
+empty, typed, busy, space = json.loads(
+    subprocess.run(["node", "-e", js], capture_output=True, text=True, check=True).stdout)
+assert empty == {"started": 0, "busy": False, "message": "locked", "inhibit": False}, (
+    f"Enter on an empty field started PAM or changed state ({empty}): faillock "
+    "counts it, and the lockout message it would clear is the reason the next "
+    "real attempt will be refused")
+assert typed == {"started": 1, "busy": True, "message": "", "inhibit": True}, \
+    f"a typed password must start exactly one attempt ({typed})"
+assert busy["started"] == 0, "a second Enter while PAM is still answering must not start another"
+assert space["started"] == 1, "a password of spaces is still a password -- the gate is empty, not blank"
+
+finger = context.split("function tryFingerUnlock")[1].split("\n    }")[0]
+assert "currentText" not in finger and "tryUnlock(" not in finger, (
+    "the fingerprint conversation must not wait on the password field, or the "
+    "gate above stops a print from unlocking")
+
+# ---------------------------------------------------------------------------
 # Caps Lock is asked for at the only moment it can have changed.
 
 xkb = src(SHELL / "services/HyprlandXkb.qml")
@@ -307,4 +352,5 @@ assert launches([255], locked=False) == 1, \
 print("ok: session takeback wired on both sides, flag written on both edges, "
       "no reloads under the lock, relaunched when it dies locked, "
       "unlock holds the lock for its exit, PAM's lockout reaches the screen "
-      "unfiltered, Caps Lock is asked for on the key, parked workspaces map back")
+      "unfiltered, an empty password never starts PAM, Caps Lock is asked for "
+      "on the key, parked workspaces map back")
