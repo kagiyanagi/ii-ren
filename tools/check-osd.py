@@ -19,10 +19,20 @@ is not a member of `Config.qml`'s `sounds` object and `MonoAudioService` is not 
 in this repo, so the stereo/mono toggle read `undefined` and threw a ReferenceError on
 click for as long as it existed (DESIGN.md anti-pattern 16).
 
+**The keyboard-backlight OSD read a property the service never had.**
+`KeyboardBrightnessIndicator` bound `KeyboardBacklight.percentage / 100`, but the service
+exposes `currentValue` and `maxValue` (kernel levels, 0..2 on a Dell), so the pill showed
+NaN every time the backlight changed. QML reads an unknown property on a singleton as
+`undefined` without a warning, so every `KeyboardBacklight.<member>` the shell reads is
+checked against the service, and the indicator's `value:` is run under node for a normal
+LED and for one whose `max_brightness` has not loaded yet (`maxValue` 0 -- 0/0 is NaN).
+
 Run: python3 tools/check-osd.py
 """
+import json
 import pathlib
 import re
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).parent.parent / "dots/.config/quickshell/ii"
@@ -116,9 +126,62 @@ check(
     "MonoAudioService.qml exists now; the OSD's stereo/mono toggle can come back",
 )
 
+# ------------------------------------------------- the keyboard backlight pill
+KBD = (ROOT / "services/KeyboardBacklight.qml").read_text()
+KBD_OSD = (OSD_DIR / "indicators/KeyboardBrightnessIndicator.qml").read_text()
+props = set(re.findall(r"^\s*(?:readonly )?property \w+ (\w+)", KBD, re.M))
+members = props | set(re.findall(r"^\s*function (\w+)\(", KBD, re.M))
+for path in ROOT.rglob("*"):
+    if path.suffix not in (".qml", ".js"):
+        continue
+    src = code(path.read_text())
+    rel = path.relative_to(ROOT)
+    for name in sorted(set(re.findall(r"\bKeyboardBacklight\.(\w+)", src))):
+        check(
+            name in members,
+            f"{rel} reads KeyboardBacklight.{name}, which the service does not have -- "
+            "QML hands back undefined, and arithmetic on it is NaN",
+        )
+    # A Connections handler on a property that does not exist never fires.
+    for block in re.findall(r"Connections \{\s*target: KeyboardBacklight\n(.*?)\n\s*\}\n", src, re.S):
+        for prop in re.findall(r"function on(\w+)Changed\(", block):
+            check(
+                prop[0].lower() + prop[1:] in props,
+                f"{rel} listens for KeyboardBacklight.{prop[0].lower() + prop[1:]} "
+                "changing, which the service does not have",
+            )
+
+value_expr = one(KBD_OSD, r"^\s*value: (.+)$", "KeyboardBrightnessIndicator's value")
+icon_expr = one(KBD_OSD, r"^\s*icon: (.+)$", "KeyboardBrightnessIndicator's icon")
+leds = [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2), (1, 2), (2, 2), (0, 3), (3, 3)]
+shown = json.loads(subprocess.run(["node", "-e", f"""
+console.log(JSON.stringify({json.dumps(leds)}.map(([cur, max]) => {{
+    const KeyboardBacklight = {{ currentValue: cur, maxValue: max, available: max > 0 }};
+    return {{ value: {value_expr}, icon: {icon_expr} }};
+}})));
+"""], capture_output=True, text=True, check=True).stdout)
+symbols = set((ROOT / "assets/material-symbols.txt").read_text().split())
+for (cur, max_), out in zip(leds, shown):
+    v = out.get("value")  # NaN serialises as null, undefined not at all
+    check(
+        isinstance(v, (int, float)) and 0 <= v <= 1,
+        f"the keyboard OSD shows {v!r} for level {cur} of {max_}; the indicator takes a "
+        "finite 0-1 fraction",
+    )
+    if max_ > 0:
+        check(
+            isinstance(v, (int, float)) and abs(v - cur / max_) < 1e-9,
+            f"the keyboard OSD shows {v!r} for level {cur} of {max_}, not {cur / max_}",
+        )
+    check(
+        out.get("icon") in symbols,
+        f"the keyboard OSD's icon {out.get('icon')!r} is not a Material Symbol every installed "
+        "font has, so it renders as the word",
+    )
+
 if failures:
     print(f"check-osd.py: {len(failures)} failure(s)\n")
     for f in failures:
         print(f"  FAIL  {f}")
     sys.exit(1)
-print("ok: the OSD pill still leaves, and only the Material style exists")
+print("ok: the OSD pill still leaves, only the Material style exists, and the keyboard pill reads a real 0-1 level")
