@@ -10,6 +10,8 @@ view and do not count, and the lock screen's workspace has no windows.
 
 This evaluates that function under node for each case, and asserts every ambient
 motion on the desktop is gated on it.
+Photo widgets must also stop their AnimatedImage behind windows and resume on
+an exposed desktop; a nonexistent GlobalStates flag left all five playing.
 """
 import json
 import re
@@ -39,6 +41,39 @@ for (const [name, windows, want] of cases) {{
 }}
 """
 subprocess.run(["node", "-e", js], check=True)
+
+photos = II / "modules/ii/background/widgets/photo"
+photo_bodies = []
+for path in sorted(photos.glob("*.qml")):
+    source = path.read_text()
+    if "AnimatedImage {" not in source:
+        continue
+    body = re.search(r"readonly property bool shouldPlay: \{\n(.*?)\n    \}", source, re.S)
+    assert body, f"{path.name}: animated photo has no playback gate"
+    assert "!root.coveredByWindows" in body[1], f"{path.name}: photo keeps playing behind windows"
+    assert "GlobalStates.activeWorkspaceHasWindows" not in source, f"{path.name}: nonexistent workspace flag"
+    assert "playing: root.shouldPlay" in source and "paused: !root.shouldPlay" in source, \
+        f"{path.name}: AnimatedImage does not follow the playback gate"
+    photo_bodies.append([path.name, body[1]])
+assert len(photo_bodies) >= 5, "the five photo variants are no longer covered"
+subprocess.run(["node", "-e", f"""
+const assert = require('node:assert/strict');
+for (const [name, body] of {json.dumps(photo_bodies)}) {{
+    const shouldPlay = new Function('root', 'GlobalStates', body);
+    const root = {{visible: true, opacity: 1, isAnimated: true, coveredByWindows: false}};
+    const GlobalStates = {{screenLocked: false}};
+    assert.equal(shouldPlay(root, GlobalStates), true, name + ': exposed desktop');
+    for (const [property, value] of [['coveredByWindows', true], ['visible', false], ['opacity', 0], ['isAnimated', false]]) {{
+        const previous = root[property];
+        root[property] = value;
+        assert.equal(shouldPlay(root, GlobalStates), false, name + ': ' + property);
+        root[property] = previous;
+        assert.equal(shouldPlay(root, GlobalStates), true, name + ': resumes after ' + property);
+    }}
+    GlobalStates.screenLocked = true;
+    assert.equal(shouldPlay(root, GlobalStates), false, name + ': locked');
+}}
+"""], check=True)
 
 base = (II / "modules/ii/background/widgets/AbstractBackgroundWidget.qml").read_text()
 assert re.search(r"coveredByWindows: !root\.isPreview && HyprlandData\.wallpaperCovered\(", base), \

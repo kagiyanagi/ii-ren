@@ -43,7 +43,7 @@ AbstractBackgroundWidget {
     readonly property bool shouldPlay: {
         return root.visible && root.opacity > 0 && root.isAnimated
             && !GlobalStates.screenLocked
-            && !GlobalStates.activeWorkspaceHasWindows;
+            && !root.coveredByWindows;
     }
 
     Rectangle {
