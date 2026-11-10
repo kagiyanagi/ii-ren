@@ -19,21 +19,15 @@ Item { // Bar content region
     property var screen: root.QsWindow.window?.screen
     property int monitorIndex
 
-    property bool hasActiveWindows: false
-    property bool showBarBackground: root.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1
-
-    Connections {
-        enabled: Config.options.bar.barBackgroundStyle === 2
-        target: HyprlandData
-        function onWindowListChanged() {
-            const monitor = HyprlandData.monitors.find(m => m.id === monitorIndex);
-            const wsId = monitor?.activeWorkspace?.id;
-
-            const hasWindow = wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
-
-            root.hasActiveWindows = hasWindow
-        }
+    // Bound, not set from a windowListChanged handler: the bar is rebuilt on every
+    // unlock, and HyprlandData passes on no reply identical to the last.
+    readonly property bool hasActiveWindows: {
+        if (Config.options.bar.barBackgroundStyle !== 2)
+            return false;
+        const wsId = HyprlandData.monitors.find(m => m.id === root.monitorIndex)?.activeWorkspace?.id;
+        return wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
     }
+    property bool showBarBackground: root.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1
 
     ////// Definning places of center modules //////
     property var fullModel: Config.options.bar.layouts.center

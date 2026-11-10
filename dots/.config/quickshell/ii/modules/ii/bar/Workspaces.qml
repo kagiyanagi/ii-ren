@@ -26,8 +26,17 @@ Item {
     : Config.options.bar.workspaces.shown
     readonly property int workspaceGroup: Math.floor((monitor?.activeWorkspace?.id - root.workspaceOffset - 1) / root.workspacesShown)
     property list<bool> workspaceOccupied: []
-    property int workspaceIndexInGroup: (monitor?.activeWorkspace?.id - root.workspaceOffset - 1) % root.workspacesShown    
-    property var monitorWindows
+    property int workspaceIndexInGroup: (monitor?.activeWorkspace?.id - root.workspaceOffset - 1) % root.workspacesShown
+    // A binding, not a windowListChanged handler: the bar is rebuilt on every unlock and
+    // HyprlandData passes on no reply identical to the last, so a handler left a new bar
+    // showing numerals until some window changed.
+    readonly property var monitorWindows: HyprlandData.windowList
+        .filter(win => win.monitor === root.monitorIndex && !win.floating)
+        .sort((a, b) => a.at[0] - b.at[0])
+        .map(win => ({
+            icon: Quickshell.iconPath(AppSearch.guessIcon(win?.class), "image-missing"),
+            workspace: win.workspace?.id
+        }))
     readonly property int effectiveActiveWorkspaceId: monitor?.activeWorkspace?.id ?? 1
 
     property int individualIconBoxHeight: 22
@@ -171,19 +180,6 @@ Item {
 
     function getWindowCountForWorkspace(workspaceId) {
         return HyprlandData.windowList.filter(w => w.workspace.id === workspaceId && !w.floating).length;
-    }
-
-    // Window list updates
-    Connections {
-        target: HyprlandData
-        function onWindowListChanged() {
-            const windowsOnMonitor = HyprlandData.windowList.filter(win => win.monitor === root.monitorIndex && !win.floating)
-            windowsOnMonitor.sort((a, b) => a.at[0] - b.at[0])
-            root.monitorWindows = windowsOnMonitor.map(win => ({
-                icon: Quickshell.iconPath(AppSearch.guessIcon(win?.class), "image-missing"),
-                workspace: win.workspace?.id
-            }))
-        }
     }
 
     // Occupied workspace updates
