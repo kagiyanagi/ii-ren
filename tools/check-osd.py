@@ -37,6 +37,14 @@ channel volumes, so 100% reads 1.0000001 and 99% 0.98999995: the pill goes red w
 number it shows is past the limit, not on that noise. The binding is run under node,
 through the base's own `value > maxLimit`, for each side of each limit.
 
+**"Hide when fullscreen" never hid anything.** The gate read
+`Notifications.focusedWindowFullscreen`, which `Notifications` has never declared, so
+it was undefined and the option (on by default) did nothing. Every `<Singleton>.<name>`
+either OSD (ii and Waffle) reads is now checked against the members on that singleton's
+root object. The gate is per monitor, like the dock's and the Waffle OSD's: a fullscreen
+window on the screen the OSD opens on hides it, one on the other monitor does not. Its
+function is run under node against workspaces on two monitors.
+
 Run: python3 tools/check-osd.py
 """
 import json
@@ -231,9 +239,111 @@ for (enable, max_allowed, volume, want), got in zip(cases, warns):
         f"protection {protection}; it should {'' if want else 'not '}turn red",
     )
 
+# ------------------------------------------- every singleton the OSD reads, for real
+def blank(src):
+    """`src` with comments and string literals blanked, newlines kept: what is left
+    is only code, so its braces balance and a name in a string is not a read."""
+    out, i, n = [], 0, len(src)
+    while i < n:
+        if src.startswith("//", i):
+            i = n if src.find("\n", i) < 0 else src.find("\n", i)
+        elif src.startswith("/*", i):
+            j = n if src.find("*/", i + 2) < 0 else src.find("*/", i + 2) + 2
+            out.append(re.sub(r"[^\n]", " ", src[i:j]))
+            i = j
+        elif src[i] in "'\"`":
+            j = i + 1
+            while j < n and src[j] != src[i]:
+                j += 2 if src[j] == "\\" else 1
+            out.append(src[i] + re.sub(r"[^\n]", " ", src[i + 1:j]) + src[i])
+            i = j + 1
+        else:
+            out.append(src[i])
+            i += 1
+    return "".join(out)
+
+
+def root_members(path):
+    """The properties, functions and signals declared on a QML file's root object --
+    nested objects' members are not reachable as `Singleton.name`."""
+    names, depth = set(), 0
+    for line in blank(path.read_text()).splitlines():
+        if depth == 1:
+            m = re.match(r"\s*(?:(?:readonly|required|default)\s+)*(?:property\s+[\w.<>]+|function|signal)\s+(\w+)", line)
+            if m:
+                names.add(m.group(1))
+        depth += line.count("{") - line.count("}")
+        assert depth >= 0, f"{path.relative_to(ROOT)}: braces no longer balance -- this check is stale"
+    assert depth == 0, f"{path.relative_to(ROOT)}: braces no longer balance -- this check is stale"
+    return names
+
+
+SINGLETONS = {p.stem: p for p in ROOT.rglob("*.qml") if re.search(r"^pragma Singleton", p.read_text(), re.M)}
+declared = {}
+for folder in (OSD_DIR, ROOT / "modules/waffle/onScreenDisplay"):
+    for path in sorted(folder.rglob("*.qml")):
+        rel = path.relative_to(ROOT)
+        for single, name in sorted(set(re.findall(r"(?<![\w.])([A-Z]\w*)\??\.([a-z_]\w*)", blank(path.read_text())))):
+            if single not in SINGLETONS:
+                continue  # Quickshell's own (Hyprland, Quickshell) or an attached type
+            if single not in declared:
+                declared[single] = root_members(SINGLETONS[single])
+            check(
+                name in declared[single],
+                f"{rel} reads {single}.{name}, which {SINGLETONS[single].relative_to(ROOT)} does "
+                "not declare -- QML hands back undefined without a warning, so a gate on it "
+                "never closes",
+            )
+
+# The OSD's "Hide when fullscreen" read `Notifications.focusedWindowFullscreen` from the
+# day it was written; Notifications never had it, so the option did nothing. The gate is
+# per monitor, like the dock's: only a fullscreen window on the screen the OSD opens on
+# hides it, not one playing on the other monitor.
+gate = re.search(r"hideWhenFullscreen && root\.(\w+)\(\)\)\n\s*return;", OSD)
+check(
+    gate,
+    "OnScreenDisplay's hideWhenFullscreen gate no longer asks a root function whether the "
+    "OSD's screen has a fullscreen window, so the cases below cannot run against it",
+)
+# (OSD screen, [(monitor, active, [toplevel fullscreen; None = no Wayland handle yet])], hides)
+screens = [
+    ("DP-1", [("DP-1", True, [False, True])], True),
+    ("DP-1", [("DP-1", True, [False]), ("DP-1", False, [True])], False),   # a workspace out of sight
+    ("DP-1", [("DP-1", True, [False]), ("HDMI-A-1", True, [True])], False),  # the other monitor
+    ("HDMI-A-1", [("DP-1", True, [False]), ("HDMI-A-1", True, [True])], True),
+    ("DP-1", [("DP-1", True, [None])], False),
+    ("DP-1", [(None, True, [True])], False),
+    ("DP-1", [], False),
+    (None, [("DP-1", True, [True])], False),
+]
+if gate:
+    body = one(
+        OSD,
+        rf"function {gate.group(1)}\(\) \{{\n((?:.+\n)+?)    \}}\n",
+        f"OnScreenDisplay's {gate.group(1)}()",
+    )
+    hides = json.loads(subprocess.run(["node", "-e", f"""
+console.log(JSON.stringify({json.dumps(screens)}.map(([screen, workspaces]) => {{
+    const root = {{ focusedScreen: screen === null ? null : {{ name: screen }} }};
+    const Hyprland = {{ workspaces: {{ values: workspaces.map(([monitor, active, toplevels]) => ({{
+        active,
+        monitor: monitor === null ? null : {{ name: monitor }},
+        toplevels: {{ values: toplevels.map(f => ({{ wayland: f === null ? null : {{ fullscreen: f }} }})) }},
+    }})) }} }};
+    return Boolean((function () {{ {body} }})());
+}})));
+"""], capture_output=True, text=True, check=True).stdout)
+    for (screen, workspaces, want), got in zip(screens, hides):
+        check(
+            got == want,
+            f"with the OSD on {screen!r} and workspaces {workspaces!r} (monitor, active, "
+            f"fullscreen toplevels), hideWhenFullscreen {'hides' if got else 'shows'} the OSD; "
+            f"it should {'hide' if want else 'show'} it",
+        )
+
 if failures:
     print(f"check-osd.py: {len(failures)} failure(s)\n")
     for f in failures:
         print(f"  FAIL  {f}")
     sys.exit(1)
-print("ok: the OSD pill still leaves, only the Material style exists, the keyboard pill reads a real 0-1 level, and the volume pill warns only past its limit")
+print("ok: the OSD pill still leaves, only the Material style exists, the keyboard pill reads a real 0-1 level, the volume pill warns only past its limit, and every singleton the OSDs read is real -- hide-when-fullscreen included, per monitor")

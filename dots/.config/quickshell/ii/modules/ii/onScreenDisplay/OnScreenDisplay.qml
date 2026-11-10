@@ -46,12 +46,22 @@ Scope {
         },
     ]
 
+    // Only a fullscreen window on the screen the OSD opens on hides it -- the same
+    // per-monitor check as the dock and the Waffle OSD.
+    function fullscreenOnOsdScreen() {
+        const name = root.focusedScreen?.name;
+        if (!name)
+            return false;
+        return Hyprland.workspaces.values.some(ws => ws.active && ws.monitor?.name === name
+            && ws.toplevels.values.some(toplevel => toplevel.wayland?.fullscreen));
+    }
+
     function triggerOsd() {
         if (!root.currentIndicator)
             root.currentIndicator = "volume";
         if (!Config.osdIndicatorEnabled(root.currentIndicator))
             return;
-        if (Config.ready && Config.options.osd && Config.options.osd.hideWhenFullscreen && Notifications.focusedWindowFullscreen)
+        if (Config.ready && Config.options.osd && Config.options.osd.hideWhenFullscreen && root.fullscreenOnOsdScreen())
             return;
         GlobalStates.osdVolumeOpen = true;
         osdTimeout.restart();
