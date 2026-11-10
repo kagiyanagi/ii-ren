@@ -38,6 +38,7 @@ Singleton {
             ?? null;
     }
     readonly property string activeDeviceId: root.activeDevice?.id ?? ""
+    readonly property string activeDeviceDisplayName: root.activeDevice?.name ?? ""
     readonly property bool activeReachable: root.activeDevice?.reachable ?? false
     readonly property list<var> notifications: root.allNotifications.filter(n => n.deviceId === root.activeDeviceId)
 
