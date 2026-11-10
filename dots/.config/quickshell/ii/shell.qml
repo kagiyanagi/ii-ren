@@ -94,6 +94,20 @@ ShellRoot {
         Config.options.panelFamily = families[nextIndex]
     }
 
+    // The settings app is a process of its own, and a second launch opens a second window,
+    // so an open one is found by its title (the one rules.lua floats it by): focused, it
+    // closes; anywhere else, it is brought forward.
+    function toggleSettings() {
+        const win = HyprlandData.windowList.filter(w => w.title === "illogical-impulse Settings")
+            .sort((a, b) => a.focusHistoryID - b.focusHistoryID)[0]
+        if (!win) {
+            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")])
+            return
+        }
+        if (win.focusHistoryID === 0) FloatingMode.close(win.address)
+        else if (!FloatingMode.restoreMinimized(win.address)) FloatingMode.focus(win.address)
+    }
+
     component PanelFamilyLoader: LazyLoader {
         required property string identifier
         property bool extraCondition: true
@@ -125,5 +139,12 @@ ShellRoot {
         description: "Cycles panel family"
 
         onPressed: root.cyclePanelFamily()
+    }
+
+    GlobalShortcut {
+        name: "settingsToggle"
+        description: "Opens the settings app, or closes it when focused"
+
+        onPressed: root.toggleSettings()
     }
 }
