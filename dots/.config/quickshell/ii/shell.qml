@@ -11,6 +11,7 @@
 ////@ pragma Env QT_SCALE_FACTOR=1
 
 import "modules/common"
+import "modules/common/panels"
 import "services"
 import "panelFamilies"
 
@@ -27,6 +28,7 @@ ShellRoot {
 
     // Stuff for every panel family
     ReloadPopup {}
+    PanelLoader { component: AlarmPopup {} }
 
     Component.onCompleted: {
         // Quickshell restarts a crashed shell with __QUICKSHELL_CRASH_* set and never clears

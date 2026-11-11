@@ -142,8 +142,9 @@ Singleton {
             SoundService.startLoop("alarm", "alarm-clock-elapsed", fadeSeconds);
         }
 
-        // Send a system notification if the fullscreen popup is disabled
-        if (!Config.options.time.alarms.useFullscreenPopup) {
+        // A locked session cannot show the popup; keep a notification in its
+        // history as well as the ringing sound until the user unlocks.
+        if (!Config.options.time.alarms.useFullscreenPopup || GlobalStates.screenLocked) {
             let labelStr = alarm.label ? alarm.label : Translation.tr("Alarm");
             Quickshell.execDetached(["notify-send", labelStr, alarm.time, "-a", "Alarm", "-i", "alarm", "--urgency=critical", "--hint=boolean:suppress-sound:true"]);
         }
