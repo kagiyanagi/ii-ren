@@ -82,14 +82,22 @@ Singleton {
     Process {
         id: deleteProc
         property string entry: ""
-        command: ["bash", "-c", `echo '${StringUtils.shellSingleQuoteEscape(deleteProc.entry)}' | ${root.cliphistBinary} delete`]
+        property list<string> pending: []
+        command: ["sh", "-c", 'printf "%s\\n" "$1" | "$2" delete', "sh", deleteProc.entry, root.cliphistBinary]
         function deleteEntry(entry) {
-            deleteProc.entry = entry;
+            if (!entry) return;
+            deleteProc.pending = deleteProc.pending.concat([entry]);
+            deleteProc.next();
+        }
+        function next() {
+            if (deleteProc.running || deleteProc.pending.length === 0) return;
+            deleteProc.entry = deleteProc.pending[0];
+            deleteProc.pending = deleteProc.pending.slice(1);
             deleteProc.running = true;
-            deleteProc.entry = "";
         }
         onExited: (exitCode, exitStatus) => {
             root.refresh();
+            Qt.callLater(deleteProc.next);
         }
     }
 
