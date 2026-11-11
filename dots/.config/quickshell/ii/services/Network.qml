@@ -39,7 +39,7 @@ Singleton {
     property string wifiStatus: "disconnected"
 
     property string networkName: ""
-    property int networkStrength
+    readonly property int networkStrength: root.active?.strength ?? 0
 
     property bool hotspotSupported: false
     property bool hotspotToggled: false
@@ -181,7 +181,7 @@ Singleton {
             LC_ALL: "C"
         })
         stdout: SplitParser {
-            onRead: getNetworks.running = true
+            onRead: getNetworks.refresh()
         }
         stderr: SplitParser {
             // Also what a wrong password comes back as: NM asks again, and no agent answers.
@@ -190,7 +190,7 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             const target = root.wifiConnectTarget;
             root.wifiConnectTarget = null;
-            getNetworks.running = true;
+            getNetworks.refresh();
             savedWifiProc.running = true;
             if (!target || exitCode === 0)
                 return;
@@ -202,7 +202,7 @@ Singleton {
     Process {
         id: disconnectProc
         stdout: SplitParser {
-            onRead: getNetworks.running = true
+            onRead: getNetworks.refresh()
         }
     }
 
@@ -239,7 +239,7 @@ Singleton {
         stdout: SplitParser {
             onRead: {
                 wifiScanning = false;
-                getNetworks.running = true;
+                getNetworks.refresh();
             }
         }
     }
@@ -251,7 +251,7 @@ Singleton {
         updateConnectionType.refresh();
         wifiStatusProcess.refresh();
         updateNetworkName.refresh();
-        updateNetworkStrength.refresh();
+        getNetworks.refresh();
         updateHotspotStateProc.refresh();
     }
 
@@ -320,17 +320,6 @@ Singleton {
     }
 
     RefreshProcess {
-        id: updateNetworkStrength
-        running: true
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi list --rescan no | awk '/^\\*/{if (NR!=1) {print $2}}'"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkStrength = parseInt(data);
-            }
-        }
-    }
-
-    RefreshProcess {
         id: wifiStatusProcess
         command: ["nmcli", "radio", "wifi"]
         Component.onCompleted: running = true
@@ -345,10 +334,19 @@ Singleton {
         }
     }
 
-    Process {
+    // Signal changes do not necessarily produce an nmcli monitor line. Read NM's
+    // cached APs while Wi-Fi is enabled; only rescanWifi() requests a radio scan.
+    Timer {
+        interval: 10000
+        repeat: true
+        running: root.wifiEnabled
+        onTriggered: getNetworks.refresh()
+    }
+
+    RefreshProcess {
         id: getNetworks
         running: true
-        command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "d", "w"]
+        command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "device", "wifi", "list", "--rescan", "no"]
         environment: ({
             LANG: "C",
             LC_ALL: "C"

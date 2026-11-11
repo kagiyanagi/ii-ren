@@ -110,10 +110,11 @@ JS = """
 const results = %s.map(([exitCode, needsSecrets]) => {
     const target = { askingPassword: false, failure: "" };
     const root = { wifiConnectTarget: target };
-    const getNetworks = {}, savedWifiProc = {};
+    let networksRefreshed = false;
+    const getNetworks = { refresh: () => { networksRefreshed = true; } }, savedWifiProc = {};
     (function (exitCode, exitStatus) { %s })(exitCode, 0);
     return { asking: target.askingPassword, failure: target.failure, cleared: root.wifiConnectTarget === null,
-             refreshed: !!(getNetworks.running && savedWifiProc.running) };
+             refreshed: !!(networksRefreshed && savedWifiProc.running) };
 });
 console.log(JSON.stringify(results));
 """.replace("%s })(exitCode", "const needsSecrets = arguments[2]; %s })(exitCode").replace("(exitCode, 0)", "(exitCode, 0, needsSecrets)")
