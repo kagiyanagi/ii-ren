@@ -6,6 +6,8 @@ profile and turn its screen off, all unattended. None of that is visible until t
 battery is nearly empty or the laptop sits idle, so a regression here is found by a
 dead battery or a machine that sleeps on its own.
 
+- AC presence comes from UPower.onBattery, regardless of charging state. Charge
+  limits can report Discharging while plugged in; pending charge must not warn.
 - The critical action maps each choice to its own command. Hibernate falls back to
   suspend: a failed hibernate would otherwise leave nothing between the session and
   an empty battery.
@@ -26,6 +28,29 @@ battery = (II / "services/Battery.qml").read_text()
 page = (II / "modules/settings/BatteryConfig.qml").read_text()
 config = (II / "modules/common/Config.qml").read_text()
 
+power = "\n".join("const " + name + " = " + re.search(rf"property bool {name}: (.*)", battery)[1] + ";"
+                  for name in ("isCharging", "isPluggedIn", "isLowAndNotCharging",
+                               "isCriticalAndNotCharging", "isSuspendingAndNotCharging"))
+subprocess.run(["node", "-e", """
+const assert = require('node:assert/strict');
+const UPowerDeviceState = {Unknown: 0, Charging: 1, Discharging: 2, Empty: 3,
+    FullyCharged: 4, PendingCharge: 5, PendingDischarge: 6};
+for (const chargeState of Object.values(UPowerDeviceState)) {
+    for (const onBattery of [false, true]) {
+        for (const allowAutomaticSuspend of [false, true]) {
+            const UPower = {onBattery};
+            const isLow = true, isCritical = true, isSuspending = true;
+""" + power + """
+            assert.equal(isPluggedIn, !onBattery, `AC presence at battery state ${chargeState}`);
+            assert.equal(isLowAndNotCharging, onBattery, 'low warning while on AC');
+            assert.equal(isCriticalAndNotCharging, onBattery, 'critical warning while on AC');
+            assert.equal(isSuspendingAndNotCharging, onBattery && allowAutomaticSuspend,
+                'automatic action must require battery power and opt-in');
+        }
+    }
+}
+"""], check=True)
+
 crit = re.search(r"onIsSuspendingAndNotChargingChanged: \{(.*?)\n    \}", battery, re.S)
 assert crit, "Battery: no critical action handler"
 body = crit.group(1)
@@ -33,7 +58,7 @@ assert '"hibernate" ? "systemctl hibernate || systemctl suspend' in body, "Batte
 assert '"poweroff" ? "systemctl poweroff' in body, "Battery: poweroff lost its own command"
 assert body.rstrip().endswith(': "systemctl suspend || loginctl suspend"]);'), "Battery: anything else must suspend"
 assert "if (!root.available || !isSuspendingAndNotCharging) return;" in body, "Battery: the action must wait for the critical level off the charger"
-assert re.search(r"isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && !isCharging", battery), \
+assert re.search(r"isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && !isPluggedIn", battery), \
     "Battery: Nothing (automaticSuspend off) must stop the action"
 
 assert re.search(r"batteryIdle: available && UPower\.onBattery && Config\.options\.battery\.idle\.enable", battery), \
