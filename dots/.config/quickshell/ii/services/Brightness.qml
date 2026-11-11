@@ -103,10 +103,6 @@ Singleton {
         onExited: root.ddcDetectFinished()
     }
 
-    Process {
-        id: setProc
-    }
-
     component BrightnessMonitor: QtObject {
         id: monitor
 
@@ -170,16 +166,37 @@ Singleton {
             }
         }
 
+        // Each output owns its writer. Never interrupt a DDC transaction; keep
+        // the newest request until this monitor's current write has finished.
+        readonly property Process setProc: Process {
+            property var pendingCommand: []
+
+            function submit(args) {
+                pendingCommand = args;
+                Qt.callLater(flush);
+            }
+
+            function flush() {
+                if (running || pendingCommand.length === 0)
+                    return;
+                command = pendingCommand;
+                pendingCommand = [];
+                running = true;
+            }
+
+            onRunningChanged: if (!running) Qt.callLater(flush)
+        }
+
         function syncBrightness() {
             const brightnessValue = Math.max(monitor.multipliedBrightness, 0);
             if (isDdc) {
                 const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
-                setProc.exec(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
+                monitor.setProc.submit(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
             } else {
                 const valuePercentNumber = Math.floor(brightnessValue * 100);
                 let valuePercent = `${valuePercentNumber}%`;
                 if (valuePercentNumber == 0) valuePercent = "1"; // Prevent fully black
-                setProc.exec(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
+                monitor.setProc.submit(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
             }
         }
 

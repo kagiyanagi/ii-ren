@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Brightness writes follow the monitor's animation switch.
+"""Brightness writes follow the animation switch and never cancel another monitor.
 
 Run Brightness.qml in a windowless Quickshell with fake brightnessctl/ddcutil.
 Only screens, shortcuts and other service inputs are stubbed; QML Behaviors,
 Timers, Variants and Processes are real. No real display brightness is changed.
 
-    python3 tools/check-brightness.py [animation]
+    python3 tools/check-brightness.py [animation|writes]
 """
 import json
 import os
@@ -204,7 +204,32 @@ def check_animation():
         assert p.call("branch", "false") == "true", "animateChanges=false must debounce brightness writes"
 
 
-CHECKS = {"animation": check_animation}
+def check_writes():
+    with probe(screens=("DP-1", "DP-2"), ddc=("DP-1", "DP-2")) as p:
+        p.ready()
+        p.configure(write_delay=0.7)
+        p.call("set", 0, 0.7)
+        p.call("set", 1, 0.8)
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "70"
+               and (p.path / "raw-2").read_text() == "80",
+               "one monitor's write cancels another's")
+
+        # Both anti-flashbang adjustments must reach the hardware too.
+        p.call("multiplier", 0, 0.5)
+        p.call("multiplier", 1, 0.5)
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "35"
+               and (p.path / "raw-2").read_text() == "40", "anti-flashbang drops a monitor")
+
+        count = len(p.calls("write-start"))
+        p.call("set", 0, 0.6)
+        p.wait(lambda s: len(p.calls("write-start")) > count, "delayed write never starts")
+        p.call("set", 0, 0.4)
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "20", "latest value is lost during a write")
+        finished = [c["raw"] for c in p.calls("write-finish") if c["bus"] == "1"]
+        assert finished[-2:] == [30, 20], f"a running DDC write was cancelled: {finished}"
+
+
+CHECKS = {"animation": check_animation, "writes": check_writes}
 if __name__ == "__main__":
     for name in sys.argv[1:] or CHECKS:
         CHECKS[name]()
