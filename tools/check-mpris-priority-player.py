@@ -83,3 +83,28 @@ assert not any(result["lone"]), \
     "isPriorityPlayer matched a missing player or an empty DesktopEntry: " + json.dumps(result["lone"])
 
 print(f"ok: {len(CASES)} player changes, an unset priority never takes the controls")
+
+# Mpris.players is an ObjectModel, not an array: numeric indexing and indexOf
+# belong to its values (or the controller's filtered list), never the model.
+subprocess.run(["node", "-e", """
+const assert = require('assert/strict');
+const first = {dbusName: 'first'}, second = {dbusName: 'second'}, duplicate = {dbusName: 'duplicate'};
+const Mpris = {players: {values: [duplicate, first, second]}};
+const root = {players: [first, second], activePlayer: second};
+with (root) {
+""" + function("setActivePlayer") + """
+}
+root.setActivePlayer(null);
+assert.equal(root.trackedPlayer, first, 'reset must choose the first filtered player');
+assert.equal(root.__reverse, true, 'backward player selection lost its direction');
+root.activePlayer = first;
+root.setActivePlayer(second);
+assert.equal(root.trackedPlayer, second);
+assert.equal(root.__reverse, false);
+root.players = [];
+root.activePlayer = null;
+root.setActivePlayer(null);
+assert.equal(root.trackedPlayer, null, 'reset without players must assign null, never undefined');
+assert.equal(root.__reverse, false);
+console.log('ok: resetting and switching players use the filtered list, including an empty model');
+"""], check=True)

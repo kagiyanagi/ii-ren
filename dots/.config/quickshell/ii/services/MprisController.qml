@@ -243,11 +243,11 @@ Singleton {
 	}
 
 	function setActivePlayer(player: MprisPlayer) {
-		const targetPlayer = player ?? Mpris.players[0];
+		const targetPlayer = player ?? root.players[0] ?? null;
 		console.log(`[Mpris] Active player ${targetPlayer} << ${activePlayer}`)
 
 		if (targetPlayer && this.activePlayer) {
-			this.__reverse = Mpris.players.indexOf(targetPlayer) < Mpris.players.indexOf(this.activePlayer);
+			this.__reverse = root.players.indexOf(targetPlayer) < root.players.indexOf(this.activePlayer);
 		} else {
 			// always animate forward if going to null
 			this.__reverse = false;
