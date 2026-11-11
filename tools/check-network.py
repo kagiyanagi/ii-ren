@@ -8,6 +8,7 @@ profiles or connections. Only the directory/translation helpers are stubbed.
 
     python3 tools/check-network.py
 """
+import argparse
 import json
 import os
 import shutil
@@ -207,10 +208,35 @@ def check_refresh(probe):
     print("ok: startup connection, roaming, signal-only changes and in-flight events refresh the active AP and icon")
 
 
+def check_ethernet(probe):
+    probe.wait(lambda s: s["enabled"] and (probe.directory / "monitor-ready").exists(), "probe startup")
+    probe.write(event=True, devices="ethernet:disconnected\nwifi:connected",
+                profiles=[["Home", "802-11-wireless"]], aps=[ap("Home", 90)])
+    probe.wait(lambda s: s["status"] == "connected" and s["icon"] == "wifi" and not s["ethernet"],
+               "an inactive ethernet cable takes the Wi-Fi icon")
+    for state, connected in [("connected", True), ("disconnected", False),
+                             ("connected (externally)", True), ("connecting (getting IP configuration)", False),
+                             ("unavailable", False), ("unmanaged", False)]:
+        probe.write(devices=f"ethernet:{state}\nwifi:connected")
+        probe.call("refresh")
+        # Wait for this read to finish before accepting an unchanged value.
+        time.sleep(0.15)
+        probe.wait(lambda s: s["ethernet"] == connected and s["icon"] == ("lan" if connected else "wifi"),
+                   f"ethernet state {state!r} reports the wrong connection state")
+    probe.write(event=True, devices="veth:connected\nbridge:connected\ntun:connected\nwifi:connected")
+    probe.wait(lambda s: not s["ethernet"] and s["icon"] == "wifi", "a virtual interface counts as ethernet")
+    print("ok: only an activated ethernet device selects the LAN icon")
+
+
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory(prefix="ii-network-check-") as directory:
-        probe = Probe(directory)
-        try:
-            check_refresh(probe)
-        finally:
-            probe.close()
+    checks = dict(refresh=check_refresh, ethernet=check_ethernet)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", choices=checks, help="run one regression instead of all of them")
+    args = parser.parse_args()
+    for name in ([args.check] if args.check else checks):
+        with tempfile.TemporaryDirectory(prefix="ii-network-check-") as directory:
+            probe = Probe(directory)
+            try:
+                checks[name](probe)
+            finally:
+                probe.close()

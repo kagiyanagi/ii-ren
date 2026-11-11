@@ -269,6 +269,10 @@ Singleton {
         id: updateConnectionType
         command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
         running: true
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
         stdout: StdioCollector {
             id: connectionTypeOut
         }
@@ -279,9 +283,10 @@ Singleton {
             let hasWifi = false;
             let wifiStatus = "disconnected";
             lines.forEach(line => {
-                if (line.includes("ethernet") && line.includes("connected"))
+                const [type, state] = line.split(":");
+                if (type === "ethernet" && (state === "connected" || state === "connected (externally)"))
                     hasEthernet = true;
-                else if (line.includes("wifi:")) {
+                else if (type === "wifi") {
                     if (line.includes("disconnected")) {
                         wifiStatus = "disconnected"
                     }
