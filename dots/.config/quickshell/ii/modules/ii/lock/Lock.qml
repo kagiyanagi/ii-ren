@@ -14,6 +14,13 @@ LockScreen {
 
     // Monitor name -> workspace id to restore on unlock (set when locking)
     property var savedWorkspaces: ({})
+    property string savedFocusedMonitor: ""
+
+    function focusSavedMonitor() {
+        if (!Quickshell.screens.some(screen => screen.name === root.savedFocusedMonitor))
+            return "";
+        return `hl.dispatch(hl.dsp.focus({ monitor = "${root.savedFocusedMonitor}" })); `;
+    }
 
     // Locking parks each monitor on the mirror of its workspace, so the windows
     // are not sitting behind a transparent lock surface. INT32_MAX is Hyprland's
@@ -55,7 +62,7 @@ LockScreen {
         id: restoreTimer
         interval: 67
         onTriggered: {
-            let lua = "";
+            let lua = 'local warps = hl.get_config("cursor.no_warps"); hl.config({ cursor = { no_warps = true } }); ';
             const a = root.workspacesAnim;
             if (a) {
                 // Speed is tenths of a second for a bezier: 3 is the 300ms.
@@ -67,6 +74,8 @@ LockScreen {
                 if (wsId !== undefined)
                     lua += `hl.dispatch(hl.dsp.focus({ monitor = "${screen.name}" })); hl.dispatch(hl.dsp.focus({ workspace = ${wsId} })); `;
             }
+            lua += root.focusSavedMonitor();
+            lua += 'hl.config({ cursor = { no_warps = warps } }); ';
             if (a) {
                 const curve = a.bezier.startsWith("spring:") ? `spring = "${a.bezier.slice(7)}"` : `bezier = "${a.bezier}"`;
                 lua += `hl.timer(function() hl.animation({ leaf = "workspaces", enabled = ${a.enabled}, speed = ${a.speed}, ${curve}, style = "${a.style}" }) end, { timeout = 400, type = "oneshot" })`;
@@ -84,7 +93,9 @@ LockScreen {
             return;
         // Lock: save workspace per monitor and move all to temp workspace in one batch.
         var next = {}
-        var batch = 'hl.animation({ leaf = "workspaces", enabled = true, speed = 7, bezier = "menu_decel", style = "slidevert" }); '
+        var batch = 'local warps = hl.get_config("cursor.no_warps"); hl.config({ cursor = { no_warps = true } }); '
+        if (root.workspacesAnim)
+            batch += 'hl.animation({ leaf = "workspaces", enabled = true, speed = 7, bezier = "menu_decel", style = "slidevert" }); '
         for (var i = 0; i < Quickshell.screens.length; ++i) {
             var mon = Quickshell.screens[i].name
             var mData = HyprlandData.monitors.find(m => m.name === mon)
@@ -103,6 +114,7 @@ LockScreen {
             batch += `hl.dispatch(hl.dsp.focus({monitor="${mon}"})); hl.dispatch(hl.dsp.focus({workspace=${root.lockWorkspaceBase - ws}})); `
         }
         root.savedWorkspaces = next
+        batch += 'hl.config({ cursor = { no_warps = warps } }); '
         Quickshell.execDetached(["hyprctl", "eval", batch])
     }
 
@@ -112,13 +124,14 @@ LockScreen {
         function onScreenLockedChanged() {
             if (GlobalStates.screenLocked) {
                 root.savedWorkspaces = {}
+                root.savedFocusedMonitor = Hyprland.focusedMonitor?.name ?? ""
                 animProc.running = true
             } else {
                 // The workspaces came back under the lock, where Hyprland refuses
                 // windows keyboard focus, and its unlock refocus picks whatever is
                 // under the pointer. Give it back to the window that had it, without
                 // throwing the pointer there, as the old after-unlock switch did.
-                Quickshell.execDetached(["hyprctl", "eval", 'local w = hl.get_active_workspace().last_window; if w then local warps = hl.get_config("cursor.no_warps"); hl.config({ cursor = { no_warps = true } }); hl.dispatch(hl.dsp.focus({ window = w })); hl.config({ cursor = { no_warps = warps } }) end'])
+                Quickshell.execDetached(["hyprctl", "eval", 'local warps = hl.get_config("cursor.no_warps"); hl.config({ cursor = { no_warps = true } }); ' + root.focusSavedMonitor() + 'local w = hl.get_active_workspace().last_window; if w then hl.dispatch(hl.dsp.focus({ window = w })) end; hl.config({ cursor = { no_warps = warps } })'])
             }
         }
         // Unlock: the windows come back as the lock leaves, not after it.

@@ -10,6 +10,8 @@ animation before any workspace move. Run that Lua with a fake compositor too.
 A missing monitor reply must not abort parking the remaining screens or leave
 the previous lock's saved map behind. Cover hotplug gaps, native-monitor fallback,
 and a shell restarting on already-parked workspaces.
+Restoring every screen must finish on the screen focused before locking, even
+when it is not the last screen in the list; a disconnected screen is skipped.
 """
 import json
 import re
@@ -29,13 +31,15 @@ def body(head, indent=4):
 # Before the repair, the parking code lived in the signal handler itself.
 parking = (body(r"function parkWorkspaces\(\)") if "function parkWorkspaces()" in src
            else body(r"function onScreenLockedChanged\(\)", 8))
+restore = body("onTriggered:", 8)
+focus = body(r"function focusSavedMonitor\(\)") if "function focusSavedMonitor()" in src else "return '';"
 subprocess.run(["node", "-e", f"""
 const assert = require('assert/strict');
 const {{ execFileSync }} = require('child_process');
 const calls = [];
 const GlobalStates = {{ screenLocked: true, screenLockExiting: false }};
 const animProc = {{ running: false }};
-const root = {{ savedWorkspaces: {{}}, lockWorkspaceBase: 2147483647 }};
+const root = {{ savedWorkspaces: {{}}, lockWorkspaceBase: 2147483647, workspacesAnim: {{ bezier: 'original' }} }};
 const Quickshell = {{ screens: [{{ name: 'DP-1' }}, {{ name: 'HDMI-A-1' }}],
     execDetached: command => calls.push(command) }};
 const HyprlandData = {{ monitors: [
@@ -50,7 +54,8 @@ assert.deepEqual(calls[0].slice(0, 2), ['hyprctl', 'eval'],
     'the animation must be submitted to hyprctl, not executed as a shell command');
 execFileSync('lua', ['-'], {{ input: `
 local moves = 0
-hl = {{ dsp = {{ focus = function(target) return target end }} }}
+hl = {{ dsp = {{ focus = function(target) return target end }},
+    get_config = function() return false end, config = function() end }}
 hl.animation = function(spec)
     assert(moves == 0, 'animation was applied after parking')
     assert(spec.leaf == 'workspaces' and spec.enabled and spec.speed == 7)
@@ -82,5 +87,41 @@ HyprlandData.monitors = [{{ name: 'DP-1', activeWorkspace: {{ id: 2147483645 }} 
 park();
 assert.deepEqual(root.savedWorkspaces, {{ 'DP-1': 2 }}, 'a recovered lock saved the parked id');
 assert.ok(!calls.at(-1)[2].includes('workspace='), 'an already parked workspace was parked again');
+root.workspacesAnim = null;
+park();
+assert.ok(!calls.at(-1)[2].includes('hl.animation'), 'a failed animation read applied an override it cannot restore');
+for (const [locked, exiting] of [[false, false], [true, true]]) {{
+    calls.length = 0;
+    GlobalStates.screenLocked = locked;
+    GlobalStates.screenLockExiting = exiting;
+    park();
+    assert.equal(calls.length, 0, 'a delayed animation reply parked after unlock began');
+}}
 console.log('ok: parking sends valid Lua for the animation and workspace moves in one hyprctl eval');
+
+root.focusSavedMonitor = () => {{ {focus} }};
+root.workspacesAnim = null;
+root.savedWorkspaces = {{ 'DP-1': 2, 'HDMI-A-1': 7 }};
+const restore = () => {{ {restore} }};
+for (const name of ['DP-1', 'HDMI-A-1']) {{
+    root.savedFocusedMonitor = name;
+    restore();
+    execFileSync('lua', ['-'], {{ input: `
+local monitor, workspaces = nil, {{}}
+hl = {{ dsp = {{ focus = function(target) return target end }},
+    get_config = function() return false end, config = function() end }}
+hl.dispatch = function(target)
+    if target.monitor then monitor = target.monitor end
+    if target.workspace then workspaces[monitor] = target.workspace end
+end
+${{calls.at(-1)[2]}}
+assert(workspaces['DP-1'] == 2 and workspaces['HDMI-A-1'] == 7)
+assert(monitor == '${{name}}', 'unlock focused the last screen instead of the saved screen')
+` }});
+}}
+Quickshell.screens = [{{ name: 'HDMI-A-1' }}];
+root.savedFocusedMonitor = 'DP-1';
+restore();
+assert.ok(!calls.at(-1)[2].includes('monitor = "DP-1"'), 'unlock tried to focus a disconnected screen');
+console.log('ok: unlock restores all workspaces and finishes on the saved connected monitor');
 """], check=True)
