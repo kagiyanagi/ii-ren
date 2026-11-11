@@ -36,6 +36,34 @@ Singleton {
         property string urgency: notification?.urgency.toString() ?? "normal"
         property Timer timer
 
+        // Replacements mutate the existing Notification; the server does not
+        // emit notification again. Coalesce its field signals after Qt has
+        // updated every binding, so one replacement is delivered only once.
+        function queueUpdate() {
+            if (!notification || !root.list.includes(wrapper)) return;
+            Qt.callLater(wrapper.applyUpdate);
+        }
+
+        function applyUpdate() {
+            if (!notification || !root.list.includes(wrapper)) return;
+            root.deliverNotification(wrapper);
+        }
+
+        // This also observes changes to an existing action's text, for which
+        // Notification.actionsChanged itself is not emitted.
+        onActionsChanged: queueUpdate()
+        property Connections notificationChanges: Connections {
+            target: wrapper.notification ?? null
+            function onAppNameChanged() { wrapper.queueUpdate(); }
+            function onAppIconChanged() { wrapper.queueUpdate(); }
+            function onSummaryChanged() { wrapper.queueUpdate(); }
+            function onBodyChanged() { wrapper.queueUpdate(); }
+            function onImageChanged() { wrapper.queueUpdate(); }
+            function onUrgencyChanged() { wrapper.queueUpdate(); }
+            function onHintsChanged() { wrapper.queueUpdate(); }
+            function onExpireTimeoutChanged() { wrapper.queueUpdate(); }
+        }
+
         onNotificationChanged: {
             if (notification === null) {
                 root.discardNotification(notificationId);
@@ -96,18 +124,22 @@ Singleton {
     }
     
     onListChanged: {
+        const latest = Object.assign({}, root.latestTimeForApp);
         // Update latest time for each app
         root.list.forEach((notif) => {
-            if (!root.latestTimeForApp[notif.appName] || notif.time > root.latestTimeForApp[notif.appName]) {
-                root.latestTimeForApp[notif.appName] = Math.max(root.latestTimeForApp[notif.appName] || 0, notif.time);
+            if (!latest[notif.appName] || notif.time > latest[notif.appName]) {
+                latest[notif.appName] = Math.max(latest[notif.appName] || 0, notif.time);
             }
         });
         // Remove apps that no longer have notifications
-        Object.keys(root.latestTimeForApp).forEach((appName) => {
+        Object.keys(latest).forEach((appName) => {
             if (!root.list.some((notif) => notif.appName === appName)) {
-                delete root.latestTimeForApp[appName];
+                delete latest[appName];
             }
         });
+        // Publish a new object so groups observe updated timestamps regardless
+        // of whether their list binding ran before this change handler.
+        root.latestTimeForApp = latest;
     }
 
     function appNameListForGroups(groups) {
@@ -173,53 +205,54 @@ Singleton {
             if (notifServer.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
             notification.tracked = true
 
-            let cooledDown = false;
-            if (Config.options.notifications.cooldown) {
-                const now = Date.now();
-                const lastTime = root.latestTimeForApp[notification.appName] || 0;
-                if (now - lastTime < 5000) {
-                    cooledDown = true;
-                    console.log("[Notifications] Cooled down notification from " + notification.appName);
-                }
-            }
-
-            // A closed sidebar holds the popup back, not the sound; Do Not Disturb
-            // holds both. Low urgency is the spec's quiet tier, and an app that
-            // names its own sound (sound-file, sound-name) gets it.
-            const hints = notification.hints;
-            if (!root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
-                SoundService.playEvent("notifications", [hints["sound-file"], hints["sound-name"], ...SoundService.events.notifications].filter(Boolean));
-
             const newNotifObject = notifComponent.createObject(root, {
                 "notificationId": notification.id + root.idOffset,
                 "notification": notification,
                 "time": Date.now(),
             });
-			root.list = [...root.list, newNotifObject];
-
-            // Popup
-            if (!root.popupInhibited) {
-                if (!cooledDown) {
-                    newNotifObject.popup = true;
-                    if (notification.expireTimeout != 0) {
-                        // Owned by its notification, not by root: a timer stopped by
-                        // hovering the popup never fires to destroy itself, and one
-                        // parented to root then outlived the notification for good.
-                        newNotifObject.timer = notifTimerComponent.createObject(newNotifObject, {
-                            "notificationId": newNotifObject.notificationId,
-                            "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
-                        });
-                    }
-                }
-            }
-            // Unread unless the list it lands in is open. Do Not Disturb holds the
-            // popup back, not the count: the bell shows it once DND is off.
-            if (!(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
-            root.notify(newNotifObject);
-            if (Config.options.notifications.history.enable) root.recordHistory(newNotifObject);
-            // console.log(notifToString(newNotifObject));
-            notifFileView.setText(stringifyList(root.list));
+            root.deliverNotification(newNotifObject);
         }
+    }
+
+    function deliverNotification(notif) {
+        const notification = notif.notification;
+        const now = Date.now();
+        const lastTime = root.latestTimeForApp[notification.appName] || 0;
+        const cooledDown = Config.options.notifications.cooldown && now - lastTime < 5000;
+
+        // An open sidebar holds the popup back, not the sound; Do Not Disturb
+        // holds both. Low urgency is quiet, and an app may name its own sound.
+        const hints = notification.hints;
+        if (!root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
+            SoundService.playEvent("notifications", [hints["sound-file"], hints["sound-name"], ...SoundService.events.notifications].filter(Boolean));
+
+        // Replace the old deadline even if it was stopped by hovering, or the
+        // replacement asks to remain visible indefinitely (expireTimeout = 0).
+        if (notif.timer) {
+            notif.timer.stop();
+            notif.timer.destroy();
+            notif.timer = null;
+        }
+        notif.time = now;
+        // Cooldown suppresses a new popup without hiding one already visible.
+        notif.popup = !root.popupInhibited && (!cooledDown || notif.popup);
+        if (notif.popup && notification.expireTimeout != 0) {
+            // Owned by the wrapper so stopped timers die with their notification.
+            notif.timer = notifTimerComponent.createObject(notif, {
+                "notificationId": notif.notificationId,
+                "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
+            });
+        }
+
+        // Keep the wrapper stable for the views, but refresh grouping and sorting
+        // after a replacement changes the app name or delivery time.
+        if (root.list.includes(notif)) root.triggerListChange();
+        else root.list = [...root.list, notif];
+        // DND holds the popup back, not the unread count.
+        if (!(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
+        root.notify(notif);
+        if (Config.options.notifications.history.enable) root.recordHistory(notif);
+        notifFileView.setText(stringifyList(root.list));
     }
 
     // ponytail: whole file rewritten per notification, capped so that stays cheap;
@@ -339,7 +372,9 @@ Singleton {
     }
 
     function triggerListChange() {
-        root.list = root.list.slice(0)
+        // Assigning an equal list of the same wrappers emits no change in Qt.
+        // Replacements still need the list's derived models to refresh.
+        root.listChanged();
     }
 
     function refresh() {
