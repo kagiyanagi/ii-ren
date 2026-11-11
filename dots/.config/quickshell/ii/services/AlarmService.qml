@@ -15,7 +15,36 @@ Singleton {
     property int ringingAlarmIndex: -1
     property var ringingAlarm: (ringingAlarmIndex >= 0 && alarms && ringingAlarmIndex < alarms.length) ? alarms[ringingAlarmIndex] : null
 
-    property string lastTriggeredMinute: ""
+    // Instantiated at shell startup so deadlines are armed before a popup is opened.
+    function load() {}
+
+    function repeats(alarm) {
+        return !alarm.date && (alarm.days?.includes(true) ?? false);
+    }
+
+    function nextOccurrence(alarm, after) {
+        if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(alarm.time)) return 0;
+        const [hour, minute] = alarm.time.split(":").map(Number);
+        if (alarm.date) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(alarm.date)) return 0;
+            const [year, month, day] = alarm.date.split("-").map(Number);
+            // Construct in local time; parsing YYYY-MM-DD would use UTC.
+            return new Date(year, month - 1, day, hour, minute).getTime();
+        }
+        const start = new Date(after);
+        for (let offset = 0; offset <= 7; offset++) {
+            const candidate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset, hour, minute);
+            if (candidate.getTime() > after && (!root.repeats(alarm) || alarm.days[candidate.getDay()]))
+                return candidate.getTime();
+        }
+        return 0;
+    }
+
+    function armAlarm(alarm) {
+        const minute = new Date();
+        minute.setSeconds(0, 0);
+        alarm.nextTrigger = root.nextOccurrence(alarm, minute.getTime() - 1);
+    }
 
     function saveAlarms(newAlarms) {
         Persistent.states.alarms = newAlarms;
@@ -36,6 +65,7 @@ Singleton {
         let cloned = JSON.parse(JSON.stringify(Persistent.states.alarms));
         if (index >= 0 && index < cloned.length) {
             cloned[index].enabled = !cloned[index].enabled;
+            if (cloned[index].enabled) root.armAlarm(cloned[index]);
             if (!cloned[index].enabled && ringingAlarmIndex === index) {
                 stopRinging();
             }
@@ -57,6 +87,7 @@ Singleton {
             date: date || "",
             enabled: true
         });
+        root.armAlarm(cloned[cloned.length - 1]);
         cloned.sort((a, b) => a.time.localeCompare(b.time));
         saveAlarms(cloned);
         return true;
@@ -70,6 +101,7 @@ Singleton {
             cloned[index].label = label;
             cloned[index].days = days;
             cloned[index].enabled = true;
+            root.armAlarm(cloned[index]);
             cloned.sort((a, b) => a.time.localeCompare(b.time));
             saveAlarms(cloned);
         }
@@ -90,13 +122,18 @@ Singleton {
     function triggerAlarm(index) {
         if (index < 0 || index >= alarms.length) return;
 
-        let now = new Date();
-        let currentHour = now.getHours().toString().padStart(2, '0');
-        let currentMin = now.getMinutes().toString().padStart(2, '0');
-        lastTriggeredMinute = currentHour + ":" + currentMin;
-
-        ringingAlarmIndex = index;
         let alarm = alarms[index];
+        // Consume before ringing, not on dismissal: a restart cannot replay the
+        // same one-shot or recurring occurrence. Collapse missed repeats into one.
+        const cloned = JSON.parse(JSON.stringify(alarms));
+        if (root.repeats(alarm)) {
+            cloned[index].nextTrigger = root.nextOccurrence(alarm, Date.now());
+        } else {
+            cloned[index].enabled = false;
+            cloned[index].nextTrigger = 0;
+        }
+        root.saveAlarms(cloned);
+        ringingAlarmIndex = index;
 
         // Play sound in loop if enabled
         SoundService.stopLoop();
@@ -117,19 +154,6 @@ Singleton {
     function stopRinging() {
         if (ringingAlarmIndex === -1) return;
 
-        let alarm = alarms[ringingAlarmIndex];
-        if (alarm && !alarm.days.includes(true)) {
-            let cloned = JSON.parse(JSON.stringify(Persistent.states.alarms));
-            for (let i = 0; i < cloned.length; i++) {
-                if (cloned[i].time === alarm.time && cloned[i].label === alarm.label
-                        && String(cloned[i].date ?? "") === String(alarm.date ?? "")) {
-                    cloned[i].enabled = false;
-                    break;
-                }
-            }
-            saveAlarms(cloned);
-        }
-
         ringingAlarmIndex = -1;
         SoundService.stopLoop();
         GlobalStates.alarmRinging = false;
@@ -137,36 +161,25 @@ Singleton {
 
     function checkAlarms() {
         if (!Persistent.ready || !alarms || alarms.length === 0) return;
-        
-        let now = new Date();
-        let currentHour = now.getHours().toString().padStart(2, '0');
-        let currentMin = now.getMinutes().toString().padStart(2, '0');
-        let timeStr = currentHour + ":" + currentMin;
-        
-        if (timeStr === lastTriggeredMinute) {
-            return;
-        }
-
-        if (ringingAlarmIndex !== -1) {
-            return;
-        }
-
-        let dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-        let dateString = Qt.formatDate(now, "yyyy-MM-dd");
-
-        for (let i = 0; i < alarms.length; i++) {
-            let alarm = alarms[i];
-            if (alarm.enabled && alarm.time === timeStr
-                    && (String(alarm.date ?? "").length === 0 || String(alarm.date) === dateString)) {
-                let hasRepeatDays = alarm.days.includes(true);
-                let dayMatches = !hasRepeatDays || alarm.days[dayOfWeek];
-
-                if (dayMatches) {
-                    triggerAlarm(i);
-                    break;
-                }
+        const now = Date.now();
+        const cloned = JSON.parse(JSON.stringify(alarms));
+        let changed = false;
+        let due = -1;
+        for (let i = 0; i < cloned.length; i++) {
+            const alarm = cloned[i];
+            if (!alarm.enabled) continue;
+            // Migrate old alarms once. Dated reminders retain their original
+            // deadline, including overdue ones; undated alarms arm from now.
+            if (alarm.nextTrigger === undefined) {
+                root.armAlarm(alarm);
+                changed = true;
             }
+            if (alarm.nextTrigger > 0 && alarm.nextTrigger <= now
+                    && (due === -1 || alarm.nextTrigger < cloned[due].nextTrigger))
+                due = i;
         }
+        if (changed) root.saveAlarms(cloned);
+        if (due !== -1 && ringingAlarmIndex === -1) root.triggerAlarm(due);
     }
 
     Timer {

@@ -49,6 +49,7 @@ ShellRoot {
         Updates.load()
         AgentService.load()
         SoundService.load()
+        AlarmService.load()
         LocalSend.live = true
         if (Config.ready) root.activeFamily = Config.options.panelFamily
     }
