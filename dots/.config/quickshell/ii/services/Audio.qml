@@ -75,11 +75,13 @@ Singleton {
     }
 
     function toggleMute() {
-        Audio.sink.audio.muted = !Audio.sink.audio.muted
+        if (!sink?.audio) return;
+        sink.audio.muted = !sink.audio.muted;
     }
 
     function toggleMicMute() {
-        Audio.source.audio.muted = !Audio.source.audio.muted
+        if (!source?.audio) return;
+        source.audio.muted = !source.audio.muted;
     }
 
     function incrementVolume() {
