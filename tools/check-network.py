@@ -67,6 +67,18 @@ elif "IN-USE,SIGNAL,SSID" in args:
     for ap in state["aps"]:
         if ap["ACTIVE"] == "yes":
             print("*", ap["SIGNAL"], ap["SSID"])
+elif args[:2] == ["connection", "down"]:
+    if args[-1] not in [p[0] for p in state["profiles"]]:
+        print("Error: unknown connection", file=sys.stderr)
+        sys.exit(10)
+elif args[:2] == ["device", "disconnect"]:
+    time.sleep(state.get("disconnect_delay", 0))
+    if args[-1] not in [ap["DEVICE"] for ap in state["aps"] if ap["ACTIVE"] == "yes"]:
+        sys.exit(10)
+    state.update(devices="wifi:disconnected", profiles=[], aps=[], event=state["event"] + 1)
+    pending = state_file.with_suffix(".disconnected")
+    pending.write_text(json.dumps(state))
+    pending.replace(state_file)
 '''
 
 PROBE = '''import QtQuick
@@ -249,8 +261,25 @@ def check_name(probe):
     print("ok: network names select Ethernet then Wi-Fi, skip virtual links, unescape and clear on disconnect")
 
 
+def check_disconnect(probe):
+    probe.wait(lambda s: s["enabled"] and (probe.directory / "monitor-ready").exists(), "probe startup")
+    probe.call("disconnect")
+    ssid = "Home Wi-Fi's $(literal)"
+    probe.write(event=True, devices="wifi:connected", profiles=[["A renamed profile", "802-11-wireless"]],
+                aps=[ap(ssid, 90, device="wlp4s0")], disconnect_delay=0.4)
+    probe.wait(lambda s: s["active"] and s["active"]["ssid"] == ssid, "the AP for the disconnect never arrived")
+    probe.call("disconnect")
+    probe.call("disconnect")
+    probe.wait(lambda s: s["active"] is None and s["status"] == "disconnected",
+               "disconnecting by SSID misses the renamed profile")
+    probe.call("disconnect")
+    actions = [c for c in probe.calls() if "down" in c or "disconnect" in c]
+    assert actions == [["device", "disconnect", "wlp4s0"]], f"disconnect ran {actions}, not once on the active Wi-Fi device"
+    print("ok: disconnect targets the active Wi-Fi device even with a renamed profile and ignores repeat taps")
+
+
 if __name__ == "__main__":
-    checks = dict(refresh=check_refresh, ethernet=check_ethernet, name=check_name)
+    checks = dict(refresh=check_refresh, ethernet=check_ethernet, name=check_name, disconnect=check_disconnect)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", choices=checks, help="run one regression instead of all of them")
     args = parser.parse_args()

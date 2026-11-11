@@ -162,7 +162,11 @@ Singleton {
     }
 
     function disconnectWifiNetwork(): void {
-        if (active) disconnectProc.exec(["nmcli", "connection", "down", active.ssid]);
+        if (!active?.device || disconnectProc.running)
+            return;
+        // A profile's name need not be its SSID. Disconnect the active adapter,
+        // which also keeps NetworkManager from immediately auto-connecting it.
+        disconnectProc.exec(["nmcli", "device", "disconnect", active.device]);
     }
 
     function openPublicWifiPortal() {
@@ -201,9 +205,7 @@ Singleton {
 
     Process {
         id: disconnectProc
-        stdout: SplitParser {
-            onRead: getNetworks.refresh()
-        }
+        onExited: root.update()
     }
 
     Process {
@@ -366,7 +368,7 @@ Singleton {
     RefreshProcess {
         id: getNetworks
         running: true
-        command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "device", "wifi", "list", "--rescan", "no"]
+        command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY,DEVICE", "device", "wifi", "list", "--rescan", "no"]
         environment: ({
             LANG: "C",
             LC_ALL: "C"
@@ -385,7 +387,8 @@ Singleton {
                         frequency: parseInt(net[2]),
                         ssid: net[3],
                         bssid: net[4]?.replace(rep2, ":") ?? "",
-                        security: net[5] || ""
+                        security: net[5] || "",
+                        device: net[6] || ""
                     };
                 }).filter(n => n.ssid && n.ssid.length > 0);
 

@@ -4,6 +4,7 @@ QtObject {
     required property var lastIpcObject
     readonly property string ssid: lastIpcObject.ssid
     readonly property string bssid: lastIpcObject.bssid
+    readonly property string device: lastIpcObject.device ?? ""
     readonly property int strength: lastIpcObject.strength
     readonly property int frequency: lastIpcObject.frequency
     readonly property bool active: lastIpcObject.active
