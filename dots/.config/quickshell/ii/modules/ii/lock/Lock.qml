@@ -27,6 +27,8 @@ LockScreen {
     Process {
         id: animProc
         command: ["hyprctl", "animations", "-j"]
+        // Read the user's animation before the parking batch overrides it.
+        onExited: root.parkWorkspaces()
         stdout: StdioCollector {
             onStreamFinished: {
                 let all;
@@ -77,35 +79,38 @@ LockScreen {
         context: root.context
     }
 
+    function parkWorkspaces() {
+        if (!GlobalStates.screenLocked || GlobalStates.screenLockExiting)
+            return;
+        // Lock: save workspace per monitor and move all to temp workspace in one batch.
+        var next = {}
+        var batch = 'hl.animation({ leaf = "workspaces", enabled = true, speed = 7, bezier = "menu_decel", style = "slidevert" }); '
+        for (var i = 0; i < Quickshell.screens.length; ++i) {
+            var mon = Quickshell.screens[i].name
+            var mData = HyprlandData.monitors.find(m => m.name === mon)
+            if (mData?.activeWorkspace == undefined) {
+                return;
+            }
+            var ws = (mData?.activeWorkspace?.id ?? 1)
+            if (ws > root.lockWorkspaceBase / 2) {
+                // A shell restarting under a lock has lost its saved map.
+                // The mirror of the parked id is the workspace to return to.
+                next[mon] = root.lockWorkspaceBase - ws
+                continue
+            }
+            next[mon] = ws
+            batch += `hl.dispatch(hl.dsp.focus({monitor="${mon}"})); hl.dispatch(hl.dsp.focus({workspace=${root.lockWorkspaceBase - ws}})); `
+        }
+        root.savedWorkspaces = next
+        Quickshell.execDetached(["hyprctl", "eval", batch])
+    }
+
     // Single batch for lock and unlock so we don't race multiple hyprctl calls
     Connections {
         target: GlobalStates
         function onScreenLockedChanged() {
             if (GlobalStates.screenLocked) {
                 animProc.running = true
-                // Lock: save workspace per monitor and move all to temp workspace in one batch
-                var next = {}
-                var batch = "keyword animation workspaces,1,7,menu_decel,slidevert; "
-                for (var i = 0; i < Quickshell.screens.length; ++i) {
-                    var mon = Quickshell.screens[i].name
-                    var mData = HyprlandData.monitors.find(m => m.name === mon)
-                    if (mData?.activeWorkspace == undefined) {
-                        return;
-                    }
-                    var ws = (mData?.activeWorkspace?.id ?? 1)
-                    if (ws > root.lockWorkspaceBase / 2) {
-                        // Already parked: this is the shell restarting under a
-                        // lock it did not place, so the map it saved is gone.
-                        // Saving the parked id as the one to come back to would
-                        // strand every window on the workspace it is hiding.
-                        next[mon] = root.lockWorkspaceBase - ws
-                        continue
-                    }
-                    next[mon] = ws
-                    batch += `hyprctl dispatch 'hl.dsp.focus({monitor="${mon}"})'; hyprctl dispatch 'hl.dsp.focus({workspace=${root.lockWorkspaceBase - ws}})';`
-                }
-                root.savedWorkspaces = next
-                Quickshell.execDetached(["bash", "-c", batch])
             } else {
                 // The workspaces came back under the lock, where Hyprland refuses
                 // windows keyboard focus, and its unlock refocus picks whatever is
