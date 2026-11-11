@@ -2,14 +2,14 @@ pragma Singleton
 
 import QtQuick
 import qs.modules.common
+import qs.modules.common.utils
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 
 /**
  * Simple hyprsunset service with automatic mode.
- * In theory we don't need this because hyprsunset has a config file, but it somehow doesn't work.
- * It should also be possible to control it via hyprctl, but it doesn't work consistently either so we're just killing and launching.
+ * Starts the daemon if needed and retries IPC until its socket is ready.
  */
 Singleton {
     id: root
@@ -26,6 +26,9 @@ Singleton {
     property bool shouldBeOn
     property bool firstEvaluation: true
     property bool temperatureActive: false
+    property int requestedTemperature: defaultColorTemperature
+    property int temperatureRevision: 0
+    property bool temperaturePending: false
 
     property int fromHour: Number(from.split(":")[0])
     property int fromMinute: Number(from.split(":")[1])
@@ -90,30 +93,61 @@ Singleton {
     function load() {
         root.startHyprsunset();
         root.ensureState();
+        root.fetchState();
     }
 
     Timer {
         id: updateHyprsunset
-        interval: 100
+        interval: 500
         repeat: false
         onTriggered: {
-            root.ensureState();
-            root.setGamma(root.gamma);
+            root.startHyprsunset();
+            if (root.temperaturePending) temperatureProc.refresh();
         }
     }
 
     function enableTemperature() {
-        root.temperatureActive = true;
-
-        // console.log("[Hyprsunset] Enabling");
-        root.startHyprsunset();
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset temperature ${root.colorTemperature}`]);
+        root.applyTemperature(root.colorTemperature);
     }
 
     function disableTemperature() {
-        root.temperatureActive = false;
-        // console.log("[Hyprsunset] Disabling");
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset temperature ${root.defaultColorTemperature}`]);
+        root.applyTemperature(root.defaultColorTemperature);
+    }
+
+    function applyTemperature(temperature) {
+        root.requestedTemperature = temperature;
+        root.temperatureRevision++;
+        root.temperaturePending = true;
+        root.startHyprsunset();
+        temperatureProc.refresh();
+    }
+
+    function retryTemperature() {
+        if (root.temperaturePending && !temperatureProc.running)
+            updateHyprsunset.restart();
+    }
+
+    RefreshProcess {
+        id: temperatureProc
+        property int applyingRevision: 0
+        property int applyingTemperature: 0
+        command: ["hyprctl", "hyprsunset", "temperature", `${root.requestedTemperature}`]
+        onRunningChanged: {
+            if (running) {
+                applyingRevision = root.temperatureRevision;
+                applyingTemperature = root.requestedTemperature;
+            } else {
+                // FailedToStart has no exited signal. Defer until onExited has
+                // acknowledged success before deciding whether to retry.
+                Qt.callLater(root.retryTemperature);
+            }
+        }
+        onExited: (code, status) => {
+            if (code !== 0 || status !== 0 || applyingRevision !== root.temperatureRevision) return;
+            root.temperaturePending = false;
+            root.temperatureActive = applyingTemperature !== root.defaultColorTemperature;
+            updateHyprsunset.stop();
+        }
     }
 
     function setGamma(gamma) {
@@ -126,23 +160,27 @@ Singleton {
     }
 
     function fetchState() {
-        fetchProc.running = true;
+        fetchProc.refresh();
     }
 
-    Process {
+    RefreshProcess {
         id: fetchProc
         running: true
-        command: ["bash", "-c", "hyprctl hyprsunset temperature"]
+        property int readRevision: 0
+        property bool readingPending: false
+        command: ["hyprctl", "hyprsunset", "temperature"]
+        onRunningChanged: if (running) {
+            readRevision = root.temperatureRevision;
+            readingPending = root.temperaturePending;
+        }
         stdout: StdioCollector {
             id: stateCollector
-            onStreamFinished: {
-                const output = stateCollector.text.trim();
-                if (output.length == 0 || output.startsWith("Couldn't"))
-                    root.temperatureActive = false;
-                else
-                    root.temperatureActive = (output != root.defaultColorTemperature); // 6000 is the default when off
-                // console.log("[Hyprsunset] Fetched state:", output, "->", root.temperatureActive);
-            }
+        }
+        onExited: (code, status) => {
+            const output = stateCollector.text.trim();
+            if (code !== 0 || status !== 0 || !/^\d+$/.test(output)
+                || readingPending || root.temperaturePending || readRevision !== root.temperatureRevision) return;
+            root.temperatureActive = Number(output) !== root.defaultColorTemperature;
         }
     }
 
@@ -165,8 +203,8 @@ Singleton {
     Connections {
         target: Config.options.light.night
         function onColorTemperatureChanged() {
-            if (!root.temperatureActive) return;
-            Quickshell.execDetached(["hyprctl", "hyprsunset", "temperature", `${Config.options.light.night.colorTemperature}`]);
+            if (root.temperaturePending ? root.requestedTemperature === root.defaultColorTemperature : !root.temperatureActive) return;
+            root.applyTemperature(Config.options.light.night.colorTemperature);
         }
     }
 }
