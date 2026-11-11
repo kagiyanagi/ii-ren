@@ -281,7 +281,8 @@ hl.bind("SUPER + ALT + Equal",
     hl.dsp.exec_cmd("notify-send 'Urgent notification' 'Ah hell no' -u critical -a 'Hyprland keybind'"))                             -- # [hidden]
 
 --##! Session
-hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Misc: Lock" })
+hl.bind("SUPER + L", hl.dsp.global("quickshell:lock"), { description = "Misc: Lock" })
+hl.bind("SUPER + L", hl.dsp.exec_cmd(qsIsAlive .. " || loginctl lock-session"))
 hl.bind("SUPER + SHIFT + L", hl.dsp.exec_cmd("systemctl suspend || loginctl suspend"),
     { locked = true, description = "Misc: Suspend system" })                                                                                   -- Sleep
 -- Closing the lid only blanks the screen - no suspend, no lock. Opening it wakes the screen back up.
