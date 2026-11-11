@@ -88,10 +88,11 @@ LockScreen {
         for (var i = 0; i < Quickshell.screens.length; ++i) {
             var mon = Quickshell.screens[i].name
             var mData = HyprlandData.monitors.find(m => m.name === mon)
-            if (mData?.activeWorkspace == undefined) {
-                return;
-            }
-            var ws = (mData?.activeWorkspace?.id ?? 1)
+            var ws = Hyprland.monitorFor(Quickshell.screens[i])?.activeWorkspace?.id ?? mData?.activeWorkspace?.id
+            // Hotplug or a pending monitor query must not discard the other
+            // screens, or leave an older lock's map to be restored on unlock.
+            if (!Number.isInteger(ws) || ws <= 0)
+                continue;
             if (ws > root.lockWorkspaceBase / 2) {
                 // A shell restarting under a lock has lost its saved map.
                 // The mirror of the parked id is the workspace to return to.
@@ -110,6 +111,7 @@ LockScreen {
         target: GlobalStates
         function onScreenLockedChanged() {
             if (GlobalStates.screenLocked) {
+                root.savedWorkspaces = {}
                 animProc.running = true
             } else {
                 // The workspaces came back under the lock, where Hyprland refuses

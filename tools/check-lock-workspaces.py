@@ -6,6 +6,10 @@ it while the following hyprctl dispatches still moved the workspaces. Lua config
 also reject `hyprctl keyword`. Execute the QML JavaScript with fake screens and
 capture the command actually submitted; it must be one hyprctl eval, with the
 animation before any workspace move. Run that Lua with a fake compositor too.
+
+A missing monitor reply must not abort parking the remaining screens or leave
+the previous lock's saved map behind. Cover hotplug gaps, native-monitor fallback,
+and a shell restarting on already-parked workspaces.
 """
 import json
 import re
@@ -38,7 +42,9 @@ const HyprlandData = {{ monitors: [
     {{ name: 'DP-1', activeWorkspace: {{ id: 2 }} }},
     {{ name: 'HDMI-A-1', activeWorkspace: {{ id: 7 }} }}
 ] }};
-(function () {{ {parking} }})();
+const Hyprland = {{ monitorFor: () => null }};
+const park = () => {{ {parking} }};
+park();
 assert.equal(calls.length, 1, 'parking should submit one command');
 assert.deepEqual(calls[0].slice(0, 2), ['hyprctl', 'eval'],
     'the animation must be submitted to hyprctl, not executed as a shell command');
@@ -55,5 +61,26 @@ ${{calls[0][2]}}
 assert(moves == 4, 'not all monitors were parked')
 ` }});
 assert.deepEqual(root.savedWorkspaces, {{ 'DP-1': 2, 'HDMI-A-1': 7 }});
+
+for (const present of ['DP-1', 'HDMI-A-1', null]) {{
+    root.savedWorkspaces = {{ 'DP-1': 90, 'HDMI-A-1': 91, 'disconnected': 92 }};
+    calls.length = 0;
+    HyprlandData.monitors = present ? [{{ name: present, activeWorkspace: {{ id: 4 }} }}] : [];
+    park();
+    assert.deepEqual(root.savedWorkspaces, present ? {{ [present]: 4 }} : {{}},
+        'missing monitor data aborted the loop or reused the last lock map');
+    if (present)
+        assert.match(calls[0][2], /workspace=2147483643/);
+}}
+
+HyprlandData.monitors = [];
+Hyprland.monitorFor = screen => screen.name === 'DP-1' ? {{ activeWorkspace: {{ id: 3 }} }} : null;
+park();
+assert.deepEqual(root.savedWorkspaces, {{ 'DP-1': 3 }}, 'the native monitor did not cover a missing JSON reply');
+Hyprland.monitorFor = () => null;
+HyprlandData.monitors = [{{ name: 'DP-1', activeWorkspace: {{ id: 2147483645 }} }}];
+park();
+assert.deepEqual(root.savedWorkspaces, {{ 'DP-1': 2 }}, 'a recovered lock saved the parked id');
+assert.ok(!calls.at(-1)[2].includes('workspace='), 'an already parked workspace was parked again');
 console.log('ok: parking sends valid Lua for the animation and workspace moves in one hyprctl eval');
 """], check=True)
