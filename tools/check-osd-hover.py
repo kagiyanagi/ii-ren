@@ -11,6 +11,9 @@ from pathlib import Path
 
 src = (Path(__file__).resolve().parent.parent
        / "dots/.config/quickshell/ii/modules/ii/onScreenDisplay/OnScreenDisplay.qml").read_text()
+# Hover holds its own timeout; GlobalStates has no osdInteraction signal to
+# refresh it. An ignoreUnknownSignals connection only hid the dead handler.
+assert "onOsdInteraction" not in src, "OSD still listens for a nonexistent GlobalStates signal"
 hover = re.search(r"onHoveredChanged: (.*)", src).group(1)
 update = re.search(r"    function updateTimeout\(\) \{\n(.*?)\n    \}", src, re.S)
 trigger = re.search(r"    function triggerOsd\(\) \{\n(.*?)\n    \}", src, re.S).group(1)
