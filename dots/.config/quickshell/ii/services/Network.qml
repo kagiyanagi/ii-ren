@@ -21,7 +21,7 @@ Singleton {
     property bool ethernet: false
 
     property bool wifiEnabled: false
-    property bool wifiScanning: false
+    readonly property bool wifiScanning: rescanProcess.running
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
     // SSIDs NetworkManager holds a profile for, so a tap can tell a network it can
@@ -135,7 +135,8 @@ Singleton {
     }
 
     function rescanWifi(): void {
-        wifiScanning = true;
+        if (rescanProcess.running)
+            return;
         rescanProcess.running = true;
         savedWifiProc.running = true;
     }
@@ -238,12 +239,7 @@ Singleton {
     Process {
         id: rescanProcess
         command: ["nmcli", "dev", "wifi", "list", "--rescan", "yes"]
-        stdout: SplitParser {
-            onRead: {
-                wifiScanning = false;
-                getNetworks.refresh();
-            }
-        }
+        onExited: getNetworks.refresh()
     }
 
     // Status update

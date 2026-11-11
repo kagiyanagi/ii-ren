@@ -6,6 +6,11 @@ Quickshell with a fake nmcli on PATH. This exercises QML list bindings and proce
 completion, including a monitor event during a read, without touching real radios,
 profiles or connections. Only the directory/translation helpers are stubbed.
 
+The icon used a stale AP list; substring matching counted disconnected Ethernet;
+the first active profile could be a VPN or loopback; disconnect used the SSID as
+a profile name; and scanning stopped at the first output line or never stopped
+on a silent failure. The fixture reproduces each without dropping the session.
+
     python3 tools/check-network.py
 """
 import argparse
@@ -54,8 +59,10 @@ elif "NAME" in args:
 elif "NAME,TYPE" in args:
     print("\n".join(escape(p[0]) + ":" + p[1] for p in state["profiles"]))
 elif "yes" in args and "--rescan" in args:
+    state_file.with_name("scan-started").touch()
     print(state.get("scan_output", ""), end="", flush=True)
     time.sleep(state.get("scan_delay", 0))
+    state_file.with_name("scan-finished").touch()
     sys.exit(state.get("scan_exit", 0))
 elif any(a.startswith("ACTIVE,SIGNAL") for a in args):
     Path(os.environ["NETWORK_AP_STARTED"]).touch()
@@ -278,8 +285,31 @@ def check_disconnect(probe):
     print("ok: disconnect targets the active Wi-Fi device even with a renamed profile and ignores repeat taps")
 
 
+def check_scan(probe):
+    probe.wait(lambda s: s["enabled"] and (probe.directory / "monitor-ready").exists(), "probe startup")
+    started = probe.directory / "scan-started"
+    finished = probe.directory / "scan-finished"
+    for index, (output, code) in enumerate([("", 1), ("", 0), ("HEADER\nAP\n", 0), ("partial output\n", 1)]):
+        started.unlink(missing_ok=True)
+        finished.unlink(missing_ok=True)
+        ssid = f"Scan {index}"
+        probe.write(aps=[ap(ssid, 90)], scan_output=output, scan_exit=code, scan_delay=0.5)
+        probe.call("rescan")
+        probe.wait(lambda s: started.exists(), "the scan never started")
+        probe.call("rescan")
+        time.sleep(0.1)  # Allow a first stdout line to reach the QML parser.
+        assert not finished.exists() and probe.snapshot()["scanning"], "the spinner stopped before the scan exited"
+        probe.wait(lambda s: finished.exists() and not s["scanning"] and s["active"]
+                   and s["active"]["ssid"] == ssid,
+                   f"scan exit {code}, stdout {output!r}: spinner stuck or cached APs not refreshed")
+    scans = [c for c in probe.calls() if "--rescan" in c and "yes" in c]
+    assert len(scans) == 4, f"repeat taps started extra radio scans: {scans}"
+    print("ok: the spinner follows scan lifetime and APs refresh on success, failure, output or silence")
+
+
 if __name__ == "__main__":
-    checks = dict(refresh=check_refresh, ethernet=check_ethernet, name=check_name, disconnect=check_disconnect)
+    checks = dict(refresh=check_refresh, ethernet=check_ethernet, name=check_name,
+                  disconnect=check_disconnect, scan=check_scan)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", choices=checks, help="run one regression instead of all of them")
     args = parser.parse_args()
