@@ -15,6 +15,13 @@ import Quickshell.Services.Mpris
 Item { // Player instance
     id: root
     required property MprisPlayer player
+    readonly property bool seekable: (root.player?.canSeek ?? false) && Number.isFinite(root.player?.length) && root.player.length > 0
+    readonly property real progress: {
+        const position = root.player?.position ?? 0;
+        const length = root.player?.length ?? 0;
+        return Number.isFinite(position) && Number.isFinite(length) && length > 0
+            ? Math.max(0, Math.min(1, position / length)) : 0;
+    }
     property var artUrl: MprisController.artUrlFor(player)
     property color artDominantColor: !root.displayedArtFilePath ? Appearance.m3colors.m3secondaryContainer
         : ColorUtils.mix((colorQuantizer?.colors[0] ?? Appearance.colors.colPrimary), Appearance.colors.colPrimaryContainer, 0.8)
@@ -131,7 +138,7 @@ Item { // Player instance
         WaveVisualizer {
             id: visualizerCanvas
             anchors.fill: parent
-            live: root.player?.isPlaying
+            live: root.player?.isPlaying ?? false
             points: root.visualizerPoints
             maxVisualizerValue: root.maxVisualizerValue
             smoothing: root.visualizerSmoothing
@@ -269,13 +276,13 @@ Item { // Player instance
                         Loader {
                             id: sliderLoader
                             anchors.fill: parent
-                            active: root.player?.canSeek ?? false
+                            active: root.seekable
                             sourceComponent: StyledSlider {
                                 configuration: StyledSlider.Configuration.Wavy
                                 highlightColor: blendedColors.colPrimary
                                 trackColor: blendedColors.colSecondaryContainer
                                 handleColor: blendedColors.colPrimary
-                                value: root.player?.position / root.player?.length
+                                value: root.progress
                                 onMoved: {
                                     root.player.position = value * root.player.length;
                                 }
@@ -289,12 +296,12 @@ Item { // Player instance
                                 left: parent.left
                                 right: parent.right
                             }
-                            active: !(root.player?.canSeek ?? false)
+                            active: !root.seekable
                             sourceComponent: StyledProgressBar {
-                                wavy: root.player?.isPlaying
+                                wavy: root.player?.isPlaying ?? false
                                 highlightColor: blendedColors.colPrimary
                                 trackColor: blendedColors.colSecondaryContainer
-                                value: root.player?.position / root.player?.length
+                                value: root.progress
                             }
                         }
                     }
