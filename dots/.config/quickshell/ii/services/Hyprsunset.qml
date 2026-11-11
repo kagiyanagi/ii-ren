@@ -23,6 +23,9 @@ Singleton {
     property int colorTemperature: Config.options?.light?.night?.colorTemperature ?? 5000
     property int defaultColorTemperature: 6000
     property int gamma: 100
+    property bool gammaReady: false
+    property bool gammaPending: false
+    property int gammaRevision: 0
     property bool shouldBeOn
     property bool firstEvaluation: true
     property bool temperatureActive: false
@@ -103,6 +106,8 @@ Singleton {
         onTriggered: {
             root.startHyprsunset();
             if (root.temperaturePending) temperatureProc.refresh();
+            if (root.gammaPending) gammaProc.refresh();
+            else if (!root.gammaReady) root.fetchState();
         }
     }
 
@@ -122,9 +127,13 @@ Singleton {
         temperatureProc.refresh();
     }
 
-    function retryTemperature() {
-        if (root.temperaturePending && !temperatureProc.running)
+    function retryPendingState() {
+        if ((root.temperaturePending && !temperatureProc.running)
+            || (root.gammaPending && !gammaProc.running)
+            || (!root.gammaReady && !gammaReadProc.running))
             updateHyprsunset.restart();
+        else if (!root.temperaturePending && !root.gammaPending && root.gammaReady)
+            updateHyprsunset.stop();
     }
 
     RefreshProcess {
@@ -139,28 +148,75 @@ Singleton {
             } else {
                 // FailedToStart has no exited signal. Defer until onExited has
                 // acknowledged success before deciding whether to retry.
-                Qt.callLater(root.retryTemperature);
+                Qt.callLater(root.retryPendingState);
             }
         }
         onExited: (code, status) => {
             if (code !== 0 || status !== 0 || applyingRevision !== root.temperatureRevision) return;
             root.temperaturePending = false;
             root.temperatureActive = applyingTemperature !== root.defaultColorTemperature;
-            updateHyprsunset.stop();
+            root.retryPendingState();
         }
     }
 
     function setGamma(gamma) {
         root.gamma = Math.max(root.gammaLowerLimit, Math.min(100, gamma));
+        root.gammaRevision++;
+        root.gammaPending = true;
 
         root.gammaChangeAttempt();
 
         root.startHyprsunset();
-        Quickshell.execDetached(["bash", "-c", `hyprctl hyprsunset gamma ${root.gamma}`]);
+        gammaProc.refresh();
+    }
+
+    RefreshProcess {
+        id: gammaProc
+        property int applyingRevision: 0
+        command: ["hyprctl", "hyprsunset", "gamma", `${root.gamma}`]
+        onRunningChanged: {
+            if (running) applyingRevision = root.gammaRevision;
+            else Qt.callLater(root.retryPendingState);
+        }
+        onExited: (code, status) => {
+            if (code !== 0 || status !== 0 || applyingRevision !== root.gammaRevision) return;
+            root.gammaPending = false;
+            root.gammaReady = true;
+            root.retryPendingState();
+        }
     }
 
     function fetchState() {
         fetchProc.refresh();
+        gammaReadProc.refresh();
+    }
+
+    // hyprsunset outlives the shell. Recover its gamma instead of assuming 100,
+    // without sending it back as a write or announcing a brightness gesture.
+    RefreshProcess {
+        id: gammaReadProc
+        running: true
+        property int readRevision: 0
+        property bool readingPending: false
+        command: ["hyprctl", "hyprsunset", "gamma"]
+        onRunningChanged: {
+            if (running) {
+                readRevision = root.gammaRevision;
+                readingPending = root.gammaPending;
+            } else {
+                Qt.callLater(root.retryPendingState);
+            }
+        }
+        stdout: StdioCollector { id: gammaCollector }
+        onExited: (code, status) => {
+            const output = gammaCollector.text.trim();
+            const value = Number(output);
+            if (code !== 0 || status !== 0 || output === "" || !isFinite(value) || value <= 0 || value > 200
+                || readingPending || root.gammaPending || readRevision !== root.gammaRevision) return;
+            root.gamma = value;
+            root.gammaReady = true;
+            root.retryPendingState();
+        }
     }
 
     RefreshProcess {

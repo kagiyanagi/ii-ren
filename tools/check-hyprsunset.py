@@ -5,6 +5,8 @@ Run the actual Hyprsunset.qml, timers and processes in an offscreen Quickshell.
 Only config/clock inputs and the hyprctl/daemon commands are faked: no display
 settings change. A failed command must retry, and a newer manual choice or
 temperature must win while the daemon is unavailable or a write is in flight.
+Read the daemon's surviving gamma after a restart, then exercise the production
+Brightness.increaseBrightness(): it must restore gamma before hardware brightness.
 
     python3 tools/check-hyprsunset.py
 """
@@ -38,23 +40,35 @@ if len(args) > 2:
 else:
     value = target.read_text()
     time.sleep(config.get("read_delay", 0))
-    print(value)
+    print("not a reading" if config.get("read_invalid", False) else value)
+    sys.exit(config.get("read_exit", 0))
 '''
 PROBE = '''import QtQuick
 import Quickshell
 import Quickshell.Io
 import "."
 ShellRoot {
+    id: root
+    property int hardwareSteps: 0
+    property int gammaAttempts: 0
+    function getTargetMonitor() { return {ready: true, adjustBrightness: () => root.hardwareSteps++} }
+    // INCREASE_BRIGHTNESS
     Component.onCompleted: Hyprsunset.load()
+    Connections {
+        target: Hyprsunset
+        function onGammaChangeAttempt() { root.gammaAttempts++ }
+    }
     IpcHandler {
         target: "sunsetCheck"
         function state(): string {
-            return JSON.stringify({active: Hyprsunset.temperatureActive, gamma: Hyprsunset.gamma})
+            return JSON.stringify({active: Hyprsunset.temperatureActive, gamma: Hyprsunset.gamma,
+                hardwareSteps: root.hardwareSteps, gammaAttempts: root.gammaAttempts})
         }
         function toggle(active: bool): void { Hyprsunset.toggleTemperature(active) }
         function temperature(value: int): void { Config.options.light.night.colorTemperature = value }
         function gamma(value: int): void { Hyprsunset.setGamma(value) }
         function fetch(): void { Hyprsunset.fetchState() }
+        function increase(): void { root.increaseBrightness() }
     }
 }
 '''
@@ -95,7 +109,9 @@ QtObject { property var clock: ({hours: 22, minutes: 0}) }
         (self.path / "qmldir").write_text("\n".join([
             "singleton Hyprsunset 1.0 Hyprsunset.qml", "singleton Config 1.0 Config.qml",
             "singleton DateTime 1.0 DateTime.qml", "RefreshProcess 1.0 RefreshProcess.qml"]))
-        (self.path / "shell.qml").write_text(PROBE)
+        brightness = (II / "services/Brightness.qml").read_text()
+        increase = re.search(r"    function increaseBrightness\(\): void \{.*?\n    \}", brightness, re.S)[0]
+        (self.path / "shell.qml").write_text(PROBE.replace("    // INCREASE_BRIGHTNESS", increase))
         binary = self.path / "bin"
         binary.mkdir()
         for name, script in {"hyprctl": FAKE, "pidof": "#!/bin/sh\nexit 0\n",
@@ -197,10 +213,52 @@ def check_updates(p):
     assert not p.state()["active"], "an old read rolls back a successful toggle"
 
 
+def check_gamma(p):
+    p.wait(lambda s: s["gamma"] == 65, "shell lost the daemon's lowered gamma after restart")
+    assert p.state()["gammaAttempts"] == 0, "reading startup gamma triggers the OSD"
+    assert not [c for c in p.calls() if c[:2] == ["hyprsunset", "gamma"] and len(c) > 2], \
+        "startup resets gamma instead of reading it"
+    for gamma in range(70, 101, 5):
+        p.call("increase")
+        p.wait(lambda s: s["gamma"] == gamma and p.raw("gamma") == gamma,
+               "brightness-up fails to restore gamma")
+        assert p.state()["hardwareSteps"] == 0, "brightness-up skips to hardware while gamma is lowered"
+    p.call("increase")
+    assert p.state()["hardwareSteps"] == 1, "brightness-up never reaches hardware at full gamma"
+
+
+def check_gamma_reads(p):
+    p.wait(lambda s: s["gamma"] == 65, "startup gamma never initializes")
+    p.configure(read_delay=0.6)
+    p.call("fetch")
+    time.sleep(0.1)
+    p.call("gamma", 70)
+    p.wait(lambda s: s["gamma"] == 70 and p.raw("gamma") == 70, "gamma adjustment never reaches daemon")
+    time.sleep(0.8)
+    assert p.state()["gamma"] == 70, "stale read rolls back a gamma adjustment"
+    p.configure(read_delay=0, read_invalid=True)
+    p.call("fetch")
+    time.sleep(0.3)
+    assert p.state()["gamma"] == 70, "malformed gamma output poisons the value"
+    p.configure(read_invalid=False, read_exit=1)
+    (p.path / "gamma").write_text("60")
+    p.call("fetch")
+    time.sleep(0.3)
+    assert p.state()["gamma"] == 70, "a failed command's partial output replaces gamma"
+    p.configure(read_exit=0)
+    p.call("fetch")
+    p.wait(lambda s: s["gamma"] == 60, "gamma reads do not recover after failures")
+    p.configure(write_delay=0.3)
+    p.call("gamma", 50)
+    time.sleep(0.1)
+    p.call("gamma", 55)
+    p.wait(lambda s: s["gamma"] == 55 and p.raw("gamma") == 55, "latest gamma is lost during a write")
+
+
 if __name__ == "__main__":
-    for check in (check_startup, check_latest, check_updates):
+    for check in (check_gamma, check_startup, check_latest, check_updates, check_gamma_reads):
         with tempfile.TemporaryDirectory(prefix="ii-hyprsunset-check-") as directory:
-            p = Probe(directory, ready_at=time.time() + 0.9)
+            p = Probe(directory, gamma=65 if "gamma" in check.__name__ else 100, ready_at=time.time() + 0.9)
             try:
                 check(p)
             finally:
