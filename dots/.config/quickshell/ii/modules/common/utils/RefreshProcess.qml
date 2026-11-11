@@ -3,10 +3,11 @@ import Quickshell.Io
 
 /**
  * A Process that reads some state, re-run with refresh() whenever that state may have
- * changed. `running = true` on a running Process is a no-op, so the change that asked
- * for a read while one was under way was simply lost, and the answer that landed could
- * predate it. Here calls in one tick start one run, and a call during a run gets one
- * more run after it: the answer is never older than the last refresh().
+ * changed. Quickshell 0.3.2 queues one re-run for `running = true` during a run,
+ * coalescing further starts and reading the command again at restart time. This
+ * wrapper also batches calls in one tick and keeps the same refresh contract on
+ * versions without that queue: a call during a run gets one more read after it.
+ * It is for replaceable reads, not distinct mutations that each need to run.
  */
 Process {
     id: root
