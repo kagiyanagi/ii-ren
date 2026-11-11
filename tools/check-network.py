@@ -228,8 +228,29 @@ def check_ethernet(probe):
     print("ok: only an activated ethernet device selects the LAN icon")
 
 
+def check_name(probe):
+    probe.wait(lambda s: s["enabled"] and (probe.directory / "monitor-ready").exists(), "probe startup")
+    virtual = [["tailscale0", "tun"], ["lo", "loopback"], ["waydroid0", "bridge"], ["VPN", "vpn"]]
+    name = "Cafe: upstairs\\desk"
+    probe.write(event=True, devices="wifi:connected", profiles=virtual + [[name, "802-11-wireless"]],
+                aps=[ap("Cafe", 90)])
+    probe.wait(lambda s: s["name"] == name, "virtual connections hide the Wi-Fi name or its escapes leak")
+    probe.write(event=True, devices="wifi:connected\nethernet:connected",
+                profiles=virtual + [[name, "802-11-wireless"], ["Wired: office", "802-3-ethernet"]])
+    probe.wait(lambda s: s["name"] == "Wired: office" and s["icon"] == "lan",
+               "the displayed name and LAN icon select different transports")
+    probe.write(event=True, devices="wifi:disconnected", profiles=virtual, aps=[])
+    probe.wait(lambda s: s["name"] == "" and s["active"] is None,
+               "dropping Wi-Fi shows a VPN, loopback or container interface as the network")
+    probe.write(event=True, devices="wifi:connected", profiles=[[name, "802-11-wireless"]], aps=[ap("Cafe", 90)])
+    probe.wait(lambda s: s["name"] == name, "reconnecting does not restore the name")
+    probe.write(event=True, devices="wifi:disconnected", profiles=[], aps=[])
+    probe.wait(lambda s: s["name"] == "", "no active connections leaves a stale name")
+    print("ok: network names select Ethernet then Wi-Fi, skip virtual links, unescape and clear on disconnect")
+
+
 if __name__ == "__main__":
-    checks = dict(refresh=check_refresh, ethernet=check_ethernet)
+    checks = dict(refresh=check_refresh, ethernet=check_ethernet, name=check_name)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", choices=checks, help="run one regression instead of all of them")
     args = parser.parse_args()

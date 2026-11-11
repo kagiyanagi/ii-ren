@@ -315,11 +315,26 @@ Singleton {
 
     RefreshProcess {
         id: updateNetworkName
-        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
+        command: ["nmcli", "-t", "-f", "NAME,TYPE", "connection", "show", "--active"]
         running: true
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
+        environment: ({
+            LANG: "C",
+            LC_ALL: "C"
+        })
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const connections = text.trim().split("\n").map(line => {
+                    // TYPE is last; a profile name may contain escaped colons.
+                    const separator = line.lastIndexOf(":");
+                    return {
+                        name: line.slice(0, separator).replace(/\\([\\:])/g, "$1"),
+                        type: line.slice(separator + 1)
+                    };
+                });
+                // Match the icon's Ethernet preference and ignore VPNs, loopback
+                // and container bridges. An empty result clears the old name.
+                root.networkName = (connections.find(c => c.type === "802-3-ethernet")
+                    ?? connections.find(c => c.type === "802-11-wireless"))?.name ?? "";
             }
         }
     }
