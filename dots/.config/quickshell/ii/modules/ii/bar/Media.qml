@@ -100,8 +100,9 @@ Item {
             radius: Appearance.rounding.full
 
             Image {
+                id: classicArt
                 anchors.fill: parent
-                source: root.artSource
+                source: CoverArt.source(root.artSource)
                 fillMode: Image.PreserveAspectCrop
                 cache: false
                 antialiasing: true
@@ -111,7 +112,7 @@ Item {
 
             MaterialSymbol {
                 anchors.centerIn: parent
-                visible: root.artSource.length === 0
+                visible: classicArt.status !== Image.Ready
                 fill: 1
                 text: "music_note"
                 iconSize: Math.max(12, artworkItem.width * 0.5)

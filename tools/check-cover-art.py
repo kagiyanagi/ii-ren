@@ -23,6 +23,15 @@ from pathlib import Path
 II = Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii"
 service = (II / "services/CoverArt.qml").read_text()
 
+# These small surfaces used to bypass the cache and leave an empty circle on
+# YouTube's missing hq720 thumbnail, including while an image failed to load.
+for rel in ("modules/ii/bar/Media.qml", "modules/ii/overlay/media/MediaContent.qml"):
+    src = (II / rel).read_text()
+    assert re.search(r"source:\s*CoverArt\.source\(root\.art(?:Source|Url)\)", src), \
+        f"{rel}: artwork bypasses the cache's YouTube fallback"
+    assert re.search(r"visible:\s*\w+\.status\s*!==\s*Image\.Ready", src), \
+        f"{rel}: failed or loading art has no placeholder"
+
 for f in II.rglob("*.qml"):
     if f.name == "CoverArt.qml" or "/waffle/" in str(f):
         continue

@@ -100,7 +100,7 @@ StyledOverlayWidget {
                         property int size: parent.height
                         anchors.fill: parent
 
-                        source: root.artUrl ?? ""
+                        source: CoverArt.source(root.artUrl)
                         fillMode: Image.PreserveAspectCrop
                         cache: true
                         antialiasing: true
@@ -109,6 +109,15 @@ StyledOverlayWidget {
                         height: size
                         sourceSize.width: size
                         sourceSize.height: size
+                    }
+
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        visible: mediaArt.status !== Image.Ready
+                        text: "music_note"
+                        fill: 1
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.colors.colOnPrimaryContainer
                     }
                 }
 
