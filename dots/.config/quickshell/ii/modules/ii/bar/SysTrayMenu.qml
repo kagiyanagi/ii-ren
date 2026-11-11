@@ -22,6 +22,12 @@ PopupWindow {
     // Held open while the exit runs, so the window still has something to draw.
     property bool closing: false
 
+    readonly property var ownerWindow: root.anchor.window
+    onOwnerWindowChanged: BarPopupState.setOpen(root, ownerWindow, visible)
+    onVisibleChanged: BarPopupState.setOpen(root, ownerWindow, visible)
+    Component.onCompleted: BarPopupState.setOpen(root, ownerWindow, visible)
+    Component.onDestruction: BarPopupState.setOpen(root, null, false)
+
     implicitHeight: {
         let result = 0;
         for (let child of stackView.children) {

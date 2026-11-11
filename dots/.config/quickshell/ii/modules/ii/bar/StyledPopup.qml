@@ -1,4 +1,5 @@
 import qs.modules.common
+import qs.services
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
@@ -240,6 +241,11 @@ LazyLoader {
         id: popupWindow
         WlrLayershell.keyboardFocus: root.keyboardFocus
         color: "transparent"
+
+        readonly property var ownerWindow: root.hoverTarget?.QsWindow.window ?? null
+        onOwnerWindowChanged: BarPopupState.setOpen(popupWindow, ownerWindow, visible)
+        onVisibleChanged: BarPopupState.setOpen(popupWindow, ownerWindow, visible)
+        Component.onDestruction: BarPopupState.setOpen(popupWindow, null, false)
 
         readonly property real screenWidth: popupWindow.screen?.width ?? 0
         readonly property real screenHeight: popupWindow.screen?.height ?? 0
@@ -492,6 +498,7 @@ LazyLoader {
         }
 
         Component.onCompleted: {
+            BarPopupState.setOpen(popupWindow, ownerWindow, visible);
             if (root.selfDismiss && Config.options.bar.tooltips.clickToShow) {
                 dismissGrabArmTimer.restart();
             }
