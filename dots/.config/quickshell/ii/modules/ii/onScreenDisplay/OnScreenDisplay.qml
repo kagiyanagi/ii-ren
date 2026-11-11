@@ -24,6 +24,8 @@ Scope {
     }
 
     property string currentIndicator: "volume"
+    property bool hovered: osdLoader.item?.hovered ?? false
+    onHoveredChanged: root.updateTimeout()
     // The player whose volume the playerVolume pill shows. Held rather than read from
     // activePlayer, which can move to another player while the pill is up.
     property MprisPlayer volumePlayer: null
@@ -68,6 +70,14 @@ Scope {
         if (Config.ready && Config.options.osd && Config.options.osd.hideWhenFullscreen && root.fullscreenOnOsdScreen())
             return;
         GlobalStates.osdVolumeOpen = true;
+        root.updateTimeout();
+    }
+
+    function updateTimeout() {
+        if (root.hovered || !GlobalStates.osdVolumeOpen) {
+            osdTimeout.stop();
+            return;
+        }
         osdTimeout.restart();
     }
 
@@ -167,6 +177,7 @@ Scope {
         sourceComponent: PanelWindow {
             id: osdRoot
             color: "transparent"
+            readonly property bool hovered: osdHover.hovered
 
             // 0 parked behind the bar, 1 resting. Enter decelerating on the default
             // spatial spec, exit accelerating on fast effects at half that duration
@@ -257,10 +268,10 @@ Scope {
                 opacity: Math.min(1, osdRoot.openedProgress)
                 clip: true
 
-                // The OSD is an acknowledgement, not a control: reaching for it with the
-                // pointer dismisses it rather than making it interactive.
+                // The OSD is an acknowledgement. Pause its dismissal under the
+                // pointer and give it a full timeout when the pointer leaves.
                 HoverHandler {
-                    onHoveredChanged: if (hovered) GlobalStates.osdVolumeOpen = false
+                    id: osdHover
                 }
 
                 Column {
