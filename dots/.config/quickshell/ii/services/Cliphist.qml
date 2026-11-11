@@ -33,15 +33,20 @@ Singleton {
         readProc.running = true
     }
 
-    // Shell that writes the entry's full content to stdout.
-    function decodeCommand(entry) {
+    // Shell that writes the entry's full content to stdout. Clipboard text is
+    // always an argument, and printf's format is fixed, even for % and backslashes.
+    function decodeCommand() {
         if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
-            return `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode`;
-        return `${root.cliphistBinary} decode ${entry.split("\t")[0]}`; // Stash
+            return 'printf "%s" "$1" | "$2" decode';
+        return '"$2" decode "$3"'; // Stash
+    }
+
+    function decodeArguments(entry) {
+        return ["sh", entry, root.cliphistBinary, entry.split("\t")[0]];
     }
 
     function copy(entry) {
-        Quickshell.execDetached(["bash", "-c", `${root.decodeCommand(entry)} | wl-copy`]);
+        Quickshell.execDetached(["bash", "-c", `${root.decodeCommand()} | wl-copy`, ...root.decodeArguments(entry)]);
     }
 
     // Same folder the screenshot preview's Save goes to.
@@ -50,22 +55,18 @@ Singleton {
             : `${FileUtils.trimFileProtocol(Directories.pictures)}/Screenshots`;
         const ext = entry.match(/binary data.*?\b(png|jpe?g|gif|webp|bmp)\b/i)?.[1] ?? "png";
         Quickshell.execDetached(["bash", "-c",
-            `mkdir -p '${StringUtils.shellSingleQuoteEscape(dir)}' && ${root.decodeCommand(entry)} > `
-            + `'${StringUtils.shellSingleQuoteEscape(dir)}'/clipboard-"$(date '+%Y-%m-%d_%H.%M.%S')".${ext}`]);
+            `mkdir -p "$4" && ${root.decodeCommand()} > "$4"/clipboard-"$(date '+%Y-%m-%d_%H.%M.%S')"."$5"`,
+            ...root.decodeArguments(entry), dir, ext]);
     }
 
     // Decoded rather than taken from the list, which cliphist cuts at 100 characters.
     function openLink(entry) {
-        Quickshell.execDetached(["bash", "-c", `xdg-open "$(${root.decodeCommand(entry)})"`]);
+        Quickshell.execDetached(["bash", "-c", `xdg-open "$(${root.decodeCommand()})"`, ...root.decodeArguments(entry)]);
     }
 
     function paste(entry) {
-        if (root.cliphistBinary.includes("cliphist")) // Classic cliphist
-            Quickshell.execDetached(["bash", "-c", `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy && wl-paste`]);
-        else { // Stash
-            const entryNumber = entry.split("\t")[0];
-            Quickshell.execDetached(["bash", "-c", `${root.cliphistBinary} decode ${entryNumber} | wl-copy; ${root.pressPasteCommand}`]);
-        }
+        const pasteCommand = root.cliphistBinary.includes("cliphist") ? "wl-paste" : root.pressPasteCommand;
+        Quickshell.execDetached(["bash", "-c", `${root.decodeCommand()} | wl-copy && ${pasteCommand}`, ...root.decodeArguments(entry)]);
     }
 
     function superpaste(count, isImage = false) {
@@ -74,9 +75,11 @@ Singleton {
             if (!isImage) return true;
             return entryIsImage(entry);
         }).slice(0, count)
-        const pasteCommands = [...targetEntries].reverse().map(entry => `printf '${StringUtils.shellSingleQuoteEscape(entry)}' | ${root.cliphistBinary} decode | wl-copy && sleep ${root.pasteDelay} && ${root.pressPasteCommand}`)
-        // Act
-        Quickshell.execDetached(["bash", "-c", pasteCommands.join(` && sleep ${root.pasteDelay} && `)]);
+        Quickshell.execDetached(["bash", "-c",
+            `binary=$1; delay=$2; shift 2; for entry; do `
+            + `(set -- "$entry" "$binary" "\${entry%%\t*}"; ${root.decodeCommand()} | wl-copy)`
+            + ` && sleep "$delay" && ${root.pressPasteCommand} && sleep "$delay" || exit; done`,
+            "sh", root.cliphistBinary, String(root.pasteDelay), ...[...targetEntries].reverse()]);
     }
 
     Process {
