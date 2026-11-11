@@ -6,12 +6,6 @@ import qs.modules.common
 Singleton {
     id: root
 
-    function closeAllWindows() {
-        HyprlandData.windowList.map(w => w.pid).forEach(pid => {
-            Quickshell.execDetached(["kill", pid]);
-        });
-    }
-
     function changePassword() {
         Quickshell.execDetached(["bash", "-c", `${Config.options.apps.changePassword}`]);
     }
@@ -25,8 +19,7 @@ Singleton {
     }
 
     function logout() {
-        closeAllWindows();
-        Quickshell.execDetached(["pkill", "-i", "Hyprland"]);
+        Quickshell.execDetached(["python3", Quickshell.shellPath("scripts/session/logout.py")]);
     }
 
     function launchTaskManager() {
@@ -38,17 +31,14 @@ Singleton {
     }
 
     function poweroff() {
-        closeAllWindows();
-        Quickshell.execDetached(["bash", "-c", `systemctl poweroff || loginctl poweroff`]);
+        Quickshell.execDetached(["systemctl", "poweroff"]);
     }
 
     function reboot() {
-        closeAllWindows();
-        Quickshell.execDetached(["bash", "-c", `reboot || loginctl reboot`]);
+        Quickshell.execDetached(["systemctl", "reboot"]);
     }
 
     function rebootToFirmware() {
-        closeAllWindows();
-        Quickshell.execDetached(["bash", "-c", `systemctl reboot --firmware-setup || loginctl reboot --firmware-setup`]);
+        Quickshell.execDetached(["systemctl", "reboot", "--firmware-setup"]);
     }
 }
