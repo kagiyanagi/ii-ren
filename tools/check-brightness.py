@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Brightness writes follow the animation switch, survive overlap and initialize.
+"""Brightness stays in sync with hardware without feeding readings back as writes.
 
 Run Brightness.qml in a windowless Quickshell with fake brightnessctl/ddcutil.
 Only screens, shortcuts and other service inputs are stubbed; QML Behaviors,
 Timers, Variants and Processes are real. No real display brightness is changed.
 
-    python3 tools/check-brightness.py [animation|writes|startup]
+The service used to read only at startup, so external changes left sliders/OSDs
+stale and the next keypress used the old value. Read/write races and anti-flashbang
+feedback need real QML signal ordering, not a screenshot or a mock of the service.
+
+    python3 tools/check-brightness.py [animation|writes|startup|refresh]
 """
 import json
 import os
@@ -35,6 +39,8 @@ if ddc and "detect" in args:
     time.sleep(config.get("detect_delay", 0))
     for i, name in enumerate(config["ddc"], 1):
         print(f"Display {i}\n I2C bus: /dev/i2c-{i}\n DRM connector: card0-{name}\n")
+    if config.get("missing_query", False):
+        Path(sys.argv[0]).write_text("#!/nonexistent-brightness-check-interpreter\n")
     sys.exit(config.get("detect_exit", 0))
 path = root / ("raw-" + bus)
 if "setvcp" in args or "s" in args or "set" in args:
@@ -42,6 +48,9 @@ if "setvcp" in args or "s" in args or "set" in args:
     raw = int(value.rstrip("%"))
     log("write-start", raw=raw)
     time.sleep(config.get("write_delay", 0))
+    if config.get("write_exit", 0):
+        log("write-failure", raw=raw)
+        sys.exit(config["write_exit"])
     path.write_text(str(raw))
     log("write-finish", raw=raw)
 else:
@@ -60,6 +69,7 @@ else:
         print(100)
     else:
         print(f"intel_backlight,backlight,{raw},{raw}%,100")
+    sys.exit(config.get("read_exit", 0))
 '''
 PROBE = '''import QtQuick
 import Quickshell
@@ -248,7 +258,80 @@ def check_startup():
         assert p.state()["monitors"][0]["brightness"] == 0.5
 
 
-CHECKS = {"animation": check_animation, "writes": check_writes, "startup": check_startup}
+def check_refresh():
+    with probe() as p:
+        p.ready()
+        writes = len(p.calls("write-start"))
+        changes = p.state()["changes"]
+        p.raw("backlight", 75)
+        p.wait(lambda s: s["monitors"][0]["brightness"] == 0.75 and s["changes"] > changes,
+               "an external backlight change never reaches the slider/OSD")
+        time.sleep(0.3)
+        assert len(p.calls("write-start")) == writes, "a hardware reading is written back"
+
+        # A keypress before the next poll must also use the real hardware value.
+        p.raw("backlight", 30)
+        p.call("increase")
+        p.wait(lambda s: (p.path / "raw-backlight").read_text() == "35",
+               "the next keypress jumps from the cached brightness")
+
+        p.configure(read_delay=0.6)
+        count = len(p.calls("read"))
+        p.wait(lambda s: len(p.calls("read")) > count, "periodic backlight read never starts")
+        p.call("set", 0, 0.8)
+        p.wait(lambda s: (p.path / "raw-backlight").read_text() == "80", "slider write never finishes")
+        time.sleep(1)
+        assert p.state()["monitors"][0]["brightness"] == 0.8, "an old read rolls back a slider gesture"
+
+        p.configure(read_delay=0, read_invalid=True)
+        time.sleep(1.3)
+        assert p.state()["monitors"][0]["brightness"] == 0.8, "malformed output poisons brightness"
+        p.configure(read_invalid=False, read_fail=True)
+        time.sleep(1.3)
+        assert p.state()["monitors"][0]["brightness"] == 0.8, "a failed read overwrites a good value"
+        p.configure(read_fail=False, read_exit=1)
+        p.raw("backlight", 20)
+        time.sleep(1.3)
+        assert p.state()["monitors"][0]["brightness"] == 0.8, "a failed command's partial output is applied"
+        p.configure(read_exit=0)
+        p.wait(lambda s: s["monitors"][0]["brightness"] == 0.2, "polling does not recover after failed reads")
+        p.configure(write_exit=1)
+        p.call("set", 0, 0.8)
+        p.wait(lambda s: bool(p.calls("write-failure")) and s["monitors"][0]["brightness"] == 0.2,
+               "a failed write leaves the requested value on the slider forever")
+        assert writes == 0, "startup reading changes the actual brightness"
+
+    with probe(screens=("DP-1",), ddc=("DP-1",)) as p:
+        p.ready()
+        p.raw("1", 65)
+        p.wait(lambda s: s["monitors"][0]["brightness"] == 0.65,
+               "external DDC changes never reach the service", seconds=7)
+        assert not p.calls("write-start"), "DDC readback triggers a hardware write"
+        p.call("set", 0, 0.8)
+        p.call("multiplier", 0, 0.5)
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "40", "anti-flashbang never dims")
+        writes = len(p.calls("write-start"))
+        count = len(p.calls("read"))
+        p.wait(lambda s: len(p.calls("read")) > count, "DDC polling stops after a local write", seconds=7)
+        time.sleep(0.2)
+        assert p.state()["monitors"][0]["brightness"] == 0.8, "readback compounds anti-flashbang dimming"
+        assert len(p.calls("write-start")) == writes, "anti-flashbang readback loops into writes"
+
+    with probe(read_invalid=True) as p:
+        p.wait(lambda s: bool(p.calls("read")), "initial read never starts")
+        time.sleep(0.1)
+        assert not p.state()["monitors"][0]["ready"], "invalid startup output is marked ready"
+        p.configure(read_invalid=False)
+        p.ready()
+
+    with probe(screens=("DP-1", "eDP-1"), ddc=("DP-1",), missing_query=True) as p:
+        p.wait(lambda s: len(s["monitors"]) == 2 and s["monitors"][1]["ready"],
+               "a DDC query that cannot start prevents the backlight from initializing")
+        assert not p.state()["monitors"][0]["ready"]
+
+
+CHECKS = {"animation": check_animation, "writes": check_writes,
+          "startup": check_startup, "refresh": check_refresh}
 if __name__ == "__main__":
     for name in sys.argv[1:] or CHECKS:
         CHECKS[name]()

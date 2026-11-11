@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.common
 import qs.modules.common.functions
+import qs.modules.common.utils
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
@@ -54,26 +55,21 @@ Singleton {
 
         const monitor = root.getTargetMonitor();
         if (monitor?.ready)
-            monitor.setBrightness(monitor.brightness + 0.05);
+            monitor.adjustBrightness(0.05);
     }
 
     function decreaseBrightness(): void {
         const monitor = root.getTargetMonitor();
         if (!monitor?.ready)
             return;
-        if (monitor.brightness > 0)
-            monitor.setBrightness(monitor.brightness - 0.05);
-        // if brightness is 0, then decrease gamma
-        else {
-            Hyprsunset.setGamma(Hyprsunset.gamma - 5);
-        }
+        monitor.adjustBrightness(-0.05);
     }
 
     reloadableId: "brightness"
 
     onMonitorsChanged: {
         ddcMonitors = [];
-        ddcProc.running = true;
+        ddcProc.refresh();
     }
 
     function initializeMonitor(i: int): void {
@@ -86,7 +82,7 @@ Singleton {
         initializeMonitor(0);
     }
 
-    Process {
+    RefreshProcess {
         id: ddcProc
 
         command: ["ddcutil", "detect", "--brief"]
@@ -119,6 +115,13 @@ Singleton {
         property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
+        property bool configured: false
+        property bool initializing: false
+        property bool applyingReading: false
+        property int revision: 0
+        property int hardwareRaw: -1
+        property real pendingAdjustment: 0
+        readonly property bool changing: brightnessAnimation.running || setTimer.running || setProc.running || setProc.pendingCommand.length > 0
 
         onBrightnessChanged: {
             if (!monitor.ready) return;
@@ -126,39 +129,97 @@ Singleton {
         }
 
         Behavior on multipliedBrightness {
-            enabled: monitor.animateChanges
+            enabled: monitor.animateChanges && monitor.ready && !monitor.applyingReading
             NumberAnimation {
+                id: brightnessAnimation
                 duration: 200
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: Appearance.animationCurves.expressiveEffects
             }
         }
         onMultipliedBrightnessChanged: {
+            if (!monitor.ready || monitor.applyingReading)
+                return;
+            monitor.revision++;
             if (monitor.animateChanges) syncBrightness();
             else setTimer.restart();
         }
 
         function initialize() {
             monitor.ready = false;
+            monitor.initializing = true;
             const match = root.ddcMonitors.find(m => m.name === screen.name && !root.monitors.slice(0, root.monitors.indexOf(this)).some(mon => mon.busNum === m.busNum));
             isDdc = !!match;
             busNum = match?.busNum ?? "";
-            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["sh", "-c", `echo "a b c $(brightnessctl g) $(brightnessctl m)"`];
-            initProc.running = true;
+            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"] : ["brightnessctl", "--class", "backlight", "-m"];
+            monitor.configured = true;
+            initProc.refresh();
         }
 
-        readonly property Process initProc: Process {
-            stdout: SplitParser {
-                onRead: data => {
-                    const [, , , current, max] = data.split(" ");
-                    monitor.rawMaxBrightness = parseInt(max);
-                    monitor.brightness = parseInt(current) / monitor.rawMaxBrightness;
-                    monitor.ready = true;
+        function applyReading(data, readRevision) {
+            // A read begun before a gesture can finish after it. Never replace
+            // the requested value with that older sample or an animation frame.
+            if (monitor.changing || readRevision !== monitor.revision)
+                return;
+            const fields = data.trim().split(monitor.isDdc ? /\s+/ : /,/);
+            if (fields.length !== 5 || fields.some(field => field.trim() === ""))
+                return;
+            const current = Number(fields[monitor.isDdc ? 3 : 2]);
+            const max = Number(fields[4]);
+            if (!Number.isFinite(current) || !Number.isFinite(max) || max <= 0 || current < 0 || current > max)
+                return;
+            // Own writes, including anti-flashbang, are already accounted for.
+            // Reading their dimmed value must not dim the logical value again.
+            if (monitor.ready && current === monitor.hardwareRaw && max === monitor.rawMaxBrightness)
+                return;
+            monitor.hardwareRaw = current;
+            monitor.rawMaxBrightness = max;
+            monitor.applyingReading = true;
+            monitor.brightness = current / max;
+            monitor.ready = true;
+            monitor.applyingReading = false;
+        }
+
+        function readFinished() {
+            if (initProc.running)
+                return;
+            if (initProc.succeeded)
+                monitor.applyReading(brightnessReading.text, initProc.readRevision);
+            if (monitor.initializing) {
+                monitor.initializing = false;
+                root.initializeMonitor(root.monitors.indexOf(monitor) + 1);
+            }
+            monitor.applyAdjustment();
+            monitor.setProc.flush();
+        }
+
+        readonly property RefreshProcess initProc: RefreshProcess {
+            property int readRevision: 0
+            property bool succeeded: false
+            stdout: StdioCollector {
+                id: brightnessReading
+            }
+            onRunningChanged: {
+                if (running) {
+                    readRevision = monitor.revision;
+                    succeeded = false;
+                } else {
+                    // Also advances initialization after FailedToStart. Defer
+                    // until the final stdout chunk has been collected.
+                    Qt.callLater(monitor.readFinished);
                 }
             }
-            onExited: (exitCode, exitStatus) => {
-                initializeMonitor(root.monitors.indexOf(monitor) + 1);
-            }
+            onExited: (code, status) => { succeeded = code === 0 && status === 0; }
+        }
+
+        // Backlight writers (Fn keys, brightnessctl, power daemons) and DDC
+        // displays have no shared change signal. DDC reads are deliberately
+        // infrequent; a keypress requests a fresh reading between polls too.
+        readonly property Timer refreshTimer: Timer {
+            interval: monitor.isDdc ? 5000 : 1000
+            running: monitor.configured
+            repeat: true
+            onTriggered: if (!monitor.changing) monitor.initProc.refresh()
         }
 
         // We need a delay for DDC monitors because they can be quite slow and might act weird with rapid changes
@@ -174,34 +235,66 @@ Singleton {
         // the newest request until this monitor's current write has finished.
         readonly property Process setProc: Process {
             property var pendingCommand: []
+            property int pendingRaw: 0
+            property int writingRaw: 0
 
-            function submit(args) {
+            function submit(args, raw) {
                 pendingCommand = args;
+                pendingRaw = raw;
                 Qt.callLater(flush);
             }
 
             function flush() {
-                if (running || pendingCommand.length === 0)
+                if (running || monitor.initProc.running || pendingCommand.length === 0)
                     return;
                 command = pendingCommand;
+                writingRaw = pendingRaw;
                 pendingCommand = [];
+                // Until success, a poll must be able to repair a failed write.
+                monitor.hardwareRaw = -1;
                 running = true;
             }
 
             onRunningChanged: if (!running) Qt.callLater(flush)
+            onExited: (code, status) => {
+                if (code === 0 && status === 0)
+                    monitor.hardwareRaw = writingRaw;
+            }
         }
 
         function syncBrightness() {
+            if (!monitor.ready || monitor.applyingReading)
+                return;
             const brightnessValue = Math.max(monitor.multipliedBrightness, 0);
+            const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
             if (isDdc) {
-                const rawValueRounded = Math.max(Math.floor(brightnessValue * monitor.rawMaxBrightness), 1);
-                monitor.setProc.submit(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded]);
+                monitor.setProc.submit(["ddcutil", "-b", busNum, "setvcp", "10", rawValueRounded], rawValueRounded);
             } else {
-                const valuePercentNumber = Math.floor(brightnessValue * 100);
-                let valuePercent = `${valuePercentNumber}%`;
-                if (valuePercentNumber == 0) valuePercent = "1"; // Prevent fully black
-                monitor.setProc.submit(["brightnessctl", "--class", "backlight", "s", valuePercent, "--quiet"])
+                // Use raw units so readback can recognize our own writes exactly.
+                // Keep one hardware step at zero to prevent a fully black screen.
+                monitor.setProc.submit(["brightnessctl", "--class", "backlight", "s", rawValueRounded, "--quiet"], rawValueRounded);
             }
+        }
+
+        function adjustBrightness(delta: real): void {
+            if (!monitor.ready)
+                return;
+            monitor.pendingAdjustment += delta;
+            if (monitor.changing)
+                monitor.applyAdjustment();
+            else
+                monitor.initProc.refresh();
+        }
+
+        function applyAdjustment(): void {
+            const delta = monitor.pendingAdjustment;
+            monitor.pendingAdjustment = 0;
+            if (delta === 0 || !monitor.ready)
+                return;
+            if (delta < 0 && monitor.brightness === 0)
+                Hyprsunset.setGamma(Hyprsunset.gamma + delta * 100);
+            else
+                monitor.setBrightness(monitor.brightness + delta);
         }
 
         function setBrightness(value: real): void {
