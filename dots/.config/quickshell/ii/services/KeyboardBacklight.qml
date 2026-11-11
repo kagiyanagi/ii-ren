@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import qs.modules.common.utils
 
 /**
  * Keyboard backlight LED, cycled through its kernel brightness levels.
@@ -45,10 +46,15 @@ Singleton {
         onLoaded: root.maxValue = parseInt(text().trim(), 10) || 0
     }
 
-    FileView {
-        path: root.device ? `${root.device}/brightness` : ""
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: root.currentValue = parseInt(text().trim(), 10) || 0
+    KeepAliveProcess {
+        wanted: root.available
+        args: ["python3", Quickshell.shellPath("scripts/keyboard-backlight/watch.py"), root.device]
+        stdout: SplitParser {
+            onRead: data => {
+                const value = parseInt(data, 10);
+                if (Number.isFinite(value))
+                    root.currentValue = Math.max(0, Math.min(root.maxValue, value));
+            }
+        }
     }
 }
