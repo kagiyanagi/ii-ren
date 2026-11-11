@@ -360,6 +360,9 @@ Item {
         cursorShape: Qt.PointingHandCursor
         hoverEnabled: true
         acceptedButtons: Qt.RightButton | Qt.LeftButton | Qt.BackButton
+        property real scrollDelta: 0
+        readonly property real scrollThreshold: Math.max(1, Config.options.interactions.scrolling.mouseScrollDeltaThreshold)
+        onExited: scrollDelta = 0
         
         // Raw workspace index under the pointer. Hidden workspaces take no room
         // in the strip, so they must take none here either -- counting them made
@@ -400,11 +403,18 @@ Item {
         }
         
         onWheel: (event) => {
-            // console.log(event.angleDelta.y)
-            if (event.angleDelta.y < 0)
-                Hyprland.dispatch(`hl.dsp.focus({workspace = "r+1"})`);
-            else if (event.angleDelta.y > 0)
-                Hyprland.dispatch(`hl.dsp.focus({workspace = "r-1"})`);
+            event.accepted = true;
+            const delta = event.angleDelta.y || event.angleDelta.x;
+            if (!delta)
+                return;
+            if (delta * interactionMouseArea.scrollDelta < 0)
+                interactionMouseArea.scrollDelta = 0;
+            interactionMouseArea.scrollDelta += delta;
+            const steps = Math.trunc(interactionMouseArea.scrollDelta / interactionMouseArea.scrollThreshold);
+            if (!steps)
+                return;
+            interactionMouseArea.scrollDelta -= steps * interactionMouseArea.scrollThreshold;
+            Hyprland.dispatch(`hl.dsp.focus({workspace = "r${steps < 0 ? "+" : "-"}${Math.abs(steps)}"})`);
         }
     }
 
