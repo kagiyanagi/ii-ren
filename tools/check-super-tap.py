@@ -9,6 +9,8 @@ hold. The interrupt binds that used to paper over this (a `catchall` submap) wer
 lost moving to Lua, and nothing failed. Every lone-Super bind in the shipped
 keybinds must therefore be a release bind; the one exception is the workspace-number
 hint, which needs both edges of the hold.
+Its release must also be delivered while locked: Super+L locks before Super is
+released, and losing that edge leaves superDown true through the next hold.
 """
 import pathlib, re
 
@@ -38,15 +40,21 @@ def binds(text):
 
 
 search_sides = set()
+released_hints = set()
 for combo, rest in binds(KEYBINDS):
     keys = {k.strip().upper() for k in combo.split("+")}
     if not keys <= SUPER or not keys & {"SUPER_L", "SUPER_R"}:
         continue
     if HOLD_HINT in rest:
+        if re.search(r"\brelease\s*=\s*true\b", rest):
+            assert re.search(r"\blocked\s*=\s*true\b", rest), \
+                f'"{combo}" loses the Super release after Super+L while locked'
+            released_hints |= keys & {"SUPER_L", "SUPER_R"}
         continue
     assert re.search(r"\brelease\s*=\s*true\b", rest), f'"{combo}" fires on press, so it also fires after every Super combo: {rest.strip()}'
     if "quickshell:searchToggleRelease" in rest:
         search_sides |= keys & {"SUPER_L", "SUPER_R"}
 
 assert search_sides == {"SUPER_L", "SUPER_R"}, f"search bound on a lone Super tap only for {search_sides}"
-print("ok: lone Super binds are release binds; Super+key leaves search closed")
+assert released_hints == {"SUPER_L", "SUPER_R"}, f"hold hint release missing for {released_hints}"
+print("ok: lone Super taps alone open search; both hold-hint releases survive locking")
