@@ -55,7 +55,7 @@ FooterRectangle {
 
         onClicked: {
             GlobalStates.sidebarLeftOpen = false;
-            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+            SettingsLauncher.open();
         }
 
         contentItem: FluentIcon {

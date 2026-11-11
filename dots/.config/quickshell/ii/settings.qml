@@ -40,6 +40,38 @@ ApplicationWindow {
         return idx !== -1 ? idx : root.pageIndexById("quick");
     }
     property string pendingSectionHighlight: Quickshell.env("II_SETTINGS_HIGHLIGHT") || ""
+    property var pendingNavigation: null
+
+    function present(page, highlight) {
+        const index = root.pageIndexById(page);
+        if (index !== -1) {
+            root.pendingSectionHighlight = "";
+            root.pendingNavigation = { index: index, highlight: highlight };
+            searchInput.text = "";
+            root.openPage(index);
+            root.deliverNavigation();
+        }
+        root.showNormal();
+        root.raise();
+        root.requestActivate();
+    }
+
+    function deliverNavigation() {
+        const pending = root.pendingNavigation;
+        if (!pending || pageLoader.status !== Loader.Ready) return;
+        if (!pageLoader.source.toString().endsWith(root.pages[pending.index].component)) return;
+        root.pendingNavigation = null;
+        root.pendingSectionHighlight = pending.highlight;
+    }
+
+    IpcHandler {
+        target: "settings"
+        function currentPage(): string { return root.pages[root.currentPage]?.id ?? ""; }
+        function currentSubPage(): string { return pageLoader.item?.activeSubPage?.toString() ?? ""; }
+        function open(page: string, highlight: string): void {
+            root.present(page, highlight);
+        }
+    }
 
     // Search. Results show in place of the page list while there is a query;
     // the cursor is where Enter goes, moved with the arrow keys, and the opened
@@ -715,6 +747,7 @@ ApplicationWindow {
                     opacity: 1.0
 
                     active: Config.ready
+                    onLoaded: root.deliverNavigation()
                     Component.onCompleted: {
                         source = root.pages[root.currentPage].component
                     }

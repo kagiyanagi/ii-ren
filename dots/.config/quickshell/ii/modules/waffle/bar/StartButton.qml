@@ -50,7 +50,7 @@ AppButton {
             {
                 text: Translation.tr("Settings"),
                 action: () => {
-                    Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+                    SettingsLauncher.open();
                 }
             },
             {

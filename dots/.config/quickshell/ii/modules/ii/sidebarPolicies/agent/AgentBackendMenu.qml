@@ -218,7 +218,7 @@ RippleButton {
 
             releaseAction: () => {
                 picker.close();
-                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=agent", "qs", "-p", Quickshell.shellPath("settings.qml")]);
+                SettingsLauncher.open("agent");
             }
 
             contentItem: RowLayout {

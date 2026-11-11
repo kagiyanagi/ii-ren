@@ -468,7 +468,7 @@ Scope {
                         labelText: Translation.tr("Settings")
                         onTriggered: {
                             menuWindow.dismiss();
-                            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")]);
+                            SettingsLauncher.open();
                         }
                     }
 
@@ -555,11 +555,7 @@ Scope {
                                     configPage = meta.configPage;
                                 }
                             }
-                            if (configPage !== "") {
-                                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=widgets", "II_SETTINGS_HIGHLIGHT=" + configPage, "qs", "-p", Quickshell.shellPath("settings.qml")]);
-                            } else {
-                                Quickshell.execDetached(["env", "II_SETTINGS_PAGE=widgets", "qs", "-p", Quickshell.shellPath("settings.qml")]);
-                            }
+                            SettingsLauncher.open("widgets", configPage);
                         }
                     }
 

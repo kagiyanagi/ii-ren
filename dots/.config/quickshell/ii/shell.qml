@@ -104,7 +104,7 @@ ShellRoot {
         const win = HyprlandData.windowList.filter(w => w.title === "illogical-impulse Settings")
             .sort((a, b) => a.focusHistoryID - b.focusHistoryID)[0]
         if (!win) {
-            Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("settings.qml")])
+            SettingsLauncher.open()
             return
         }
         if (win.focusHistoryID === 0) FloatingMode.close(win.address)

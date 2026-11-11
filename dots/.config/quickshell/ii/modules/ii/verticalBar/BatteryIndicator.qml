@@ -19,7 +19,7 @@ MouseArea {
     onClicked: {
         if (Config.options.bar.tooltips.clickToShow) return
         batteryPopup.close()
-        Quickshell.execDetached(["env", "II_SETTINGS_PAGE=battery", "qs", "-p", Quickshell.shellPath("settings.qml")])
+        SettingsLauncher.open("battery")
     }
 
     CustomBatteryMeter {
