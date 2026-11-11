@@ -67,7 +67,19 @@ Singleton {
     onAvailableChanged: if (root.available && root._scanRequested) root.startScanning()
 
     function addDroppedFile(fileUrl: string): void {
-        const cleanPath = fileUrl.toString().replace(/^file:\/\//, "")
+        let cleanPath = fileUrl.toString()
+        // Clock drops supply URLs; the picker and At-a-glance supply paths.
+        // Decode only URLs so a literal %20 in an existing path stays literal.
+        if (/^file:\/\//i.test(cleanPath)) {
+            const localUrl = cleanPath.match(/^file:\/\/(?:localhost)?(\/.*)$/i)
+            if (!localUrl) return
+            try {
+                cleanPath = decodeURIComponent(localUrl[1])
+            } catch (e) {
+                return
+            }
+        }
+        if (!cleanPath.startsWith("/") || cleanPath.includes("\0")) return
         const name = cleanPath.split("/").pop() || "unknown"
         for (let i = 0; i < root.droppedFiles.length; i++) {
             if (root.droppedFiles[i].path === cleanPath) return
@@ -94,10 +106,17 @@ Singleton {
     }
 
     function sendToDevice(deviceIp: string): void {
-        if (!root.available || root.sending || root.droppedFiles.length === 0) return
+        if (!root.available || root.sending || root.droppedFiles.length === 0 || !deviceIp) return
+        // Discovery and the helper use IPv4. Keep its advertised port through
+        // the send boundary, including when a fresh scan updates an old peer.
+        const octets = deviceIp.split(".")
+        if (octets.length !== 4 || octets.some(part => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return
+        const device = root.discoveredDevices.find(peer => peer.ip === deviceIp)
+        const port = Number(device?.port ?? 53317)
+        if (!Number.isInteger(port) || port < 1 || port > 65535) return
         root.sending = true
         const filePaths = root.droppedFiles.map(f => f.path)
-        sendProc.command = ["python3", root.helperPath, "send", deviceIp].concat(filePaths)
+        sendProc.command = ["python3", root.helperPath, "send", `${deviceIp}:${port}`].concat(filePaths)
         sendProc.running = true
     }
 
@@ -256,18 +275,16 @@ Singleton {
                 console.log("[LocalSend] Device registered:", event.alias, event.ip)
                 if (event.ip) {
                     const newList = root.discoveredDevices.slice()
-                    let found = false
-                    for (let i = 0; i < newList.length; i++) {
-                        if (newList[i].ip === event.ip) { found = true; break }
+                    const device = {
+                        ip: event.ip,
+                        name: event.alias || event.name || "Unknown",
+                        port: event.port ?? 53317
                     }
-                    if (!found) {
-                        newList.push({
-                            ip: event.ip,
-                            name: event.alias || event.name || "Unknown",
-                            port: event.port || 53317
-                        })
-                        root.discoveredDevices = newList
-                    }
+                    const index = newList.findIndex(peer => peer.ip === event.ip)
+                    if (index !== -1 && newList[index].name === device.name && newList[index].port === device.port) return
+                    if (index === -1) newList.push(device)
+                    else newList[index] = device
+                    root.discoveredDevices = newList
                 }
                 break
 

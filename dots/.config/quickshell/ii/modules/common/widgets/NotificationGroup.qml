@@ -49,8 +49,13 @@ MouseArea { // Notification group area
             Notifications.cancelTimeout(notif.notificationId);
         });
         else root.notifications.forEach(notif => {
-            Notifications.timeoutNotification(notif.notificationId);
+            Notifications.resumeTimeout(notif.notificationId);
         });
+    }
+
+    onNotificationsChanged: {
+        if (!root.popup || !root.containsMouse) return;
+        root.notifications.forEach(notif => Notifications.cancelTimeout(notif.notificationId));
     }
 
     // Expanding is an enter and collapsing is an exit, so they do not share a

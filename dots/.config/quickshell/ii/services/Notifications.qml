@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs
 import qs.services
+import qs.modules.common.utils
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -35,16 +36,20 @@ Singleton {
         property double time
         property string urgency: notification?.urgency.toString() ?? "normal"
         property Timer timer
+        property bool timeoutPaused: false
+        onPopupChanged: if (!popup) timeoutPaused = false
 
-        // Replacements mutate the existing Notification; the server does not
-        // emit notification again. Coalesce its field signals after Qt has
-        // updated every binding, so one replacement is delivered only once.
+        // Fallback while the delivery observer is unavailable. Coalesce field
+        // signals after Qt has updated every binding; normally the observer
+        // handles replacements, including ones with no changed properties.
         function queueUpdate() {
+            if (root.deliveryMonitorReady) return;
             if (!notification || !root.list.includes(wrapper)) return;
             Qt.callLater(wrapper.applyUpdate);
         }
 
         function applyUpdate() {
+            if (root.deliveryMonitorReady) return;
             if (!notification || !root.list.includes(wrapper)) return;
             root.deliverNotification(wrapper);
         }
@@ -183,30 +188,62 @@ Singleton {
     signal discardAll();
     signal timeout(id: var);
 
-	NotificationServer {
-        id: notifServer
-        // actionIconsSupported: true
-        actionsSupported: true
-        bodyHyperlinksSupported: true
-        bodyImagesSupported: true
-        bodyMarkupSupported: true
-        bodySupported: true
-        imageSupported: true
-        keepOnReload: false
-        persistenceSupported: true
+    // Quickshell 0.3.2 emits no update event for identical replacements. Watch
+    // successful Notify replies so every delivery has an event, after its fields
+    // have been updated. Start the server once the observer is subscribed.
+    property bool deliveryMonitorReady: false
+    property bool serverStarted: false
+    readonly property var notifServer: serverLoader.item
+    readonly property var trackedNotifications: root.notifServer?.trackedNotifications.values ?? []
 
-        // Phone notifications relayed by KDE Connect belong to the Continuity
-        // page only - mirroring them into the desktop list is the same buzz
-        // twice. Untracked notifications are dropped by the server for us.
-        function fromPhone(notification) {
-            return /kdeconnect/i.test(notification.desktopEntry ?? "")
-                || /kdeconnect/i.test(notification.appName ?? "");
+    KeepAliveProcess {
+        args: ["python3", Quickshell.shellPath("scripts/notifications/watch.py")]
+        onRunningChanged: if (!running) root.deliveryMonitorReady = false
+        // Keep ordinary delivery working if the observer cannot start. The
+        // field-change handlers above remain the fallback during an outage.
+        onExited: root.serverStarted = true
+        stdout: SplitParser {
+            onRead: line => {
+                const event = JSON.parse(line);
+                if (event.ready) {
+                    root.deliveryMonitorReady = true;
+                    root.serverStarted = true;
+                } else if (event.replaced) {
+                    const notif = root.list.find(n => n.notification?.id === event.replaced);
+                    if (notif) root.deliverNotification(notif);
+                }
+            }
         }
+    }
 
-        onNotification: (notification) => {
-            if (notifServer.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
-            notification.tracked = true
-            root.addNotification(notification);
+    LazyLoader {
+        id: serverLoader
+        active: root.serverStarted
+        component: NotificationServer {
+            id: server
+            // actionIconsSupported: true
+            actionsSupported: true
+            bodyHyperlinksSupported: true
+            bodyImagesSupported: true
+            bodyMarkupSupported: true
+            bodySupported: true
+            imageSupported: true
+            keepOnReload: false
+            persistenceSupported: true
+
+            // Phone notifications relayed by KDE Connect belong to the Continuity
+            // page only - mirroring them into the desktop list is the same buzz
+            // twice. Untracked notifications are dropped by the server for us.
+            function fromPhone(notification) {
+                return /kdeconnect/i.test(notification.desktopEntry ?? "")
+                    || /kdeconnect/i.test(notification.appName ?? "");
+            }
+
+            onNotification: (notification) => {
+                if (server.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
+                notification.tracked = true
+                root.addNotification(notification);
+            }
         }
     }
 
@@ -254,6 +291,7 @@ Singleton {
             notif.timer = notifTimerComponent.createObject(notif, {
                 "notificationId": notif.notificationId,
                 "interval": notification.expireTimeout < 0 ? (Config?.options.notifications.timeout ?? 7000) : notification.expireTimeout,
+                "running": !notif.timeoutPaused,
             });
         }
 
@@ -298,14 +336,14 @@ Singleton {
     function discardNotification(id) {
         console.log("[Notifications] Discarding notification with ID: " + id);
         const index = root.list.findIndex((notif) => notif.notificationId === id);
-        const notifServerIndex = notifServer.trackedNotifications.values.findIndex((notif) => notif.id + root.idOffset === id);
+        const notifServerIndex = root.trackedNotifications.findIndex((notif) => notif.id + root.idOffset === id);
         if (index !== -1) {
             root._release(root.list.splice(index, 1));
             notifFileView.setText(stringifyList(root.list));
             triggerListChange()
         }
         if (notifServerIndex !== -1) {
-            notifServer.trackedNotifications.values[notifServerIndex].dismiss()
+            root.trackedNotifications[notifServerIndex].dismiss()
         }
         root.discard(id); // Emit signal
     }
@@ -315,7 +353,7 @@ Singleton {
         root.list = []
         triggerListChange()
         notifFileView.setText(stringifyList(root.list));
-        notifServer.trackedNotifications.values.forEach((notif) => {
+        root.trackedNotifications.forEach((notif) => {
             notif.dismiss()
         })
         root.discardAll();
@@ -323,14 +361,25 @@ Singleton {
 
     function cancelTimeout(id) {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
-        if (root.list[index] != null)
-            root.list[index].timer?.stop();
+        const notif = root.list[index];
+        if (!notif) return;
+        notif.timeoutPaused = true;
+        notif.timer?.stop();
+    }
+
+    function resumeTimeout(id) {
+        const notif = root.list.find(n => n.notificationId === id);
+        if (!notif) return;
+        notif.timeoutPaused = false;
+        if (notif.popup) notif.timer?.restart();
     }
 
     function timeoutNotification(id) {
         const index = root.list.findIndex((notif) => notif.notificationId === id);
-        if (root.list[index] != null)
+        if (root.list[index] != null) {
+            root.list[index].timeoutPaused = false;
             root.list[index].popup = false;
+        }
         root.timeout(id);
     }
 
@@ -345,7 +394,7 @@ Singleton {
 
     function attemptInvokeAction(id, notifIdentifier) {
         console.log("[Notifications] Attempting to invoke action with identifier: " + notifIdentifier + " for notification ID: " + id);
-        const notification = notifServer.trackedNotifications.values.find((notif) => notif.id + root.idOffset === id);
+        const notification = root.trackedNotifications.find((notif) => notif.id + root.idOffset === id);
         const action = notification?.actions.find((action) => action.identifier === notifIdentifier);
         if (!action) return;
         // invoke() already dismisses non-resident notifications. Their wrapper

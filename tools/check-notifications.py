@@ -6,6 +6,9 @@ one updates its properties instead, so bound text changed on screen while sound,
 popup lifetime and the saved copy stayed at the first delivery. A multi-field
 replacement must deliver once, retain the same wrapper and restart its timer;
 hint-only progress and action-label updates must also reach that path.
+Identical resends need the typed D-Bus delivery observer because Quickshell emits
+no property signals for them. A replacement must preserve a hover pause, and a
+pointer leaving starts a full new timeout instead of closing the card at once.
 
 History reads run on a worker. Hold back the FileView's path while notifications
 arrive, reproducing the startup race without relying on a lucky scheduling order.
@@ -26,6 +29,7 @@ Run: python3 tools/check-notifications.py
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -54,7 +58,7 @@ def wait_for(read, predicate, why, seconds=5):
 
 
 @contextmanager
-def service(saved="[]", delayed=False):
+def service(saved="[]", delayed=False, observer_failure=False):
     with tempfile.TemporaryDirectory(prefix="ii-notifications-") as directory:
         path = Path(directory)
         notifications = path / "notifications.json"
@@ -68,6 +72,19 @@ def service(saved="[]", delayed=False):
         qml = qml.replace("path: Qt.resolvedUrl(filePath)",
                           'path: Directories.loadHistory ? Qt.resolvedUrl(filePath) : ""')
         (path / "Notifications.qml").write_text(qml.replace("import QtQuick", 'import "."\nimport QtQuick', 1))
+        shutil.copyfile(II / "modules/common/utils/KeepAliveProcess.qml", path / "KeepAliveProcess.qml")
+        helper = path / "scripts/notifications/watch.py"
+        helper.parent.mkdir(parents=True)
+        shutil.copyfile(II / "scripts/notifications/watch.py", helper)
+        if observer_failure:
+            # Fail only the first launch. The real KeepAliveProcess retries it;
+            # ordinary notifications must work while waiting for that retry.
+            helper.write_text(
+                "import pathlib, sys\n"
+                f"marker = pathlib.Path({str(path / 'observer-failed')!r})\n"
+                "if not marker.exists():\n    marker.touch()\n    sys.exit(23)\n"
+                + helper.read_text()
+            )
         stubs = {
             "Config": '''property var options: ({ notifications: {
                 cooldown: false, timeout: 900, history: { enable: true }
@@ -85,7 +102,7 @@ def service(saved="[]", delayed=False):
             (path / f"{name}.qml").write_text(f"pragma Singleton\nimport QtQuick\nQtObject {{\n{body}\n}}\n")
         (path / "qmldir").write_text("\n".join(
             f"singleton {name} 1.0 {name}.qml" for name in ["Notifications", *stubs]
-        ))
+        ) + "\nKeepAliveProcess 1.0 KeepAliveProcess.qml\n")
         (path / "shell.qml").write_text(dedent('''\
             import QtQuick
             import Quickshell
@@ -106,6 +123,8 @@ def service(saved="[]", delayed=False):
                     function state(): string {
                         return JSON.stringify({
                             initialized: probe.initialized,
+                            observerReady: Notifications.deliveryMonitorReady,
+                            serverReady: Notifications.notifServer !== null,
                             offset: Notifications.idOffset,
                             deliveries: probe.deliveries,
                             sounds: SoundService.calls,
@@ -122,6 +141,8 @@ def service(saved="[]", delayed=False):
                     function silent(value: bool): void { Notifications.silent = value; }
                     function cooldown(value: bool): void { Config.options.notifications.cooldown = value; }
                     function hide(id: int): void { Notifications.timeoutNotification(id); }
+                    function hover(id: int): void { Notifications.cancelTimeout(id); }
+                    function leave(id: int): void { Notifications.resumeTimeout(id); }
                     function discard(id: int): void { Notifications.discardNotification(id); }
                     function refresh(): void { Notifications.refresh(); }
                     function load(): void { Directories.loadHistory = true; }
@@ -151,7 +172,9 @@ def service(saved="[]", delayed=False):
 
             probe.finish_load = finish_load
             try:
-                wait_for(probe.state, lambda s: delayed or s["initialized"], "notification history never loaded")
+                wait_for(probe.state, lambda s: (delayed or s["initialized"]) and s["serverReady"]
+                         and (observer_failure or s["observerReady"]),
+                         "notification history or delivery observer never loaded")
                 yield probe
                 errors = re.findall(r".*(?:TypeError|ReferenceError|Cannot (?:invoke|close) destroyed notification).*",
                                     (path / "log").read_text())
@@ -176,6 +199,37 @@ def notify(replaces=0, summary="First", body="First body", app="Test app", timeo
            hints="{}", actions="['open', 'Open']"):
     result = dbus("Notify", app, replaces, "", summary, body, actions, hints, timeout)
     return int(re.search(r"uint32 (\d+)", result).group(1))
+
+
+def check_hover_handlers():
+    group = (II / "modules/common/widgets/NotificationGroup.qml").read_text()
+    handlers = [re.search(rf"    {name}: \{{\n(.*?)\n    \}}", group, re.S).group(1)
+                for name in ("onContainsMouseChanged", "onNotificationsChanged")]
+    subprocess.run(["node", "-e", """
+const assert = require('assert/strict');
+const calls = [];
+const Notifications = {
+    cancelTimeout: id => calls.push(['pause', id]),
+    resumeTimeout: id => calls.push(['resume', id]),
+    timeoutNotification: id => calls.push(['dismiss', id])
+};
+const root = {popup:true, containsMouse:true, notifications:[{notificationId:1}]};
+const hover = () => { HOVER };
+const changed = () => { CHANGED };
+hover();
+root.notifications.push({notificationId:2});
+changed();
+root.containsMouse = false;
+hover();
+assert.deepEqual(calls, [['pause',1], ['pause',1], ['pause',2], ['resume',1], ['resume',2]]);
+calls.length = 0;
+changed();
+root.popup = false;
+root.containsMouse = true;
+hover();
+changed();
+assert.deepEqual(calls, [], 'sidebar groups must not control popup timers');
+""".replace("HOVER", handlers[0]).replace("CHANGED", handlers[1])], check=True, capture_output=True)
 
 
 def check_replacements():
@@ -244,6 +298,67 @@ def check_replacements():
                            "replacement did not refresh app grouping and ordering")
         assert len(renamed["items"]) == 2
     print("ok: replacements refresh delivery, timers and persistence once; DND and cooldown hold")
+
+
+def check_identical_and_hover():
+    with service() as probe:
+        server_id = notify(timeout=1200)
+        first = wait_for(probe.state, lambda s: s["deliveries"] == 1, "first delivery missing")
+        time.sleep(0.7)
+        notify(server_id, timeout=1200)
+        resent = wait_for(probe.state, lambda s: s["deliveries"] == 2, "identical resend was ignored")
+        assert resent["items"][0]["time"] > first["items"][0]["time"]
+        assert resent["sounds"] == 2 and len(resent["items"]) == 1
+        time.sleep(0.7)
+        assert probe.state()["items"][0]["popup"], "identical resend kept its original deadline"
+        wait_for(probe.state, lambda s: not s["items"][0]["popup"], "identical resend never timed out")
+        notify(server_id, timeout=1200)
+        reopened = wait_for(probe.state, lambda s: s["deliveries"] == 3, "hidden identical resend was ignored")
+        assert reopened["items"][0]["popup"]
+
+        # Unknown replacement IDs create new objects. The monitor must not deliver
+        # their reply a second time, even when their contents are identical.
+        assert notify(987654, timeout=0) != 987654
+        wait_for(probe.state, lambda s: len(s["items"]) == 2, "unknown replacement ID was lost")
+        time.sleep(0.2)
+        assert probe.state()["deliveries"] == 4, "a new notification was delivered twice"
+
+    with service() as probe:
+        server_id = notify(timeout=900)
+        first = wait_for(probe.state, lambda s: s["deliveries"] == 1, "first delivery missing")
+        wrapper_id = first["items"][0]["id"]
+        probe.call("hover", wrapper_id)
+        assert not probe.state()["items"][0]["timer"]["running"]
+        notify(server_id, summary="Updated under pointer", timeout=900)
+        hovered = wait_for(probe.state, lambda s: s["deliveries"] == 2, "hovered replacement missing")
+        assert not hovered["items"][0]["timer"]["running"], "replacement restarted a hover-paused timer"
+        time.sleep(1.1)
+        assert probe.state()["items"][0]["popup"], "replacement vanished under the pointer"
+        notify(server_id, summary="Updated under pointer", timeout=900)
+        identical = wait_for(probe.state, lambda s: s["deliveries"] == 3, "hovered identical resend missing")
+        assert not identical["items"][0]["timer"]["running"]
+        probe.call("leave", wrapper_id)
+        assert probe.state()["items"][0]["timer"]["running"]
+        time.sleep(0.4)
+        assert probe.state()["items"][0]["popup"], "leaving did not allow a full timeout"
+        wait_for(probe.state, lambda s: not s["items"][0]["popup"], "leaving never resumed dismissal")
+    print("ok: identical resends restart delivery once; replacements keep hover pauses and leaving restarts the full timeout")
+
+
+def check_observer_recovery():
+    with service(observer_failure=True) as probe:
+        assert not probe.state()["observerReady"], "fixture missed the first failed observer launch"
+        server_id = notify(timeout=0)
+        wait_for(probe.state, lambda s: s["deliveries"] == 1, "observer failure blocked new notifications")
+        notify(server_id, summary="Fallback update", timeout=0)
+        fallback = wait_for(probe.state, lambda s: s["deliveries"] == 2, "field-change fallback did not deliver")
+        wrapper_id = fallback["items"][0]["id"]
+        wait_for(probe.state, lambda s: s["observerReady"], "delivery observer did not recover")
+        notify(server_id, summary="Fallback update", timeout=0)
+        recovered = wait_for(probe.state, lambda s: s["deliveries"] == 3, "recovered observer missed identical resend")
+        assert len(recovered["items"]) == 1 and recovered["items"][0]["id"] == wrapper_id
+        assert recovered["items"][0]["tracked"], "observer recovery replaced the live server objects"
+    print("ok: observer failure preserves ordinary delivery and retry restores identical resends without replacing the server")
 
 
 def check_startup():
@@ -351,6 +466,9 @@ if __name__ == "__main__":
     if "--private-bus" not in sys.argv:
         subprocess.run(["dbus-run-session", "--", sys.executable, __file__, "--private-bus"], check=True)
     else:
+        check_hover_handlers()
         check_replacements()
+        check_identical_and_hover()
+        check_observer_recovery()
         check_startup()
         check_actions()

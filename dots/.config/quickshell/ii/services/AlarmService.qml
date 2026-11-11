@@ -12,8 +12,11 @@ Singleton {
     id: root
 
     property list<var> alarms: Persistent.ready ? (Persistent.states.alarms ?? []) : []
-    property int ringingAlarmIndex: -1
-    property var ringingAlarm: (ringingAlarmIndex >= 0 && alarms && ringingAlarmIndex < alarms.length) ? alarms[ringingAlarmIndex] : null
+    // CRUD sorts and splices the list. Keep identity independent of its position,
+    // while exposing the current index for the existing rows and Stop controls.
+    property string ringingAlarmId: ""
+    readonly property int ringingAlarmIndex: root.ringingAlarmId ? root.alarms.findIndex(alarm => alarm.id === root.ringingAlarmId) : -1
+    readonly property var ringingAlarm: root.ringingAlarmIndex >= 0 ? root.alarms[root.ringingAlarmIndex] : null
 
     // Instantiated at shell startup so deadlines are armed before a popup is opened.
     function load() {}
@@ -46,17 +49,47 @@ Singleton {
         alarm.nextTrigger = root.nextOccurrence(alarm, minute.getTime() - 1);
     }
 
+    function withAlarmIds(alarms) {
+        // Reserve every saved ID first, including later entries. Same-tick
+        // additions and duplicate legacy IDs must never steal another row's ID.
+        const used = new Set(alarms.map(alarm => alarm.id).filter(id => typeof id === "string" && id.length > 0));
+        const seen = new Set();
+        const prefix = `alarm-${Date.now().toString(36)}-`;
+        let serial = 0;
+        return alarms.map(alarm => {
+            let id = alarm.id;
+            if (typeof id !== "string" || id.length === 0 || seen.has(id)) {
+                do { id = prefix + (++serial); } while (used.has(id));
+                used.add(id);
+            }
+            seen.add(id);
+            return Object.assign({}, alarm, { id });
+        });
+    }
+
     function saveAlarms(newAlarms) {
-        Persistent.states.alarms = newAlarms;
+        const identified = root.withAlarmIds(newAlarms);
+        if (root.ringingAlarmId && !identified.some(alarm => alarm.id === root.ringingAlarmId))
+            root.stopRinging();
+        Persistent.states.alarms = identified;
         root.alarms = Persistent.states.alarms ?? [];
+    }
+
+    function restoreAlarms() {
+        if (!Persistent.ready) return;
+        const saved = Persistent.states.alarms ?? [];
+        const identified = root.withAlarmIds(saved);
+        // ID migration changes no scheduling data and writes only once.
+        if (identified.some((alarm, index) => alarm.id !== saved[index].id))
+            root.saveAlarms(identified);
+        else
+            root.alarms = saved;
     }
 
     Connections {
         target: Persistent
         function onReadyChanged() {
-            if (Persistent.ready) {
-                root.alarms = Persistent.states.alarms ?? [];
-            }
+            root.restoreAlarms();
         }
     }
 
@@ -66,7 +99,7 @@ Singleton {
         if (index >= 0 && index < cloned.length) {
             cloned[index].enabled = !cloned[index].enabled;
             if (cloned[index].enabled) root.armAlarm(cloned[index]);
-            if (!cloned[index].enabled && ringingAlarmIndex === index) {
+            if (!cloned[index].enabled && cloned[index].id === root.ringingAlarmId) {
                 stopRinging();
             }
             saveAlarms(cloned);
@@ -111,7 +144,7 @@ Singleton {
         if (!Persistent.ready) return;
         let cloned = JSON.parse(JSON.stringify(Persistent.states.alarms));
         if (index >= 0 && index < cloned.length) {
-            if (ringingAlarmIndex === index) {
+            if (cloned[index].id === root.ringingAlarmId) {
                 stopRinging();
             }
             cloned.splice(index, 1);
@@ -120,12 +153,12 @@ Singleton {
     }
 
     function triggerAlarm(index) {
-        if (index < 0 || index >= alarms.length) return;
+        if (!Persistent.ready || index < 0 || index >= alarms.length) return;
 
-        let alarm = alarms[index];
         // Consume before ringing, not on dismissal: a restart cannot replay the
         // same one-shot or recurring occurrence. Collapse missed repeats into one.
-        const cloned = JSON.parse(JSON.stringify(alarms));
+        const cloned = root.withAlarmIds(JSON.parse(JSON.stringify(alarms)));
+        const alarm = cloned[index];
         if (root.repeats(alarm)) {
             cloned[index].nextTrigger = root.nextOccurrence(alarm, Date.now());
         } else {
@@ -133,7 +166,7 @@ Singleton {
             cloned[index].nextTrigger = 0;
         }
         root.saveAlarms(cloned);
-        ringingAlarmIndex = index;
+        root.ringingAlarmId = alarm.id;
 
         // Play sound in loop if enabled
         SoundService.stopLoop();
@@ -153,9 +186,9 @@ Singleton {
     }
 
     function stopRinging() {
-        if (ringingAlarmIndex === -1) return;
+        if (!root.ringingAlarmId) return;
 
-        ringingAlarmIndex = -1;
+        root.ringingAlarmId = "";
         SoundService.stopLoop();
         GlobalStates.alarmRinging = false;
     }
@@ -163,8 +196,8 @@ Singleton {
     function checkAlarms() {
         if (!Persistent.ready || !alarms || alarms.length === 0) return;
         const now = Date.now();
-        const cloned = JSON.parse(JSON.stringify(alarms));
-        let changed = false;
+        const cloned = root.withAlarmIds(JSON.parse(JSON.stringify(alarms)));
+        let changed = cloned.some((alarm, index) => alarm.id !== alarms[index].id);
         let due = -1;
         for (let i = 0; i < cloned.length; i++) {
             const alarm = cloned[i];
@@ -180,7 +213,7 @@ Singleton {
                 due = i;
         }
         if (changed) root.saveAlarms(cloned);
-        if (due !== -1 && ringingAlarmIndex === -1) root.triggerAlarm(due);
+        if (due !== -1 && !root.ringingAlarmId) root.triggerAlarm(due);
     }
 
     Timer {
@@ -194,7 +227,7 @@ Singleton {
     Timer {
         id: autoStopTimer
         interval: 300000 // 5 minutes
-        running: ringingAlarmIndex !== -1
+        running: root.ringingAlarmId !== ""
         repeat: false
         onTriggered: stopRinging()
     }
@@ -212,9 +245,5 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        if (Persistent.ready) {
-            root.alarms = Persistent.states.alarms;
-        }
-    }
+    Component.onCompleted: root.restoreAlarms()
 }
