@@ -15,11 +15,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "triple_ring_clock"
 
-    visibleWhenLocked: root.lockBehavior === "keep"
-                    || root.lockBehavior === "center"
-                    || root.lockBehavior === "lockOnly"
-                    || (Config.options.lock.centerWidget === "triple_ring_clock")
-
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

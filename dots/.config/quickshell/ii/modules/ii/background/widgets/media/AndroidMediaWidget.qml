@@ -46,7 +46,7 @@ AbstractBackgroundWidget {
 
     property real artVignetteBlur: root.playing ? 50 : 90
 
-    readonly property bool useDynamicColors: Config.options.media.dynamicAlbumColors && root.artSource !== ""
+    readonly property bool useDynamicColors: Config.options.background.widgets.media.dynamicAlbumColors && root.artSource !== ""
 
     ColorQuantizer {
         id: colorQuantizer

@@ -15,11 +15,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "month_clock"
 
-    visibleWhenLocked: root.lockBehavior === "keep"
-                    || root.lockBehavior === "center"
-                    || root.lockBehavior === "lockOnly"
-                    || (Config.options.lock.centerWidget === "month_clock")
-
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

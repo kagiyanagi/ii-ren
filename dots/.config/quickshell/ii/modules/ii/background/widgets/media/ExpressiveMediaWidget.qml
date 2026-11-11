@@ -17,8 +17,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "media"
 
-    visibleWhenLocked: root.lockBehavior === "keep" || root.lockBehavior === "center" || root.lockBehavior === "lockOnly" || (Config.options.lock.centerWidget === "media")
-
     property real lastStaticWidth: 400
     property real lastStaticHeight: 240
 

@@ -859,7 +859,7 @@ AbstractBackgroundWidget {
             anchorItem: card
             corner: "top-right"
             hoverActive: root.containsMouse
-            locked: Config.options.background.widgetsLocked
+            locked: root._desktopPositionsLocked
             currentWidth: root.widgetWidth
             resizeMode: "diagonal"
             onResizedXY: (dx, dy, startWidth) => { root.sizeMode = root.modeForDrag(dx, dy, startWidth) }

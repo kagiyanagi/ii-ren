@@ -14,11 +14,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "photo_1x1"
 
-    visibleWhenLocked: root.lockBehavior === "keep"
-                    || root.lockBehavior === "center"
-                    || root.lockBehavior === "lockOnly"
-                    || (Config.options.lock.centerWidget === "photo_1x1")
-
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

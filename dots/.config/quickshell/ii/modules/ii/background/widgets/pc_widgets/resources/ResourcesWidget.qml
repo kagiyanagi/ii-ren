@@ -127,7 +127,7 @@ AbstractBackgroundWidget {
             margins: -6
         }
         opacity: root.containsMouse || toggleArea.containsMouse ? 0.7 : 0
-        visible: opacity > 0 && !Config.options.background.widgetsLocked
+        visible: opacity > 0 && !root._desktopPositionsLocked
 
         Behavior on opacity {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(toggleHandle)

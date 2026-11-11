@@ -17,11 +17,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "at_a_glance"
 
-    visibleWhenLocked: root.lockBehavior === "keep"
-                    || root.lockBehavior === "center"
-                    || root.lockBehavior === "lockOnly"
-                    || (Config.options.lock.centerWidget === "at_a_glance")
-
     opacity: {
         if (root.lockBehavior === "lockOnly")
             return GlobalStates.screenLocked ? 1 : 0;

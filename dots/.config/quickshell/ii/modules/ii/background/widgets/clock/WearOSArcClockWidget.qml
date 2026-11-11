@@ -8,7 +8,6 @@ AbstractBackgroundWidget {
 
     configEntryName: "wearos_arc_clock"
 
-    visibleWhenLocked: root.lockBehavior === "keep" || root.lockBehavior === "center" || root.lockBehavior === "lockOnly" || (Config.options.lock.centerWidget === "wearos_arc_clock")
     opacity: {
         if (root.lockBehavior === "lockOnly") return GlobalStates.screenLocked ? 1 : 0;
         if (GlobalStates.screenLocked && !visibleWhenLocked) return 0;

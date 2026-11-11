@@ -96,7 +96,7 @@ AbstractWidget {
         if (centeredWidgetCount <= 1) return 0;
         let alignment = Config.options.lock.centerAlignment;
         if (alignment === "horizontal" || alignment === undefined || alignment === "") {
-            let spacing = Config.options.lock.centerSpacing || 20;
+            let spacing = Config.options.lock.centerSpacing;
             // Depend on widgetSizesVersion so binding re-evaluates after in-place mutations
             root.widgetSizesVersion;
             let sizes = root.widgetSizes || {};
@@ -126,7 +126,7 @@ AbstractWidget {
         if (centeredWidgetCount <= 1) return 0;
         let alignment = Config.options.lock.centerAlignment;
         if (alignment === "vertical") {
-            let spacing = Config.options.lock.centerSpacing || 20;
+            let spacing = Config.options.lock.centerSpacing;
             root.widgetSizesVersion;
             let sizes = root.widgetSizes || {};
             // Accumulate actual heights of all centered widgets

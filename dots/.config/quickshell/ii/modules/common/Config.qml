@@ -166,6 +166,7 @@ Singleton {
             }
 
             property JsonObject appearance: JsonObject {
+                property real animationMultiplier: 1.0
                 property bool extraBackgroundTint: true
                 property int fakeScreenRounding: 2 // 0: None | 1: Always | 2: When not fullscreen | 3: Wrapped
                 property int wrappedFrameThickness: 10
@@ -1620,6 +1621,9 @@ Singleton {
                 property bool unlockRipple: true
                 // The keyguard's "69% • Charging • Full in 25m" line above the field.
                 property bool showChargingInfo: true
+                // Layout of instances whose lockBehavior is "center".
+                property string centerAlignment: "horizontal" // horizontal | vertical
+                property real centerSpacing: 20
                 // Freezes widget drag/resize on the lock screen specifically,
                 // independent of `background.widgets.lockWidgetPositions`
                 // which freezes them on the desktop.
