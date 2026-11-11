@@ -53,13 +53,15 @@ Singleton {
         }
 
         const monitor = root.getTargetMonitor();
-        if (monitor)
+        if (monitor?.ready)
             monitor.setBrightness(monitor.brightness + 0.05);
     }
 
     function decreaseBrightness(): void {
         const monitor = root.getTargetMonitor();
-        if (monitor && monitor.brightness > 0) 
+        if (!monitor?.ready)
+            return;
+        if (monitor.brightness > 0)
             monitor.setBrightness(monitor.brightness - 0.05);
         // if brightness is 0, then decrease gamma
         else {
@@ -100,7 +102,9 @@ Singleton {
                 }
             }
         }
-        onExited: root.ddcDetectFinished()
+        // FailedToStart changes running back to false without emitting exited.
+        // Backlight initialization must happen even when ddcutil is unavailable.
+        onRunningChanged: if (!running) root.ddcDetectFinished()
     }
 
     component BrightnessMonitor: QtObject {
@@ -201,6 +205,8 @@ Singleton {
         }
 
         function setBrightness(value: real): void {
+            if (!monitor.ready)
+                return;
             value = Math.max(0, Math.min(1, value));
             monitor.brightness = value;
         }

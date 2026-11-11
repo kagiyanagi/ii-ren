@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Brightness writes follow the animation switch and never cancel another monitor.
+"""Brightness writes follow the animation switch, survive overlap and initialize.
 
 Run Brightness.qml in a windowless Quickshell with fake brightnessctl/ddcutil.
 Only screens, shortcuts and other service inputs are stubbed; QML Behaviors,
 Timers, Variants and Processes are real. No real display brightness is changed.
 
-    python3 tools/check-brightness.py [animation|writes]
+    python3 tools/check-brightness.py [animation|writes|startup]
 """
 import json
 import os
@@ -109,7 +109,8 @@ class Probe:
         source = source.replace("Quickshell.screens", "Fixture.screens").replace("ShellScreen", "var")
         (self.path / "Brightness.qml").write_text(source)
         stubs = {
-            "Fixture": "property var screens: " + json.dumps([dict(name=n) for n in screens]),
+            "Fixture": "property list<QtObject> screens: [" + ", ".join(
+                "QtObject { property string name: " + json.dumps(n) + " }" for n in screens) + "]",
             "Config": 'property var options: ({light: {antiFlashbang: {enable: true}}})',
             "Appearance": '''property var m3colors: ({darkmode: false})
                 property var animationCurves: ({expressiveEffects: [0.34, 0.8, 0.34, 1, 1, 1]})''',
@@ -229,7 +230,25 @@ def check_writes():
         assert finished[-2:] == [30, 20], f"a running DDC write was cancelled: {finished}"
 
 
-CHECKS = {"animation": check_animation, "writes": check_writes}
+def check_startup():
+    for config in (dict(missing_ddc=True), dict(detect_exit=1)):
+        with probe(**config) as p:
+            p.ready()
+            assert p.state()["monitors"][0]["brightness"] == 0.5
+            p.call("increase")
+            p.wait(lambda s: (p.path / "raw-backlight").read_text() == "55",
+                   "first keypress starts from zero instead of the actual backlight")
+
+    with probe(detect_delay=0.8) as p:
+        p.wait(lambda s: bool(s["monitors"]), "monitor never appears")
+        p.call("increase")
+        p.call("set", 0, 0.05)
+        assert p.state()["monitors"][0]["brightness"] == 0, "input writes an uninitialized brightness"
+        p.ready()
+        assert p.state()["monitors"][0]["brightness"] == 0.5
+
+
+CHECKS = {"animation": check_animation, "writes": check_writes, "startup": check_startup}
 if __name__ == "__main__":
     for name in sys.argv[1:] or CHECKS:
         CHECKS[name]()
