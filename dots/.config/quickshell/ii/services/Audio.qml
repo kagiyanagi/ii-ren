@@ -290,6 +290,7 @@ Singleton {
 
     onSinkChanged: {
         volumeProtection.lastReady = false; // another device, another volume
+        volumeTick.lastVolume = NaN;
         combineSinkProcess.sync(); // the default may just have left the combined node
     }
     onSourceChanged: combineSourceProcess.sync()
@@ -332,8 +333,10 @@ Singleton {
 
     // The volume tick. The sink's own level only: an app moving its stream makes
     // no sound, and neither does a mute. NaN is the sink mid-resume, so the step
-    // out of it, like the first value at startup, is not a change anyone made.
+    // out of it, like the first value at startup or on a new device, is not a
+    // change anyone made.
     Connections {
+        id: volumeTick
         target: root.sink?.audio ?? null
         property real lastVolume: NaN
         function onVolumeChanged() {
