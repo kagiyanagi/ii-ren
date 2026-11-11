@@ -196,12 +196,30 @@ Singleton {
 
     // Hibernate falls back to suspend: a failed one would leave nothing between
     // the session and an empty battery.
-    onIsSuspendingAndNotChargingChanged: {
-        if (!root.available || !isSuspendingAndNotCharging) return;
-        const action = Config.options.battery.criticalAction;
-        Quickshell.execDetached(["bash", "-c", action === "hibernate" ? "systemctl hibernate || systemctl suspend || loginctl suspend"
-            : action === "poweroff" ? "systemctl poweroff || loginctl poweroff"
-            : "systemctl suspend || loginctl suspend"]);
+    function actOnCriticalBattery() {
+        if (!root.available || !root.isSuspendingAndNotCharging || criticalActionProcess.running) return;
+        criticalActionProcess.running = true;
+    }
+
+    // The level may stay critical across a resume, so a property-change handler
+    // alone fires only once. Retry after at most a minute awake, leaving time to
+    // plug in, and stop immediately when AC returns or the action is disabled.
+    Timer {
+        interval: 60000
+        running: root.isSuspendingAndNotCharging
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.actOnCriticalBattery()
+    }
+
+    Process {
+        id: criticalActionProcess
+        command: {
+            const action = Config.options.battery.criticalAction;
+            return ["bash", "-c", action === "hibernate" ? "systemctl hibernate || systemctl suspend || loginctl suspend"
+                : action === "poweroff" ? "systemctl poweroff || loginctl poweroff"
+                : "systemctl suspend || loginctl suspend"];
+        }
     }
 
     onIsFullAndChargingChanged: {

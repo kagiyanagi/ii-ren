@@ -11,6 +11,8 @@ dead battery or a machine that sleeps on its own.
 - The critical action maps each choice to its own command. Hibernate falls back to
   suspend: a failed hibernate would otherwise leave nothing between the session and
   an empty battery.
+- Its real QML timer rearms after resume with the same critical percentage; AC
+  and opting out stop retries. Power commands are intercepted, never executed.
 - The battery idle monitors run only on battery, with the option on, and never with a
   zero timeout, which ext-idle-notify reports as idle at once: suspend on every unplug.
 - Auto power saver hands back only a profile it took, and only if the user has not
@@ -21,7 +23,7 @@ dead battery or a machine that sleeps on its own.
 
 The history maths is modules/settings/batteryHistory.test.js, run here too.
 """
-import pathlib, re, subprocess
+import pathlib, re, subprocess, tempfile
 
 II = pathlib.Path(__file__).resolve().parent.parent / "dots/.config/quickshell/ii"
 battery = (II / "services/Battery.qml").read_text()
@@ -51,13 +53,74 @@ for (const chargeState of Object.values(UPowerDeviceState)) {
 }
 """], check=True)
 
-crit = re.search(r"onIsSuspendingAndNotChargingChanged: \{(.*?)\n    \}", battery, re.S)
+critical = battery[battery.index("    // Hibernate falls back"):battery.index("    onIsFullAndChargingChanged:")]
+with tempfile.TemporaryDirectory(prefix="ii-battery-check-") as directory:
+    path = pathlib.Path(directory)
+    # Keep the real action wiring and timer; simulate the power command returning
+    # from sleep. No actual systemctl/loginctl command may run in this check.
+    (path / "Commands.qml").write_text('''pragma Singleton
+import QtQuick
+QtObject { property int attempts: 0; function execute(command) { attempts++ } }
+''')
+    (path / "FakeProcess.qml").write_text('''import QtQuick
+QtObject {
+    id: process
+    property bool running: false
+    property var command
+    onRunningChanged: if (running) { Commands.execute(command); Qt.callLater(() => process.running = false) }
+}
+''')
+    (path / "qmldir").write_text("singleton Commands 1.0 Commands.qml\nFakeProcess 1.0 FakeProcess.qml\n")
+    critical = critical.replace("Quickshell.execDetached", "Commands.execute").replace("Process {", "FakeProcess {")
+    critical = re.sub(r"interval: 60000\b", "interval: 60", critical)
+    condition = re.search(r"    property bool isSuspendingAndNotCharging: .*", battery)[0]
+    (path / "tst_battery.qml").write_text('''import QtQuick
+import QtTest
+import "."
+TestCase {
+    id: root
+    name: "CriticalBattery"
+    property bool available: true
+    property bool allowAutomaticSuspend: true
+    property bool isSuspending: false
+    property bool isPluggedIn: false
+    QtObject { id: config; property var options: ({battery: {criticalAction: "suspend"}}) }
+''' + condition + critical.replace("Config.", "config.") + '''
+    function test_rearmsAfterResume() {
+        isSuspending = true
+        tryCompare(Commands, "attempts", 1, 40)
+        tryVerify(() => Commands.attempts >= 2, 250, "critical action never rearmed after resume")
+        isPluggedIn = true
+        let attempts = Commands.attempts
+        wait(150)
+        compare(Commands.attempts, attempts, "plugging in must stop automatic actions")
+        isPluggedIn = false
+        tryVerify(() => Commands.attempts > attempts, 100)
+        allowAutomaticSuspend = false
+        attempts = Commands.attempts
+        wait(150)
+        compare(Commands.attempts, attempts, "opting out must stop retries")
+        available = false
+        allowAutomaticSuspend = true
+        wait(150)
+        compare(Commands.attempts, attempts, "no battery must mean no action")
+    }
+}
+''')
+    runner = "/usr/lib/qt6/bin/qmltestrunner" if pathlib.Path("/usr/lib/qt6/bin/qmltestrunner").exists() else "qmltestrunner"
+    result = subprocess.run([runner, "-platform", "offscreen", "-input", directory],
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
+    print(result.stdout.strip())
+
+crit = re.search(r"function actOnCriticalBattery\(\) \{(.*?)\n    \}", battery, re.S)
 assert crit, "Battery: no critical action handler"
-body = crit.group(1)
+assert "!root.available || !root.isSuspendingAndNotCharging || criticalActionProcess.running" in crit[1], \
+    "Battery: action must require a critical battery off AC and cannot overlap a running action"
+body = re.search(r"id: criticalActionProcess\n\s*command: \{(.*?)\n        \}", battery, re.S)[1]
 assert '"hibernate" ? "systemctl hibernate || systemctl suspend' in body, "Battery: hibernate must fall back to suspend"
 assert '"poweroff" ? "systemctl poweroff' in body, "Battery: poweroff lost its own command"
-assert body.rstrip().endswith(': "systemctl suspend || loginctl suspend"]);'), "Battery: anything else must suspend"
-assert "if (!root.available || !isSuspendingAndNotCharging) return;" in body, "Battery: the action must wait for the critical level off the charger"
+assert body.rstrip().endswith(': "systemctl suspend || loginctl suspend"];'), "Battery: anything else must suspend"
 assert re.search(r"isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && !isPluggedIn", battery), \
     "Battery: Nothing (automaticSuspend off) must stop the action"
 
