@@ -12,6 +12,10 @@ arrive, reproducing the startup race without relying on a lucky scheduling order
 The queued arrivals must wait for the saved ID offset, survive the load and keep
 their real server objects and actions; reloading must not rebase live IDs.
 
+Actions let Quickshell honor the resident hint. Missing and stale actions are a
+no-op, including restored history whose sender is gone. Monitor the actual D-Bus
+signals to prove resident actions remain usable and ordinary actions close once.
+
 Run the actual services/Notifications.qml with small dependency stubs, a private
 D-Bus session and temporary files. Real Notify calls exercise Qt's property
 signals, bindings, callLater coalescing and timers; the desktop is untouched.
@@ -121,6 +125,9 @@ def service(saved="[]", delayed=False):
                     function discard(id: int): void { Notifications.discardNotification(id); }
                     function refresh(): void { Notifications.refresh(); }
                     function load(): void { Directories.loadHistory = true; }
+                    function invoke(id: int, identifier: string): void {
+                        Notifications.attemptInvokeAction(id, identifier);
+                    }
                 }
             }
         '''))
@@ -146,6 +153,9 @@ def service(saved="[]", delayed=False):
             try:
                 wait_for(probe.state, lambda s: delayed or s["initialized"], "notification history never loaded")
                 yield probe
+                errors = re.findall(r".*(?:TypeError|ReferenceError|Cannot (?:invoke|close) destroyed notification).*",
+                                    (path / "log").read_text())
+                assert not errors, "notification service logged errors: " + "\n".join(errors)
             except BaseException:
                 print((path / "log").read_text(), file=sys.stderr)
                 raise
@@ -276,9 +286,71 @@ def check_startup():
     print("ok: early arrivals survive delayed history, IDs stay unique, missing and invalid history recover")
 
 
+@contextmanager
+def notification_signals():
+    with tempfile.TemporaryDirectory(prefix="ii-notification-signals-") as directory:
+        path = Path(directory) / "signals"
+        with path.open("w") as output:
+            monitor = subprocess.Popen([
+                "stdbuf", "-oL", "gdbus", "monitor", "--session",
+                "--dest", "org.freedesktop.Notifications",
+                "--object-path", "/org/freedesktop/Notifications",
+            ], stdout=output, stderr=subprocess.STDOUT)
+            try:
+                wait_for(path.read_text, lambda text: "is owned by" in text, "D-Bus monitor never subscribed")
+                yield path.read_text
+            finally:
+                monitor.terminate()
+                monitor.wait(timeout=5)
+
+
+def check_actions():
+    saved = json.dumps([{
+        "notificationId": 42, "appName": "Saved app", "appIcon": "", "image": "",
+        "summary": "Saved", "body": "Saved body", "time": 1, "urgency": "normal",
+    }])
+    with service(saved) as probe, notification_signals() as signals:
+        resident_id = notify(timeout=0, hints="{'resident': <true>}")
+        initial = wait_for(probe.state, lambda s: len(s["items"]) == 2, "resident notification missing")
+        probe.call("invoke", 42 + resident_id, "open")
+        events = wait_for(signals, lambda text: ".ActionInvoked" in text, "resident action did not reach sender")
+        assert re.search(rf"ActionInvoked \(uint32 {resident_id}, 'open'\)", events), events
+        assert probe.state() == initial, "resident action dismissed or changed its notification"
+        assert ".NotificationClosed" not in events, "resident action closed the notification on D-Bus"
+
+        probe.call("invoke", 42 + resident_id, "missing")
+        probe.call("invoke", 999999, "open")
+        probe.call("invoke", 42, "open")
+        assert probe.state() == initial, "an unavailable action changed the notification list"
+        assert signals().count(".ActionInvoked") == 1
+
+        notify(resident_id, "New action set", timeout=0, hints="{'resident': <true>}",
+               actions="['reply', 'Reply']")
+        replaced = wait_for(probe.state, lambda s: s["deliveries"] == 2, "action replacement missing")
+        probe.call("invoke", 42 + resident_id, "open")
+        assert probe.state() == replaced and signals().count(".ActionInvoked") == 1, "stale action was invoked"
+        probe.call("invoke", 42 + resident_id, "reply")
+        wait_for(signals, lambda text: text.count(".ActionInvoked") == 2, "resident action stopped working")
+        assert probe.state() == replaced and ".NotificationClosed" not in signals()
+
+        ordinary_id = notify(summary="Ordinary", timeout=0)
+        wait_for(probe.state, lambda s: len(s["items"]) == 3, "ordinary notification missing")
+        probe.call("invoke", 42 + ordinary_id, "open")
+        dismissed = wait_for(probe.state, lambda s: len(s["items"]) == 2, "ordinary action did not dismiss")
+        assert {n["id"] for n in dismissed["items"]} == {42, 42 + resident_id}
+        events = wait_for(signals, lambda text: ".NotificationClosed" in text, "sender was not told of dismissal")
+        assert re.search(rf"NotificationClosed \(uint32 {ordinary_id}, uint32 2\)", events), events
+        assert events.count(".ActionInvoked") == 3 and events.count(".NotificationClosed") == 1, events
+        wait_for(lambda: json.loads(probe.notifications.read_text()),
+                 lambda rows: {n["notificationId"] for n in rows} == {42, 42 + resident_id},
+                 "ordinary dismissal was not saved")
+    print("ok: resident actions stay, ordinary actions close once, missing and stale actions are safe")
+
+
 if __name__ == "__main__":
     if "--private-bus" not in sys.argv:
         subprocess.run(["dbus-run-session", "--", sys.executable, __file__, "--private-bus"], check=True)
     else:
         check_replacements()
         check_startup()
+        check_actions()
