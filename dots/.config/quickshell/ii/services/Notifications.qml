@@ -175,6 +175,8 @@ Singleton {
     // Quickshell's notification IDs starts at 1 on each run, while saved notifications
     // can already contain higher IDs. This is for avoiding id collisions
     property int idOffset
+    property bool historyReady: false
+    property list<Notification> pendingNotifications: []
     signal initDone();
     signal notify(notification: var);
     signal discard(id: int);
@@ -204,14 +206,25 @@ Singleton {
         onNotification: (notification) => {
             if (notifServer.fromPhone(notification) && !(Config.options?.notifications.phoneOnDesktop ?? false)) return;
             notification.tracked = true
-
-            const newNotifObject = notifComponent.createObject(root, {
-                "notificationId": notification.id + root.idOffset,
-                "notification": notification,
-                "time": Date.now(),
-            });
-            root.deliverNotification(newNotifObject);
+            root.addNotification(notification);
         }
+    }
+
+    function addNotification(notification) {
+        // Keep the real server object alive while the asynchronous history read
+        // reserves its IDs. Do not create a wrapper or write the file before it.
+        if (!root.historyReady) {
+            root.pendingNotifications = [...root.pendingNotifications, notification];
+            return;
+        }
+        // The sender may have closed a queued notification while history loaded.
+        if (!notification || !notification.tracked) return;
+        const notif = notifComponent.createObject(root, {
+            "notificationId": notification.id + root.idOffset,
+            "notification": notification,
+            "time": Date.now(),
+        });
+        root.deliverNotification(notif);
     }
 
     function deliverNotification(notif) {
@@ -381,6 +394,30 @@ Singleton {
         notifFileView.reload()
     }
 
+    function restoreNotifications(saved) {
+        // History is a startup snapshot. A later reload must not replace live
+        // wrappers, drop their actions or change the server-to-wrapper ID offset.
+        if (root.historyReady) return;
+        root.list = saved.map((notif) => notifComponent.createObject(root, {
+            "notificationId": notif.notificationId,
+            "actions": [], // Saved senders are no longer tracked by this server.
+            "appIcon": notif.appIcon,
+            "appName": notif.appName,
+            "body": notif.body,
+            "image": notif.image,
+            "summary": notif.summary,
+            "time": notif.time,
+            "urgency": notif.urgency,
+        }));
+        root.idOffset = root.list.reduce((maxId, notif) => Math.max(maxId, notif.notificationId), 0);
+        root.historyReady = true;
+
+        const pending = root.pendingNotifications.slice();
+        root.pendingNotifications = [];
+        pending.forEach((notification) => root.addNotification(notification));
+        root.initDone();
+    }
+
     Component.onCompleted: {
         refresh()
     }
@@ -389,41 +426,25 @@ Singleton {
         id: notifFileView
         path: Qt.resolvedUrl(filePath)
         onLoaded: {
+            if (root.historyReady) return;
             const fileContents = notifFileView.text()
             let saved = [];
             try {
                 saved = JSON.parse(fileContents);
+                if (!Array.isArray(saved)) throw new Error("Expected a notification list");
             } catch (e) {
                 console.warn("[Notifications] History file is not valid JSON, starting empty:", e);
+                saved = [];
             }
-            root._release(root.list); // A reload replaces the list; what it held is ours to free.
-            root.list = saved.map((notif) => {
-                return notifComponent.createObject(root, {
-                    "notificationId": notif.notificationId,
-                    "actions": [], // Notification actions are meaningless if they're not tracked by the server or the sender is dead
-                    "appIcon": notif.appIcon,
-                    "appName": notif.appName,
-                    "body": notif.body,
-                    "image": notif.image,
-                    "summary": notif.summary,
-                    "time": notif.time,
-                    "urgency": notif.urgency,
-                });
-            });
-            // Find largest notificationId
-            let maxId = 0
-            root.list.forEach((notif) => {
-                maxId = Math.max(maxId, notif.notificationId)
-            })
-
             console.log("[Notifications] File loaded")
-            root.idOffset = maxId
-            root.initDone()
+            root.restoreNotifications(saved);
         }
         onLoadFailed: (error) => {
+            if (root.historyReady) return;
+            // Missing or unreadable history must still release queued arrivals.
+            root.restoreNotifications([]);
             if(error == FileViewError.FileNotFound) {
                 console.log("[Notifications] File not found, creating new file.")
-                root.list = []
                 notifFileView.setText(stringifyList(root.list));
             } else {
                 console.log("[Notifications] Error loading file: " + error)

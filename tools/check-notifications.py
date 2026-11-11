@@ -7,6 +7,11 @@ popup lifetime and the saved copy stayed at the first delivery. A multi-field
 replacement must deliver once, retain the same wrapper and restart its timer;
 hint-only progress and action-label updates must also reach that path.
 
+History reads run on a worker. Hold back the FileView's path while notifications
+arrive, reproducing the startup race without relying on a lucky scheduling order.
+The queued arrivals must wait for the saved ID offset, survive the load and keep
+their real server objects and actions; reloading must not rebase live IDs.
+
 Run the actual services/Notifications.qml with small dependency stubs, a private
 D-Bus session and temporary files. Real Notify calls exercise Qt's property
 signals, bindings, callLater coalescing and timers; the desktop is untouched.
@@ -45,15 +50,19 @@ def wait_for(read, predicate, why, seconds=5):
 
 
 @contextmanager
-def service(saved="[]"):
+def service(saved="[]", delayed=False):
     with tempfile.TemporaryDirectory(prefix="ii-notifications-") as directory:
         path = Path(directory)
         notifications = path / "notifications.json"
         history = path / "history.json"
-        notifications.write_text(saved)
+        if saved is not None:
+            notifications.write_text(saved)
         history.write_text("[]")
-        # Keep the service intact apart from its shell-specific import paths.
+        # Replace only shell-specific imports and gate the history path so its
+        # real FileView can finish loading after the first arrivals.
         qml = re.sub(r"^import qs(?:\.[\w.]+)?\n", "", SOURCE, flags=re.M)
+        qml = qml.replace("path: Qt.resolvedUrl(filePath)",
+                          'path: Directories.loadHistory ? Qt.resolvedUrl(filePath) : ""')
         (path / "Notifications.qml").write_text(qml.replace("import QtQuick", 'import "."\nimport QtQuick', 1))
         stubs = {
             "Config": '''property var options: ({ notifications: {
@@ -61,7 +70,8 @@ def service(saved="[]"):
             } })''',
             "GlobalStates": "property bool sidebarRightOpen: false",
             "Directories": f'''property string notificationsPath: {json.dumps(str(notifications))}
-                property string notificationHistoryPath: {json.dumps(str(history))}''',
+                property string notificationHistoryPath: {json.dumps(str(history))}
+                property bool loadHistory: {str(not delayed).lower()}''',
             "Appearance": "property var animationCurves: ({ expressiveSlowSpatialDuration: 650 })",
             "SoundService": '''property int calls: 0
                 property var events: ({ notifications: ["message"] })
@@ -92,6 +102,7 @@ def service(saved="[]"):
                     function state(): string {
                         return JSON.stringify({
                             initialized: probe.initialized,
+                            offset: Notifications.idOffset,
                             deliveries: probe.deliveries,
                             sounds: SoundService.calls,
                             unread: Notifications.unread,
@@ -108,6 +119,8 @@ def service(saved="[]"):
                     function cooldown(value: bool): void { Config.options.notifications.cooldown = value; }
                     function hide(id: int): void { Notifications.timeoutNotification(id); }
                     function discard(id: int): void { Notifications.discardNotification(id); }
+                    function refresh(): void { Notifications.refresh(); }
+                    function load(): void { Directories.loadHistory = true; }
                 }
             }
         '''))
@@ -124,8 +137,14 @@ def service(saved="[]"):
 
             probe = SimpleNamespace(call=call, state=lambda: json.loads(call("state")),
                                     notifications=notifications, history=history)
+
+            def finish_load():
+                call("load")
+                return wait_for(probe.state, lambda s: s["initialized"], "delayed history never loaded")
+
+            probe.finish_load = finish_load
             try:
-                wait_for(probe.state, lambda s: s["initialized"], "notification history never loaded")
+                wait_for(probe.state, lambda s: delayed or s["initialized"], "notification history never loaded")
                 yield probe
             except BaseException:
                 print((path / "log").read_text(), file=sys.stderr)
@@ -135,15 +154,18 @@ def service(saved="[]"):
                 process.wait(timeout=5)
 
 
-def notify(replaces=0, summary="First", body="First body", app="Test app", timeout=1200,
-           hints="{}", actions="['open', 'Open']"):
-    result = subprocess.run([
+def dbus(method, *args):
+    return subprocess.run([
         "gdbus", "call", "--session", "--dest", "org.freedesktop.Notifications",
         "--object-path", "/org/freedesktop/Notifications",
-        "--method", "org.freedesktop.Notifications.Notify", app, str(replaces), "",
-        summary, body, actions, hints, str(timeout),
-    ], text=True, capture_output=True, check=True, timeout=5)
-    return int(re.search(r"uint32 (\d+)", result.stdout).group(1))
+        "--method", f"org.freedesktop.Notifications.{method}", *map(str, args),
+    ], text=True, capture_output=True, check=True, timeout=5).stdout
+
+
+def notify(replaces=0, summary="First", body="First body", app="Test app", timeout=1200,
+           hints="{}", actions="['open', 'Open']"):
+    result = dbus("Notify", app, replaces, "", summary, body, actions, hints, timeout)
+    return int(re.search(r"uint32 (\d+)", result).group(1))
 
 
 def check_replacements():
@@ -214,8 +236,49 @@ def check_replacements():
     print("ok: replacements refresh delivery, timers and persistence once; DND and cooldown hold")
 
 
+def check_startup():
+    saved = json.dumps([{
+        "notificationId": 42, "appName": "Saved app", "appIcon": "", "image": "",
+        "summary": "Saved", "body": "Saved body", "time": 1, "urgency": "normal",
+    }])
+    with service(saved, delayed=True) as probe:
+        first_id = notify(summary="Early", timeout=0)
+        second_id = notify(summary="Another early arrival", timeout=0)
+        notify(first_id, "Latest early text", timeout=0)
+        closed_id = notify(summary="Closed before loading", timeout=0)
+        dbus("CloseNotification", closed_id)
+        before = probe.state()
+        assert not before["initialized"], "fixture did not delay the history read"
+        assert before["items"] == [] and before["deliveries"] == 0, "arrival was delivered before IDs were reserved"
+        loaded = probe.finish_load()
+        assert loaded["offset"] == 42
+        assert {n["id"] for n in loaded["items"]} == {42, 42 + first_id, 42 + second_id}, loaded
+        assert loaded["deliveries"] == loaded["sounds"] == 2
+        early = next(n for n in loaded["items"] if n["id"] == 42 + first_id)
+        assert early["summary"] == "Latest early text" and early["tracked"] and early["popup"]
+        assert early["actions"] == [{"identifier": "open", "text": "Open"}]
+        wait_for(lambda: json.loads(probe.notifications.read_text()), lambda rows: len(rows) == 3,
+                 "startup merge was not persisted")
+
+        probe.call("refresh")
+        time.sleep(0.2)
+        reloaded = probe.state()
+        assert reloaded["offset"] == 42 and reloaded["items"] == loaded["items"], "reload replaced live objects or shifted IDs"
+        probe.call("discard", 42 + first_id)
+        removed = wait_for(probe.state, lambda s: len(s["items"]) == 2, "early notification was not dismissible")
+        assert {n["id"] for n in removed["items"]} == {42, 42 + second_id}
+
+    for invalid in (None, "broken JSON", "{}"):
+        with service(invalid, delayed=True) as probe:
+            notify(summary="After missing or invalid history", timeout=0)
+            state = probe.finish_load()
+            assert state["offset"] == 0 and len(state["items"]) == 1 and state["items"][0]["tracked"]
+    print("ok: early arrivals survive delayed history, IDs stay unique, missing and invalid history recover")
+
+
 if __name__ == "__main__":
     if "--private-bus" not in sys.argv:
         subprocess.run(["dbus-run-session", "--", sys.executable, __file__, "--private-bus"], check=True)
     else:
         check_replacements()
+        check_startup()
