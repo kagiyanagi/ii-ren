@@ -14,6 +14,8 @@ icons (this monitor's tiled windows, left to right, without reordering the share
 and the adaptive background (a tiled window on this monitor's active workspace).
 Monitor ids deliberately differ from screen indices, as they do after hotplug;
 filtering bar.screenList must not change which physical monitor a bar reads.
+Switching to an empty workspace must clear style 2 without a window-list change;
+switching back and constructing a fresh bar must immediately restore it.
 """
 import json
 import re
@@ -88,9 +90,17 @@ for (const [file, body] of Object.entries({json.dumps(backgrounds)})) {{
     assert.strictEqual(covered('DP-1'), true, file + ": a new bar has no adaptive background over a tiled window");
     assert.strictEqual(covered('HDMI-A-1'), false, file + ": a floating window gave the bar its adaptive background");
     assert.strictEqual(covered('disconnected'), false, file + ": a missing monitor borrowed another bar's background");
+    const settledWindows = HyprlandData.windowList;
+    HyprlandData.monitors[0].activeWorkspace = {{ id: 9 }};
+    assert.strictEqual(covered('DP-1'), false, file + ': an empty-workspace switch left the background on');
+    HyprlandData.monitors = HyprlandData.monitors.map(m => m.name === 'DP-1'
+        ? {{ ...m, activeWorkspace: {{ id: 1 }} }} : m);
+    assert.strictEqual(covered('DP-1'), true, file + ': switching back did not restore the background');
+    assert.strictEqual(covered('DP-1'), true, file + ': a rebuilt bar needed a new window event');
+    assert.strictEqual(HyprlandData.windowList, settledWindows, 'the regression changed windows to refresh the bar');
     Config.options.bar.barBackgroundStyle = 1;
     assert.strictEqual(covered('DP-1'), false, file + ": hasActiveWindows worked outside the adaptive style");
 }}
-console.log("ok: a bar built after the window list settled shows its icons and adaptive background at once");
+console.log("ok: icons and adaptive backgrounds follow the physical monitor, workspace switches and bar recreation without new window data");
 """
 subprocess.run(["node", "-e", JS], check=True)
