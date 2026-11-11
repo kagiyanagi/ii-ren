@@ -30,18 +30,16 @@ Scope {
             id: barLoader
             active: GlobalStates.barOpen && !GlobalStates.screenLocked
             required property ShellScreen modelData
-            property int monitorIndex: barVariant.variantModel.indexOf(modelData)
             component: PanelWindow { // Bar window
                 id: barRoot
                 screen: barLoader.modelData
 
-                property int monitorIndex: barLoader.monitorIndex
                 // Bound, not set from a windowListChanged handler: the bar is rebuilt on every
                 // unlock, and HyprlandData passes on no reply identical to the last.
                 readonly property bool hasActiveWindows: {
                     if (Config.options.bar.barBackgroundStyle !== 2)
                         return false;
-                    const wsId = HyprlandData.monitors.find(m => m.id === barRoot.monitorIndex)?.activeWorkspace?.id;
+                    const wsId = HyprlandData.monitors.find(m => m.name === barRoot.screen?.name)?.activeWorkspace?.id;
                     return wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
                 }
                 property bool showBarBackground: barRoot.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1

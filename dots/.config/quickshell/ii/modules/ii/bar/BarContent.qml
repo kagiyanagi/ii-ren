@@ -17,14 +17,13 @@ Item { // Bar content region
     // Kept for the widgets in the lists, which can resolve it by scope; nothing
     // in this file reads it since the shortened-form machinery below went.
     property var screen: root.QsWindow.window?.screen
-    property int monitorIndex
 
     // Bound, not set from a windowListChanged handler: the bar is rebuilt on every
     // unlock, and HyprlandData passes on no reply identical to the last.
     readonly property bool hasActiveWindows: {
         if (Config.options.bar.barBackgroundStyle !== 2)
             return false;
-        const wsId = HyprlandData.monitors.find(m => m.id === root.monitorIndex)?.activeWorkspace?.id;
+        const wsId = HyprlandData.monitors.find(m => m.name === root.screen?.name)?.activeWorkspace?.id;
         return wsId ? HyprlandData.windowList.some(w => w.workspace.id === wsId && !w.floating) : false;
     }
     property bool showBarBackground: root.hasActiveWindows && Config.options.bar.barBackgroundStyle === 2 || Config.options.bar.barBackgroundStyle === 1

@@ -18,7 +18,8 @@ Item {
 
     readonly property bool useWorkspaceMap: Config.options.bar.workspaces.useWorkspaceMap
     readonly property list<int> workspaceMap: Config.options.bar.workspaces.workspaceMap 
-    readonly property int monitorIndex: barLoader.monitorIndex
+    // Workspace-map slots follow the full screen list, not the filtered bar list.
+    readonly property int monitorIndex: Math.max(0, Quickshell.screens.findIndex(screen => screen.name === root.monitor?.name))
     property int workspaceOffset: useWorkspaceMap ? workspaceMap[monitorIndex] : 0
 
     readonly property int workspacesShown: dynamicWorkspaces
@@ -31,7 +32,7 @@ Item {
     // HyprlandData passes on no reply identical to the last, so a handler left a new bar
     // showing numerals until some window changed.
     readonly property var monitorWindows: HyprlandData.windowList
-        .filter(win => win.monitor === root.monitorIndex && !win.floating)
+        .filter(win => win.monitor === root.monitor?.id && !win.floating)
         .sort((a, b) => a.at[0] - b.at[0])
         .map(win => ({
             icon: Quickshell.iconPath(AppSearch.guessIcon(win?.class), "image-missing"),

@@ -11,7 +11,7 @@ Item { // Bar content region
     id: root
 
     property var screen: root.QsWindow.window?.screen
-    // Computed by VerticalBar.qml, which is where monitorIndex actually lives.
+    // Computed for this screen by VerticalBar.qml.
     required property bool showBarBackground
 
     ////// Definning places of center modules //////

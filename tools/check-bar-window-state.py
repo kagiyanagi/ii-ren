@@ -12,6 +12,8 @@ This asserts no bar file fills state from a HyprlandData change handler, then ru
 bindings under node against a window list that was there before the bar: the workspace
 icons (this monitor's tiled windows, left to right, without reordering the shared list)
 and the adaptive background (a tiled window on this monitor's active workspace).
+Monitor ids deliberately differ from screen indices, as they do after hotplug;
+filtering bar.screenList must not change which physical monitor a bar reads.
 """
 import json
 import re
@@ -42,6 +44,7 @@ for path in sorted([*(II / "modules/ii/bar").rglob("*.qml"), *(II / "modules/ii/
 
 icons = re.search(r"readonly property var monitorWindows: (.*?)\n(?= {4}\S)", WORKSPACES, re.S)
 assert icons, "Workspaces.qml: monitorWindows is not a binding"
+screen_index = re.search(r"readonly property int monitorIndex: (.*)", WORKSPACES).group(1)
 backgrounds = {}
 for f, src in BACKGROUNDS.items():
     m = re.search(r"\n( *)readonly property bool hasActiveWindows: \{\n(.*?)\n\1\}\n", src, re.S)
@@ -51,35 +54,42 @@ for f, src in BACKGROUNDS.items():
 JS = f"""
 const assert = require("assert");
 const windows = [
-    {{ class: "b", monitor: 0, floating: false, at: [900, 0], workspace: {{ id: 1 }} }},
-    {{ class: "a", monitor: 0, floating: false, at: [0, 0], workspace: {{ id: 1 }} }},
-    {{ class: "f", monitor: 0, floating: true, at: [10, 0], workspace: {{ id: 2 }} }},
-    {{ class: "o", monitor: 1, floating: false, at: [0, 0], workspace: {{ id: 3 }} }},
+    {{ class: "b", monitor: 17, floating: false, at: [900, 0], workspace: {{ id: 1 }} }},
+    {{ class: "a", monitor: 17, floating: false, at: [0, 0], workspace: {{ id: 1 }} }},
+    {{ class: "f", monitor: 17, floating: true, at: [10, 0], workspace: {{ id: 2 }} }},
+    {{ class: "o", monitor: 41, floating: false, at: [0, 0], workspace: {{ id: 3 }} }},
 ];
 const HyprlandData = {{
     windowList: windows,
-    monitors: [{{ id: 0, activeWorkspace: {{ id: 1 }} }}, {{ id: 1, activeWorkspace: {{ id: 2 }} }}],
+    monitors: [{{ id: 17, name: 'DP-1', activeWorkspace: {{ id: 1 }} }},
+               {{ id: 41, name: 'HDMI-A-1', activeWorkspace: {{ id: 2 }} }}],
 }};
-const Quickshell = {{ iconPath: (name, fallback) => "icon:" + name }};
+const Quickshell = {{ iconPath: (name, fallback) => "icon:" + name,
+    screens: [{{ name: 'HDMI-A-1' }}, {{ name: 'DP-1' }}] }};
 const AppSearch = {{ guessIcon: cls => cls }};
 const Config = {{ options: {{ bar: {{ barBackgroundStyle: 2 }} }} }};
 
-const root = {{ monitorIndex: 0 }};
+const root = {{ monitorIndex: 0, monitor: {{ id: 17, name: 'DP-1' }}, screen: {{ name: 'DP-1' }} }};
+assert.equal(({screen_index}), 1, 'workspace-map slots followed the filtered bar list');
+root.monitor = null;
+assert.equal(({screen_index}), 0, 'a bar without its screen during construction has no safe map slot');
+root.monitor = {{ id: 17, name: 'DP-1' }};
 assert.deepStrictEqual(({icons.group(1)}), [
     {{ icon: "icon:a", workspace: 1 }}, {{ icon: "icon:b", workspace: 1 }},
 ], "a new bar's workspace icons are not this monitor's tiled windows, left to right");
 assert.deepStrictEqual(windows.map(w => w.class), ["b", "a", "f", "o"], "the icons reordered HyprlandData's window list");
 
 for (const [file, body] of Object.entries({json.dumps(backgrounds)})) {{
-    const covered = index => {{
-        const root = {{ monitorIndex: index }}, barRoot = root;
+    const covered = name => {{
+        const root = {{ monitorIndex: 0, screen: {{ name }} }}, barRoot = root;
         return new Function("root", "barRoot", "HyprlandData", "Config", body)(root, barRoot, HyprlandData, Config);
     }};
     Config.options.bar.barBackgroundStyle = 2;
-    assert.strictEqual(covered(0), true, file + ": a new bar has no adaptive background over a tiled window");
-    assert.strictEqual(covered(1), false, file + ": a floating window gave the bar its adaptive background");
+    assert.strictEqual(covered('DP-1'), true, file + ": a new bar has no adaptive background over a tiled window");
+    assert.strictEqual(covered('HDMI-A-1'), false, file + ": a floating window gave the bar its adaptive background");
+    assert.strictEqual(covered('disconnected'), false, file + ": a missing monitor borrowed another bar's background");
     Config.options.bar.barBackgroundStyle = 1;
-    assert.strictEqual(covered(0), false, file + ": hasActiveWindows worked outside the adaptive style");
+    assert.strictEqual(covered('DP-1'), false, file + ": hasActiveWindows worked outside the adaptive style");
 }}
 console.log("ok: a bar built after the window list settled shows its icons and adaptive background at once");
 """
