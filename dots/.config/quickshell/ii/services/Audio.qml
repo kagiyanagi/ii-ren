@@ -34,9 +34,15 @@ Singleton {
         // something to pick or show a slider for.
         return (node.isSink === isSink) && node.audio && !root.isCombineNode(node)
     }
+    // The shell's own streams: SoundService keeps corked SoundEffect streams open
+    // for low-latency clicks and chimes, and they showed in every mixer as rows of
+    // "quickshell - QtmPulseStream-<pid>-<n>". Their loudness is the system volume.
+    function isOwnStream(node) {
+        return Number(node.properties?.["application.process.id"] ?? 0) === Quickshell.processId
+    }
     function appNodes(isSink) {
         return Pipewire.nodes.values.filter((node) => { // Should be list<PwNode> but it breaks ScriptModel
-            return root.correctType(node, isSink) && node.isStream
+            return root.correctType(node, isSink) && node.isStream && !root.isOwnStream(node)
         })
     }
     function devices(isSink) {
@@ -286,6 +292,12 @@ Singleton {
     }
     PwObjectTracker {
         objects: [sink, source]
+    }
+
+    // An unbound node has empty properties, so isOwnStream() cannot see whose a
+    // stream is until something binds it. Streams are a handful of nodes.
+    PwObjectTracker {
+        objects: Pipewire.nodes.values.filter(node => node.isStream)
     }
 
     onSinkChanged: {
