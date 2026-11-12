@@ -352,7 +352,13 @@ Singleton {
                 // one per app ever opened, and a pid the kernel hands out again would
                 // have inherited a dead app's.
                 const live = new Set([...HyprlandData.windowList, ...root.state.windows].map(w => String(w.pid)));
-                const known = Object.fromEntries(Object.entries(root.ownControlsByPid).filter(([pid]) => live.has(pid)));
+                // No Object.fromEntries in the shell's JS engine: it threw here on every
+                // probe, so the map never filled and nothing below it ever ran.
+                const known = {};
+                for (const [pid, own] of Object.entries(root.ownControlsByPid)) {
+                    if (live.has(pid))
+                        known[pid] = own;
+                }
                 for (const line of text.split("\n")) {
                     const f = line.split(" ");
                     if (f.length === 2)
