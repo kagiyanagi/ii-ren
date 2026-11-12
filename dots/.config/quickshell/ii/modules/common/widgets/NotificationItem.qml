@@ -12,6 +12,8 @@ import Quickshell.Services.Notifications
 
 Item { // Notification item area
     id: root
+    // Null for the last frames of a row sliding out after its notification
+    // went, so every binding below reads it with ?. and a default.
     property var notificationObject
     property bool expanded: false
     property real fontSize: Appearance.font.pixelSize.small
@@ -77,7 +79,7 @@ Item { // Notification item area
                         color: Appearance.colors.colOnLayer2
                         elide: Text.ElideRight
                         maximumLineCount: 1
-                        text: root.notificationObject.summary || ""
+                        text: root.notificationObject?.summary || ""
                     }
 
                     StyledText { // Text
@@ -91,7 +93,7 @@ Item { // Notification item area
                         maximumLineCount: root.expanded ? 20 : 1
                         textFormat: root.expanded ? Text.RichText : Text.StyledText
                         text: {
-                            const body = NotificationUtils.processNotificationBody(root.notificationObject.body, root.notificationObject.appName || root.notificationObject.summary).replace(/\n/g, "<br/>")
+                            const body = NotificationUtils.processNotificationBody(root.notificationObject?.body ?? "", root.notificationObject?.appName || root.notificationObject?.summary || "").replace(/\n/g, "<br/>")
                             return root.expanded ? `<style>img{max-width:${textColumn.width}px;}</style>${body}` : body
                         }
 
@@ -106,10 +108,10 @@ Item { // Notification item area
 
                 Loader { // Large icon, Android puts it opposite the text
                     Layout.alignment: Qt.AlignTop
-                    active: root.notificationObject.image != ""
+                    active: (root.notificationObject?.image ?? "") != ""
                     sourceComponent: NotificationAppIcon {
                         implicitSize: 40
-                        image: root.notificationObject.image
+                        image: root.notificationObject?.image ?? ""
                     }
                 }
             }
@@ -178,8 +180,8 @@ Item { // Notification item area
                             id: closeButton
                             Layout.fillWidth: true
                             buttonText: Translation.tr("Close")
-                            urgency: root.notificationObject.urgency
-                            implicitWidth: (root.notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
+                            urgency: root.notificationObject?.urgency ?? "normal"
+                            implicitWidth: ((root.notificationObject?.actions.length ?? 0) == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                 (closeButton.contentItem.implicitWidth + closeButton.leftPadding + closeButton.rightPadding)
 
                             onClicked: {
@@ -196,13 +198,13 @@ Item { // Notification item area
 
                         Repeater {
                             id: actionRepeater
-                            model: root.notificationObject.actions
+                            model: root.notificationObject?.actions ?? []
                             NotificationActionButton {
                                 id: notifAction
                                 required property var modelData
                                 Layout.fillWidth: true
                                 buttonText: notifAction.modelData.text
-                                urgency: root.notificationObject.urgency
+                                urgency: root.notificationObject?.urgency ?? "normal"
                                 onClicked: {
                                     Notifications.attemptInvokeAction(root.notificationObject.notificationId, notifAction.modelData.identifier);
                                 }
@@ -212,8 +214,8 @@ Item { // Notification item area
                         NotificationActionButton {
                             id: copyButton
                             Layout.fillWidth: true
-                            urgency: root.notificationObject.urgency
-                            implicitWidth: (root.notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
+                            urgency: root.notificationObject?.urgency ?? "normal"
+                            implicitWidth: ((root.notificationObject?.actions.length ?? 0) == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) :
                                 (copyButton.contentItem.implicitWidth + copyButton.leftPadding + copyButton.rightPadding)
 
                             onClicked: {
