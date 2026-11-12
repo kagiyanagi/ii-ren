@@ -5,7 +5,9 @@ Quickshell emits NotificationServer.notification only for new objects. Replacing
 one updates its properties instead, so bound text changed on screen while sound,
 popup lifetime and the saved copy stayed at the first delivery. A multi-field
 replacement must deliver once, retain the same wrapper and restart its timer;
-hint-only progress and action-label updates must also reach that path.
+hint-only progress and action-label updates must also reach that path. It must
+not alert again: no sound, no unread, and its history entry is rewritten, not
+copied - a download's progress or a player's next track chimed on every update.
 Identical resends need the typed D-Bus delivery observer because Quickshell emits
 no property signals for them. A replacement must preserve a hover pause, and a
 pointer leaving starts a full new timeout instead of closing the card at once.
@@ -247,14 +249,15 @@ def check_replacements():
         item = updated["items"][0]
         assert item["id"] == wrapper_id and item["time"] > first["items"][0]["time"]
         assert item["summary"] == "Updated" and item["body"] == "Updated body"
-        assert updated["sounds"] == 2 and item["popup"]
+        assert updated["sounds"] == 1 and item["popup"], "an update chimed again"
+        assert updated["unread"] == 1, "an update counted as another unread notification"
         assert item["timer"] == {"running": True, "interval": 2000}
         wait_for(lambda: json.loads(probe.notifications.read_text()),
                  lambda saved: len(saved) == 1 and saved[0]["body"] == "Updated body",
                  "replacement text was not saved")
         wait_for(lambda: json.loads(probe.history.read_text()),
-                 lambda saved: len(saved) == 2 and saved[-1]["summary"] == "Updated",
-                 "replacement was not recorded in history")
+                 lambda saved: len(saved) == 1 and saved[0]["summary"] == "Updated",
+                 "replacement was not recorded in history as one rewritten entry")
         time.sleep(0.9)  # Past the original deadline, before the replacement's.
         assert probe.state()["items"][0]["popup"], "the original timer expired the replacement"
         wait_for(probe.state, lambda s: not s["items"][0]["popup"], "replacement never timed out")
@@ -262,7 +265,7 @@ def check_replacements():
         notify(server_id, "Updated", "Updated body", timeout=0, hints="{'value': <75>}")
         progress = wait_for(probe.state, lambda s: s["deliveries"] == 3, "hint-only update was ignored")
         assert progress["items"][0]["popup"] and progress["items"][0]["timer"] is None
-        assert progress["sounds"] == 3
+        assert progress["sounds"] == 1 and progress["unread"] == 1, "a progress tick alerted again"
 
         notify(server_id, "Updated", "Updated body", timeout=0, hints="{'value': <75>}",
                actions="['open', 'Read']")
@@ -272,19 +275,19 @@ def check_replacements():
         probe.call("silent", "true")
         notify(server_id, "Quiet", timeout=0)
         quiet = wait_for(probe.state, lambda s: s["deliveries"] == 5, "DND dropped the update")
-        assert quiet["sounds"] == 4 and not quiet["items"][0]["popup"], "replacement bypassed DND"
+        assert quiet["sounds"] == 1 and not quiet["items"][0]["popup"], "replacement bypassed DND"
         probe.call("silent", "false")
         notify(server_id, "Visible", timeout=0)
         wait_for(probe.state, lambda s: s["deliveries"] == 6, "replacement failed to reappear")
         probe.call("cooldown", "true")
         notify(server_id, "Still visible", timeout=2000)
         cooled = wait_for(probe.state, lambda s: s["deliveries"] == 7, "cooldown dropped the update")
-        assert cooled["sounds"] == 5 and cooled["items"][0]["popup"], "cooldown hid a visible popup"
+        assert cooled["sounds"] == 1 and cooled["items"][0]["popup"], "cooldown hid a visible popup"
         assert cooled["items"][0]["timer"]["running"]
         probe.call("hide", wrapper_id)
         notify(server_id, "Still quiet", timeout=0)
         hidden = wait_for(probe.state, lambda s: s["deliveries"] == 8, "hidden replacement was ignored")
-        assert hidden["sounds"] == 5 and not hidden["items"][0]["popup"], "cooldown was bypassed"
+        assert hidden["sounds"] == 1 and not hidden["items"][0]["popup"], "cooldown was bypassed"
 
         probe.call("cooldown", "false")
         notify(app="Other app", timeout=0)
@@ -297,7 +300,11 @@ def check_replacements():
         renamed = wait_for(probe.state, lambda s: s["groups"] == ["Renamed app", "Other app"],
                            "replacement did not refresh app grouping and ordering")
         assert len(renamed["items"]) == 2
-    print("ok: replacements refresh delivery, timers and persistence once; DND and cooldown hold")
+        assert renamed["sounds"] == renamed["unread"] == 2, "only the new app's notification alerts"
+        wait_for(lambda: json.loads(probe.history.read_text()),
+                 lambda saved: [e["summary"] for e in saved] == ["Renamed", "First"],
+                 "updates were copied into history instead of rewriting their entry")
+    print("ok: replacements refresh delivery, timers and persistence once without alerting again; DND and cooldown hold")
 
 
 def check_identical_and_hover():
@@ -308,7 +315,7 @@ def check_identical_and_hover():
         notify(server_id, timeout=1200)
         resent = wait_for(probe.state, lambda s: s["deliveries"] == 2, "identical resend was ignored")
         assert resent["items"][0]["time"] > first["items"][0]["time"]
-        assert resent["sounds"] == 2 and len(resent["items"]) == 1
+        assert resent["sounds"] == 1 and resent["unread"] == 1 and len(resent["items"]) == 1
         time.sleep(0.7)
         assert probe.state()["items"][0]["popup"], "identical resend kept its original deadline"
         wait_for(probe.state, lambda s: not s["items"][0]["popup"], "identical resend never timed out")

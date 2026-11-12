@@ -266,6 +266,11 @@ Singleton {
 
     function deliverNotification(notif) {
         const notification = notif.notification;
+        // A replacement is the same notification updated in place: a download's
+        // progress, the next track, a phone's ongoing call. Like Android's
+        // setOnlyAlertOnce it alerts when it first arrives, not on every update.
+        const replacement = root.list.includes(notif);
+        const previousTime = notif.time;
         const now = Date.now();
         const lastTime = root.latestTimeForApp[notification.appName] || 0;
         const cooledDown = Config.options.notifications.cooldown && now - lastTime < 5000;
@@ -273,7 +278,7 @@ Singleton {
         // An open sidebar holds the popup back, not the sound; Do Not Disturb
         // holds both. Low urgency is quiet, and an app may name its own sound.
         const hints = notification.hints;
-        if (!root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
+        if (!replacement && !root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
             SoundService.playEvent("notifications", [hints["sound-file"], hints["sound-name"], ...SoundService.events.notifications].filter(Boolean));
 
         // Replace the old deadline even if it was stopped by hovering, or the
@@ -297,24 +302,35 @@ Singleton {
 
         // Keep the wrapper stable for the views, but refresh grouping and sorting
         // after a replacement changes the app name or delivery time.
-        if (root.list.includes(notif)) root.triggerListChange();
+        if (replacement) root.triggerListChange();
         else root.list = [...root.list, notif];
-        // DND holds the popup back, not the unread count.
-        if (!(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
+        // DND holds the popup back, not the unread count. An update was counted already.
+        if (!replacement && !(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
         root.notify(notif);
-        if (Config.options.notifications.history.enable) root.recordHistory(notif);
+        if (Config.options.notifications.history.enable) root.recordHistory(notif, replacement ? previousTime : -1);
         notifFileView.setText(stringifyList(root.list));
     }
 
     // ponytail: whole file rewritten per notification, capped so that stays cheap;
     // move to JSONL appends if the cap ever needs to grow by orders of magnitude.
     readonly property int historyLimit: 1000
-    function recordHistory(notif) {
+    // An update rewrites its own entry, found by id and the time it was saved
+    // with: ids from older sessions recur, and a file of copies of one download's
+    // progress is no history.
+    function recordHistory(notif, previousTime) {
         let history = [];
         try { history = JSON.parse(historyFileView.text() || "[]"); } catch (e) {}
         const entry = notifToJSON(notif);
         delete entry.actions; // dead once the sender is gone, same as the reload path
-        history.push(entry);
+        let index = -1;
+        for (let i = history.length - 1; i >= 0 && previousTime >= 0; i--) {
+            if (history[i].notificationId === entry.notificationId && history[i].time === previousTime) {
+                index = i;
+                break;
+            }
+        }
+        if (index >= 0) history[index] = entry;
+        else history.push(entry);
         historyFileView.setText(JSON.stringify(history.slice(-root.historyLimit)));
     }
 
