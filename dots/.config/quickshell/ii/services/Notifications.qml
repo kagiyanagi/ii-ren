@@ -362,9 +362,12 @@ Singleton {
     }
 
     function discardNotification(id) {
-        console.log("[Notifications] Discarding notification with ID: " + id);
         const index = root.list.findIndex((notif) => notif.notificationId === id);
         const notifServerIndex = root.trackedNotifications.findIndex((notif) => notif.id + root.idOffset === id);
+        // Dismissing the server's notification below nulls the wrapper's, and its
+        // onNotificationChanged calls back in here for one already gone.
+        if (index === -1 && notifServerIndex === -1) return;
+        console.log("[Notifications] Discarding notification with ID: " + id);
         if (index !== -1) {
             root._release(root.list.splice(index, 1));
             notifFileView.setText(stringifyList(root.list));
