@@ -27,6 +27,20 @@ Scope {
     property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.hyprlandGapsOut + 1
     property list<real> visualizerPoints: []
 
+    // With no media widget on the bar the dock's popup takes the request, and that
+    // popup exists only while there is a player. Asked with none (or left open as
+    // the player quit), the flag stayed set: the dock, which reveals on it, stayed
+    // pinned out, and the next press of the shortcut only cleared it.
+    readonly property bool requestUnserved: GlobalStates.mediaControlsOpen
+        && GlobalStates.dockMediaPresent && !GlobalStates.barMediaPresent
+        && root.realPlayers.length === 0
+    // Deferred: clearing a dependency from inside this binding's own change handler
+    // left the binding stuck true, so the next unserved request was never seen.
+    onRequestUnservedChanged: if (requestUnserved) Qt.callLater(() => {
+        if (root.requestUnserved)
+            GlobalStates.mediaControlsOpen = false;
+    })
+
     function filterDuplicatePlayers(players) {
         let filtered = [];
         let used = new Set();
