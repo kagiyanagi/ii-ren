@@ -20,11 +20,17 @@ Item {
     readonly property list<int> workspaceMap: Config.options.bar.workspaces.workspaceMap 
     // Workspace-map slots follow the full screen list, not the filtered bar list.
     readonly property int monitorIndex: Math.max(0, Quickshell.screens.findIndex(screen => screen.name === root.monitor?.name))
-    property int workspaceOffset: useWorkspaceMap ? workspaceMap[monitorIndex] : 0
+    // A map shorter than the monitor list has no slot for the later screens: they
+    // start at 0 rather than at undefined, which threw and broke every count below.
+    readonly property int mapOffset: workspaceMap[monitorIndex] ?? 0
+    property int workspaceOffset: useWorkspaceMap ? mapOffset : 0
 
-    readonly property int workspacesShown: dynamicWorkspaces
-    ? ((workspaceMap[monitorIndex + 1] ?? workspaceMap[monitorIndex] + Config.options.bar.workspaces.shown) - workspaceMap[monitorIndex])
-    : Config.options.bar.workspaces.shown
+    // Never 0: it divides the active id into a group, and NaN took the bar down.
+    // The map's ranges only with the map on, as workspaceOffset reads it: off, the
+    // count came from the map anyway and `shown` was ignored with dynamic workspaces.
+    readonly property int workspacesShown: Math.max(1, (dynamicWorkspaces && useWorkspaceMap)
+    ? ((workspaceMap[monitorIndex + 1] ?? mapOffset + Config.options.bar.workspaces.shown) - mapOffset)
+    : Config.options.bar.workspaces.shown)
     readonly property int workspaceGroup: Math.floor((monitor?.activeWorkspace?.id - root.workspaceOffset - 1) / root.workspacesShown)
     property list<bool> workspaceOccupied: []
     property int workspaceIndexInGroup: (monitor?.activeWorkspace?.id - root.workspaceOffset - 1) % root.workspacesShown
