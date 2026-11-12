@@ -26,7 +26,10 @@ Singleton {
     property bool isLowAndNotCharging: isLow && !isPluggedIn
     property bool isCriticalAndNotCharging: isCritical && !isPluggedIn
     property bool isSuspendingAndNotCharging: allowAutomaticSuspend && isSuspending && !isPluggedIn
-    property bool isFullAndCharging: isFull && isCharging
+    // On AC, not Charging: UPower turns Charging into FullyCharged at 100%, and a
+    // charge limit holds the battery at PendingCharge below `full`, so neither
+    // "full" ever coincided with Charging and the notice rarely came.
+    property bool isFullAndCharging: isPluggedIn && (isFull || chargeLimitReached)
 
     property real energyRate: UPower.displayDevice.changeRate
     property real timeToEmpty: UPower.displayDevice.timeToEmpty
@@ -226,8 +229,8 @@ Singleton {
         if (!root.available || !isFullAndCharging) return;
         Quickshell.execDetached([
             "notify-send",
-            Translation.tr("Battery full"),
-            Translation.tr("Please unplug the charger"),
+            root.chargeLimitReached && !root.isFull ? Translation.tr("Charged to %1%").arg(root.chargeLimit) : Translation.tr("Battery full"),
+            root.chargeLimitReached && !root.isFull ? Translation.tr("The charge limit is holding it here") : Translation.tr("Please unplug the charger"),
             "-a", "Shell",
             "--hint=int:transient:1",
             "--hint=boolean:suppress-sound:true",
