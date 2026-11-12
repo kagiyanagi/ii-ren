@@ -2,12 +2,14 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import qs.modules.common.functions
-import Qt5Compat.GraphicalEffects
 import QtQuick
 import Quickshell.Io
 import Quickshell.Widgets
 
-IconImage {
+// Search results draw one per link, so this sits inside a delegate: rounded with
+// the scene graph's clip (ClippingRectangle), not a layer and an OpacityMask pass
+// per icon (DESIGN.md effect budget, law 8).
+ClippingRectangle {
     id: root
     property string url
     property string displayText
@@ -23,30 +25,45 @@ IconImage {
     property string faviconFilePath: `${faviconDownloadPath}/${fileName}`
     property string urlToLoad
 
+    implicitWidth: root.size
+    implicitHeight: root.size
+    radius: Appearance.rounding.full
+    color: "transparent"
+
+    // A cached icon is used as is. Every icon used to start a shell to test for the
+    // file, and a failed download left a path to a file that was never written.
+    FileView {
+        path: root.domainName.length > 0 ? root.faviconFilePath : ""
+        printErrors: false
+        onLoaded: root.urlToLoad = root.faviconFilePath
+        onLoadFailed: faviconDownloadProcess.running = true
+    }
+
     Process {
         id: faviconDownloadProcess
-        running: false
         // Arguments, never interpolated into the script.
-        command: ["sh", "-c", '[ -f "$1" ] || curl -sfL --proto =https -A "$3" -o "$1" --url "$2"',
+        command: ["sh", "-c", 'curl -sfL --proto =https -A "$3" -o "$1" --url "$2"',
             "sh", root.faviconFilePath, root.faviconUrl, root.downloadUserAgent]
         onExited: (exitCode, exitStatus) => {
-            root.urlToLoad = root.faviconFilePath
+            if (exitCode === 0)
+                root.urlToLoad = root.faviconFilePath;
         }
     }
 
-    Component.onCompleted: {
-        faviconDownloadProcess.running = true
+    IconImage {
+        id: icon
+        anchors.fill: parent
+        implicitSize: root.size
+        source: root.urlToLoad.length > 0 ? Qt.resolvedUrl(root.urlToLoad) : ""
+        visible: status === Image.Ready
     }
 
-    source: Qt.resolvedUrl(root.urlToLoad)
-    implicitSize: root.size
-
-    layer.enabled: true
-    layer.effect: OpacityMask {
-        maskSource: Rectangle {
-            width: root.implicitSize
-            height: root.implicitSize
-            radius: Appearance.rounding.full
-        }
+    // Offline, or a site with no icon.
+    MaterialSymbol {
+        anchors.centerIn: parent
+        visible: icon.status !== Image.Ready
+        text: "public"
+        iconSize: root.size * 0.8
+        color: Appearance.colors.colSubtext
     }
 }
