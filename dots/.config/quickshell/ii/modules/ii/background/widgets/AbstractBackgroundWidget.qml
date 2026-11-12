@@ -54,7 +54,10 @@ AbstractWidget {
     }
 
     readonly property var centeredWidgetsList: {
-        if (backgroundScope && backgroundScope.widgetSyncVersion !== undefined) {
+        // backgroundScope is Background.qml's id, reached through the context; a
+        // widget built anywhere else (and every one mid-teardown) has none, and a
+        // bare read threw a ReferenceError. Line 168 already asked this way.
+        if (typeof backgroundScope !== "undefined" && backgroundScope.widgetSyncVersion !== undefined) {
             backgroundScope.widgetSyncVersion; // dependency to force re-evaluation
         }
         return getCenteredWidgetsList() ?? [];
