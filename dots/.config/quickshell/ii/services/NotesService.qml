@@ -143,7 +143,8 @@ Singleton {
         const addition = String(text ?? "").trim();
         if (addition.length === 0)
             return { ok: false, error: "emptyText" };
-        const previous = String(tabs[index].content ?? "").trimEnd();
+        // No trimEnd in the shell's JS engine.
+        const previous = String(tabs[index].content ?? "").replace(/\s+$/, "");
         tabs[index].content = previous.length > 0 ? `${previous}\n\n${addition}` : addition;
         if (!root.scheduleWrite({ tabs: tabs }))
             return { ok: false, error: "notReady" };

@@ -320,11 +320,14 @@ class RoundedPolygon {
         let pvRounding = perVertexRounding
         // If no per-vertex rounding supplied and caller asked for inner rounding,
         // create per-vertex rounding list based on supplied outer/inner rounding parameters
+        // (ii-ren: no flatMap in Quickshell's JS engine, and the result was never passed on.)
         if (pvRounding == null && innerRounding != null) {
-            pvRounding = Array.from({ length: numVerticesPerRadius * 2 }).flatMap(() => [rounding, innerRounding])
+            pvRounding = []
+            for (let i = 0; i < numVerticesPerRadius; i++)
+                pvRounding.push(rounding, innerRounding)
         }
 
-        return RoundedPolygon.fromVertices(RoundedPolygon.starVerticesFromNumVerts(numVerticesPerRadius, radius, innerRadius, centerX, centerY), rounding, perVertexRounding, centerX, centerY)
+        return RoundedPolygon.fromVertices(RoundedPolygon.starVerticesFromNumVerts(numVerticesPerRadius, radius, innerRadius, centerX, centerY), rounding, pvRounding, centerX, centerY)
     }
 
     static starVerticesFromNumVerts(numVerticesPerRadius, radius, innerRadius, centerX, centerY) {
