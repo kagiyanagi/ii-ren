@@ -81,9 +81,17 @@ Singleton {
 		if (nextPlayer) root.trackedPlayer = nextPlayer;
 		// A browser's bus is named per instance, so each one that ever played left its
 		// entry behind; only buses still on the bus keep theirs.
+		// No Object.fromEntries in the shell's JS engine: this threw on every player
+		// change, and the map was never pruned.
 		const live = allPlayers.map(player => player.dbusName);
-		if (Object.keys(root.pageUrlTracks).some(name => !live.includes(name)))
-			root.pageUrlTracks = Object.fromEntries(Object.entries(root.pageUrlTracks).filter(([name]) => live.includes(name)));
+		if (Object.keys(root.pageUrlTracks).some(name => !live.includes(name))) {
+			const tracks = {};
+			for (const [name, track] of Object.entries(root.pageUrlTracks)) {
+				if (live.includes(name))
+					tracks[name] = track;
+			}
+			root.pageUrlTracks = tracks;
+		}
 	}
 
 	property bool hasActivePlasmaIntegration: false
