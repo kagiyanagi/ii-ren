@@ -36,8 +36,16 @@ Singleton {
         .filter(url => root.isRemote(url))
     onWantedChanged: {
         // A failed fetch gets another try on the next track change, never a retry loop.
-        if (Object.values(root.files).includes(""))
-            root.files = Object.fromEntries(Object.entries(root.files).filter(([, file]) => file));
+        // No Object.fromEntries in the shell's JS engine: after the first failure it
+        // threw here on every track change, before next(), and art stopped for good.
+        if (Object.values(root.files).includes("")) {
+            const files = {};
+            for (const [url, file] of Object.entries(root.files)) {
+                if (file)
+                    files[url] = file;
+            }
+            root.files = files;
+        }
         root.next();
     }
 
