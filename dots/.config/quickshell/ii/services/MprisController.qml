@@ -210,7 +210,7 @@ Singleton {
 		this.__reverse = false;
 	}
 
-	property bool isPlaying: this.activePlayer && this.activePlayer.isPlaying;
+	property bool isPlaying: this.activePlayer?.isPlaying ?? false;
 	property bool canTogglePlaying: this.activePlayer?.canTogglePlaying ?? false;
 	function togglePlaying() {
 		if (this.canTogglePlaying) this.activePlayer.togglePlaying();
@@ -232,9 +232,9 @@ Singleton {
 		}
 	}
 
-	property bool canChangeVolume: this.activePlayer && this.activePlayer.volumeSupported && this.activePlayer.canControl;
+	property bool canChangeVolume: !!(this.activePlayer?.volumeSupported && this.activePlayer.canControl);
 
-	property bool loopSupported: this.activePlayer && this.activePlayer.loopSupported && this.activePlayer.canControl;
+	property bool loopSupported: !!(this.activePlayer?.loopSupported && this.activePlayer.canControl);
 	property var loopState: this.activePlayer?.loopState ?? MprisLoopState.None;
 	function setLoopState(loopState: var) {
 		if (this.loopSupported) {
@@ -242,7 +242,7 @@ Singleton {
 		}
 	}
 
-	property bool shuffleSupported: this.activePlayer && this.activePlayer.shuffleSupported && this.activePlayer.canControl;
+	property bool shuffleSupported: !!(this.activePlayer?.shuffleSupported && this.activePlayer.canControl);
 	property bool hasShuffle: this.activePlayer?.shuffle ?? false;
 	function setShuffle(shuffle: bool) {
 		if (this.shuffleSupported) {

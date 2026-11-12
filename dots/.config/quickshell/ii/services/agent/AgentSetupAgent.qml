@@ -28,7 +28,7 @@ QtObject {
     // setup.py status, as it last answered; null until it has.
     property var status: null
     readonly property bool checked: root.status !== null
-    readonly property bool checking: statusProc.running
+    readonly property bool checking: statusProc?.running ?? false
     readonly property bool installed: root.status?.installed ?? false
     // true, false, or null when the program could not say (status.error).
     readonly property var signedIn: root.status?.signed_in ?? null
