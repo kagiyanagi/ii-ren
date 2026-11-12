@@ -165,7 +165,13 @@ Singleton {
         if (keys.length > 0) {
             // Expired ones go as a new one comes in, or every device ever dismissed stays.
             const now = Date.now();
-            let next = Object.fromEntries(Object.entries(root.suppressedUntil).filter(([, until]) => until > now));
+            // No Object.fromEntries in the shell's JS engine: it threw here, before
+            // popupShown was cleared, so the card could not be closed at all.
+            const next = {};
+            for (const [key, until] of Object.entries(root.suppressedUntil)) {
+                if (until > now)
+                    next[key] = until;
+            }
             for (const key of keys)
                 next[key] = now + suppressMs;
             root.suppressedUntil = next;
