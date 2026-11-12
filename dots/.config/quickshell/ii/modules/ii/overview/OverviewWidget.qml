@@ -248,7 +248,9 @@ Item {
                     id: window
                     required property int index
                     required property var modelData
-                    property int monitorId: windowData?.monitor
+                    // A window Hyprland has not listed yet (just opened, or closing) has
+                    // no windowData: these read undefined into an int and threw below.
+                    property int monitorId: windowData?.monitor ?? -1
                     property var monitor: HyprlandData.monitors.find(m => m.id == monitorId)
                     property var address: `0x${modelData.HyprlandToplevel.address}`
                     toplevel: modelData
@@ -257,7 +259,7 @@ Item {
                     widgetMonitor: HyprlandData.monitors.find(m => m.id == root.monitor.id)
                     windowData: windowByAddress[address]
 
-                    property int wsId: windowData?.workspace?.id
+                    property int wsId: windowData?.workspace?.id ?? 0
 
                     property var wsWindowsSorted: {
                         const arr = []
@@ -282,7 +284,7 @@ Item {
 
                     property int wsIndex: {
                         for (let i = 0; i < wsWindowsSorted.length; i++) {
-                            if (wsWindowsSorted[i].address === windowData.address)
+                            if (wsWindowsSorted[i].address === windowData?.address)
                                 return i
                         }
                         return 0

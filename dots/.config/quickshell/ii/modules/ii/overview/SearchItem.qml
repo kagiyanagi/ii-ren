@@ -221,10 +221,11 @@ RippleButton {
                     model: root.query == root.itemName ? [] : root.urls
                     Favicon {
                         required property var modelData
-                        // The row by id, not `parent`: an icon is unparented on
-                        // its way out, and `parent.height` then read null for
-                        // every link icon removed.
-                        size: nameRow.height
+                        // The text's line, not the row: the row's height is the
+                        // tallest child, this icon included, so sizing it by the row
+                        // was a loop ("Detected recursive rearrange"). By id, not
+                        // `parent`: an icon is unparented on its way out.
+                        size: nameText.implicitHeight
                         url: modelData
                     }
                 }
