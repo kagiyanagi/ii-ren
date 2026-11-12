@@ -112,7 +112,9 @@ Singleton {
         property int rawMaxBrightness: 100
         property real brightness
         property real brightnessMultiplier: 1.0
-        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (Config.options.light.antiFlashbang.enable ? brightnessMultiplier : 1)))
+        // The multiplier is only sampled in dark mode; applied in light mode too, the
+        // last dark-mode reading kept the screen dimmed (or boosted) after switching.
+        property real multipliedBrightness: Math.max(0, Math.min(1, brightness * (root.antiFlashbangActive ? brightnessMultiplier : 1)))
         property bool ready: false
         property bool animateChanges: !monitor.isDdc
         property bool configured: false
@@ -310,9 +312,9 @@ Singleton {
     }
 
     // Anti-flashbang
+    readonly property bool antiFlashbangActive: Config.options.light.antiFlashbang.enable && Appearance.m3colors.darkmode
     property int workspaceAnimationDelay: 500
     property int contentSwitchDelay: 30
-    property string screenshotDir: "/tmp/quickshell/brightness/antiflashbang"
     function brightnessMultiplierForLightness(x: real): real {
         // I hand picked some values and fitted an exponential curve for this
         // 6.600135 + 216.360356 * e^(-0.0811129189x)
@@ -325,11 +327,14 @@ Singleton {
             id: screenScope
             required property var modelData
             property string screenName: modelData.name
-            property string screenshotPath: `${root.screenshotDir}/screenshot-${screenName}.png`
             Connections {
-                enabled: Config.options.light.antiFlashbang.enable && Appearance.m3colors.darkmode
+                enabled: root.antiFlashbangActive
                 target: Hyprland
                 function onRawEvent(event) {
+                    // These events are about the focused monitor; sampling every
+                    // screen on each of them grabbed screens that had not changed.
+                    if (Hyprland.focusedMonitor?.name !== screenScope.screenName)
+                        return;
                     if (["activewindowv2", "windowtitlev2"].includes(event.name)) {
                         screenshotTimer.interval = root.contentSwitchDelay;
                         screenshotTimer.restart();
@@ -352,17 +357,17 @@ Singleton {
             Process {
                 id: screenshotProc
                 command: ["bash", "-c",
-                    `mkdir -p '${StringUtils.shellSingleQuoteEscape(root.screenshotDir)}'`
-                    + ` && grim -o '${StringUtils.shellSingleQuoteEscape(screenScope.screenName)}' -`
+                    `grim -o '${StringUtils.shellSingleQuoteEscape(screenScope.screenName)}' -`
                     + ` | magick png:- -colorspace Gray -format "%[fx:mean*100]" info:`
                 ]
                 stdout: StdioCollector {
                     id: lightnessCollector
                     onStreamFinished: {
-                        Quickshell.execDetached(["rm", screenScope.screenshotPath]); // Cleanup
-                        const lightness = lightnessCollector.text
-                        const newMultiplier = root.brightnessMultiplierForLightness(parseFloat(lightness))
-                        Brightness.getMonitorForScreen(screenScope.modelData).setBrightnessMultiplier(newMultiplier)
+                        // A failed grab or magick prints nothing; NaN would blank the screen.
+                        const lightness = parseFloat(lightnessCollector.text);
+                        if (!isFinite(lightness))
+                            return;
+                        Brightness.getMonitorForScreen(screenScope.modelData).setBrightnessMultiplier(root.brightnessMultiplierForLightness(lightness));
                     }
                 }
             }

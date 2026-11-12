@@ -100,6 +100,7 @@ ShellRoot {
         function set(index: int, value: real): void { Brightness.monitors[index].setBrightness(value); }
         function multiplier(index: int, value: real): void { Brightness.monitors[index].setBrightnessMultiplier(value); }
         function increase(): void { Brightness.increaseBrightness(); }
+        function darkmode(on: bool): void { Appearance.m3colors = ({darkmode: on}); }
     }
 }
 '''
@@ -122,7 +123,7 @@ class Probe:
             "Fixture": "property list<QtObject> screens: [" + ", ".join(
                 "QtObject { property string name: " + json.dumps(n) + " }" for n in screens) + "]",
             "Config": 'property var options: ({light: {antiFlashbang: {enable: true}}})',
-            "Appearance": '''property var m3colors: ({darkmode: false})
+            "Appearance": '''property var m3colors: ({darkmode: true})
                 property var animationCurves: ({expressiveEffects: [0.34, 0.8, 0.34, 1, 1, 1]})''',
             "Hyprland": "property var focusedMonitor: null; signal rawEvent(var event)",
             "Hyprsunset": "property real gamma: 100; function setGamma(v) { gamma = v; }",
@@ -230,6 +231,14 @@ def check_writes():
         p.call("multiplier", 1, 0.5)
         p.wait(lambda s: (p.path / "raw-1").read_text() == "35"
                and (p.path / "raw-2").read_text() == "40", "anti-flashbang drops a monitor")
+
+        # Sampled only in dark mode, so it must not apply in light mode either: the
+        # last dark reading used to keep the screen dimmed after switching.
+        p.call("darkmode", "false")
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "70"
+               and (p.path / "raw-2").read_text() == "80", "light mode keeps the dark-mode multiplier")
+        p.call("darkmode", "true")
+        p.wait(lambda s: (p.path / "raw-1").read_text() == "35", "dark mode loses the multiplier")
 
         count = len(p.calls("write-start"))
         p.call("set", 0, 0.6)
