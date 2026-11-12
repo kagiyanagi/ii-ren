@@ -8,6 +8,10 @@ replacement must deliver once, retain the same wrapper and restart its timer;
 hint-only progress and action-label updates must also reach that path. It must
 not alert again: no sound, no unread, and its history entry is rewritten, not
 copied - a download's progress or a player's next track chimed on every update.
+
+Critical urgency never times out (the spec: only the user closes one) and
+gets through Do Not Disturb and the cooldown. The shell's own low-battery
+warning is critical; it vanished after 7 s, or never showed under DND.
 Identical resends need the typed D-Bus delivery observer because Quickshell emits
 no property signals for them. A replacement must preserve a hover pause, and a
 pointer leaving starts a full new timeout instead of closing the card at once.
@@ -469,12 +473,34 @@ def check_actions():
     print("ok: resident actions stay, ordinary actions close once, missing and stale actions are safe")
 
 
+def check_critical():
+    critical = "{'urgency': <byte 2>}"
+    with service() as probe:
+        probe.call("silent", "true")
+        probe.call("cooldown", "true")
+        notify(summary="Ordinary", timeout=300)
+        notify(summary="Low battery", hints=critical, timeout=300)
+        notify(summary="Critically low", hints=critical)
+        state = wait_for(probe.state, lambda s: s["deliveries"] == 3, "critical notifications missing")
+        items = {item["summary"]: item for item in state["items"]}
+        assert not items["Ordinary"]["popup"], "DND let an ordinary notification pop up"
+        for summary in ("Low battery", "Critically low"):
+            assert items[summary]["popup"], f"{summary}: DND or the cooldown hid a critical notification"
+            assert items[summary]["timer"] is None, f"{summary}: a critical notification was given a timeout"
+        assert state["sounds"] == 2, "DND must silence ordinary notifications, never critical ones"
+        time.sleep(0.6)
+        assert all(item["popup"] for item in probe.state()["items"] if item["summary"] != "Ordinary"), \
+            "a critical notification timed out"
+    print("ok: critical notifications never time out and get through DND and the cooldown")
+
+
 if __name__ == "__main__":
     if "--private-bus" not in sys.argv:
         subprocess.run(["dbus-run-session", "--", sys.executable, __file__, "--private-bus"], check=True)
     else:
         check_hover_handlers()
         check_replacements()
+        check_critical()
         check_identical_and_hover()
         check_observer_recovery()
         check_startup()

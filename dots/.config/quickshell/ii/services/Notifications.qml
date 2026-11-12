@@ -272,13 +272,18 @@ Singleton {
         const replacement = root.list.includes(notif);
         const previousTime = notif.time;
         const now = Date.now();
+        // The spec: critical notifications do not expire on their own, only when
+        // the user dismisses them. They also get through Do Not Disturb and the
+        // cooldown - the shell's own low-battery warning is one.
+        const critical = notification.urgency === NotificationUrgency.Critical;
         const lastTime = root.latestTimeForApp[notification.appName] || 0;
-        const cooledDown = Config.options.notifications.cooldown && now - lastTime < 5000;
+        const cooledDown = !critical && Config.options.notifications.cooldown && now - lastTime < 5000;
+        const held = critical ? (GlobalStates?.sidebarRightOpen ?? false) : root.popupInhibited;
 
         // An open sidebar holds the popup back, not the sound; Do Not Disturb
         // holds both. Low urgency is quiet, and an app may name its own sound.
         const hints = notification.hints;
-        if (!replacement && !root.silent && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
+        if (!replacement && (!root.silent || critical) && !cooledDown && notification.urgency !== NotificationUrgency.Low && !hints["suppress-sound"])
             SoundService.playEvent("notifications", [hints["sound-file"], hints["sound-name"], ...SoundService.events.notifications].filter(Boolean));
 
         // Replace the old deadline even if it was stopped by hovering, or the
@@ -290,8 +295,8 @@ Singleton {
         }
         notif.time = now;
         // Cooldown suppresses a new popup without hiding one already visible.
-        notif.popup = !root.popupInhibited && (!cooledDown || notif.popup);
-        if (notif.popup && notification.expireTimeout != 0) {
+        notif.popup = !held && (!cooledDown || notif.popup);
+        if (notif.popup && notification.expireTimeout != 0 && !critical) {
             // Owned by the wrapper so stopped timers die with their notification.
             notif.timer = notifTimerComponent.createObject(notif, {
                 "notificationId": notif.notificationId,
