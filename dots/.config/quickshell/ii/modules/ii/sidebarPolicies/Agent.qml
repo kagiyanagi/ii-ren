@@ -407,7 +407,10 @@ Item {
                     animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
                 }
                 radius: Appearance.rounding.normal - root.padding
-                color: messageListView.atYBeginning ? Appearance.colors.colLayer2 : Appearance.colors.colLayer2Base
+                // Scrolled, it floats over the transcript: one layer up, opaque. On
+                // colLayer2Base it was the tone of the message bubbles under it, and
+                // their text seemed to run into the chips.
+                color: messageListView.atYBeginning ? Appearance.colors.colLayer2 : Appearance.colors.colLayer3Base
 
                 Behavior on color {
                     animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
