@@ -163,10 +163,14 @@ AbstractBackgroundWidget {
         implicitWidth: 480
         implicitHeight: 240
 
+        // The loaded shadow's parent is the Loader, from which mainBg is out of
+        // anchors' reach: the Loader takes the target's place and the shadow fills it.
         Loader {
             active: root.showShadow
+            anchors.fill: mainBg
             sourceComponent: StyledRectangularShadow {
                 target: mainBg
+                anchors.fill: undefined
             }
         }
 
