@@ -78,6 +78,8 @@ Item {
     FileView {
         id: categoryFileView
         path: Config.ready ? Directories.generatedWallpaperCategoryPath : ""
+        // Absent until a wallpaper has been categorised, which is not an error.
+        printErrors: false
         watchChanges: true
         onFileChanged: this.reload()
         onLoaded: {

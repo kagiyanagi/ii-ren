@@ -36,9 +36,16 @@ Singleton {
 
     // A local image loads synchronously, so the probe knows its size on creation
     function measure(hash, imagePath) {
-        const probe = sizeProbe.createObject(root, { source: `file://${imagePath}` });
+        const probe = sizeProbe.createObject(probeHost, { source: `file://${imagePath}` });
         root.renderedSizes[hash] = [probe.implicitWidth, probe.implicitHeight];
         probe.destroy();
+    }
+
+    // An Image wants an Item for a parent; the singleton itself is not one, and Qt
+    // warned "not placed in the graphics scene" for every formula measured.
+    Item {
+        id: probeHost
+        visible: false
     }
 
     // A component, not a createQmlObject string: that compiled QML once per formula
