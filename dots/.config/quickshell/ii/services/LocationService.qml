@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import qs.modules.common
+import qs
 
 Singleton {
     id: root
@@ -41,10 +42,20 @@ Singleton {
         }
     }
 
+    // Masking changes only through this toggle or an outside systemctl, so a
+    // slow poll is enough for the bar's indicator; the toggle re-reads whenever
+    // the dashboard opens. Every 15 s this ran bash and systemctl all day.
     Timer {
-        interval: 15000
+        interval: 60000
         running: true
         repeat: true
         onTriggered: statusProc.running = true
+    }
+
+    Connections {
+        target: GlobalStates
+        function onDashboardPanelOpenChanged() {
+            if (GlobalStates.dashboardPanelOpen) statusProc.running = true;
+        }
     }
 }
