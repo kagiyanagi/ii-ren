@@ -35,8 +35,11 @@ Item { // Wrapper
         searchBar.animateWidth = false;
     }
 
+    // Clears the field, not just the query: selecting the old text while emptying
+    // the query left it on screen with no results under it, and typing after a
+    // cursor move appended to it - a stale ":" ran the next search in clipboard mode.
     function cancelSearch() {
-        searchBar.searchInput.selectAll();
+        searchBar.searchInput.text = "";
         LauncherSearch.query = "";
         searchBar.animateWidth = true;
     }
