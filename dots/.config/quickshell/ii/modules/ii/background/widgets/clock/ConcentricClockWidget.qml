@@ -74,11 +74,6 @@ AbstractBackgroundWidget {
         onTriggered: root.clockSecond = new Date().getSeconds()
     }
 
-    StyledDropShadow {
-        target: clockBgCircle
-        visible: Config.options.background.widgets.enableShadows ?? true
-    }
-
     Column {
         anchors.centerIn: parent
         spacing: 10
@@ -88,6 +83,13 @@ AbstractBackgroundWidget {
             id: clockContainer
             width: root.implicitWidth
             height: root.implicitHeight
+
+            // A sibling of its target, or anchors.fill cannot reach it. A circle: the
+            // geometric shadow, no live blur of the whole dial.
+            StyledRectangularShadow {
+                target: clockBgCircle
+                visible: Config.options.background.widgets.enableShadows ?? true
+            }
 
             // Background Circle (Card / Black) with CLIP: TRUE containing all dial elements
             Rectangle {

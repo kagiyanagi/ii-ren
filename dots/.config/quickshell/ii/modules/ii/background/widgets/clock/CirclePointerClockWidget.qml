@@ -41,16 +41,18 @@ AbstractBackgroundWidget {
                                                 : WidgetColorScheme.cardBgColor
 
     // ── Shadow + Container ────────────────────────────────────────────────────
-    StyledDropShadow {
-        target: clockBgShape
-        visible: Config.options.background.widgets.enableShadows ?? true
-    }
 
     Item {
         id: clockContainer
         anchors.centerIn: parent
         width:  root.implicitWidth
         height: root.implicitHeight
+
+        // A sibling of its target, or anchors.fill cannot reach it.
+        StyledDropShadow {
+            target: clockBgShape
+            visible: Config.options.background.widgets.enableShadows ?? true
+        }
 
         // 1. MaterialShape Circle Background
         MaterialShape {
