@@ -76,6 +76,13 @@ Singleton {
         }
     }
 
+    // Raw image data reaches us as an image://qsimage/ handle into this run's
+    // memory. Saved, it named nothing after a restart: a blank icon and a "Failed
+    // to get image from provider" warning per notification restored.
+    function persistableImage(image) {
+        return String(image ?? "").startsWith("image://qsimage/") ? "" : (image ?? "");
+    }
+
     function notifToJSON(notif) {
         return {
             "notificationId": notif.notificationId,
@@ -83,7 +90,7 @@ Singleton {
             "appIcon": notif.appIcon,
             "appName": notif.appName,
             "body": notif.body,
-            "image": notif.image,
+            "image": root.persistableImage(notif.image),
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
@@ -468,7 +475,7 @@ Singleton {
             "appIcon": notif.appIcon,
             "appName": notif.appName,
             "body": notif.body,
-            "image": notif.image,
+            "image": root.persistableImage(notif.image), // files saved before this filter
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
