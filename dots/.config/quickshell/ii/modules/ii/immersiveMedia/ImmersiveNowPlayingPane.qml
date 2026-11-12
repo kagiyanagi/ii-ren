@@ -178,7 +178,9 @@ Rectangle {
             StyledText {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
-                text: root.player?.trackArtist || Translation.tr("Unknown artist")
+                // "Nothing playing" says it all; an unknown artist under it was noise.
+                visible: text.length > 0
+                text: root.player ? (root.player.trackArtist || Translation.tr("Unknown artist")) : ""
                 font.pixelSize: Appearance.font.pixelSize.normal
                 color: root.scheme.subtext
                 elide: Text.ElideRight

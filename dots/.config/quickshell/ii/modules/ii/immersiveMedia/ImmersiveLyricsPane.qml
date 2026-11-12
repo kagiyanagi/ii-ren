@@ -126,7 +126,9 @@ Rectangle {
                     shown: !root.hasSynced && !root.hasPlain
                     icon: "music_note"
                     title: Translation.tr("No lyrics")
-                    description: LyricsService.lyricsEnabled ? Translation.tr("Nothing found for this track") : Translation.tr("Lyrics are turned off in settings")
+                    description: !LyricsService.lyricsEnabled ? Translation.tr("Lyrics are turned off in settings")
+                        : !MprisController.activePlayer ? Translation.tr("Play something to see its lyrics")
+                        : Translation.tr("Nothing found for this track")
                 }
             }
         }

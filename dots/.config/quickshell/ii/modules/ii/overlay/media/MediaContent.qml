@@ -56,7 +56,8 @@ StyledOverlayWidget {
                 Layout.bottomMargin: -6
                 Layout.fillWidth: true
 
-                active: root.showSlider
+                // No player has no position, and position / length was NaN.
+                active: root.showSlider && root.currentPlayer !== null
                 visible: active
                 sourceComponent: StyledSlider { 
                     anchors.fill: parent
@@ -65,7 +66,7 @@ StyledOverlayWidget {
                     highlightColor: Appearance.colors.colPrimary
                     trackColor: Appearance.colors.colSecondaryContainer
                     handleColor: Appearance.colors.colPrimary
-                    value: root.currentPlayer?.position / root.currentPlayer?.length
+                    value: root.currentPlayer?.length > 0 ? root.currentPlayer.position / root.currentPlayer.length : 0
                     onMoved: {
                         root.currentPlayer.position = value * root.currentPlayer.length;
                     }
@@ -128,7 +129,9 @@ StyledOverlayWidget {
                     StyledText {
                         id: mediaActor
                         Layout.fillWidth: true
-                        text: root.currentPlayer?.trackArtist || Translation.tr("Unknown artist")
+                        // With no player there is no artist to be unknown: the line goes.
+                        visible: text.length > 0
+                        text: root.currentPlayer ? (root.currentPlayer.trackArtist || Translation.tr("Unknown artist")) : ""
                         color: Appearance.colors.colSubtext
                         font.pixelSize: Appearance.font.pixelSize.smaller
                         elide: Text.ElideRight
@@ -137,7 +140,7 @@ StyledOverlayWidget {
                     StyledText {
                         id: mediaTitle
                         Layout.fillWidth: true
-                        text: root.currentPlayer?.trackTitle || Translation.tr("Unknown title")
+                        text: root.currentPlayer ? (root.currentPlayer.trackTitle || Translation.tr("Unknown title")) : Translation.tr("Nothing playing")
                         font.pixelSize: Appearance.font.pixelSize.large
                         elide: Text.ElideRight
                     }
