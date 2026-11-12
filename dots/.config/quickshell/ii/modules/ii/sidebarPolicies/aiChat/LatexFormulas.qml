@@ -59,7 +59,7 @@ Item {
     Component.onCompleted: Qt.callLater(root.layout)
 
     Connections {
-        target: root.target
+        target: root.target ?? null // async incubation (DESIGN.md 2.9)
         function onTextChanged(): void {
             Qt.callLater(root.layout);
         }

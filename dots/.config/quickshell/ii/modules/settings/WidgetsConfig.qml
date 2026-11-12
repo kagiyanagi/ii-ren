@@ -15,7 +15,7 @@ Item {
     property alias activeSubPage: subPageOverlay.activeSubPage
 
     Connections {
-        target: root
+        target: root ?? null // async incubation (DESIGN.md 2.9)
         function onPendingSectionHighlightChanged() {
             if (root.pendingSectionHighlight && root.pendingSectionHighlight.endsWith(".qml")) {
                 widgetsConfigRoot.activeSubPage = Qt.resolvedUrl(root.pendingSectionHighlight);

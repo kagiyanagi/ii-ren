@@ -113,13 +113,22 @@ Item {
         }
     }
 
-    opacity: root.show ? 1 : 0
+    // Read by the Behaviors below: set from inside the driving binding, which runs
+    // before the Behavior bakes its spec (DESIGN.md 2.9); a ternary on the state
+    // itself could run the exit on the enter's spec.
+    property bool entering: false
+    readonly property int fadeDuration: entering ? Looks.duration.fast : Looks.duration.faster
+    readonly property var fadeCurve: entering ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+    opacity: {
+        root.entering = root.show;
+        return root.show ? 1 : 0;
+    }
     visible: opacity > 0
     Behavior on opacity {
         NumberAnimation {
-            duration: root.show ? Looks.duration.fast : Looks.duration.faster
+            duration: root.fadeDuration
             easing.type: Easing.BezierSpline
-            easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+            easing.bezierCurve: root.fadeCurve
         }
     }
 
@@ -153,12 +162,15 @@ Item {
         x: Math.round((parent.width - width) / 2)
         y: Math.round((parent.height - height) / 2)
         transformOrigin: Item.Center
-        scale: root.show ? 1.0 : 1.05
+        scale: {
+            root.entering = root.show;
+            return root.show ? 1.0 : 1.05;
+        }
         Behavior on scale {
             NumberAnimation {
-                duration: root.show ? Looks.duration.fast : Looks.duration.faster
+                duration: root.fadeDuration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.show ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: root.fadeCurve
             }
         }
 

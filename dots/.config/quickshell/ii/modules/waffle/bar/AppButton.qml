@@ -53,14 +53,23 @@ BarButton {
 
         implicitHeight: iconWidget.implicitHeight
         implicitWidth: iconWidget.implicitWidth
-        scale: root.down ? root.pressedScale : 1
+        // Read by the Behaviors below: set from inside the driving binding, which runs
+        // before the Behavior bakes its spec (DESIGN.md 2.9); a ternary on the state
+        // itself could run the exit on the enter's spec.
+        property bool pressing: false
+        readonly property int pressDuration: pressing ? 150 : 200 // design-ok: Fluent button press micro-interaction
+        readonly property var pressCurve: pressing ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+        scale: {
+            contentItem.pressing = root.down;
+            return root.down ? root.pressedScale : 1;
+        }
 
         Behavior on scale {
             NumberAnimation {
                 id: scaleAnim
-                duration: root.down ? 150 : 200 // design-ok: Fluent button press micro-interaction
+                duration: contentItem.pressDuration
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.down ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: contentItem.pressCurve
             }
         }
 

@@ -137,12 +137,20 @@ PanelWindow {
         id: content
         anchors.fill: parent
 
-        opacity: root.visible && root.open ? 1 : 0
+        // Read by the Behaviors below: set from inside the driving binding, which runs
+        // before the Behavior bakes its spec (DESIGN.md 2.9); a ternary on the state
+        // itself could run the exit on the enter's spec.
+        property bool entering: false
+        readonly property var fadeCurve: entering ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+        opacity: {
+            content.entering = root.open;
+            return root.visible && root.open ? 1 : 0;
+        }
         Behavior on opacity {
             NumberAnimation {
                 duration: Looks.duration.fast
                 easing.type: Easing.BezierSpline
-                easing.bezierCurve: root.open ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+                easing.bezierCurve: content.fadeCurve
             }
         }
         onOpacityChanged: {
@@ -234,12 +242,15 @@ PanelWindow {
 
                 RegionSelectionOptionsToolbar {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: root.open && root.visible ? 12 : -implicitHeight - 24
+                    y: {
+                        content.entering = root.open;
+                        return root.open && root.visible ? 12 : -implicitHeight - 24;
+                    }
                     Behavior on y {
                         NumberAnimation {
-                            duration: root.open ? Looks.duration.fast : Looks.duration.fast
+                            duration: Looks.duration.fast
                             easing.type: Easing.BezierSpline
-                            easing.bezierCurve: root.open ? Looks.transition.easing.bezierCurve.easeIn : Looks.transition.easing.bezierCurve.easeOut
+                            easing.bezierCurve: content.fadeCurve
                         }
                     }
                 }
