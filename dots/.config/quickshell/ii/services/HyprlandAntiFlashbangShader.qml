@@ -3,36 +3,26 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import qs.services
 
-import qs.modules.common.models.hyprland
-
+/**
+ * Anti-flashbang: darken the screen by its average brightness. ScreenShader composes
+ * it with Comfort View and Reading Mode, which used to replace it outright.
+ */
 Singleton {
     id: root
 
-    readonly property string shaderPath: Quickshell.shellPath("services/hyprlandAntiFlashbangShader/anti-flashbang.glsl")
-    property bool enabled: confOpt.value == shaderPath
+    readonly property bool enabled: ScreenShader.antiFlashbang
 
     function enable() {
-        HyprlandSettings.setKeys({
-            "decoration:screen_shader": root.shaderPath,
-            "debug:damage_tracking": 1, // Turn off dmg tracking to prevent weird flashes. 1 = monitor only
-        });
+        ScreenShader.setAntiFlashbang(true);
     }
 
     function disable() {
-        HyprlandSettings.resetKeys([
-            "decoration:screen_shader",
-            "debug:damage_tracking"
-        ]);
+        ScreenShader.setAntiFlashbang(false);
     }
 
     function toggle() {
-        if (root.enabled) disable()
-        else enable()
-    }
-    
-    HyprlandConfigOption {
-        id: confOpt
-        key: "decoration:screen_shader"
+        ScreenShader.setAntiFlashbang(!root.enabled);
     }
 }

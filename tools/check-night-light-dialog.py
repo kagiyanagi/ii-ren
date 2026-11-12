@@ -8,10 +8,12 @@ row called `toggleTemperature(true)` as if it had been clicked, and the schedule
 manual override. The rows own the state now: the switch is not checkable and the service
 is called from `onClicked` only.
 
-Comfort View's and Reading Mode's `applyShader` rewrite a GLSL file and run `hyprctl
+Comfort View's and Reading Mode's `applyShader` rewrote a GLSL file and ran `hyprctl
 reload`. `setIntensity` applied on every integer the slider crossed, and its config write
 fired `onIntensityChanged`, which applied again: a drag across the track was ~200 Hyprland
-reloads. Both paths go through one debounce now. Measured live: a 47-step drag, 2 reloads.
+reloads. Measured live after a debounce: a 47-step drag, 2 reloads. Now the services only
+write settings; ScreenShader composes all three effects into one shader, debounced, and
+applies it with `hyprctl eval` - no reload at all, and no file in the repo rewritten.
 
 Each eye-protection tile opens its own dialog. All four used to open one that stacked
 every effect, so right-clicking Anti-flashbang landed on Night Light's controls.
@@ -34,14 +36,20 @@ assert switch, "NightLightDialog: no StyledSwitch in SwitchRow"
 assert re.search(r"checkable:\s*false", switch.group(1)), "NightLightDialog: the switch must not be checkable"
 assert re.search(r"property string icon\b", dialog) is None, "NightLightDialog: `icon` is FINAL on AbstractButton; overriding it makes the type unavailable"
 
-for name in ("HyprlandComfortView", "HyprlandReadingMode"):
-    svc = (II / f"services/{name}.qml").read_text()
-    set_fn = re.search(r"function setIntensity\(val\) \{(.*?)\n    \}", svc, re.S)
-    assert set_fn and "applyShader" not in set_fn.group(1), f"{name}: setIntensity must not apply directly; a slider drag reloads Hyprland per step"
-    assert "applyDebounce.restart()" in set_fn.group(1), f"{name}: setIntensity must go through applyDebounce"
-    on_int = re.search(r"function onIntensityChanged\(\) \{(.*?)\n        \}", svc, re.S)
-    assert on_int and "applyShader" not in on_int.group(1), f"{name}: onIntensityChanged re-applies on setIntensity's own config write"
-    assert re.search(r"id: applyDebounce\s*\n\s*interval: \d+", svc), f"{name}: no applyDebounce Timer"
+def code(text):
+    return re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+
+
+for name in ("HyprlandComfortView", "HyprlandReadingMode", "HyprlandAntiFlashbangShader"):
+    svc = code((II / f"services/{name}.qml").read_text())
+    for banned in ("hyprctl", "screen_shader", "execDetached", "Process", "shellPath"):
+        assert banned not in svc, f"{name}: {banned} - only ScreenShader may put a shader on screen"
+shader = code((II / "services/ScreenShader.qml").read_text())
+assert "hyprctl reload" not in shader and "hyprset" not in shader, "ScreenShader: a toggle must not reload Hyprland"
+assert re.search(r"onSourceChanged: applyDebounce\.restart\(\)", shader), "ScreenShader: a slider drag must go through one debounce"
+assert re.search(r"id: applyDebounce\s*\n\s*interval: \d+", shader), "ScreenShader: no applyDebounce Timer"
+assert "Directories.state" in shader and "shellPath" not in shader, "ScreenShader: the generated shader belongs in the state directory, not the repo"
+assert not list((II / "services").glob("hyprland*Shader/*.glsl")), "generated shaders are back in the repo"
 
 wifi = (II / "modules/ii/sidebarDashboard/wifiNetworks/WifiDialog.qml").read_text()
 height = re.search(r"backgroundHeight:\s*(.+)", dialog)

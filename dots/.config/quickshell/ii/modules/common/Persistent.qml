@@ -101,6 +101,9 @@ Singleton {
                 // first frame from its second launch on, reboots included.
                 property list<string> floatingBarClasses: []
                 property bool gameMode: false
+                // Lives here, not in main.lua: ScreenShader composes it with Comfort
+                // View and Reading Mode into one shader and applies that live.
+                property bool antiFlashbangShader: false
                 // main.lua's override for each key game mode sets, from before it was
                 // turned on ([{ key, had, value }]), so turning it off puts those back.
                 property list<var> gameModeSaved: []

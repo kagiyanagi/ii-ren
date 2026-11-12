@@ -41,8 +41,7 @@ ShellRoot {
         }
         MaterialThemeLoader.reapplyTheme()
         Hyprsunset.load()
-        HyprlandComfortView.load()
-        HyprlandReadingMode.load()
+        ScreenShader.load()
         FirstRunExperience.load()
         ConflictKiller.load()
         Cliphist.refresh()
