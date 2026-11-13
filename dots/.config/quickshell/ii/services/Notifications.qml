@@ -27,6 +27,9 @@ Singleton {
             "text": action.text,
         })) ?? []
         property bool popup: false
+        // Seen in the sidebar, or arrived while it was open. The bar's badge
+        // counts the rest, so it can only name notifications still in the list.
+        property bool read: false
         property bool isTransient: notification?.hints.transient ?? false
         property string appIcon: notification?.appIcon ?? ""
         property string appName: notification?.appName ?? ""
@@ -94,6 +97,7 @@ Singleton {
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
+            "read": notif.read,
         }
     }
     function notifToString(notif) {
@@ -116,7 +120,10 @@ Singleton {
     }
 
     property bool silent: false
-    property int unread: 0
+    // Derived, not counted: a tally of arrivals kept every notification the
+    // sidebar never saw leave - transient ones expiring, ones the sender closed,
+    // ones dismissed from their popup - and opening the sidebar found it empty.
+    readonly property int unread: root.list.filter((notif) => !notif.read).length
     property var filePath: Directories.notificationsPath
     property list<Notif> list: []
     property var popupList: list.filter((notif) => notif.popup);
@@ -312,12 +319,13 @@ Singleton {
             });
         }
 
+        // DND holds the popup back, not the unread count. An update keeps its
+        // read state: it alerts once, like it chimes once.
+        if (!replacement) notif.read = GlobalStates?.sidebarRightOpen ?? false;
         // Keep the wrapper stable for the views, but refresh grouping and sorting
         // after a replacement changes the app name or delivery time.
         if (replacement) root.triggerListChange();
         else root.list = [...root.list, notif];
-        // DND holds the popup back, not the unread count. An update was counted already.
-        if (!replacement && !(GlobalStates?.sidebarRightOpen ?? false)) root.unread++;
         root.notify(notif);
         if (Config.options.notifications.history.enable) root.recordHistory(notif, replacement ? previousTime : -1);
         notifFileView.setText(stringifyList(root.list));
@@ -334,6 +342,7 @@ Singleton {
         try { history = JSON.parse(historyFileView.text() || "[]"); } catch (e) {}
         const entry = notifToJSON(notif);
         delete entry.actions; // dead once the sender is gone, same as the reload path
+        delete entry.read; // the sidebar's state, not part of the record
         let index = -1;
         for (let i = history.length - 1; i >= 0 && previousTime >= 0; i--) {
             if (history[i].notificationId === entry.notificationId && history[i].time === previousTime) {
@@ -358,7 +367,10 @@ Singleton {
     }
 
     function markAllRead() {
-        root.unread = 0;
+        const unseen = root.list.filter((notif) => !notif.read);
+        if (unseen.length === 0) return;
+        unseen.forEach((notif) => notif.read = true);
+        notifFileView.setText(stringifyList(root.list));
     }
 
     function discardNotification(id) {
@@ -482,6 +494,8 @@ Singleton {
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
+            // Saved before this was kept: the badge started at zero then.
+            "read": notif.read ?? true,
         }));
         root.idOffset = root.list.reduce((maxId, notif) => Math.max(maxId, notif.notificationId), 0);
         root.historyReady = true;

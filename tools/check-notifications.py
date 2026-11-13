@@ -21,6 +21,11 @@ arrive, reproducing the startup race without relying on a lucky scheduling order
 The queued arrivals must wait for the saved ID offset, survive the load and keep
 their real server objects and actions; reloading must not rebase live IDs.
 
+The bar's unread badge counts unread notifications still in the list. It was a
+tally of arrivals, cut only by opening the sidebar: transient notifications
+expiring, ones the sender closed and ones dismissed from their popup kept it
+up, so it read 7 over an empty sidebar. The read state survives a restart.
+
 Actions let Quickshell honor the resident hint. Missing and stale actions are a
 no-op, including restored history whose sender is gone. Monitor the actual D-Bus
 signals to prove resident actions remain usable and ordinary actions close once.
@@ -145,6 +150,8 @@ def service(saved="[]", delayed=False, observer_failure=False):
                         });
                     }
                     function silent(value: bool): void { Notifications.silent = value; }
+                    function sidebar(value: bool): void { GlobalStates.sidebarRightOpen = value; }
+                    function markRead(): void { Notifications.markAllRead(); }
                     function cooldown(value: bool): void { Config.options.notifications.cooldown = value; }
                     function hide(id: int): void { Notifications.timeoutNotification(id); }
                     function hover(id: int): void { Notifications.cancelTimeout(id); }
@@ -356,6 +363,43 @@ def check_identical_and_hover():
     print("ok: identical resends restart delivery once; replacements keep hover pauses and leaving restarts the full timeout")
 
 
+def check_unread():
+    saved = json.dumps([
+        {"notificationId": 40, "appName": "Saved app", "appIcon": "", "image": "",
+         "summary": "Before read state was saved", "body": "", "time": 1, "urgency": "normal"},
+        {"notificationId": 41, "appName": "Saved app", "appIcon": "", "image": "",
+         "summary": "Unseen", "body": "", "time": 2, "urgency": "normal", "read": False},
+    ])
+    with service(saved) as probe:
+        assert probe.state()["unread"] == 1, "restored read state was lost or legacy entries counted"
+        kept = notify(summary="Kept", timeout=0)
+        notify(summary="Transient", timeout=1000, hints="{'transient': <true>}")
+        closed = notify(summary="Closed by sender", timeout=0)
+        dismissed = notify(summary="Dismissed from its popup", timeout=0)
+        wait_for(probe.state, lambda s: s["unread"] == 5, "arrivals were not counted")
+        dbus("CloseNotification", closed)
+        probe.call("discard", 41 + dismissed)
+        left = wait_for(probe.state, lambda s: len(s["items"]) == 3, "notifications did not leave the list")
+        assert left["unread"] == 2, f"the badge counts notifications no longer in the list: {left['unread']}"
+
+        probe.call("sidebar", "true")
+        seen = notify(summary="Arrived with the sidebar open", timeout=0)
+        wait_for(probe.state, lambda s: len(s["items"]) == 4, "arrival with the sidebar open missing")
+        assert probe.state()["unread"] == 2, "an arrival the sidebar showed counted as unread"
+        probe.call("markRead")
+        assert probe.state()["unread"] == 0
+        probe.call("sidebar", "false")
+        notify(seen, summary="Updated after it was seen", timeout=0)
+        wait_for(probe.state, lambda s: s["items"][-1]["summary"] == "Updated after it was seen", "update missing")
+        assert probe.state()["unread"] == 0, "an update to a seen notification counted again"
+        wait_for(lambda: json.loads(probe.notifications.read_text()),
+                 lambda rows: len(rows) == 4 and all(r["read"] for r in rows), "read state was not saved")
+        assert all("read" not in e for e in json.loads(probe.history.read_text())), "read state leaked into history"
+        probe.call("discard", 41 + kept)
+        assert probe.state()["unread"] == 0
+    print("ok: the unread badge counts only unread notifications in the list, and the read state persists")
+
+
 def check_observer_recovery():
     with service(observer_failure=True) as probe:
         assert not probe.state()["observerReady"], "fixture missed the first failed observer launch"
@@ -502,6 +546,7 @@ if __name__ == "__main__":
         check_replacements()
         check_critical()
         check_identical_and_hover()
+        check_unread()
         check_observer_recovery()
         check_startup()
         check_actions()
