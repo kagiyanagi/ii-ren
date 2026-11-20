@@ -21,9 +21,18 @@ import QtQuick
  * Neighbour-follow -- the 0.3/0.1 fractions -- only
  * ever fires with a real shared parent; a lone item has no neighbours to move.
  *
- * DESIGN.md 3.6: nothing here fades -- this widget only tracks the gesture. A
- * caller that wants the dragged row to lift takes `dragging` and animates its
- * own elevation / 0.16 `colLayerNActive` tint from it.
+ * DESIGN.md 3.6: nothing fades while it is dragged -- a caller that wants the
+ * dragged row to lift takes `dragging` and animates its own elevation / 0.16
+ * `colLayerNActive` tint from it. Leaving is another matter: `fadeOnDismiss`
+ * fades the owner out over the escape, for a card floating over the desktop
+ * (the notification popup) that would otherwise slide into the window's slack
+ * still opaque and vanish when its row is removed.
+ *
+ * The gesture is AOSP SwipeHelper's, as SwipeToDismiss's is: it locks to the
+ * horizontal axis past the touch slop (DragManager.lockToXAxis), goes once it
+ * has travelled `dragConfirmThreshold` or been flung past `escapeVelocity` the
+ * way it was going, and leaves at the speed it was thrown -- linearly, so the
+ * throw carries straight on; a release with no speed in it accelerates away.
  *
  * Drops in where the row's DragManager was, so it keeps the same single
  * MouseArea and the same place in the child stacking order. The row still owns
@@ -32,6 +41,7 @@ import QtQuick
 DragManager {
     id: root
     automaticallyReset: false
+    lockToXAxis: true
 
     required property Item owner // The row root
     required property Item target // The row background that slides
@@ -40,6 +50,20 @@ DragManager {
     property int itemIndex: -1
     property real dragConfirmThreshold: 70 // Drag further to discard notification
     property real dismissOvershoot: 20 // Account for gaps and bouncy animations
+    property bool fadeOnDismiss: false
+
+    // SwipeHelper: SWIPE_ESCAPE_VELOCITY, DEFAULT_ESCAPE_ANIMATION_DURATION,
+    // MAX_ESCAPE_ANIMATION_DURATION -- the values SwipeToDismiss uses.
+    readonly property real escapeVelocity: 500
+    readonly property int escapeDurationDefault: 200
+    readonly property int escapeDurationMax: 400
+    // A pointer that stopped this long before letting go was not thrown.
+    readonly property int velocityStaleMs: 100
+
+    // px/s along x, smoothed over the last few moves of the drag.
+    property real velocityX: 0
+    property real _lastDiffX: 0
+    property double _lastMoveTime: 0
 
     signal dismissed()
 
@@ -64,12 +88,18 @@ DragManager {
         dragIndexDiff == 1 ? (parentDragDistance * 0.3) :
         dragIndexDiff == 2 ? (parentDragDistance * 0.1) : 0
 
-    function destroyWithAnimation(left = false) {
+    function destroyWithAnimation(left = false, velocity = 0) {
         if (root.hasSharedDragState)
             root.qmlParent.resetDrag()
-        root.target.anchors.leftMargin = root.target.anchors.leftMargin; // Break binding
-        destroyAnimation.left = left;
-        destroyAnimation.running = true;
+        const from = root.target.anchors.leftMargin;
+        root.target.anchors.leftMargin = from; // Break binding
+        const to = (root.owner.width + root.dismissOvershoot) * (left ? -1 : 1);
+        destroyAnimation.to = to;
+        destroyAnimation.thrown = velocity !== 0;
+        destroyAnimation.escapeDuration = velocity !== 0 ?
+            Math.min(root.escapeDurationMax, Math.abs(to - from) * 1000 / Math.abs(velocity)) :
+            root.escapeDurationDefault;
+        destroyAnimation.restart();
     }
 
     onClicked: (mouse) => {
@@ -87,6 +117,14 @@ DragManager {
     onDragDiffXChanged: () => {
         if (root.hasSharedDragState)
             root.qmlParent.dragDistance = dragDiffX;
+        const now = Date.now();
+        const dt = now - root._lastMoveTime;
+        if (dt > 0) {
+            const v = (root.dragDiffX - root._lastDiffX) * 1000 / dt;
+            root.velocityX = dt > root.velocityStaleMs ? v : (root.velocityX + v) / 2;
+        }
+        root._lastDiffX = root.dragDiffX;
+        root._lastMoveTime = now;
     }
 
     // The row can go away in the middle of a drag -- a popup expiring under the
@@ -101,24 +139,42 @@ DragManager {
     }
 
     onDragReleased: (diffX, diffY) => {
-        if (Math.abs(diffX) > root.dragConfirmThreshold)
-            root.destroyWithAnimation(diffX < 0);
+        const velocity = Date.now() - root._lastMoveTime > root.velocityStaleMs ? 0 : root.velocityX;
+        root.velocityX = 0;
+        root._lastDiffX = 0;
+        const fastEnough = Math.abs(velocity) > root.escapeVelocity;
+        // Flung back towards where it started: the user changed their mind.
+        const thrownBack = fastEnough && (velocity > 0) !== (diffX > 0);
+        const farEnough = Math.abs(diffX) > root.dragConfirmThreshold;
+        if (diffX !== 0 && !thrownBack && (farEnough || fastEnough))
+            root.destroyWithAnimation(diffX < 0, fastEnough ? velocity : 0);
         else
             root.resetDrag();
     }
 
-    SequentialAnimation { // Drag finish animation
+    ParallelAnimation { // Drag finish animation
         id: destroyAnimation
-        property bool left: true
-        running: false
+        property real to: 0
+        property bool thrown: false
+        property int escapeDuration: root.escapeDurationDefault
 
         NumberAnimation {
             target: root.target.anchors
             property: "leftMargin"
-            to: (root.owner.width + root.dismissOvershoot) * (destroyAnimation.left ? -1 : 1)
-            duration: Appearance.animation.elementMove.duration
-            easing.type: Appearance.animation.elementMove.type
-            easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
+            to: destroyAnimation.to
+            duration: destroyAnimation.escapeDuration
+            // Thrown: it keeps the speed it left the finger with. Let go at
+            // rest: it accelerates away, an exit (DESIGN 2.5).
+            easing.type: destroyAnimation.thrown ? Easing.Linear : Easing.BezierSpline
+            easing.bezierCurve: Appearance.animationCurves.emphasizedAccel
+        }
+        NumberAnimation {
+            target: root.fadeOnDismiss ? root.owner : null
+            property: "opacity"
+            to: 0
+            duration: destroyAnimation.escapeDuration
+            easing.type: Easing.BezierSpline
+            easing.bezierCurve: Appearance.animationCurves.expressiveEffects
         }
         onFinished: root.dismissed()
     }

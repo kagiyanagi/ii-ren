@@ -10,6 +10,18 @@ MouseArea {
 
     property bool interactive: true
     property bool automaticallyReset: true
+    /**
+     * A sideways swipe inside something that scrolls vertically. Nothing moves
+     * until the pointer has gone the platform drag distance sideways, and from
+     * then on the grab is kept, so a hand that drifts up or down mid-swipe no
+     * longer lets the list underneath take the pointer away -- which cancelled
+     * the drag and put the row back the moment the swipe left the exact axis.
+     * Whichever axis crosses the slop first wins, as AOSP's SwipeHelper decides
+     * it: past it vertically first, the list scrolls and this never starts.
+     * The start point moves to where the lock happened, so the row does not
+     * jump by the slop it waited out.
+     */
+    property bool lockToXAxis: false
     readonly property real dragDiffX: _dragDiffX
     readonly property real dragDiffY: _dragDiffY
     property real startX: 0
@@ -48,6 +60,7 @@ MouseArea {
             return;
         }
         dragging = false
+        root.preventStealing = false
         root.dragReleased(_dragDiffX, _dragDiffY);
         if (root.automaticallyReset) {
             root.resetDrag();
@@ -58,9 +71,16 @@ MouseArea {
             return;
         }
         if (mouse.buttons & Qt.LeftButton) {
+            if (root.lockToXAxis && !root.dragging) {
+                const dx = Math.abs(mouse.x - startX);
+                if (dx < Qt.styleHints.startDragDistance || dx < Math.abs(mouse.y - startY))
+                    return;
+                root.preventStealing = true;
+                startX = mouse.x;
+                startY = mouse.y;
+            }
             root._dragDiffX = mouse.x - startX
             root._dragDiffY = mouse.y - startY
-            const dist = Math.sqrt(root._dragDiffX * root._dragDiffX + root._dragDiffY * root._dragDiffY);
             root.dragPressed(_dragDiffX, _dragDiffY);
             root.dragging = true;
         }
@@ -80,6 +100,7 @@ MouseArea {
      * Behavior is still switched off and the row jumps home with no animation.
      */
     function cancelDrag(): void {
+        root.preventStealing = false;
         if (!root.dragging) {
             return;
         }

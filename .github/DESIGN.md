@@ -422,8 +422,13 @@ would fight the ripple's.
 
 ### 3.6 Drag, dismiss, overscroll
 
-- Swipe-to-dismiss in a list: `SwipeDismissible` — 70px confirm threshold,
-  neighbours follow at 0.3 and 0.1 of the drag.
+- Swipe-to-dismiss in a list: `SwipeDismissible` — 70px confirm threshold or a
+  500dp/s fling the way it was going, neighbours follow at 0.3 and 0.1 of the
+  drag. It locks to the x axis past the touch slop and keeps the grab, so a
+  hand that drifts vertically mid-swipe does not hand it to the list; a fling
+  back towards the start puts the row back. It leaves at the speed it was
+  thrown, and `fadeOnDismiss` fades it as it goes where nothing clips it (the
+  notification popup).
 - Swipe-to-dismiss on a floating card: `SwipeToDismiss` — AOSP `SwipeHelper`,
   0.6 of the card's width or a 500dp/s fling, leaves at the speed it was thrown.
   The clipboard toast, the Fast Pair card and the screenshot preview are the
@@ -438,7 +443,7 @@ would fight the ripple's.
   by the next row that reads §2.6. `check-scaffold-containers.py` fails if either
   flickable scales its content again.
 - Drag state gets the 0.16 layer, and the dragged item should lift (elevation),
-  not fade.
+  not fade. Fading belongs to the leave, never to the drag.
 
 ### 3.7 Keyboard
 

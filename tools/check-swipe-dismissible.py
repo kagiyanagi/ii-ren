@@ -26,6 +26,15 @@ Behavior is gated on it, and the card stopped dead wherever the gesture died.
 The code reads correctly, the failure is a log line nobody reads, and the only
 symptom is a notification sitting half-swiped until it is dismissed.
 
+The fourth half is the axis. A swipe that drifted past the drag distance
+vertically before it had gone sideways let the list under it take the grab,
+which cancelled the swipe and put the card back: notifications could only be
+swiped along the exact horizontal. SwipeDismissible locks to the x axis past
+the slop and keeps the grab from then on (`preventStealing`), and the grab is
+handed back on every ending, or the list could never scroll again. A release
+reads the fling too: past 500px/s the way it was going dismisses, and a fling
+back towards the start puts the card back even past the threshold.
+
 Run: python3 tools/check-swipe-dismissible.py
 """
 import re
@@ -172,6 +181,25 @@ for rel in ("NotificationGroup.qml", "NotificationItem.qml"):
         fail(f"{rel} no longer gates its leftMargin Behavior on `dragging` -- the row "
              "either animates under the finger or snaps home without animating")
 
+# --- 5. the axis lock and the fling -----------------------------------------
+
+if not re.search(r"^\s*lockToXAxis:\s*true\b", SRC, re.M):
+    fail("SwipeDismissible does not set lockToXAxis -- a swipe that drifts vertically "
+         "lets the list steal the grab and the card snaps back")
+
+move = handler_body("onPositionChanged")
+if not re.search(r"lockToXAxis[\s\S]*preventStealing\s*=\s*true", move):
+    fail("DragManager's onPositionChanged no longer takes the grab once the x axis is locked")
+for handler in ("onReleased", "onCanceled", "onInteractiveChanged"):
+    if not re.search(r"preventStealing\s*=\s*false", handler_body(handler)):
+        fail(f"DragManager's {handler} does not hand the grab back -- the list under "
+             "the row could not scroll again after the gesture")
+
+if not re.search(r"escapeVelocity:\s*500\b", SRC):
+    fail("escapeVelocity is no longer 500 -- SwipeHelper's SWIPE_ESCAPE_VELOCITY (DESIGN.md 3.6)")
+if "thrownBack" not in SRC:
+    fail("a fling back towards the start no longer cancels the dismiss")
+
 if failures:
     print("FAIL: SwipeDismissible's dismiss contract")
     for f in failures:
@@ -183,3 +211,4 @@ print(f"ok: all {len(DANGEROUS)} reaches into qmlParent are gated on {GUARD}")
 print("ok: qmlParent is overridable and the own-row case does not depend on it")
 print("ok: the shared drag is handed back on destruction and on losing interactivity")
 print("ok: a cancelled grab ends the drag, in that order, and emits no argument-less signal")
+print("ok: the swipe locks to the x axis and keeps the grab, hands it back, and reads the fling")

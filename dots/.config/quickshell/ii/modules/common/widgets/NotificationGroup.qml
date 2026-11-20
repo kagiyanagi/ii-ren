@@ -83,6 +83,9 @@ MouseArea { // Notification group area
         // carries its own SwipeDismissible, as the shade does on Android.
         interactive: !root.expanded
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        // A popup floats over the desktop with slack beside it, so it fades as
+        // it leaves; the sidebar's list clips it instead.
+        fadeOnDismiss: root.popup
 
         onPressed: (mouse) => {
             if (mouse.button === Qt.RightButton)
@@ -248,6 +251,7 @@ MouseArea { // Notification group area
                     itemIndex: index
                     notificationObject: modelData
                     expanded: root.expanded
+                    fadeOnDismiss: root.popup
                     surfaceColor: background.color
                     // Sized by the view, not anchored into it: a delegate that
                     // anchors itself inside its ListView is undefined behaviour.

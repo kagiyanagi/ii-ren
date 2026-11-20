@@ -23,6 +23,8 @@ Item { // Notification item area
     // The card this row is drawn on. ScrollEdgeFade ramps from an opaque copy of
     // it to transparent, so a wrong one shows as a band of the wrong layer (6.1).
     property color surfaceColor: Appearance.colors.colLayer2
+    // Fade as it is swiped away: on in the popup (see NotificationGroup).
+    property bool fadeOnDismiss: false
 
     implicitHeight: background.implicitHeight
 
@@ -36,6 +38,7 @@ Item { // Notification item area
         // The group swipes as one until it is expanded, then each row does.
         interactive: root.expanded
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        fadeOnDismiss: root.fadeOnDismiss
 
         onDismissed: Notifications.discardNotification(root.notificationObject.notificationId)
     }
