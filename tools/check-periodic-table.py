@@ -11,8 +11,8 @@ Three things are checked.
 the 18-wide grid, every category one the palette has a slot for, and the fields a
 syllabus actually asks for present on the elements that have been measured. A few
 spot values are pinned against chemistry that does not change -- chromium and
-copper's anomalous configurations, chlorine having the largest electron gain
-enthalpy, the period-2 radii decreasing left to right -- so a regenerate against
+copper's anomalous configurations, chlorine having the largest electron affinity
+(the most negative electron gain enthalpy), the period-2 radii decreasing left to right -- so a regenerate against
 a moved upstream cannot quietly rewrite them.
 
 **The colour scales.** The family, block and trend palettes were produced by
@@ -87,7 +87,7 @@ for symbol in ("F", "Cl", "Br", "I", "At"):
 
 affinities = [(e["electronAffinity"], e["symbol"]) for e in elements if e["electronAffinity"]]
 check(max(affinities)[1] == "Cl",
-      f"the largest electron gain enthalpy is {max(affinities)[1]}, not chlorine")
+      f"the largest electron affinity (most negative gain enthalpy) is {max(affinities)[1]}, not chlorine")
 
 period2 = [e for e in elements if e["period"] == 2 and e["radiusEmpirical"] and e["group"] <= 17]
 radii = [e["radiusEmpirical"] for e in sorted(period2, key=lambda e: e["group"])]

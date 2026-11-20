@@ -30,6 +30,8 @@ timetable = (ROOT / "CheatsheetTimetable.qml").read_text()
 tile = (ROOT / "ElementTile.qml").read_text()
 category = (ROOT / "CheatsheetKeybindsCategory.qml").read_text()
 table = (ROOT / "CheatsheetPeriodicTable.qml").read_text()
+detail = (ROOT / "ElementDetail.qml").read_text()
+theme = (ROOT / "elements_theme.js").read_text()
 
 fail = []
 
@@ -257,6 +259,26 @@ if size_expr:
                   f"the table is wider than a {view_w}px viewport at a {size}px tile")
             check(rows * size + (rows - 1) * gap <= view_h + 1,
                   f"the table is taller than a {view_h}px viewport at a {size}px tile")
+
+# The data's `electronAffinity` is energy *released* (chlorine +349). What the
+# card and the legend call it -- electron gain enthalpy -- is the same number
+# with the sign turned round (chlorine -349). A still frame of a wrong sign looks
+# exactly as finished as a right one, so the two places that turn it are pinned.
+check(re.search(r'title: Translation\.tr\("Electron gain enthalpy"\)[\s\S]{0,400}?-root\.shown\.electronAffinity', detail),
+      "the detail card shows electron affinity under the title \"Electron gain enthalpy\" -- "
+      "the enthalpy is the affinity with its sign turned round (chlorine -349 kJ/mol)")
+check(re.search(r'id: "electronAffinity"[^\n]*negate: true', theme)
+      and "root.mode.negate ? -value : value" in table,
+      "the Electron gain legend prints affinities again -- its ends must be the negated values")
+
+# The table drops the detail's `fill` to grey on the frame the selection clears,
+# which is the first frame of the card's exit. Only a latched colour keeps the
+# hero and the bars in the element's colour while the card scales out -- and a
+# frame of the exit is exactly what a screenshot of the finished card never shows.
+check(re.search(r"Binding on accent \{\s*when: root\.open\s*value: root\.fill\s*restoreMode: Binding\.RestoreNone", detail)
+      and detail.count("root.fill") == 2,
+      "the element card draws with the table's live `fill` again, so the hero and every bar "
+      "turn grey on the first frame of the exit -- read the latched `accent` instead")
 
 
 if fail:

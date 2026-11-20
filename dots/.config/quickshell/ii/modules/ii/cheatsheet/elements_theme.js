@@ -68,7 +68,12 @@ const modes = [
     { id: "radiusEmpirical", label: "Atomic radius", key: "radiusEmpirical", unit: "pm" },
     { id: "electronegativity", label: "Electronegativity", key: "electronegativity", unit: "" },
     { id: "ionisation", label: "Ionisation enthalpy", key: "ionisation1", unit: "kJ/mol" },
-    { id: "electronAffinity", label: "Electron gain", key: "electronAffinity", unit: "kJ/mol" },
+    // The data is electron affinity, energy *released*, so chlorine is +349.
+    // The syllabus quantity is electron gain enthalpy, the same number with the
+    // sign turned round (chlorine -349). The tiles keep their colours -- the
+    // brightest is still the most energy released -- and `negate` flips only
+    // the numbers the legend prints, so the table and the detail card agree.
+    { id: "electronAffinity", label: "Electron gain", key: "electronAffinity", unit: "kJ/mol", negate: true },
     { id: "melt", label: "Melting point", key: "melt", unit: "K" },
     { id: "density", label: "Density", key: "density", unit: "" },
 ];

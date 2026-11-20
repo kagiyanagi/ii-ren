@@ -58,6 +58,17 @@ Item {
         return ETheme.trendColor(ETheme.rampStep(value, root.domain.min, root.domain.max, root.logarithmic), root.dark);
     }
 
+    // A legend end, in the quantity the mode is named after (see `negate` in
+    // elements_theme.js). A signed mode writes its plus sign too, so the two
+    // ends of the electron gain ramp read as +223 and -349, not 223 and -349.
+    function legendValue(value) {
+        if (value === null)
+            return "";
+        const shown = root.mode.negate ? -value : value;
+        const text = String(shown).replace("-", "\u2212");
+        return `${root.mode.negate && shown > 0 ? "+" : ""}${text} ${root.mode.unit}`;
+    }
+
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Escape && root.selected !== null) {
             root.selected = null;
@@ -292,7 +303,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 color: Appearance.colors.colSubtext
-                text: root.domain.min === null ? "" : `${root.domain.min} ${root.mode.unit}`
+                text: root.legendValue(root.domain.min)
             }
             Row {
                 anchors.verticalCenter: parent.verticalCenter
@@ -312,7 +323,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 font.pixelSize: Appearance.font.pixelSize.smallest
                 color: Appearance.colors.colSubtext
-                text: root.domain.max === null ? "" : `${root.domain.max} ${root.mode.unit}`
+                text: root.legendValue(root.domain.max)
             }
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
